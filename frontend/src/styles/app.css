@@ -1,0 +1,2160 @@
+/* Layout & component styles. Reads color tokens from theme.css so both
+   dark and light mode stay in sync automatically. */
+
+.app-shell {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+}
+
+.app-shell-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ---------- Sidebar (left icon rail: stock search / return calculator) ---------- */
+
+.sidebar {
+  flex-shrink: 0;
+  width: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 0;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.sidebar-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.sidebar-icon-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+/* Same solid-accent treatment as .price-chart-period-btn.active -- the
+   app's established "this option is currently selected" style. */
+.sidebar-icon-button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
+/* ---------- Header ---------- */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+/* Sign-in nudge -- dismissible, session-only (see App.tsx). Same yellow
+   status tone used everywhere else for "moderate/heads up," not a new
+   ad-hoc color, since this genuinely isn't an error or a blocker. */
+.signin-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  flex-shrink: 0;
+  padding: 0.55rem 1.5rem;
+  background: var(--status-warning-bg);
+  border-bottom: 1px solid var(--status-warning);
+  color: var(--status-warning);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.signin-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.signin-banner-link {
+  background: var(--status-warning);
+  color: var(--bg-surface);
+  border: none;
+  border-radius: 999px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+}
+
+.signin-banner-link:hover {
+  opacity: 0.85;
+}
+
+.signin-banner-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--status-warning);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.signin-banner-dismiss:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.logo-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.logo-mark:hover,
+.logo-mark:focus-visible {
+  opacity: 0.8;
+}
+
+.logo-wordmark {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.logo-wordmark span {
+  color: var(--accent);
+}
+
+.icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.icon-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+/* Signed-in indicator on the account icon-button (see Header.tsx). */
+.icon-button-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-good);
+  border: 1.5px solid var(--bg-surface);
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ---------- Main layout ---------- */
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.search-bar-wrap {
+  padding: 1.25rem 1.5rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.content-grid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1.5rem 1.5rem;
+  min-height: 0;
+}
+
+.metrics-pane {
+  flex: 1;
+  overflow-y: auto;
+  /* Always reserves the scrollbar's width, whether or not content actually
+     overflows. Without this, a bottom-row metric popover (which extends
+     past the card and briefly grows this container's scroll height) could
+     cross the "needs a scrollbar" threshold, which shifts all the content
+     sideways by the scrollbar's width, which moves the card out from under
+     the cursor, which closes the popover, which un-shifts the content,
+     which puts the card back under the cursor -- a hover/layout feedback
+     loop that reads as the page "glitching". Reserving the gutter always
+     means that toggle never happens. */
+  scrollbar-gutter: stable;
+  min-height: 0;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  /* Gap between the card content and the scrollbar track, which otherwise
+     renders flush against it -- the scrollbar's own position doesn't move,
+     but this pushes the content away from it. */
+  padding-right: 0.85rem;
+  /* Room for the last row's hover popover to open below it without
+     growing the scrollable area (also just breathing room at the end of
+     the page). */
+  padding-bottom: 3rem;
+}
+
+/* ---------- Company search ---------- */
+
+.search-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.search-form {
+  display: flex;
+  gap: 0.6rem;
+  max-width: 640px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.search-source-reset {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* Local estimate of Tapetide searches left today (see QuotaStatus) --
+   good/warning/bad reuse the same status palette as everywhere else in the
+   app, tightening as the estimate runs low. */
+.search-quota-counter {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.search-quota-counter.good {
+  color: var(--status-good);
+  background: var(--status-good-bg);
+}
+
+.search-quota-counter.warning {
+  color: var(--status-warning);
+  background: var(--status-warning-bg);
+}
+
+.search-quota-counter.bad {
+  color: var(--status-bad);
+  background: var(--status-bad-bg);
+}
+
+.search-input {
+  flex: 1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.search-button {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.search-button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.search-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.search-error {
+  margin-top: 0.6rem;
+  color: var(--status-bad);
+  font-size: 0.88rem;
+  max-width: 640px;
+}
+
+.search-hint {
+  margin-top: 0.5rem;
+  color: var(--text-tertiary);
+  font-size: 0.82rem;
+}
+
+/* ---------- Empty state ---------- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  color: var(--text-tertiary);
+  padding: 2rem;
+  gap: 0.5rem;
+}
+
+.empty-state h2 {
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* ---------- Recommended companies (empty state) ---------- */
+
+.recommended-companies {
+  margin-top: 3.5rem;
+  width: 100%;
+  max-width: 960px;
+}
+
+.recommended-companies-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-tertiary);
+  margin-bottom: 0.9rem;
+}
+
+/* Column count is set inline per render (repeat(N, 1fr), N = however many
+   companies came back today) so all 3-5 cards always sit in exactly one
+   row, evenly sized to whatever width is available -- no fixed card width
+   to wrap once there isn't room for the last one. */
+.recommended-companies-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.recommended-company-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Deliberately no verdict-based color anywhere on this card (border, name,
+   or the popover's assessment line below) -- see the comment in
+   RecommendedCompanies.tsx for why a colored badge on an untouched
+   empty-state suggestion reads as a "buy this" signal. Every card is the
+   same neutral grey; the real verdict is still there, just as plain text
+   once you've opened the popover. */
+.recommended-company-card:hover,
+.recommended-company-card:focus-visible {
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated);
+  /* Above every sibling card's own stacking context (each is z-index: 1),
+     so this card's popover isn't clipped/hidden behind the next card over. */
+  z-index: 40;
+}
+
+.recommended-company-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding-right: 1.1rem;
+  line-height: 1.3;
+}
+
+.recommended-company-meta {
+  font-size: 0.76rem;
+  color: var(--text-tertiary);
+}
+
+.recommended-company-arrow {
+  position: absolute;
+  top: 1rem;
+  right: 0.9rem;
+  color: var(--accent);
+  font-weight: 600;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.recommended-company-card:hover .recommended-company-arrow,
+.recommended-company-card:focus-visible .recommended-company-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ---------- Company header / highlights ---------- */
+
+.company-header {
+  margin-bottom: 1.25rem;
+}
+
+/* ---------- Show more / less (collapsed detail) ---------- */
+
+.show-more-row {
+  display: flex;
+  justify-content: center;
+  margin: 0.25rem 0 1.5rem;
+}
+
+.show-more-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.show-more-pill:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.show-more-arrow {
+  transition: transform 0.15s ease;
+}
+
+.show-more-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Smooth open/close: animating a grid row from 0fr to 1fr tracks the
+   content's real height (whatever it happens to be for a given company)
+   without any JS measurement or a guessed max-height. The wrapper is
+   always in the DOM; .expanded-details (the single grid item) needs
+   min-height: 0 to actually shrink to zero with it, and overflow: hidden
+   so its content doesn't show through while collapsed/mid-animation. */
+.expanded-details-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s ease;
+}
+
+.expanded-details-wrapper.expanded {
+  grid-template-rows: 1fr;
+}
+
+.expanded-details {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.expanded-details-wrapper.expanded .expanded-details {
+  opacity: 1;
+  /* Let the fade-in catch up slightly after the row starts growing, rather
+     than the content flashing fully visible while still barely any height
+     is available to show it in. */
+  transition-delay: 0.05s;
+}
+
+.company-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.company-title h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.company-ticker {
+  color: var(--text-tertiary);
+  font-size: 0.95rem;
+}
+
+.company-meta {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+}
+
+/* ---------- Price chart ---------- */
+
+/* Price History + Share Price Forecast side by side, each ~half width,
+   instead of two full-width stacked cards -- flex:1 on each .price-chart-card
+   splits the row evenly when both are present, and lets the lone card fill
+   it when the forecast is absent (no analyst target data). align-items:
+   stretch (not the flex default's opposite, flex-start) matters here: Price
+   History is naturally taller than Share Price Forecast (period buttons +
+   reset-zoom footer that the forecast card doesn't have), and without
+   stretch the shorter forecast card just sits at its own natural height,
+   leaving dead space below it that the *next* row (summary-row) then starts
+   below rather than right after -- reads as a gap before Analyst Consensus.
+   Stretching both cards to the row's full height, combined with the flex
+   column + flex:1 canvas wrap below, makes the forecast chart actually
+   render larger to fill that height instead of floating in extra blank
+   space. Below 900px there's not enough room for two half-width charts to
+   stay readable, so they stack back to full-width, same as the old layout.
+   To revert entirely: remove the .charts-row wrapper div in
+   MetricsDashboard.tsx and delete this rule + the media query below --
+   nothing else depends on it. */
+.charts-row {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.charts-row .price-chart-card {
+  flex: 1;
+  min-width: 0; /* lets the chart's own width: 100% canvas shrink below its content size instead of overflowing the row */
+}
+
+@media (max-width: 900px) {
+  .charts-row {
+    flex-direction: column;
+  }
+}
+
+.price-chart-card {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.price-chart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.price-chart-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.price-chart-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.price-chart-price {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.price-chart-change {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.price-chart-change.good { color: var(--status-good); }
+.price-chart-change.bad { color: var(--status-bad); }
+
+.price-chart-date {
+  font-size: 0.76rem;
+  color: var(--text-tertiary);
+}
+
+/* flex: 1 (not a fixed height) -- lets the canvas grow to fill whatever
+   height .price-chart-card ends up stretched to in .charts-row, instead of
+   sitting at a fixed size with dead space around it. min-height is a floor
+   for when the card isn't being stretched against a taller sibling (e.g.
+   the stacked mobile layout below 900px). The chart itself (PriceChart.tsx/
+   PriceForecastChart.tsx) tracks this wrap's actual rendered size via
+   ResizeObserver and calls chart.applyOptions({ width, height }) on both
+   dimensions -- not just width -- so lightweight-charts' canvas really
+   redraws at the grown size rather than being stretched by CSS. */
+.price-chart-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+}
+
+.price-chart-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* The standalone forecast chart (PriceForecastChart.tsx) only ever plots 3
+   two-point legs from one origin -- a lower floor than the main price
+   history chart's, since it needs less height to read well on its own, but
+   both charts stretch to match Price History's real height whenever it's
+   the taller sibling (see .charts-row). */
+.price-forecast-canvas-wrap {
+  min-height: 220px;
+}
+
+.price-chart-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  border-radius: 10px;
+}
+.price-chart-overlay.error {
+  color: var(--status-bad);
+}
+
+.price-chart-period-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.price-chart-period-btn {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+.price-chart-period-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.price-chart-period-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.price-chart-forecast-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.9rem;
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+}
+
+.price-chart-forecast-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.price-chart-forecast-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.price-chart-forecast-item.good .dot { background: var(--status-good); }
+.price-chart-forecast-item.neutral .dot { background: var(--status-neutral); }
+.price-chart-forecast-item.bad .dot { background: var(--status-bad); }
+
+.price-chart-forecast-note {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.price-chart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.price-chart-reset {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.price-chart-reset:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.price-chart-hint {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.health-snapshot {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  border-left: 4px solid var(--status-neutral);
+}
+.health-snapshot.good { border-left-color: var(--status-good); }
+.health-snapshot.warning { border-left-color: var(--status-warning); }
+
+/* Inline in the summary row instead of a standalone card -- same content,
+   smaller type and padding, no top margin (the row's own gap handles that). */
+.health-snapshot.compact {
+  margin-top: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+}
+.health-snapshot.compact .health-snapshot-main .status-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 0.3rem;
+}
+.health-snapshot.compact .health-snapshot-verdict {
+  font-size: 0.95rem;
+}
+.health-snapshot.compact .health-snapshot-explanation {
+  font-size: 0.78rem;
+}
+.health-snapshot.compact .health-snapshot-breakdown {
+  font-size: 0.72rem;
+  gap: 0.7rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+.health-snapshot.compact .health-snapshot-disclaimer {
+  font-size: 0.66rem;
+  margin-top: 0.45rem;
+}
+.health-snapshot.full-width {
+  grid-column: 1 / -1;
+}
+.health-snapshot.bad { border-left-color: var(--status-bad); }
+
+.health-snapshot-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.health-snapshot-main .status-dot {
+  margin-top: 0.4rem;
+  width: 10px;
+  height: 10px;
+}
+
+.health-snapshot-verdict {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.health-snapshot-explanation {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+
+.health-snapshot-breakdown {
+  display: flex;
+  gap: 0.9rem;
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.health-snapshot-breakdown .good { color: var(--status-good); }
+.health-snapshot-breakdown .warning { color: var(--status-warning); }
+.health-snapshot-breakdown .bad { color: var(--status-bad); }
+
+.health-snapshot-disclaimer {
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+/* ---------- Analyst consensus ---------- */
+
+.analyst-card {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+/* Inline in the summary row instead of a standalone card -- same content,
+   smaller type and padding, no top margin (mirrors .health-snapshot.compact
+   so the two tiles read as one consistent design side by side). */
+.analyst-card.compact {
+  margin-top: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+}
+.analyst-card.compact .analyst-header {
+  margin-bottom: 0.55rem;
+}
+.analyst-card.compact .analyst-header h3 {
+  font-size: 0.85rem;
+}
+.analyst-card.compact .analyst-target-block {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+}
+.analyst-card.compact .analyst-disclaimer {
+  margin-top: 0.65rem;
+  padding-top: 0.45rem;
+  font-size: 0.66rem;
+}
+
+.analyst-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.analyst-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.analyst-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.analyst-badge.good { background: var(--status-good-bg); color: var(--status-good); }
+.analyst-badge.bad { background: var(--status-bad-bg); color: var(--status-bad); }
+.analyst-badge.neutral { background: var(--status-neutral-bg); color: var(--status-neutral); }
+
+.analyst-bar {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border-subtle);
+}
+
+.analyst-bar-segment {
+  height: 100%;
+}
+.analyst-bar-segment.good { background: var(--status-good); }
+.analyst-bar-segment.neutral { background: var(--status-neutral); }
+.analyst-bar-segment.bad { background: var(--status-bad); }
+
+.analyst-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-top: 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.analyst-legend .good { color: var(--status-good); }
+.analyst-legend .neutral { color: var(--status-neutral); }
+.analyst-legend .bad { color: var(--status-bad); }
+
+.analyst-count {
+  margin-top: 0.4rem;
+  font-size: 0.76rem;
+  color: var(--text-tertiary);
+}
+
+.analyst-target-block {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.analyst-target-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.9rem;
+}
+
+.analyst-target-upside {
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+.analyst-target-upside.good { color: var(--status-good); }
+.analyst-target-upside.bad { color: var(--status-bad); }
+
+.analyst-target-track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border-subtle);
+  margin: 0.5rem 0.5rem;
+}
+
+.analyst-target-range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.35;
+}
+
+.analyst-target-marker {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--bg-surface);
+}
+.analyst-target-marker.mean {
+  background: var(--accent);
+}
+.analyst-target-marker.current {
+  background: var(--text-primary);
+  width: 10px;
+  height: 10px;
+}
+
+.analyst-target-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.8rem;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.analyst-target-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.analyst-target-label .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.analyst-target-label .dot.low,
+.analyst-target-label .dot.high {
+  background: var(--accent);
+  opacity: 0.35;
+}
+.analyst-target-label .dot.mean {
+  background: var(--accent);
+}
+.analyst-target-label .dot.current {
+  background: var(--text-primary);
+}
+
+.analyst-disclaimer {
+  margin-top: 0.9rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.highlights-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.highlight-tile {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+
+.highlight-tile .label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.highlight-tile .value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 0.2rem;
+  color: var(--text-primary);
+}
+
+/* ---------- Summary row (compact Financial Health / Analyst Consensus) ----------
+   Both tiles show their full standalone-card content at reduced scale (see
+   .health-snapshot.compact and .analyst-card.compact) -- no "Expand" button
+   or modal, since there's no more truncated content to expand into. */
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* ---------- Metric groups & cards ----------
+   Redesigned 2026-07-14 for lower visual weight per card, since a fully
+   expanded page can show 20-30+ of these -- see
+   design-backups/metric-cards-v1-boxed/ for the prior (heavier, bordered,
+   badge-carrying) version and how to restore it. */
+
+.metric-group {
+  margin-bottom: 1.35rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.metric-group:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.metric-group h3 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.65rem;
+}
+
+.metric-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  /* No overflow:hidden here -- it would clip each card's hover popover,
+     which intentionally extends past the card's own edge. The four outer
+     corners of the panel are very slightly less crisp without it (a corner
+     card's flat corner peeking a hair past the container's rounded one) --
+     imperceptible at this radius, and a real bug is worse than that. */
+}
+
+/* Cards butt up against each other with a 1px surface-color seam (the grid
+   gap trick) instead of each carrying its own separate bordered box --
+   reads as one coherent panel of data rather than a scattered pile of
+   individual boxes. */
+.metric-card {
+  background: var(--bg-surface);
+  padding: 0.65rem 0.8rem;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.metric-card:hover {
+  background: var(--bg-elevated);
+  z-index: 1;
+}
+
+/* Rounds the row's actual visible corners. Not overflow:hidden on the grid
+   (that clips the hover popover -- see the comment above .metric-cards) --
+   each group's cards fit on a single row (auto-fit + minmax(160px,...) at
+   this app's widths), so :first-child/:last-child are the true left/right
+   edges of that row. */
+.metric-card:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+.metric-card:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.metric-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.metric-label {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.good { background: var(--status-good); }
+.status-dot.warning { background: var(--status-warning); }
+.status-dot.bad { background: var(--status-bad); }
+.status-dot.neutral { background: var(--status-neutral); }
+
+.metric-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 0.3rem;
+  color: var(--text-primary);
+}
+
+.metric-value.na {
+  color: var(--text-tertiary);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.metric-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  /* Exactly the hovered box's own width -- not wider. A wider popover
+     would visually spill into a neighboring card, and since the popover is
+     a DOM child of the hovered card, hovering that spilled-over area kept
+     registering as "still hovering the original card" instead of the one
+     underneath, so the pop-up range effectively bled past its own box. */
+  left: 0;
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow-elevated);
+  padding: 0.85rem 0.95rem;
+  z-index: 30;
+  text-align: left;
+  cursor: default;
+  animation: popover-in 0.12s ease;
+}
+
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Flipped upward when there isn't room below in the viewport (see
+   MetricCard.tsx/RecommendedCompanies.tsx's openAbove logic) -- otherwise a
+   bottom-row popover runs past the viewport edge and forces the scrollable
+   area to grow every time it opens. */
+.metric-popover.above {
+  top: auto;
+  bottom: calc(100% + 8px);
+  animation: popover-in-above 0.12s ease;
+}
+
+@keyframes popover-in-above {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.metric-popover-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.45rem;
+}
+
+.metric-popover-definition {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 0.55rem;
+}
+
+.metric-popover-assessment {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: var(--status-neutral-bg);
+  color: var(--text-primary);
+}
+.metric-popover-assessment.good { background: var(--status-good-bg); }
+.metric-popover-assessment.warning { background: var(--status-warning-bg); }
+.metric-popover-assessment.bad { background: var(--status-bad-bg); }
+
+.metric-popover-formula {
+  margin-top: 0.55rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.72rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--text-tertiary);
+}
+
+/* ---------- Settings panel ---------- */
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 40;
+  animation: fade-in 0.15s ease;
+}
+
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-elevated);
+  z-index: 50;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: slide-in 0.2s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-panel-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settings-row-label {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.settings-row-sub {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  margin-top: 0.15rem;
+}
+
+/* ---------- Auth panel (sign in/up + activity, reuses .settings-panel/.settings-backdrop) ---------- */
+
+.auth-mode-toggle {
+  display: inline-flex;
+  align-self: flex-start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.auth-mode-toggle button {
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.auth-mode-toggle button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.auth-field > span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.auth-field input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.auth-field input:focus {
+  border-color: var(--accent);
+}
+
+.auth-field-hint {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.auth-submit {
+  width: 100%;
+  text-align: center;
+}
+
+.auth-user-summary {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.auth-user-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.auth-user-email {
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+}
+
+.auth-activity {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-activity-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+}
+
+.auth-activity-empty {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+}
+
+.auth-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.auth-activity-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.auth-activity-item:last-child {
+  border-bottom: none;
+}
+
+.auth-activity-action {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.auth-activity-time {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.theme-toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: var(--border-strong);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+}
+
+.theme-toggle[data-active="true"] {
+  background: var(--accent);
+}
+
+.theme-toggle .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s ease;
+}
+
+.theme-toggle[data-active="true"] .knob {
+  transform: translateX(20px);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Return calculator page ---------- */
+
+.calculator-page {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+}
+
+.calculator-card {
+  width: 100%;
+  max-width: 480px;
+  height: fit-content;
+  padding: 1.5rem 1.5rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.calculator-card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calculator-subtitle {
+  margin: 0.35rem 0 1.4rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ---------- Return calculator: stock picker ---------- */
+
+.calculator-stock-picker {
+  margin-bottom: 1.2rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.calculator-stock-picker .calculator-field-header {
+  margin-bottom: 0.5rem;
+}
+
+.calculator-stock-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calculator-stock-form input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.calculator-stock-form input:focus {
+  border-color: var(--accent);
+}
+
+.calculator-stock-form button {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 10px;
+  padding: 0 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.calculator-stock-form button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.calculator-stock-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.calculator-stock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--status-good-bg);
+  border: 1px solid var(--status-good);
+  border-radius: 999px;
+  padding: 0.4rem 0.5rem 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--status-good);
+}
+
+.calculator-stock-chip-ticker {
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.calculator-stock-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--status-good);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.calculator-stock-chip button:hover {
+  background: var(--status-good);
+  color: var(--accent-contrast);
+}
+
+.calculator-stock-error {
+  margin-top: 0.6rem;
+  color: var(--status-bad);
+  font-size: 0.8rem;
+}
+
+.calculator-field-note {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+/* Shown in place of the whole form/results/disclaimer until a stock is
+   picked -- picking one is compulsory now, so this is the calculator's
+   only state before that happens. */
+.calculator-empty-hint {
+  text-align: center;
+  padding: 1.5rem 0.5rem 0.5rem;
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+}
+
+.calculator-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.calculator-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.calculator-field > span,
+.calculator-field-header > span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Investment field's "Amount" vs "Shares" header row -- the toggle only
+   makes sense once a stock's real share price is known to convert against
+   (see sharesModeAvailable), so "Shares" stays visible but disabled rather
+   than the whole control disappearing, so its existence is discoverable. */
+.calculator-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.calculator-mode-toggle {
+  display: inline-flex;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.calculator-mode-toggle button {
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.calculator-mode-toggle button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.calculator-mode-toggle button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.calculator-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 0 0.9rem;
+  transition: border-color 0.15s ease;
+}
+
+.calculator-input-wrap:focus-within {
+  border-color: var(--accent);
+}
+
+/* Historical annual return -- computed from real price history, never
+   user-typed, so it's read-only rather than a normal editable field.
+   Recessed background (bg-surface, one step darker than the editable
+   bg-elevated fields) + muted text + a lock icon make that obvious at a
+   glance instead of the field just silently ignoring keystrokes. */
+.calculator-input-wrap.locked {
+  background: var(--bg-surface);
+  cursor: not-allowed;
+}
+
+.calculator-input-wrap.locked input {
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.calculator-lock-icon {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.calculator-input-wrap input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.65rem 0;
+  /* Remove native number-input spinners so it reads like a plain field --
+     the label + suffix already communicate units. */
+  -moz-appearance: textfield;
+}
+.calculator-input-wrap input::-webkit-outer-spin-button,
+.calculator-input-wrap input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.calculator-input-prefix,
+.calculator-input-suffix {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+/* Time period's unit picker -- reads as plain text ("Years") until you
+   hover or focus it, at which point a background/border and the chevron
+   fade in to reveal it's actually a dropdown (Day/Month/Year/Decade). The
+   native <select> itself stays borderless/transparent throughout; the
+   wrapper carries all the visual affordance. */
+.calculator-period-unit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin: 0 -0.4rem 0 0.2rem;
+  padding: 0.3rem 1.35rem 0.3rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.calculator-period-unit:hover,
+.calculator-period-unit:focus-within {
+  background: var(--bg-hover);
+  border-color: var(--border-subtle);
+}
+
+.calculator-period-unit select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.calculator-period-unit svg {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.calculator-period-unit:hover svg,
+.calculator-period-unit:focus-within svg {
+  opacity: 1;
+}
+
+.calculator-results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-top: 1.4rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.calculator-result-tile {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 0.7rem 0.6rem;
+  text-align: center;
+}
+
+.calculator-result-tile .label {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.calculator-result-tile .value {
+  margin-top: 0.3rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calculator-result-tile .value.good {
+  color: var(--status-good);
+}
+
+.calculator-result-tile .value.bad {
+  color: var(--status-bad);
+}
+
+/* ---------- Return calculator: analyst price target scenario ----------
+   Best/likely/worst case, from Tapetide's real Low/Mean/High analyst
+   target -- colored left border (same convention as .health-snapshot's
+   verdict border) makes the three read as a group at a glance, rather than
+   the plain-tile treatment .calculator-result-tile uses above. */
+.calculator-scenario-section {
+  margin-top: 1.4rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.calculator-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+}
+
+.calculator-scenario-tile {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--status-neutral);
+  border-radius: 10px;
+  padding: 0.7rem 0.7rem;
+}
+
+.calculator-scenario-tile.good { border-left-color: var(--status-good); }
+.calculator-scenario-tile.warning { border-left-color: var(--status-warning); }
+.calculator-scenario-tile.bad { border-left-color: var(--status-bad); }
+
+.calculator-scenario-label {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.calculator-scenario-value {
+  margin-top: 0.3rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calculator-scenario-gain {
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.calculator-scenario-tile.good .calculator-scenario-gain { color: var(--status-good); }
+.calculator-scenario-tile.warning .calculator-scenario-gain { color: var(--status-warning); }
+.calculator-scenario-tile.bad .calculator-scenario-gain { color: var(--status-bad); }
+
+/* ---------- Return calculator: risk profile ----------
+   4 independent factors (leverage, liquidity, profitability, volatility),
+   each reusing the exact same good/warning/bad computation as the main
+   search page's metric cards -- deliberately never averaged into one
+   combined score, and deliberately not styled to look uniformly positive. */
+.calculator-risk-section {
+  margin-top: 1.4rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.calculator-risk-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.calculator-risk-row {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--status-neutral);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+}
+
+.calculator-risk-row.good { border-left-color: var(--status-good); }
+.calculator-risk-row.warning { border-left-color: var(--status-warning); }
+.calculator-risk-row.bad { border-left-color: var(--status-bad); }
+
+.calculator-risk-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.calculator-risk-row-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calculator-risk-row-tier {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-tertiary);
+}
+
+.calculator-risk-row.good .calculator-risk-row-tier { color: var(--status-good); }
+.calculator-risk-row.warning .calculator-risk-row-tier { color: var(--status-warning); }
+.calculator-risk-row.bad .calculator-risk-row-tier { color: var(--status-bad); }
+
+.calculator-risk-row-value {
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  color: var(--text-tertiary);
+}
+
+.calculator-risk-row-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.calculator-disclaimer {
+  margin-top: 1.1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+/* ---------- Tapetide bring-your-own-key gate ---------- */
+
+.tapetide-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow-y: auto;
+  background: rgba(10, 12, 16, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fade-in 0.2s ease;
+}
+
+.tapetide-gate-card {
+  width: 100%;
+  max-width: 520px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  box-shadow: var(--shadow-elevated);
+  padding: 2rem;
+}
+
+.tapetide-gate-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.3rem;
+  color: var(--text-primary);
+}
+
+.tapetide-gate-intro {
+  margin: 0 0 1.25rem;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.tapetide-gate-card a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tapetide-gate-steps {
+  margin: 0 0 1.5rem;
+  padding-left: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* The "oval roundish box" -- input + submit button fused into one pill
+   rather than two separate controls, so it reads as a single, obvious
+   final step at the bottom of the guide. */
+.tapetide-gate-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 0.35rem 0.35rem 0.35rem 1.3rem;
+  transition: border-color 0.15s ease;
+}
+
+.tapetide-gate-form:focus-within {
+  border-color: var(--accent);
+}
+
+.tapetide-gate-form input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.tapetide-gate-form input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.tapetide-gate-form button {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.3rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.tapetide-gate-form button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.tapetide-gate-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tapetide-gate-error {
+  margin-top: 0.75rem;
+  color: var(--status-bad);
+  font-size: 0.85rem;
+}
+
+.tapetide-gate-note {
+  margin: 1.25rem 0 0;
+  font-size: 0.74rem;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}

@@ -1,0 +1,19 @@
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.env
+backend/.tapetide_cache/
+backend/.tapetide_quota_state.json
+backend/app.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Claude Code local session state (not project source)
+.claude/

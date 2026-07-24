@@ -1,0 +1,127 @@
+/* Theme tokens. Dark is the default (data-theme="dark" or no attribute at
+   all); data-theme="light" overrides. Toggled by useTheme.ts, persisted to
+   localStorage. Keep component CSS reading these variables rather than
+   hardcoding colors, so both themes stay in sync automatically. */
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-app: #0e1116;
+  --bg-surface: #161a21;
+  --bg-elevated: #1e232c;
+  --bg-hover: #262c37;
+
+  --text-primary: #eef1f6;
+  --text-secondary: #a7b0bf;
+  --text-tertiary: #6b7383;
+
+  --border-subtle: #262c37;
+  --border-strong: #343c4a;
+
+  --accent: #4fd1c5;
+  --accent-strong: #38b2ac;
+  --accent-contrast: #04211f;
+
+  --status-good: #3ecf8e;
+  --status-good-bg: rgba(62, 207, 142, 0.14);
+  --status-warning: #eab308;
+  --status-warning-bg: rgba(234, 179, 8, 0.14);
+  --status-bad: #f2545b;
+  --status-bad-bg: rgba(242, 84, 91, 0.14);
+  --status-neutral: #8b93a7;
+  --status-neutral-bg: rgba(139, 147, 167, 0.12);
+
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --user-bubble-bg: var(--accent);
+  --user-bubble-text: #04211f;
+  --assistant-bubble-bg: var(--bg-elevated);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-app: #f5f7fa;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #eef1f6;
+
+  --text-primary: #14181f;
+  --text-secondary: #4b5563;
+  --text-tertiary: #7a8494;
+
+  --border-subtle: #e3e7ee;
+  --border-strong: #cbd2df;
+
+  --accent: #0f8f86;
+  --accent-strong: #0c766f;
+  --accent-contrast: #ffffff;
+
+  --status-good: #17875a;
+  --status-good-bg: rgba(23, 135, 90, 0.1);
+  --status-warning: #a1690a;
+  --status-warning-bg: rgba(161, 105, 10, 0.12);
+  --status-bad: #c62d33;
+  --status-bad-bg: rgba(198, 45, 51, 0.1);
+  --status-neutral: #5b6373;
+  --status-neutral-bg: rgba(91, 99, 115, 0.1);
+
+  --shadow-elevated: 0 8px 24px rgba(20, 24, 31, 0.08);
+  --user-bubble-bg: var(--accent);
+  --user-bubble-text: #ffffff;
+  --assistant-bubble-bg: var(--bg-elevated);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#root {
+  height: 100%;
+}
+
+.serif {
+  font-family: "Lora", Georgia, "Times New Roman", serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* Thin, theme-aware scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}

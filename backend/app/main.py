@@ -1,0 +1,472 @@
+"""
+FastAPI entry point. Route handlers stay thin -- all business logic lives in
+app/services/*. Run with:
+
+    uvicorn app.main:app --reload --port 8000
+
+(from the backend/ directory, with the virtualenv active).
+"""
+import logging
+import re
+from datetime import date, datetime, timedelta, timezone
+from typing import Optional
+
+from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import get_settings
+from app.models import (
+    ActivityResponse,
+    AuthResponse,
+    ChatRequest,
+    ChatResponse,
+    CompanyFinancialsResponse,
+    CompanyInfo,
+    DataSourceName,
+    LogInRequest,
+    PriceHistoryResponse,
+    PricePoint,
+    QuotaStatus,
+    RawFinancials,
+    RecommendedCompany,
+    RecommendationsResponse,
+    SignUpRequest,
+    UserPublic,
+)
+from app.services.moonshot_service import get_chat_reply
+from app.services.data_provider import (
+    CompanyNotFoundError,
+    DataProviderError,
+    FinancialDataProvider,
+    ProviderQuotaExceededError,
+)
+from app.services.bharat_sm_provider import BharatSMProvider
+from app.services.metrics import compute_health_snapshot, compute_metric_groups
+from app.services.tapetide_provider import InvalidTapetideKeyError, TapetideProvider
+from app.services.yfinance_provider import YFinanceProvider
+from app.services import auth_service
+from app.services.auth_service import AuthError
+from app.services.db import init_db
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+# Tapetide's quota-exceeded message embeds the reset time as e.g.
+# "...(at 2026-07-14 00:00 IST)..." -- pull that out so the frontend can show
+# a live countdown next to the searches-remaining counter instead of just
+# "try later."
+_RESET_TIME_RE = re.compile(r"at (\d{4}-\d{2}-\d{2} \d{2}:\d{2}) IST")
+
+
+def _parse_tapetide_reset_at(message: str) -> Optional[str]:
+    match = _RESET_TIME_RE.search(message)
+    if not match:
+        return None
+    naive = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M")
+    return naive.replace(tzinfo=_IST).isoformat()
+
+
+def _next_midnight_ist() -> str:
+    """Deterministic reset timestamp for the quota counter, available even
+    when we haven't seen a live quota-exceeded message yet this run (unlike
+    _parse_tapetide_reset_at, which needs Tapetide's own wording)."""
+    now_ist = datetime.now(_IST)
+    next_midnight = (now_ist + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return next_midnight.isoformat()
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("finai")
+
+settings = get_settings()
+app = FastAPI(title="FinAI Metrics API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+init_db()
+
+
+def _current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    """Optional auth -- returns the signed-in user dict (see
+    auth_service.get_user_from_token) if `Authorization: Bearer <token>` is
+    present and valid, else None. Never raises 401: every endpoint that uses
+    this still works fully signed-out, since sign-in in this app is purely
+    for activity tracking, not a gate on using the product (see CLAUDE.md)."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    return auth_service.get_user_from_token(authorization.removeprefix("Bearer ").strip())
+
+
+def _tapetide_token(x_tapetide_token: Optional[str] = Header(None)) -> Optional[str]:
+    """Every user's own Tapetide API key (see CLAUDE.md's "Bring-your-own
+    Tapetide key" section) -- sent as this header on every request that
+    needs it, never a server-side default anymore. None if missing/blank;
+    callers decide whether that's fatal (price history, quota) or just
+    means "skip this bonus data" (analyst consensus)."""
+    return x_tapetide_token.strip() if x_tapetide_token and x_tapetide_token.strip() else None
+
+
+# Hybrid sourcing (see CLAUDE.md): Bharat-SM-Data serves company info + raw
+# financials for every search (free, no quota, no per-user key needed) --
+# Tapetide is reserved for the two things Bharat structurally can't provide,
+# ever: price history and analyst consensus (see bharat_sm_provider.py's
+# module docstring). yfinance remains the automatic fallback for those two
+# when a user's Tapetide quota is exhausted. Unlike Tapetide, neither of
+# these needs a per-user key, so they stay shared, module-level singletons.
+bharat_provider: FinancialDataProvider = BharatSMProvider()
+fallback_provider: FinancialDataProvider = YFinanceProvider()
+
+# Recount from the actual Tapetide call sites in get_company/get_price_history
+# below if you add/remove a call anywhere -- see CLAUDE.md's quota breakdown.
+# analyst consensus: get_company_profile (1, cached alongside ratings) +
+# get_forecasts (1) = 2. price history: get_price_history x2 (5yr weekly
+# merge) + get_recent_price_history x1 (daily) = 3. Total = 5 per full
+# company view (down from ~10 pre-hybrid, since fundamentals no longer touch
+# Tapetide at all).
+TAPETIDE_CALLS_PER_SEARCH = 5
+
+# Simple in-process cache of the last-fetched company per ticker, so the chat
+# endpoint can attach context without the frontend having to resend the full
+# payload on every message. Keyed by ticker, not by user/session -- fine
+# only because /api/chat isn't reachable from the frontend UI at all right
+# now (see CLAUDE.md's "AI assistant" section); if it's ever re-added, this
+# needs to key by session/user instead, since the app is genuinely
+# multi-user now (see "Bring-your-own Tapetide key" / "Accounts & activity
+# tracking"), not the single-owner local tool this comment used to assume.
+_last_company_by_ticker: dict[str, CompanyFinancialsResponse] = {}
+
+
+@app.get("/api/health")
+def health() -> dict:
+    return {"status": "ok"}
+
+
+# Homepage suggestion pool -- large, liquid, well-known NSE large-caps
+# spanning sectors, rotated daily (see get_recommendations). Always sourced
+# from Bharat-SM-Data, never Tapetide: computing a real health verdict for
+# 5 companies up front costs ~10 Tapetide calls each (50 total) -- nearly
+# the whole free-tier daily quota just from loading the empty page, before
+# the user has searched anything. Bharat-SM-Data costs nothing (see
+# bharat_sm_provider.py) and has everything compute_health_snapshot needs.
+_RECOMMENDATION_POOL = [
+    "RELIANCE", "TCS", "HDFCBANK", "INFY", "ITC", "ICICIBANK", "SBIN",
+    "BHARTIARTL", "LT", "KOTAKBANK", "AXISBANK", "MARUTI", "ASIANPAINT",
+    "WIPRO", "TATAMOTORS", "TATASTEEL", "SUNPHARMA", "BAJFINANCE", "TITAN",
+    "HCLTECH",
+]
+_RECOMMENDATIONS_PER_DAY = 5
+
+# compute_health_snapshot's verdict strings -> the same good/warning/bad
+# scale used everywhere else in the app (MetricStatus), not a new palette.
+# "Not Enough Data" has no slot here -- that candidate is skipped entirely
+# rather than shown with a fabricated "neutral" badge.
+_VERDICT_TO_STATUS = {
+    "Strong Fundamentals": "good",
+    "Mixed Fundamentals": "warning",
+    "Weak Fundamentals": "bad",
+}
+
+# Keyed by "YYYY-MM-DD" -- recomputed once per calendar day, not per request.
+_recommendations_cache: dict[str, RecommendationsResponse] = {}
+
+
+@app.get("/api/recommendations", response_model=RecommendationsResponse)
+def get_recommendations() -> RecommendationsResponse:
+    today = date.today().isoformat()
+    cached = _recommendations_cache.get(today)
+    if cached:
+        return cached
+
+    # Deterministic (not random) daily rotation: every request the same day
+    # gets the same 5, and the set visibly changes from one day to the next.
+    start = date.today().timetuple().tm_yday % len(_RECOMMENDATION_POOL)
+    picks: list[RecommendedCompany] = []
+    for offset in range(len(_RECOMMENDATION_POOL)):
+        if len(picks) >= _RECOMMENDATIONS_PER_DAY:
+            break
+        ticker = _RECOMMENDATION_POOL[(start + offset) % len(_RECOMMENDATION_POOL)]
+        try:
+            symbol, _exchange = bharat_provider.resolve_symbol(ticker)
+            info = bharat_provider.get_company_info(symbol)
+            raw = bharat_provider.get_raw_financials(symbol)
+            snapshot = compute_health_snapshot(compute_metric_groups(raw))
+            status = _VERDICT_TO_STATUS.get(snapshot.verdict)
+            if status is None:
+                continue
+            picks.append(
+                RecommendedCompany(
+                    ticker=ticker,
+                    name=info.company_name,
+                    sector=info.sector,
+                    verdict=status,
+                    explanation=snapshot.explanation,
+                )
+            )
+        except Exception:  # noqa: BLE001 -- one bad candidate shouldn't break the homepage
+            logger.warning("Skipping recommendation candidate %s", ticker, exc_info=True)
+            continue
+
+    response = RecommendationsResponse(date=today, companies=picks)
+    _recommendations_cache.clear()  # drop any stale prior-day entry
+    _recommendations_cache[today] = response
+    return response
+
+
+def _fetch_company_core(
+    provider: FinancialDataProvider, query: str
+) -> tuple[str, CompanyInfo, RawFinancials]:
+    symbol, _exchange = provider.resolve_symbol(query)
+    info = provider.get_company_info(symbol)
+    raw = provider.get_raw_financials(symbol)
+    return symbol, info, raw
+
+
+@app.get("/api/company/{query}", response_model=CompanyFinancialsResponse)
+def get_company(
+    query: str,
+    current_user: Optional[dict] = Depends(_current_user),
+    tapetide_token: Optional[str] = Depends(_tapetide_token),
+) -> CompanyFinancialsResponse:
+    # Fundamentals always come from Bharat-SM-Data -- free, no quota, and
+    # everything compute_metric_groups/compute_health_snapshot need (see
+    # CLAUDE.md's "Hybrid sourcing" section). No fallback here: if Bharat
+    # itself fails, the search fails, same as any single-provider error.
+    try:
+        symbol, info, raw = _fetch_company_core(bharat_provider, query)
+    except CompanyNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except DataProviderError as exc:
+        logger.warning("Bharat-SM-Data error for query=%s: %s", query, exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 -- surface as a friendly 500, but log the real cause
+        logger.exception("Unexpected error fetching company data for query=%s", query)
+        raise HTTPException(
+            status_code=500,
+            detail="Something went wrong fetching that company's data. Please try again.",
+        ) from exc
+
+    # Analyst consensus is the one thing Bharat-SM-Data structurally can't
+    # provide (see bharat_sm_provider.py) -- Tapetide primary, yfinance
+    # fallback on quota exhaustion, chained off Bharat's own resolved ticker
+    # (info.resolved_symbol) with no extra Tapetide resolve_symbol call.
+    # Best-effort throughout: a bonus on top of the core fundamentals above,
+    # never something that should fail the whole request -- including simply
+    # having no Tapetide key at all, which just means no consensus data
+    # rather than an error (the frontend's sign-in gate should mean this
+    # never actually happens, but the backend doesn't assume that).
+    analyst_consensus = None
+    consensus_source: Optional[DataSourceName] = None
+    tapetide_reset_at: Optional[str] = None
+    if tapetide_token:
+        try:
+            tapetide = TapetideProvider(tapetide_token)
+            analyst_consensus = tapetide.get_analyst_consensus(info.resolved_symbol)
+            consensus_source = DataSourceName.TAPETIDE
+        except ProviderQuotaExceededError as exc:
+            logger.warning(
+                "Tapetide quota exhausted for analyst consensus symbol=%s -- falling back to yfinance",
+                info.resolved_symbol,
+            )
+            tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
+            try:
+                fallback_symbol, _exchange = fallback_provider.resolve_symbol(info.resolved_symbol)
+                analyst_consensus = fallback_provider.get_analyst_consensus(fallback_symbol)
+                consensus_source = DataSourceName.YFINANCE
+            except Exception:  # noqa: BLE001 -- still a bonus, not core
+                logger.warning(
+                    "Fallback analyst consensus also failed for symbol=%s", info.resolved_symbol, exc_info=True
+                )
+        except Exception:  # noqa: BLE001 -- third-party analyst data is a bonus, not core
+            logger.warning("Couldn't fetch analyst consensus for symbol=%s", info.resolved_symbol, exc_info=True)
+
+    metric_groups = compute_metric_groups(raw)
+    health_snapshot = compute_health_snapshot(metric_groups)
+    response = CompanyFinancialsResponse(
+        info=info,
+        raw=raw,
+        metric_groups=metric_groups,
+        health_snapshot=health_snapshot,
+        analyst_consensus=analyst_consensus,
+        consensus_source=consensus_source,
+        tapetide_reset_at=tapetide_reset_at,
+    )
+    _last_company_by_ticker[info.resolved_symbol] = response
+    # No-op if current_user is None (anonymous search) -- see
+    # auth_service.log_activity's docstring for why that's a deliberate
+    # no-guard-needed call site, not an oversight.
+    auth_service.log_activity(current_user, "searched", info.company_name)
+    return response
+
+
+def _fetch_price_points(
+    provider: FinancialDataProvider, symbol: str, *, needs_resolve: bool
+) -> tuple[list[PricePoint], list[PricePoint]]:
+    # yfinance needs a ".NS"/".BO"-suffixed symbol -- if the incoming symbol
+    # came from a Tapetide-resolved company (bare, e.g. "RELIANCE"), resolve
+    # it through yfinance's own logic first. Tapetide's tools take the bare
+    # form directly, so no resolve step is needed when targeting it.
+    active_symbol = symbol
+    if needs_resolve:
+        active_symbol, _exchange = provider.resolve_symbol(symbol)
+    points = provider.get_price_history(active_symbol)
+    try:
+        recent_points = provider.get_recent_price_history(active_symbol)
+    except Exception:  # noqa: BLE001 -- the 1D/5D views are a bonus, not core
+        logger.warning("Couldn't fetch recent price history for symbol=%s", active_symbol, exc_info=True)
+        recent_points = []
+    return points, recent_points
+
+
+@app.get("/api/price-history/{symbol}", response_model=PriceHistoryResponse)
+def get_price_history(
+    symbol: str, tapetide_token: Optional[str] = Depends(_tapetide_token)
+) -> PriceHistoryResponse:
+    # Price history is Bharat-SM-Data's permanent gap (see
+    # bharat_sm_provider.py) -- always Tapetide, falling back to yfinance on
+    # quota exhaustion. `symbol` is expected to be the plain ticker Bharat
+    # already resolved (info.resolved_symbol from /api/company), which
+    # Tapetide's tools accept directly -- no resolve step needed there.
+    # Unlike analyst consensus on /api/company, this IS core to what this
+    # endpoint does, so no key means a real error, not a silent empty result.
+    if not tapetide_token:
+        raise HTTPException(status_code=400, detail="A Tapetide API key is required for price history.")
+
+    resolved = symbol.strip().upper()
+    tapetide_reset_at: Optional[str] = None
+    try:
+        active_source = DataSourceName.TAPETIDE
+        tapetide = TapetideProvider(tapetide_token)
+        try:
+            points, recent_points = _fetch_price_points(tapetide, resolved, needs_resolve=False)
+        except ProviderQuotaExceededError as exc:
+            logger.warning(
+                "Tapetide quota exhausted for price history symbol=%s -- falling back to yfinance",
+                resolved,
+            )
+            active_source = DataSourceName.YFINANCE
+            tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
+            points, recent_points = _fetch_price_points(fallback_provider, resolved, needs_resolve=True)
+    except CompanyNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidTapetideKeyError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    except DataProviderError as exc:
+        logger.warning("Data provider error fetching price history for symbol=%s: %s", resolved, exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unexpected error fetching price history for symbol=%s", resolved)
+        raise HTTPException(
+            status_code=500,
+            detail="Something went wrong fetching price history. Please try again.",
+        ) from exc
+
+    return PriceHistoryResponse(
+        symbol=resolved,
+        points=points,
+        recent_points=recent_points,
+        active_source=active_source,
+        tapetide_reset_at=tapetide_reset_at,
+    )
+
+
+@app.get("/api/quota", response_model=QuotaStatus)
+def get_quota(tapetide_token: Optional[str] = Depends(_tapetide_token)) -> QuotaStatus:
+    # Quota is inherently per-key now (see tapetide_provider.py) -- there's
+    # no meaningful "quota" to report without knowing whose key it is.
+    if not tapetide_token:
+        raise HTTPException(status_code=400, detail="A Tapetide API key is required.")
+    used, remaining = TapetideProvider(tapetide_token).get_quota_status()
+    return QuotaStatus(
+        tapetide_calls_used_today=used,
+        tapetide_calls_remaining_estimate=remaining,
+        tapetide_calls_per_search=TAPETIDE_CALLS_PER_SEARCH,
+        tapetide_searches_remaining_estimate=remaining // TAPETIDE_CALLS_PER_SEARCH,
+        tapetide_reset_at=_next_midnight_ist(),
+    )
+
+
+@app.get("/api/tapetide/validate")
+def validate_tapetide_key(tapetide_token: Optional[str] = Depends(_tapetide_token)) -> dict:
+    """Used by the frontend's sign-in gate to check a freshly-entered key
+    before storing it -- see TapetideProvider.validate_key() for the one
+    cheap, cache-bypassing real call this makes rather than trusting the
+    key blindly. A quota-exhausted key is still accepted (it's genuinely
+    valid, just out of calls for today -- yfinance covers the app in the
+    meantime); only a rejected key (HTTP 401) is treated as invalid."""
+    if not tapetide_token:
+        raise HTTPException(status_code=400, detail="Please enter an API key.")
+    try:
+        TapetideProvider(tapetide_token).validate_key()
+    except InvalidTapetideKeyError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    except ProviderQuotaExceededError:
+        pass  # key is valid, just already out of quota today
+    except DataProviderError as exc:
+        raise HTTPException(status_code=502, detail=f"Couldn't verify the key right now: {exc}") from exc
+    return {"status": "ok"}
+
+
+@app.post("/api/auth/signup", response_model=AuthResponse)
+def sign_up(request: SignUpRequest) -> AuthResponse:
+    try:
+        _user_id, token = auth_service.sign_up(request.email, request.name, request.password)
+    except AuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    user = auth_service.get_user_from_token(token)
+    assert user is not None  # just created, token can't be invalid/expired yet
+    return AuthResponse(token=token, user=UserPublic(**user))
+
+
+@app.post("/api/auth/login", response_model=AuthResponse)
+def log_in(request: LogInRequest) -> AuthResponse:
+    try:
+        _user_id, token = auth_service.log_in(request.email, request.password)
+    except AuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    user = auth_service.get_user_from_token(token)
+    assert user is not None
+    return AuthResponse(token=token, user=UserPublic(**user))
+
+
+@app.post("/api/auth/logout")
+def log_out(authorization: Optional[str] = Header(None)) -> dict:
+    if authorization and authorization.startswith("Bearer "):
+        auth_service.log_out(authorization.removeprefix("Bearer ").strip())
+    return {"status": "ok"}
+
+
+@app.get("/api/auth/me", response_model=Optional[UserPublic])
+def get_me(current_user: Optional[dict] = Depends(_current_user)) -> Optional[UserPublic]:
+    return UserPublic(**current_user) if current_user else None
+
+
+@app.get("/api/activity", response_model=ActivityResponse)
+def get_activity(current_user: Optional[dict] = Depends(_current_user)) -> ActivityResponse:
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Sign in to view your activity.")
+    return ActivityResponse(entries=auth_service.get_activity(current_user["id"]))
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+def chat(request: ChatRequest) -> ChatResponse:
+    context = None
+    if request.ticker:
+        context = _last_company_by_ticker.get(request.ticker.strip().upper())
+
+    try:
+        reply = get_chat_reply(request.message, request.history, context)
+    except RuntimeError as exc:
+        # Missing/invalid API key configuration -- a server setup issue, not a user error.
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Chat request failed")
+        raise HTTPException(
+            status_code=502,
+            detail="The AI assistant is temporarily unavailable. Please try again shortly.",
+        ) from exc
+
+    return ChatResponse(reply=reply)

@@ -1,0 +1,18 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+requests==2.32.3
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+
+# yfinance is the automatic fallback provider (see app/main.py) used when
+# Tapetide's daily quota is exhausted -- no longer just a reference
+# implementation, so it's a real runtime dependency now.
+yfinance==0.2.51
+pandas==3.0.3
+curl_cffi==0.15.0
+
+# Bharat-sm-data backs the third, explicit-only "bharat_sm" source option
+# (see app/services/bharat_sm_provider.py) -- fundamentals only, no price
+# history/analyst data, see that file's docstring for why.
+Bharat-sm-data==4.0.1

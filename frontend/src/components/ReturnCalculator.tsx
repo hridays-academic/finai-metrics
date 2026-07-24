@@ -1,0 +1,579 @@
+import { FormEvent, useEffect, useState } from "react";
+import { fetchCompany, fetchPriceHistory, ApiError } from "../lib/api";
+import { formatINR } from "../lib/format";
+import QuotaCounter from "./QuotaCounter";
+import type { MetricGroup, MetricStatus, PricePoint, QuotaStatus } from "../lib/types";
+
+type PeriodUnit = "day" | "month" | "year" | "decade";
+
+const UNIT_TO_YEARS: Record<PeriodUnit, number> = {
+  day: 1 / 365.25,
+  month: 1 / 12,
+  year: 1,
+  decade: 10,
+};
+
+type InvestmentMode = "amount" | "shares";
+
+interface AnalystTargets {
+  low: number;
+  mean: number;
+  high: number;
+  period: string | null;
+}
+
+interface PickedStock {
+  name: string;
+  ticker: string;
+  points: PricePoint[];
+  recentPoints: PricePoint[];
+  currentPrice: number | null;
+  // Real third-party analyst price target (Tapetide), same Low/Mean/High
+  // figures PriceForecastChart plots on the main search page -- null if
+  // this stock has no analyst coverage. Never fabricated: if Tapetide
+  // doesn't have a target for this stock, this stays null and the scenario
+  // section below just doesn't render, same "no data unavailable" principle
+  // as everywhere else in the app.
+  analystTargets: AnalystTargets | null;
+  // Same computed ratios (debt_to_equity, current_ratio, roe, ...) that
+  // power the main search page's metric cards + Health Snapshot -- reused
+  // for the Risk Profile section below rather than re-deriving our own
+  // numbers, so it's the exact same trusted computation, not a duplicate.
+  metricGroups: MetricGroup[];
+}
+
+interface HistoricalRate {
+  ratePct: number;
+  actualYears: number;
+  clamped: boolean; // true if we didn't have enough history and used the oldest point available
+}
+
+// Finds the price point closest to `targetDate`, clamping to the oldest
+// point if the requested lookback goes further back than the data covers
+// (Tapetide/yfinance give ~5yr weekly + ~6-7mo daily, never a full decade+).
+function closestPoint(series: PricePoint[], targetTime: number): PricePoint {
+  let closest = series[0];
+  let minDiff = Infinity;
+  for (const p of series) {
+    const diff = Math.abs(new Date(p.date).getTime() - targetTime);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = p;
+    }
+  }
+  return closest;
+}
+
+function computeHistoricalRate(stock: PickedStock, periodInYears: number): HistoricalRate | null {
+  const targetDays = periodInYears * 365.25;
+  // Prefer the daily series for short lookbacks -- weekly data is too sparse
+  // to resolve a 3-day or 2-week window meaningfully.
+  const useDailySeries = targetDays <= 180 && stock.recentPoints.length > 1;
+  const series = useDailySeries ? stock.recentPoints : stock.points;
+  if (series.length < 2) return null;
+
+  const latest = series[series.length - 1];
+  const latestTime = new Date(latest.date).getTime();
+  const targetTime = latestTime - targetDays * 86_400_000;
+  const past = closestPoint(series, targetTime);
+  const pastTime = new Date(past.date).getTime();
+
+  const actualYears = (latestTime - pastTime) / (365.25 * 86_400_000);
+  if (actualYears <= 0 || past.close <= 0) return null;
+
+  const ratePct = (Math.pow(latest.close / past.close, 1 / actualYears) - 1) * 100;
+  // Clamped means the requested lookback ran off the start of the series --
+  // NOT just "the nearest weekly-spaced point wasn't exactly on the target
+  // date," which is normal and expected for weekly-resolution data.
+  const earliestTime = new Date(series[0].date).getTime();
+  return { ratePct, actualYears, clamped: targetTime < earliestTime };
+}
+
+function toNumber(raw: string): number {
+  const n = parseFloat(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function findMetric(groups: MetricGroup[], key: string) {
+  for (const g of groups) {
+    const m = g.metrics.find((metric) => metric.key === key);
+    if (m) return m;
+  }
+  return undefined;
+}
+
+interface RiskFactor {
+  key: string;
+  label: string;
+  tone: MetricStatus;
+  tier: string;
+  valueText: string;
+  note: string;
+}
+
+// Per-factor tier wording -- "High leverage"/"High volatility" read
+// naturally, but "High liquidity risk" doesn't, so each factor gets its own
+// good/warning/bad -> word mapping instead of one shared risk-tier label.
+const TIER_LABELS: Record<string, Record<MetricStatus, string>> = {
+  leverage: { good: "Low", warning: "Moderate", bad: "High", neutral: "N/A" },
+  volatility: { good: "Low", warning: "Moderate", bad: "High", neutral: "N/A" },
+  liquidity: { good: "Strong", warning: "Moderate", bad: "Weak", neutral: "N/A" },
+  profitability: { good: "Strong", warning: "Moderate", bad: "Weak", neutral: "N/A" },
+};
+
+function fromMetric(factorKey: keyof typeof TIER_LABELS, label: string, groups: MetricGroup[], metricKey: string): RiskFactor {
+  const metric = findMetric(groups, metricKey);
+  const status: MetricStatus = metric?.status ?? "neutral";
+  const valueText =
+    metric?.value !== null && metric?.value !== undefined
+      ? `${metric.label}: ${metric.value.toFixed(2)}${metric.unit}`
+      : `${label}: data unavailable`;
+  return {
+    key: factorKey,
+    label,
+    tone: status,
+    tier: TIER_LABELS[factorKey][status],
+    valueText,
+    note: metric?.assessment || "",
+  };
+}
+
+interface Volatility {
+  annualizedPct: number;
+  years: number;
+  tone: MetricStatus;
+}
+
+// Annualized standard deviation of weekly returns -- a standard, widely-used
+// volatility measure, computed purely from the same price history already
+// fetched for the historical-rate calculation above. Thresholds (20%/35%)
+// are a rough, commonly-cited convention for "low/moderate/high" equity
+// volatility, not a precise scientific cutoff -- the real number is always
+// shown alongside the label so it's never an unexplained qualitative claim.
+function computeVolatility(points: PricePoint[]): Volatility | null {
+  if (points.length < 10) return null;
+  const returns: number[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1].close;
+    if (prev > 0) returns.push((points[i].close - prev) / prev);
+  }
+  if (returns.length < 8) return null;
+  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const variance = returns.reduce((a, b) => a + (b - mean) ** 2, 0) / returns.length;
+  const annualizedPct = Math.sqrt(variance) * Math.sqrt(52) * 100;
+  const years = (new Date(points[points.length - 1].date).getTime() - new Date(points[0].date).getTime()) / (365.25 * 86_400_000);
+  const tone: MetricStatus = annualizedPct < 20 ? "good" : annualizedPct < 35 ? "warning" : "bad";
+  return { annualizedPct, years, tone };
+}
+
+interface ReturnCalculatorProps {
+  // Same QuotaStatus/refresh function App.tsx feeds CompanySearch -- one
+  // shared source of truth (via QuotaCounter, the same component both pages
+  // render) so the two pages' counters can never drift out of sync with
+  // each other or with the real count.
+  quota: QuotaStatus | null;
+  onQuotaSpent: () => void;
+}
+
+export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculatorProps) {
+  const [principal, setPrincipal] = useState("100000");
+  const [shares, setShares] = useState("100");
+  const [investmentMode, setInvestmentMode] = useState<InvestmentMode>("amount");
+  const [rate, setRate] = useState("12");
+  const [periodValue, setPeriodValue] = useState("10");
+  const [periodUnit, setPeriodUnit] = useState<PeriodUnit>("year");
+
+  const [stockQuery, setStockQuery] = useState("");
+  const [stockLoading, setStockLoading] = useState(false);
+  const [stockError, setStockError] = useState<string | null>(null);
+  const [pickedStock, setPickedStock] = useState<PickedStock | null>(null);
+  const [historicalRate, setHistoricalRate] = useState<HistoricalRate | null>(null);
+
+  // "Shares" mode only makes sense once we know a real share price to
+  // convert against -- falls back to "amount" automatically if there's no
+  // stock (or the stock somehow has no current price) rather than showing a
+  // dead/meaningless input.
+  const sharesModeAvailable = !!pickedStock?.currentPrice;
+  const effectiveMode: InvestmentMode = investmentMode === "shares" && sharesModeAvailable ? "shares" : "amount";
+
+  const p =
+    effectiveMode === "shares"
+      ? Math.max(0, toNumber(shares)) * (pickedStock!.currentPrice as number)
+      : Math.max(0, toNumber(principal));
+  const r = toNumber(rate);
+  const periodInYears = Math.max(0, toNumber(periodValue)) * UNIT_TO_YEARS[periodUnit];
+
+  // Re-derive the picked stock's real historical return whenever the picked
+  // stock or the time period changes, and feed it straight into the rate
+  // field -- this is the ONLY thing that sets `rate` now (the field is
+  // read-only, see below), so a null result must reset it to "0" rather
+  // than silently leaving behind a stale number computed for a different
+  // stock/period.
+  useEffect(() => {
+    if (!pickedStock) {
+      setHistoricalRate(null);
+      return;
+    }
+    const result = computeHistoricalRate(pickedStock, periodInYears || UNIT_TO_YEARS.year);
+    setHistoricalRate(result);
+    setRate(result ? result.ratePct.toFixed(1) : "0");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickedStock, periodInYears]);
+
+  async function handlePickStock(e: FormEvent) {
+    e.preventDefault();
+    const query = stockQuery.trim();
+    if (!query) return;
+    setStockLoading(true);
+    setStockError(null);
+    try {
+      const company = await fetchCompany(query);
+      const history = await fetchPriceHistory(company.info.resolved_symbol);
+      const consensus = company.analyst_consensus;
+      const analystTargets: AnalystTargets | null =
+        consensus && consensus.target_low !== null && consensus.target_mean !== null && consensus.target_high !== null
+          ? { low: consensus.target_low, mean: consensus.target_mean, high: consensus.target_high, period: consensus.target_period }
+          : null;
+      setPickedStock({
+        name: company.info.company_name,
+        ticker: company.info.resolved_symbol,
+        points: history.points,
+        recentPoints: history.recent_points,
+        currentPrice: company.raw.current_price,
+        analystTargets,
+        metricGroups: company.metric_groups,
+      });
+      setStockQuery("");
+    } catch (err) {
+      setPickedStock(null);
+      setStockError(err instanceof ApiError ? err.message : "Couldn't load that stock's price history.");
+    } finally {
+      setStockLoading(false);
+      // Both fetchCompany and fetchPriceHistory spend real Tapetide quota
+      // (see CLAUDE.md's "Hybrid sourcing") -- refresh even on failure,
+      // since a quota-exceeded response still means calls were attempted.
+      onQuotaSpent();
+    }
+  }
+
+  function clearStock() {
+    setPickedStock(null);
+    setHistoricalRate(null);
+    setStockError(null);
+    setInvestmentMode("amount");
+  }
+
+  const futureValue = p * Math.pow(1 + r / 100, periodInYears);
+  const gain = futureValue - p;
+  const returnPct = p > 0 ? (gain / p) * 100 : 0;
+
+  // Real Low/Mean/High analyst price target, not a synthetic spread around
+  // the single historical rate above -- deliberately a separate figure with
+  // its own (fixed, analyst-set) horizon rather than the user's adjustable
+  // Time period, same "don't blend two different kinds of projections"
+  // principle as PriceForecastChart being its own card on the main page.
+  const targets = pickedStock?.analystTargets;
+  const basePrice = pickedStock?.currentPrice;
+  const scenarios =
+    targets && basePrice
+      ? (
+          [
+            { key: "low", label: "Worst case", tone: "bad", targetPrice: targets.low },
+            { key: "mean", label: "Likely case", tone: "warning", targetPrice: targets.mean },
+            { key: "high", label: "Best case", tone: "good", targetPrice: targets.high },
+          ] as const
+        ).map((s) => {
+          const scenarioFutureValue = p * (s.targetPrice / basePrice);
+          return { ...s, futureValue: scenarioFutureValue, gain: scenarioFutureValue - p };
+        })
+      : null;
+
+  // Deliberately 4 independent factors, not one combined "overall risk"
+  // score -- each is real, separately-sourced data (3 already-computed
+  // ratios reused from the main search page, 1 volatility stat computed
+  // from real price history), and honestly mixed results (some good, some
+  // bad) are the point, not something to average away into a single verdict.
+  const volatility = pickedStock ? computeVolatility(pickedStock.points) : null;
+  const riskFactors: RiskFactor[] | null = pickedStock
+    ? [
+        fromMetric("leverage", "Leverage", pickedStock.metricGroups, "debt_to_equity"),
+        fromMetric("liquidity", "Liquidity", pickedStock.metricGroups, "current_ratio"),
+        fromMetric("profitability", "Profitability", pickedStock.metricGroups, "roe"),
+        volatility
+          ? {
+              key: "volatility",
+              label: "Price Volatility",
+              tone: volatility.tone,
+              tier: TIER_LABELS.volatility[volatility.tone],
+              valueText: `${volatility.annualizedPct.toFixed(1)}% annualized (${volatility.years.toFixed(1)}yr history)`,
+              note:
+                volatility.tone === "good"
+                  ? "Price has moved relatively steadily over its available history."
+                  : volatility.tone === "warning"
+                    ? "Price has swung by a moderate amount over its available history."
+                    : "Price has swung sharply over its available history.",
+            }
+          : {
+              key: "volatility",
+              label: "Price Volatility",
+              tone: "neutral",
+              tier: "N/A",
+              valueText: "Price Volatility: not enough price history",
+              note: "",
+            },
+      ]
+    : null;
+
+  return (
+    <div className="calculator-page">
+      <div className="calculator-card">
+        <h2>Return Calculator</h2>
+        <p className="calculator-subtitle">
+          Estimate how a lump-sum investment could grow, based on a real stock's actual
+          historical return.
+        </p>
+
+        <div className="calculator-stock-picker">
+          <div className="calculator-field-header">
+            <span>Pick the stock you want to calculate</span>
+            {quota && <QuotaCounter quota={quota} />}
+          </div>
+          {pickedStock ? (
+            <div className="calculator-stock-chip">
+              <span>
+                {pickedStock.name} <span className="calculator-stock-chip-ticker">{pickedStock.ticker}</span>
+              </span>
+              <button type="button" onClick={clearStock} aria-label="Remove stock" title="Remove stock">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <form className="calculator-stock-form" onSubmit={handlePickStock}>
+              <input
+                type="text"
+                placeholder="e.g. Reliance, TCS, or RELIANCE"
+                value={stockQuery}
+                onChange={(e) => setStockQuery(e.target.value)}
+                aria-label="Search a stock to personalize this calculator"
+              />
+              <button type="submit" disabled={stockLoading || !stockQuery.trim()}>
+                {stockLoading ? "Loading..." : "Use"}
+              </button>
+            </form>
+          )}
+          {stockError && <div className="calculator-stock-error">{stockError}</div>}
+        </div>
+
+        {!pickedStock && <div className="calculator-empty-hint">Pick a stock above to start calculating.</div>}
+
+        {pickedStock && (
+          <>
+            <div className="calculator-form">
+              {/* Not a <label> (unlike the other fields below) since it wraps
+                  two controls -- the mode toggle and the amount/shares input --
+                  rather than one, which is what <label> click-forwarding assumes. */}
+              <div className="calculator-field">
+                <div className="calculator-field-header">
+                  <span>Investment</span>
+                  <div className="calculator-mode-toggle" role="group" aria-label="Enter investment as">
+                    <button
+                      type="button"
+                      className={effectiveMode === "amount" ? "active" : ""}
+                      onClick={() => setInvestmentMode("amount")}
+                    >
+                      Amount
+                    </button>
+                    <button
+                      type="button"
+                      className={effectiveMode === "shares" ? "active" : ""}
+                      onClick={() => setInvestmentMode("shares")}
+                      disabled={!sharesModeAvailable}
+                      title={sharesModeAvailable ? undefined : "Price data unavailable for this stock"}
+                    >
+                      Shares
+                    </button>
+                  </div>
+                </div>
+                {effectiveMode === "amount" ? (
+                  <div className="calculator-input-wrap">
+                    <span className="calculator-input-prefix">₹</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="1000"
+                      value={principal}
+                      onChange={(e) => setPrincipal(e.target.value)}
+                      aria-label="Investment amount in rupees"
+                    />
+                  </div>
+                ) : (
+                  <div className="calculator-input-wrap">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="1"
+                      value={shares}
+                      onChange={(e) => setShares(e.target.value)}
+                      aria-label="Number of shares"
+                    />
+                    <span className="calculator-input-suffix">shares</span>
+                  </div>
+                )}
+                {effectiveMode === "shares" && pickedStock.currentPrice && (
+                  <span className="calculator-field-note">
+                    {Math.max(0, toNumber(shares)).toLocaleString("en-IN")} shares &times; {pickedStock.ticker}'s
+                    current price ({formatINR(pickedStock.currentPrice)}/share) = {formatINR(p)}
+                  </span>
+                )}
+              </div>
+
+              <label className="calculator-field">
+                <span>{pickedStock.ticker}'s historical annual return</span>
+                <div className="calculator-input-wrap locked" title="Computed from real price history -- not editable">
+                  <input type="number" value={rate} readOnly tabIndex={-1} />
+                  <span className="calculator-input-suffix">%</span>
+                  <svg
+                    className="calculator-lock-icon"
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M8 11V7.5a4 4 0 1 1 8 0V11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </div>
+                {historicalRate ? (
+                  <span className="calculator-field-note">
+                    {pickedStock.ticker} actually returned this annually over its last{" "}
+                    {historicalRate.actualYears >= 1
+                      ? `${historicalRate.actualYears.toFixed(1)} years`
+                      : `${Math.round(historicalRate.actualYears * 365)} days`}
+                    {historicalRate.clamped ? " (all the price history available)" : ""}.
+                  </span>
+                ) : (
+                  <span className="calculator-field-note">
+                    Not enough price history for {pickedStock.ticker} to compute this.
+                  </span>
+                )}
+              </label>
+
+              <label className="calculator-field">
+                <span>Time period</span>
+                <div className="calculator-input-wrap">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="1"
+                    value={periodValue}
+                    onChange={(e) => setPeriodValue(e.target.value)}
+                  />
+                  {/* Looks like plain text until hover/focus, then reveals it's a
+                      real dropdown (background + border + chevron fade in) --
+                      Day/Month/Year/Decade all convert to a fractional-year
+                      exponent for the same compound-growth formula. */}
+                  <div className="calculator-period-unit">
+                    <select
+                      value={periodUnit}
+                      onChange={(e) => setPeriodUnit(e.target.value as PeriodUnit)}
+                      aria-label="Time period unit"
+                    >
+                      <option value="day">Days</option>
+                      <option value="month">Months</option>
+                      <option value="year">Years</option>
+                      <option value="decade">Decades</option>
+                    </select>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div className="calculator-results">
+              <div className="calculator-result-tile">
+                <div className="label">Future value</div>
+                <div className="value">{formatINR(futureValue)}</div>
+              </div>
+              <div className="calculator-result-tile">
+                <div className="label">Total gain</div>
+                <div className={`value ${gain >= 0 ? "good" : "bad"}`}>{formatINR(gain)}</div>
+              </div>
+              <div className="calculator-result-tile">
+                <div className="label">Total return</div>
+                <div className={`value ${returnPct >= 0 ? "good" : "bad"}`}>
+                  {returnPct >= 0 ? "+" : ""}
+                  {returnPct.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+
+            {scenarios && (
+              <div className="calculator-scenario-section">
+                <div className="calculator-field-header">
+                  <span>
+                    Analyst price target scenario{targets!.period ? ` for ${targets!.period}` : ""}
+                  </span>
+                </div>
+                <div className="calculator-scenario-grid">
+                  {scenarios.map((s) => (
+                    <div className={`calculator-scenario-tile ${s.tone}`} key={s.key}>
+                      <div className="calculator-scenario-label">{s.label}</div>
+                      <div className="calculator-scenario-value">{formatINR(s.futureValue)}</div>
+                      <div className="calculator-scenario-gain">
+                        {s.gain >= 0 ? "+" : ""}
+                        {formatINR(s.gain)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="calculator-field-note">
+                  Based on Tapetide's third-party analyst consensus price target for {pickedStock.ticker} -- not
+                  FinAI Metrics' own view, and not investment advice.
+                </div>
+              </div>
+            )}
+
+            {riskFactors && (
+              <div className="calculator-risk-section">
+                <div className="calculator-field-header">
+                  <span>Risk profile</span>
+                </div>
+                <div className="calculator-risk-rows">
+                  {riskFactors.map((f) => (
+                    <div className={`calculator-risk-row ${f.tone}`} key={f.key}>
+                      <div className="calculator-risk-row-top">
+                        <span className="calculator-risk-row-label">{f.label}</span>
+                        <span className="calculator-risk-row-tier">{f.tier}</span>
+                      </div>
+                      <div className="calculator-risk-row-value">{f.valueText}</div>
+                      {f.note && <p className="calculator-risk-row-note">{f.note}</p>}
+                    </div>
+                  ))}
+                </div>
+                <div className="calculator-field-note">
+                  Based on {pickedStock.ticker}'s fundamental ratios and historical price volatility only --
+                  intentionally not all positive when the underlying numbers aren't. Not a recommendation to
+                  buy, sell, or hold, and not a prediction of future risk or return.
+                </div>
+              </div>
+            )}
+
+            <div className="calculator-disclaimer">
+              Historical return is computed from {pickedStock.ticker}'s actual past prices, but past performance
+              never guarantees future returns. Not investment advice.
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
