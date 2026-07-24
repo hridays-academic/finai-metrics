@@ -143,6 +143,9 @@ export interface UserPublic {
   email: string;
   name: string;
   created_at: string;
+  // The account's saved Tapetide key, decrypted and ready to use -- null if
+  // this account never saved one. See TapetideKeyGate.tsx.
+  tapetide_key: string | null;
 }
 
 export interface AuthResponse {

@@ -31,6 +31,7 @@ from app.models import (
     RecommendedCompany,
     RecommendationsResponse,
     SignUpRequest,
+    TapetideKeyRequest,
     UserPublic,
 )
 from app.services.moonshot_service import get_chat_reply
@@ -438,6 +439,34 @@ def validate_tapetide_key(tapetide_token: Optional[str] = Depends(_tapetide_toke
     except DataProviderError as exc:
         raise HTTPException(status_code=502, detail=f"Couldn't verify the key right now: {exc}") from exc
     return {"status": "ok"}
+
+
+@app.post("/api/auth/tapetide-key", response_model=UserPublic)
+def save_tapetide_key(
+    request: TapetideKeyRequest,
+    current_user: Optional[dict] = Depends(_current_user),
+) -> UserPublic:
+    """Used by TapetideKeyGate.tsx's key-entry step when the visitor is
+    signed in -- same validation as /api/tapetide/validate above, but also
+    persists the key to their account (encrypted, see auth_service.py) so a
+    future sign-in on any browser/device can skip key entry entirely. 401
+    if not signed in -- the anonymous ("continue without an account") path
+    uses /api/tapetide/validate instead, which never saves anything."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Sign in to save a Tapetide key to your account.")
+    key = request.key.strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="Please enter an API key.")
+    try:
+        TapetideProvider(key).validate_key()
+    except InvalidTapetideKeyError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    except ProviderQuotaExceededError:
+        pass  # key is valid, just already out of quota today -- still worth saving
+    except DataProviderError as exc:
+        raise HTTPException(status_code=502, detail=f"Couldn't verify the key right now: {exc}") from exc
+    auth_service.save_tapetide_key(current_user["id"], key)
+    return UserPublic(**{**current_user, "tapetide_key": key})
 
 
 @app.post("/api/auth/signup", response_model=AuthResponse)

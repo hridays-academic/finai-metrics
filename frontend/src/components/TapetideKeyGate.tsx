@@ -1,10 +1,20 @@
 import { FormEvent, useState } from "react";
-import { validateTapetideKey, ApiError } from "../lib/api";
+import { validateTapetideKey, saveTapetideKeyToAccount, signUp, logIn, ApiError } from "../lib/api";
 import { setTapetideKey } from "../lib/tapetideKey";
+import { setAuthToken } from "../lib/auth";
+import type { UserPublic } from "../lib/types";
 
 const TAPETIDE_TOKENS_URL = "https://tapetide.com/settings/tokens";
 
+type Step = "welcome" | "signin" | "signup" | "key";
+
 interface TapetideKeyGateProps {
+  user: UserPublic | null;
+  // True once App.tsx has finished checking a stored auth token (or there
+  // was never one to check) -- see the note on the loading branch below for
+  // why this matters.
+  sessionChecked: boolean;
+  onAuthChange: (user: UserPublic | null) => void;
   onKeySet: () => void;
 }
 
@@ -14,30 +24,198 @@ interface TapetideKeyGateProps {
 // tier can't cover more than one person). Blurs the app behind it via
 // backdrop-filter rather than a class toggle on the app root, so this
 // component doesn't need to reach into anything else's DOM/styling.
-export default function TapetideKeyGate({ onKeySet }: TapetideKeyGateProps) {
-  const [key, setKey] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+//
+// (2026-07) Now a small multi-step flow rather than a single form: signing
+// in first can skip key entry entirely if the account already has one
+// saved (main.py's /api/auth/login returns the decrypted key alongside the
+// session token), and signing up funnels straight into key entry, which
+// then saves to the new account instead of just this browser. "Continue
+// without an account" preserves the original, simpler flow unchanged for
+// anyone who doesn't want either.
+export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, onKeySet }: TapetideKeyGateProps) {
+  // Starts on "key" (skipping the welcome screen) if App.tsx already
+  // resolved a signed-in user by the time this mounts -- e.g. a valid
+  // session token but no saved key yet, or a saved key that already got
+  // adopted (in which case this component won't even be rendered at all,
+  // see App.tsx).
+  const [step, setStep] = useState<Step>(user ? "key" : "welcome");
 
-  async function handleSubmit(e: FormEvent) {
+  // -- Sign in / sign up (mirrors AuthPanel.tsx's form -- kept as its own
+  // copy since this is a full-screen gate step, not a slide-over, and the
+  // two have different enough surrounding chrome that sharing the form
+  // JSX wasn't worth the coupling). --
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // -- Tapetide key entry --
+  const [key, setKey] = useState("");
+  const [keyLoading, setKeyLoading] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+
+  async function handleAuthSubmit(e: FormEvent) {
     e.preventDefault();
-    const trimmed = key.trim();
-    if (!trimmed) return;
-    setLoading(true);
-    setError(null);
+    setAuthLoading(true);
+    setAuthError(null);
     try {
-      // Verified against Tapetide's real API before we ever store it --
-      // see main.py's /api/tapetide/validate.
-      await validateTapetideKey(trimmed);
-      setTapetideKey(trimmed);
-      onKeySet();
+      const res = mode === "signup" ? await signUp(email, name, password) : await logIn(email, password);
+      setAuthToken(res.token);
+      onAuthChange(res.user);
+      if (res.user.tapetide_key) {
+        // Account already has a key saved (returning user, signed in from
+        // a fresh browser) -- use it directly, no key-entry step needed.
+        setTapetideKey(res.user.tapetide_key);
+        onKeySet();
+      } else {
+        setStep("key");
+      }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't verify that key. Please try again.");
+      setAuthError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
-      setLoading(false);
+      setAuthLoading(false);
     }
   }
 
+  async function handleKeySubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = key.trim();
+    if (!trimmed) return;
+    setKeyLoading(true);
+    setKeyError(null);
+    try {
+      if (user) {
+        // Signed in -- validate AND persist to the account (encrypted at
+        // rest, see auth_service.py) so it's there next time they sign in,
+        // even from a different browser/device.
+        await saveTapetideKeyToAccount(trimmed);
+      } else {
+        // Anonymous ("continue without an account") -- same validate-only
+        // check as before, nothing saved server-side.
+        await validateTapetideKey(trimmed);
+      }
+      setTapetideKey(trimmed);
+      onKeySet();
+    } catch (err) {
+      setKeyError(err instanceof ApiError ? err.message : "Couldn't verify that key. Please try again.");
+    } finally {
+      setKeyLoading(false);
+    }
+  }
+
+  // Covers the brief window where App.tsx has a stored auth token but
+  // hasn't heard back from /api/auth/me yet -- without this, a returning
+  // signed-in visitor whose account has a saved key would see the welcome
+  // screen flash before this component (or the whole gate) disappears a
+  // moment later. Showing the same blurred overlay throughout (just with
+  // different content) avoids any flash of the raw, ungated app instead.
+  if (!sessionChecked) {
+    return (
+      <div className="tapetide-gate-overlay" role="dialog" aria-modal="true" aria-label="Loading">
+        <div className="tapetide-gate-card">
+          <p className="tapetide-gate-intro">Checking your session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "welcome") {
+    return (
+      <div className="tapetide-gate-overlay" role="dialog" aria-modal="true" aria-label="Sign in or continue">
+        <div className="tapetide-gate-card">
+          <h2>Welcome to FinAI Metrics</h2>
+          <p className="tapetide-gate-intro">
+            Sign in to reuse a Tapetide key you've already saved, or sign up to save one for next time.
+          </p>
+          <div className="tapetide-gate-welcome-actions">
+            <button
+              type="button"
+              className="search-button"
+              onClick={() => {
+                setMode("signin");
+                setStep("signin");
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              className="search-button"
+              onClick={() => {
+                setMode("signup");
+                setStep("signup");
+              }}
+            >
+              Sign Up
+            </button>
+          </div>
+          <button type="button" className="tapetide-gate-skip" onClick={() => setStep("key")}>
+            Continue without an account
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "signin" || step === "signup") {
+    return (
+      <div
+        className="tapetide-gate-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label={mode === "signup" ? "Sign up" : "Sign in"}
+      >
+        <div className="tapetide-gate-card">
+          <h2>{mode === "signup" ? "Create Account" : "Sign In"}</h2>
+          <form className="auth-form" onSubmit={handleAuthSubmit}>
+            <div className="auth-mode-toggle" role="group" aria-label="Sign in or create an account">
+              <button type="button" className={mode === "signin" ? "active" : ""} onClick={() => setMode("signin")}>
+                Sign In
+              </button>
+              <button type="button" className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>
+                Sign Up
+              </button>
+            </div>
+
+            {mode === "signup" && (
+              <label className="auth-field">
+                <span>Name</span>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+              </label>
+            )}
+            <label className="auth-field">
+              <span>Email</span>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+            </label>
+            <label className="auth-field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+              {mode === "signup" && <span className="auth-field-hint">At least 8 characters</span>}
+            </label>
+
+            {authError && <div className="search-error">{authError}</div>}
+
+            <button type="submit" className="search-button auth-submit" disabled={authLoading}>
+              {authLoading ? "..." : mode === "signup" ? "Create Account" : "Sign In"}
+            </button>
+          </form>
+          <button type="button" className="tapetide-gate-skip" onClick={() => setStep("key")}>
+            Continue without an account
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // step === "key"
   return (
     <div className="tapetide-gate-overlay" role="dialog" aria-modal="true" aria-label="Connect your Tapetide account">
       <div className="tapetide-gate-card">
@@ -63,7 +241,7 @@ export default function TapetideKeyGate({ onKeySet }: TapetideKeyGateProps) {
           <li>Paste it below and hit "Use this key."</li>
         </ol>
 
-        <form className="tapetide-gate-form" onSubmit={handleSubmit}>
+        <form className="tapetide-gate-form" onSubmit={handleKeySubmit}>
           <input
             type="text"
             placeholder="Paste your Tapetide API key"
@@ -72,15 +250,16 @@ export default function TapetideKeyGate({ onKeySet }: TapetideKeyGateProps) {
             aria-label="Tapetide API key"
             autoFocus
           />
-          <button type="submit" disabled={loading || !key.trim()}>
-            {loading ? "Checking..." : "Use this key"}
+          <button type="submit" disabled={keyLoading || !key.trim()}>
+            {keyLoading ? "Checking..." : "Use this key"}
           </button>
         </form>
-        {error && <div className="tapetide-gate-error">{error}</div>}
+        {keyError && <div className="tapetide-gate-error">{keyError}</div>}
 
         <p className="tapetide-gate-note">
-          Your key is stored only in this browser and sent straight to our backend, which forwards it
-          to Tapetide on your behalf -- it's never saved on our servers.
+          {user
+            ? "Your key is saved to your account (encrypted) so you won't need to re-enter it next time you sign in."
+            : "Your key is stored only in this browser and sent straight to our backend, which forwards it to Tapetide on your behalf -- it's never saved on our servers."}
         </p>
       </div>
     </div>

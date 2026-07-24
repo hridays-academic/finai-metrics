@@ -78,12 +78,11 @@ class MetricStatus(str, Enum):
 
 
 class DataSourceName(str, Enum):
-    """Which provider served the price/analyst-consensus portion of a
-    response. Company info + raw financials always come from Bharat-SM-Data
-    now (see CLAUDE.md's "Hybrid sourcing" section) -- that's not a per-
-    response variable worth reporting, so this enum only covers the two
-    providers that still have a fallback choice: Tapetide (primary) and
-    yfinance (fallback on Tapetide quota exhaustion)."""
+    """Which provider served a given piece of data -- Tapetide (primary) or
+    yfinance (its fallback on Tapetide quota exhaustion). See CLAUDE.md's
+    "Sourcing" section: fundamentals moved back to Tapetide (2026-07) after
+    Tickertape/Bharat-SM-Data turned out to be IP-blocked from the app's
+    Vercel deployment."""
 
     TAPETIDE = "tapetide"
     YFINANCE = "yfinance"
@@ -194,11 +193,15 @@ class RecommendedCompany(BaseModel):
     """A homepage suggestion, shown before any search. `verdict`/`explanation`
     are the company's REAL, freshly-computed HealthSnapshot (same function
     that powers a real search's verdict box) -- never a fabricated or
-    hand-picked "this one's good" label. Sourced from Bharat-SM-Data, same
-    as every other search's fundamentals now (see main.py's
-    `get_recommendations` and CLAUDE.md's "Hybrid sourcing" section);
-    clicking through to view the company costs the same Tapetide/yfinance
-    calls any search would, this endpoint only supplies the badge."""
+    hand-picked "this one's good" label. Sourced from Bharat-SM-Data
+    specifically so loading the homepage costs zero Tapetide quota (see
+    main.py's `get_recommendations`) -- unlike a real search, which sources
+    fundamentals from Tapetide now (see CLAUDE.md's "Sourcing" section).
+    Bharat-SM-Data is currently IP-blocked from this app's Vercel
+    deployment, so this endpoint is a known, unresolved gap (see CLAUDE.md)
+    -- clicking through to view the company still costs the same Tapetide/
+    yfinance calls a normal search would; this endpoint only supplies the
+    badge."""
 
     ticker: str
     name: str
@@ -240,17 +243,26 @@ class LogInRequest(BaseModel):
 
 class UserPublic(BaseModel):
     """Never includes password_hash/password_salt -- those never leave
-    auth_service.py's DB layer."""
+    auth_service.py's DB layer. `tapetide_key` is the account's saved
+    Tapetide key, decrypted and ready to use (None if this account never
+    saved one) -- see auth_service.py's get_tapetide_key. Sending the
+    decrypted key back to its own owner is fine: anyone with a valid
+    session token for this account already has the same trust level."""
 
     id: int
     email: str
     name: str
     created_at: str
+    tapetide_key: Optional[str] = None
 
 
 class AuthResponse(BaseModel):
     token: str
     user: UserPublic
+
+
+class TapetideKeyRequest(BaseModel):
+    key: str
 
 
 class ActivityEntry(BaseModel):

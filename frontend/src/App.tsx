@@ -11,7 +11,7 @@ import ReturnCalculator from "./components/ReturnCalculator";
 import { useTheme } from "./hooks/useTheme";
 import { fetchCompany, fetchQuota, fetchMe, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
-import { getTapetideKey } from "./lib/tapetideKey";
+import { getTapetideKey, setTapetideKey } from "./lib/tapetideKey";
 import type { CompanyFinancialsResponse, QuotaStatus, UserPublic } from "./lib/types";
 
 export default function App() {
@@ -22,8 +22,17 @@ export default function App() {
   // ungated content before the gate can render -- see TapetideKeyGate.tsx.
   const [tapetideKey, setTapetideKeyState] = useState<string | null>(() => getTapetideKey());
   // Sign-in is purely for activity tracking, not a gate on using the app --
-  // every existing feature works fully signed-out, this is additive.
+  // every existing feature works fully signed-out, this is additive. It
+  // does now feed into the Tapetide gate too, though (see the effect below
+  // and TapetideKeyGate.tsx): a returning signed-in user's saved key can
+  // fill in `tapetideKey` above without ever showing the gate.
   const [user, setUser] = useState<UserPublic | null>(null);
+  // True once the stored-auth-token check below has resolved (or there was
+  // never a token to check, in which case this starts true) -- lets
+  // TapetideKeyGate.tsx avoid flashing its "sign in / sign up" welcome step
+  // for a split second before a returning user's session (and possibly
+  // their saved key) has actually loaded.
+  const [sessionChecked, setSessionChecked] = useState<boolean>(() => !getAuthToken());
   const [view, setView] = useState<View>("search");
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -72,7 +81,21 @@ export default function App() {
     // fetchMe() returns null (not an error) for a missing/expired token, so
     // this is safe to call unconditionally rather than checking the token
     // exists first.
-    if (getAuthToken()) fetchMe().then(setUser);
+    if (getAuthToken()) {
+      fetchMe()
+        .then((u) => {
+          setUser(u);
+          // Only adopt the account's saved key if this browser doesn't
+          // already have one -- never clobber a key someone's actively
+          // using locally just because they happen to also be signed into
+          // an account with a different saved key.
+          if (u?.tapetide_key && !getTapetideKey()) {
+            setTapetideKey(u.tapetide_key);
+            setTapetideKeyState(u.tapetide_key);
+          }
+        })
+        .finally(() => setSessionChecked(true));
+    }
   }, []);
 
   async function handleSearch(query: string) {
@@ -205,6 +228,9 @@ export default function App() {
           meantime, which is fine -- the gate still blocks all interaction. */}
       {!tapetideKey && (
         <TapetideKeyGate
+          user={user}
+          sessionChecked={sessionChecked}
+          onAuthChange={setUser}
           onKeySet={() => {
             setTapetideKeyState(getTapetideKey());
             refreshQuota();

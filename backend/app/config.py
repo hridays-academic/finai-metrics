@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     # set it in backend/.env.
     database_url: Optional[str] = None
 
+    # Symmetric encryption key (Fernet, see auth_service.py) for a signed-in
+    # user's saved Tapetide API key at rest in Postgres -- generate one with
+    # `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
+    # Without this set, saving/reading an account's Tapetide key just fails
+    # gracefully (see auth_service.py) rather than ever storing one in
+    # plaintext.
+    encryption_key: Optional[str] = None
+
     # NOT a server-side secret anymore (2026-07) -- Tapetide (NSE/BSE quotes,
     # financials, ratios) is now bring-your-own-key: every user enters their
     # own Tapetide API key client-side, sent per-request as the

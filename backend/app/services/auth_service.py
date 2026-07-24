@@ -13,6 +13,16 @@ request needing auth does a DB lookup rather than verifying a signature,
 which is the right tradeoff at this scale (a few users) since it makes
 "sign out everywhere" / revocation trivial (just delete the row), which a
 stateless JWT can't do without extra machinery.
+
+(2026-07) **A signed-in user's Tapetide key can now optionally be saved to
+their account** (`save_tapetide_key`/`get_tapetide_key`), encrypted at rest
+with Fernet (symmetric encryption, keyed by the `ENCRYPTION_KEY` env var --
+see config.py) rather than plaintext -- a deliberate reversal of the
+original "never persisted server-side" design (see CLAUDE.md's "Bring-your-
+own Tapetide key" section for the history), made because logging in from a
+new browser/device otherwise means re-entering the key every time. Still
+opt-in: `TapetideKeyGate.tsx` always offers "Continue without an account,"
+which never touches this at all.
 """
 import hashlib
 import re
@@ -20,6 +30,9 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from cryptography.fernet import Fernet, InvalidToken
+
+from app.config import get_settings
 from app.services.db import get_conn
 
 PBKDF2_ITERATIONS = 200_000
@@ -33,6 +46,39 @@ class AuthError(Exception):
 
 def _hash_password(password: str, salt: bytes) -> str:
     return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS).hex()
+
+
+def _fernet() -> Fernet:
+    """Raises RuntimeError if ENCRYPTION_KEY isn't configured -- callers that
+    can tolerate the feature simply not working (get_tapetide_key) catch
+    this and return None; save_tapetide_key lets it propagate, since saving
+    a key with no way to encrypt it would otherwise silently do nothing."""
+    key = get_settings().encryption_key
+    if not key:
+        raise RuntimeError("ENCRYPTION_KEY is not configured -- can't save a Tapetide key to an account.")
+    return Fernet(key.encode("utf-8"))
+
+
+def save_tapetide_key(user_id: int, tapetide_key: str) -> None:
+    encrypted = _fernet().encrypt(tapetide_key.encode("utf-8")).decode("utf-8")
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET tapetide_key_encrypted = %s WHERE id = %s", (encrypted, user_id))
+
+
+def get_tapetide_key(user_id: int) -> Optional[str]:
+    """Best-effort, unlike save_tapetide_key: a missing ENCRYPTION_KEY or an
+    undecryptable value (e.g. the key rotated) should just mean "no saved
+    key available", not break sign-in for that user."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT tapetide_key_encrypted FROM users WHERE id = %s", (user_id,)
+        ).fetchone()
+    if not row or not row["tapetide_key_encrypted"]:
+        return None
+    try:
+        return _fernet().decrypt(row["tapetide_key_encrypted"].encode("utf-8")).decode("utf-8")
+    except (RuntimeError, InvalidToken):
+        return None
 
 
 def sign_up(email: str, name: str, password: str) -> tuple[int, str]:
@@ -103,9 +149,14 @@ def log_out(token: str) -> None:
 
 
 def get_user_from_token(token: str) -> Optional[dict]:
-    """Returns {id, email, name, created_at} for a valid, unexpired session, else None.
-    Never raises -- callers treat auth as optional (see main.py's activity logging),
-    so an invalid/expired/missing token just means "anonymous", not an error."""
+    """Returns {id, email, name, created_at, tapetide_key} for a valid,
+    unexpired session, else None. Never raises -- callers treat auth as
+    optional (see main.py's activity logging), so an invalid/expired/
+    missing token just means "anonymous", not an error. `tapetide_key` is
+    the decrypted, ready-to-use key (or None if this account never saved
+    one) -- see save_tapetide_key/get_tapetide_key above; this is what lets
+    TapetideKeyGate.tsx skip key entry entirely for a returning signed-in
+    user."""
     if not token:
         return None
     with get_conn() as conn:
@@ -121,7 +172,13 @@ def get_user_from_token(token: str) -> Optional[dict]:
         return None
     if datetime.fromisoformat(row["expires_at"]) < datetime.now(timezone.utc):
         return None
-    return {"id": row["id"], "email": row["email"], "name": row["name"], "created_at": row["created_at"]}
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "name": row["name"],
+        "created_at": row["created_at"],
+        "tapetide_key": get_tapetide_key(row["id"]),
+    }
 
 
 def _log_activity(user_id: int, action: str, detail: Optional[str]) -> None:

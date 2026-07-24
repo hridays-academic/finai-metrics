@@ -64,6 +64,15 @@ _SCHEMA_STATEMENTS = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_activity_log_user_id ON activity_log(user_id, created_at DESC)",
+    # Added 2026-07 -- a signed-in user's own Tapetide key, encrypted at rest
+    # (see auth_service.py's _encrypt_key/_decrypt_key), so logging in from
+    # a different browser/device doesn't require re-entering it. NULL for
+    # any account that hasn't saved one (every pre-existing row, and anyone
+    # who signs up but chooses "Continue without an account" for the key
+    # step). ADD COLUMN IF NOT EXISTS rather than a separate migration
+    # script -- consistent with this file's existing "idempotent, safe to
+    # call on every cold start" schema model.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS tapetide_key_encrypted TEXT",
 ]
 
 

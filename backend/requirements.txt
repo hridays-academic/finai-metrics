@@ -10,6 +10,10 @@ python-dotenv==1.0.1
 # deployment (serverless functions have no persistent filesystem).
 psycopg[binary]==3.3.4
 
+# Encrypts a signed-in user's saved Tapetide key at rest (see
+# auth_service.py) -- Fernet symmetric encryption, stdlib has no equivalent.
+cryptography==49.0.0
+
 # yfinance is the automatic fallback provider (see app/main.py) used when
 # Tapetide's daily quota is exhausted -- no longer just a reference
 # implementation, so it's a real runtime dependency now.

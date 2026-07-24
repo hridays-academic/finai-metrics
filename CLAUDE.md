@@ -599,27 +599,57 @@ two didn't need this treatment). The key travels as the `X-Tapetide-Token`
 header, read via `main.py`'s `_tapetide_token` dependency (returns `None`
 if missing/blank -- callers decide whether that's fatal).
 
-**The key lives in the browser's `localStorage` (`lib/tapetideKey.ts`),
-never in the backend's database.** `lib/api.ts`'s `tapetideHeaders()`
-attaches it to every request that needs it, the same pattern
-`lib/auth.ts`/`authHeaders()` already established for sign-in tokens.
-Storing a third-party secret server-side (even encrypted, even tied to a
-signed-in user's account) would make this app responsible for protecting
-it against a breach; keeping it client-only and forwarding it per-request
-sidesteps that entirely. This does mean the key doesn't follow a signed-in
-user across devices/browsers -- a deliberate tradeoff, not an oversight.
+**The key lives in the browser's `localStorage` (`lib/tapetideKey.ts`) --
+that's still the only thing every actual API request reads from (see
+`lib/api.ts`'s `tapetideHeaders()`).** Storing a third-party secret server-
+side at all was originally avoided entirely, to keep this app from being
+responsible for protecting it against a breach. That's now a partial,
+opt-in reversal (2026-07): **a signed-in user can additionally save their
+key to their account**, encrypted at rest with Fernet
+(`auth_service.py`'s `save_tapetide_key`/`get_tapetide_key`, keyed by the
+`ENCRYPTION_KEY` env var -- see "Environment variables" below), specifically
+so it follows them across browsers/devices instead of needing re-entry
+every time. This is still opt-in, not the only path: anyone can choose
+"Continue without an account" in the gate below and get the original
+client-only behavior with nothing ever touching the backend's database.
 
 **`TapetideKeyGate.tsx` is a hard, blocking gate, not a dismissible
 nudge** (unlike the sign-in banner above) -- rendered as an always-mounted
 overlay in `App.tsx` whenever `getTapetideKey()` returns nothing,
 `backdrop-filter: blur()`'d over the still-fully-rendered app behind it
 (not blurred via a class toggle on the app root -- the gate doesn't need to
-reach into anything else's DOM). It walks through getting a free key at
-[tapetide.com](https://tapetide.com/settings/tokens) (linked wherever
-"Tapetide" is mentioned in the copy) and ends in a single pill-shaped
-input+button. Submitting calls `POST /api/tapetide/validate` *before*
-storing anything -- a genuinely wrong key must never sit in localStorage
-looking valid.
+reach into anything else's DOM). It's now a small multi-step flow rather
+than a single form (2026-07):
+- **`"welcome"`** (the default first step, unless `App.tsx` already
+  resolved a signed-in `user` by mount time -- see below): offers Sign In,
+  Sign Up, or "Continue without an account."
+- **`"signin"` / `"signup"`**: inline forms (a separate copy from
+  `AuthPanel.tsx`'s, not shared -- different surrounding chrome, full-
+  screen step vs. slide-over). On successful sign-in, `main.py`'s
+  `/api/auth/login` response already includes the account's saved key
+  (`UserPublic.tapetide_key`, decrypted) if one exists -- if so, the gate
+  adopts it immediately and closes with no further step; if not (or after
+  a fresh sign-up, which never has one yet), it proceeds to `"key"`.
+- **`"key"`**: the original single pill-shaped input+button, walking
+  through getting a free key at
+  [tapetide.com](https://tapetide.com/settings/tokens). Submitting calls
+  `POST /api/tapetide/validate` (anonymous) or `POST /api/auth/tapetide-key`
+  (signed in -- validates the same way, then also persists it to the
+  account) *before* storing anything locally -- a genuinely wrong key must
+  never sit in `localStorage` looking valid either way.
+
+`App.tsx` also restores a saved key automatically on a plain page load, not
+just via the gate's own sign-in step: if a stored auth token resolves (via
+`fetchMe`) to a user with a saved key, and this browser doesn't already
+have one in `localStorage`, it's adopted immediately and the gate never
+even renders. The `!getTapetideKey()` check there matters -- it deliberately
+never overwrites a key someone's actively using locally just because
+they're also signed into an account with a *different* saved key. A new
+`sessionChecked` boolean in `App.tsx` (true immediately if there's no
+stored token to check, otherwise flips true once `fetchMe` resolves) exists
+purely so the gate shows a neutral "Checking your session..." loading state
+instead of flashing the welcome step for a returning signed-in visitor
+right before it would auto-dismiss.
 
 **`TapetideProvider.validate_key()` deliberately bypasses `DEV_CACHE_DIR`
 (`use_cache=False`)** -- every other method on this class is fine being
@@ -631,7 +661,7 @@ was a real bug caught during live testing, not a hypothetical -- don't
 remove `use_cache=False` from that one call site.
 
 **Quota tracking is per-key now, not global** -- see `/api/quota` above
-and `tapetide_provider.py`'s `_token_hash`/`_load_all_quota_state`. Each
+and `tapetide_provider.py`'s `_token_hash`/`_load_quota_state`. Each
 user's own 50-calls/day budget is tracked independently, keyed by a hash of
 their token.
 
@@ -644,6 +674,11 @@ from Vercel project environment variables in production:
   credit card) backing user accounts, sessions, activity logs, and Tapetide
   quota tracking — see "Deployment" and "Accounts & activity tracking"
   above. Use the **pooled** connection string, not the direct one.
+- `ENCRYPTION_KEY` — required for a signed-in user to save a Tapetide key to
+  their account (see "Bring-your-own Tapetide key" below); without it, that
+  specific feature just fails gracefully rather than ever storing a key in
+  plaintext. Generate one with
+  `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 - `MOONSHOT_API_KEY` — required for the chat assistant to function. Get one
   at https://platform.kimi.ai
 - **No Tapetide key here** — see "Bring-your-own Tapetide key" above.

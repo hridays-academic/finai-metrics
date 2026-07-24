@@ -131,6 +131,24 @@ export async function validateTapetideKey(key: string): Promise<void> {
   }
 }
 
+// Called from TapetideKeyGate.tsx's key-entry step when the visitor is
+// signed in -- validates the key (same check as validateTapetideKey above)
+// AND persists it to their account so a future sign-in skips this step.
+// Requires auth; the anonymous ("continue without an account") path uses
+// validateTapetideKey instead, which never saves anything.
+export async function saveTapetideKeyToAccount(key: string): Promise<UserPublic> {
+  const res = await fetch(`${BASE_URL}/auth/tapetide-key`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ key }),
+  });
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+  return res.json();
+}
+
 export async function signUp(email: string, name: string, password: string): Promise<AuthResponse> {
   const res = await fetch(`${BASE_URL}/auth/signup`, {
     method: "POST",
