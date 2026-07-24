@@ -1147,13 +1147,23 @@
    gap trick) instead of each carrying its own separate bordered box --
    reads as one coherent panel of data rather than a scattered pile of
    individual boxes. */
+/* Status color is a left-edge ribbon, not the small dot this used to carry
+   (see MetricCard.tsx) -- a 6px dot was hard to register at a glance
+   across a dense 20-30-card grid; a full-height colored edge on every card
+   reads immediately, and matches the same left-border convention already
+   used for .calculator-scenario-tile/.calculator-risk-row elsewhere. */
 .metric-card {
   background: var(--bg-surface);
   padding: 0.65rem 0.8rem;
+  border-left: 3px solid var(--status-neutral);
   position: relative;
   cursor: pointer;
-  transition: background-color 0.12s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
+.metric-card.good { border-left-color: var(--status-good); }
+.metric-card.warning { border-left-color: var(--status-warning); }
+.metric-card.bad { border-left-color: var(--status-bad); }
+.metric-card.neutral { border-left-color: var(--status-neutral); }
 
 .metric-card:hover {
   background: var(--bg-elevated);

@@ -446,6 +446,16 @@ recommendation to buy, sell, or hold") — this was a specific compliance
 line drawn after the user asked for a buy/sell/hold verdict box and it was
 scoped down instead; don't casually reintroduce buy/sell/hold wording here.
 
+**`.metric-card`'s status color is a left-edge ribbon (`border-left`), not
+a small dot.** (2026-07) Originally a 6px `.status-dot` next to the label,
+per user feedback that it was too hard to register at a glance across a
+dense 20-30-card grid. `MetricCard.tsx` now puts the status class directly
+on the card itself (`metric-card good/warning/bad/neutral`) rather than on
+a child dot span, matching the same left-border convention already used by
+`.calculator-scenario-tile`/`.calculator-risk-row`. `.status-dot` itself
+still exists in `app.css` and is still used elsewhere (`HealthSnapshot`'s
+compact tile) — only `MetricCard.tsx` dropped it.
+
 **`PriceForecastChart` is a deliberately separate chart, not a series
 overlaid on `PriceChart`.** An earlier version drew the High/Mean/Low fan
 directly on the 5-year price chart; the fan's ~9-month horizon made it an
@@ -763,6 +773,23 @@ vars containing secrets — it only needs the backend's base URL.
   tool (fuzzy name/symbol/ISIN matching across ~8,200 NSE/BSE stocks), not a
   hardcoded lookup. Users can always type an explicit symbol (e.g. "RELIANCE")
   as a reliable fallback; `.NS`/`.BO` suffixes are stripped if present.
+  **That fuzzy search can return a match with no real relation to the
+  query** — confirmed live, not hypothetical: searching "AAPL" had it
+  silently match some unrelated Indian company, and the app proceeded to
+  fetch and would have returned real data for the wrong company (it only
+  404'd that one time because Tapetide's quota happened to run out a few
+  calls later, forcing a fallback whose own resolve_symbol correctly
+  rejected "AAPL"). `main.py`'s `_looks_like_the_query` (called from
+  `_fetch_company_core`, right after `get_company_info` — so it checks
+  against real returned data, not the raw search hit) guards against this
+  for both the Tapetide and yfinance-fallback paths: rejects with a 404
+  unless the query has a real textual relationship to the matched ticker/
+  resolved symbol/company name (exact match, a real prefix, or a substring
+  either direction). Deliberately lenient, not exact-only, so abbreviation-
+  style searches keep working ("TCS", "L&T", "ITC", a partial company
+  name) — unit-tested against exactly those cases plus the AAPL scenario
+  before deploying. Doesn't apply to `get_recommendations`, which only ever
+  queries a fixed, curated ticker pool, never free-text user input.
 
 ## Deployment
 

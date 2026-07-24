@@ -220,11 +220,53 @@ def get_recommendations() -> RecommendationsResponse:
     return response
 
 
+def _normalize_for_match(s: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", s.upper())
+
+
+def _looks_like_the_query(query: str, info: CompanyInfo) -> bool:
+    """Guards against a provider's fuzzy symbol search returning a match
+    with no real relation to what was typed -- confirmed live, not
+    hypothetical: searching a foreign ticker like "AAPL" had Tapetide's
+    search_stocks silently match it to an unrelated Indian company, and the
+    app proceeded to fetch and return real data for the wrong company. That
+    request only actually 404'd because Tapetide's quota happened to run
+    out a few calls later, forcing a fallback whose OWN resolve_symbol
+    correctly rejected "AAPL" -- without that coincidence, it would have
+    returned the wrong company silently. This check runs after
+    get_company_info (so it's comparing against real returned data, not the
+    raw search hit) and deliberately allows prefix/substring matches, not
+    just exact ones, so real abbreviation-style searches keep working
+    ("TCS", "L&T", "ITC", or a partial company name) -- only a match with
+    NO textual relationship to the query at all gets rejected."""
+    bare = query.strip().upper()
+    for suffix in (".NS", ".BO"):
+        if bare.endswith(suffix):
+            bare = bare[: -len(suffix)]
+    q = _normalize_for_match(bare)
+    if not q:
+        return False
+    ticker = _normalize_for_match(info.ticker or "")
+    resolved = _normalize_for_match(info.resolved_symbol or "")
+    name = _normalize_for_match(info.company_name or "")
+    if q == ticker or q == resolved:
+        return True
+    if len(q) >= 2 and (ticker.startswith(q) or resolved.startswith(q)):
+        return True
+    if len(q) >= 3 and (q in name or (len(name) >= 3 and name in q)):
+        return True
+    return False
+
+
 def _fetch_company_core(
     provider: FinancialDataProvider, query: str
 ) -> tuple[str, CompanyInfo, RawFinancials]:
     symbol, _exchange = provider.resolve_symbol(query)
     info = provider.get_company_info(symbol)
+    if not _looks_like_the_query(query, info):
+        raise CompanyNotFoundError(
+            f"Could not find '{query}' on NSE/BSE. Try the exact ticker, e.g. 'RELIANCE' or 'TCS'."
+        )
     raw = provider.get_raw_financials(symbol)
     return symbol, info, raw
 

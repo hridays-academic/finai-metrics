@@ -29,18 +29,21 @@ export default function MetricCard({ metric }: { metric: Metric }) {
   return (
     <div
       ref={cardRef}
-      className="metric-card"
+      // Status color lives on a left-edge ribbon (border-left, see
+      // .metric-card in app.css) rather than the small dot this used to
+      // carry -- a 6px dot was hard to register at a glance across a dense
+      // 20-30-card grid; a full-height colored edge on every card reads
+      // immediately, and matches the same left-border convention already
+      // used for .calculator-scenario-tile/.calculator-risk-row elsewhere
+      // in the app.
+      className={`metric-card ${metric.status}`}
       onMouseEnter={handleOpen}
       onMouseLeave={() => setOpen(false)}
       onClick={() => (open ? setOpen(false) : handleOpen())}
     >
       <div className="metric-card-top">
         <span className="metric-label">{metric.label}</span>
-        <span className={`status-dot ${metric.status}`} />
       </div>
-      {/* No separate status badge -- it repeated the dot's own color as
-          text on every card, which added up to a lot of redundant noise
-          across 20-30 cards. The dot + popover already carry that. */}
       <div className={`metric-value ${na ? "na" : ""}`}>{formatMetricValue(metric)}</div>
 
       {open && (
