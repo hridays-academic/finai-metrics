@@ -2158,3 +2158,119 @@
   color: var(--text-tertiary);
   line-height: 1.5;
 }
+
+/* ---------- Responsive: phone-width screens ----------
+   Every other layout in this file is fixed-width/desktop-first (see
+   CLAUDE.md) except .charts-row's 900px stack above. 640px is this app's
+   general "phone" cutoff; .summary-row and .recommended-companies-grid use
+   their own slightly different cutoffs since two dense cards / several
+   name-heavy tiles stop fitting comfortably before a plain single-column
+   stack does. */
+
+@media (max-width: 640px) {
+  .sidebar {
+    width: 48px;
+    padding: 0.65rem 0;
+  }
+  .sidebar-icon-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .app-header {
+    padding: 0.6rem 0.9rem;
+  }
+  .logo-wordmark {
+    font-size: 0.95rem;
+  }
+
+  .signin-banner {
+    flex-wrap: wrap;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.78rem;
+  }
+  .signin-banner-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .search-bar-wrap {
+    padding: 1rem 0.9rem 0.4rem;
+  }
+  .content-grid {
+    padding: 0.65rem 0.9rem 1rem;
+  }
+  /* Lets the source-reset/quota-counter wrap onto their own line below the
+     input+button instead of squeezing next to a 280px-min-width form that
+     barely fits phone width on its own. */
+  .search-form {
+    min-width: 100%;
+  }
+
+  .recommended-companies {
+    margin-top: 2rem;
+  }
+  .recommended-company-card {
+    padding: 0.8rem 0.85rem;
+  }
+  .recommended-company-name {
+    font-size: 0.82rem;
+  }
+
+  /* .metric-cards relies on every group fitting one row (see the comment
+     above .metric-card:first-child) so only the row's true edges get
+     rounded -- auto-fit wraps to multiple rows below this width, which
+     left interior row-edge cards with square corners. Rounding every card
+     individually here is a deliberate departure from the "seamless panel"
+     look in exchange for correctness once rows wrap. */
+  .metric-card {
+    border-radius: 10px;
+  }
+
+  .calculator-page {
+    padding: 1.5rem 1rem;
+  }
+  .calculator-card {
+    padding: 1.25rem 1rem 1rem;
+  }
+  /* 3 equal columns leave ~85px per tile at phone width -- too narrow for
+     currency/percentage values without wrapping. Full-width stacking. */
+  .calculator-results,
+  .calculator-scenario-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tapetide-gate-overlay {
+    padding: 1rem;
+  }
+  .tapetide-gate-card {
+    padding: 1.35rem;
+  }
+}
+
+/* Health Snapshot + Analyst Consensus side by side needs real room for
+   each compact card to stay legible -- confirmed live that the 2-column
+   grid clips Analyst Consensus off the right edge of the viewport well
+   before 640px, so this stacks earlier than the general phone cutoff. */
+@media (max-width: 760px) {
+  .summary-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Column count is normally set inline per render (repeat(N, 1fr), see
+   RecommendedCompanies.tsx) so 3-5 cards always share one row on desktop --
+   confirmed live that this squeezes unreadably (name/ticker text
+   truncating) well before phone width. !important is required here since
+   only a stylesheet rule (not specificity) can override an inline style. */
+@media (max-width: 860px) {
+  .recommended-companies-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .recommended-companies-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

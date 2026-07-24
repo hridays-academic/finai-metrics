@@ -1,18 +1,18 @@
 """
 Account creation, login, session tokens, and activity logging -- backed by
-db.py's SQLite tables. Password hashing uses the stdlib `hashlib.pbkdf2_hmac`
-(SHA-256, 200,000 iterations, random 16-byte salt per user) rather than
-adding a bcrypt/argon2 dependency -- PBKDF2 via hashlib needs no new
-package and is still a legitimate, widely-used choice (it's literally what
-Django's default password hasher used for years). Never store or log a
-plaintext password anywhere, including in exceptions.
+db.py's Postgres tables (Neon). Password hashing uses the stdlib
+`hashlib.pbkdf2_hmac` (SHA-256, 200,000 iterations, random 16-byte salt per
+user) rather than adding a bcrypt/argon2 dependency -- PBKDF2 via hashlib
+needs no new package and is still a legitimate, widely-used choice (it's
+literally what Django's default password hasher used for years). Never
+store or log a plaintext password anywhere, including in exceptions.
 
 Sessions are opaque random tokens (`secrets.token_urlsafe`), stored server-
 side in the `sessions` table with an expiry -- not a JWT. That means every
 request needing auth does a DB lookup rather than verifying a signature,
-which is the right tradeoff at this scale (a few users, a local SQLite
-file) since it makes "sign out everywhere" / revocation trivial (just
-delete the row), which a stateless JWT can't do without extra machinery.
+which is the right tradeoff at this scale (a few users) since it makes
+"sign out everywhere" / revocation trivial (just delete the row), which a
+stateless JWT can't do without extra machinery.
 """
 import hashlib
 import re
@@ -50,14 +50,16 @@ def sign_up(email: str, name: str, password: str) -> tuple[int, str]:
     password_hash = _hash_password(password, salt)
 
     with get_conn() as conn:
-        existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        existing = conn.execute("SELECT id FROM users WHERE email = %s", (email,)).fetchone()
         if existing:
             raise AuthError("An account with that email already exists. Try signing in instead.")
+        # Postgres has no cursor.lastrowid (that's a sqlite3-ism) -- RETURNING
+        # is the standard way to get a just-inserted row's generated id back.
         cursor = conn.execute(
-            "INSERT INTO users (email, name, password_hash, password_salt) VALUES (?, ?, ?, ?)",
+            "INSERT INTO users (email, name, password_hash, password_salt) VALUES (%s, %s, %s, %s) RETURNING id",
             (email, name, password_hash, salt.hex()),
         )
-        user_id = cursor.lastrowid
+        user_id = cursor.fetchone()["id"]
 
     token = _create_session(user_id)
     _log_activity(user_id, "signed_up", None)
@@ -69,7 +71,7 @@ def log_in(email: str, password: str) -> tuple[int, str]:
     email = email.strip().lower()
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT id, password_hash, password_salt FROM users WHERE email = ?", (email,)
+            "SELECT id, password_hash, password_salt FROM users WHERE email = %s", (email,)
         ).fetchone()
     # Same error for "no such user" and "wrong password" -- don't reveal
     # which one it was, standard practice to avoid leaking valid emails.
@@ -89,7 +91,7 @@ def _create_session(user_id: int) -> str:
     expires_at = (datetime.now(timezone.utc) + timedelta(days=SESSION_TTL_DAYS)).isoformat()
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
+            "INSERT INTO sessions (token, user_id, expires_at) VALUES (%s, %s, %s)",
             (token, user_id, expires_at),
         )
     return token
@@ -97,7 +99,7 @@ def _create_session(user_id: int) -> str:
 
 def log_out(token: str) -> None:
     with get_conn() as conn:
-        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.execute("DELETE FROM sessions WHERE token = %s", (token,))
 
 
 def get_user_from_token(token: str) -> Optional[dict]:
@@ -111,7 +113,7 @@ def get_user_from_token(token: str) -> Optional[dict]:
             """
             SELECT u.id, u.email, u.name, u.created_at, s.expires_at
             FROM sessions s JOIN users u ON u.id = s.user_id
-            WHERE s.token = ?
+            WHERE s.token = %s
             """,
             (token,),
         ).fetchone()
@@ -125,7 +127,7 @@ def get_user_from_token(token: str) -> Optional[dict]:
 def _log_activity(user_id: int, action: str, detail: Optional[str]) -> None:
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO activity_log (user_id, action, detail) VALUES (?, ?, ?)",
+            "INSERT INTO activity_log (user_id, action, detail) VALUES (%s, %s, %s)",
             (user_id, action, detail),
         )
 
@@ -142,7 +144,7 @@ def log_activity(user: Optional[dict], action: str, detail: Optional[str] = None
 def get_activity(user_id: int, limit: int = 50) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT action, detail, created_at FROM activity_log WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+            "SELECT action, detail, created_at FROM activity_log WHERE user_id = %s ORDER BY created_at DESC LIMIT %s",
             (user_id, limit),
         ).fetchall()
     return [{"action": r["action"], "detail": r["detail"], "created_at": r["created_at"]} for r in rows]

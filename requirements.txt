@@ -1,0 +1,17 @@
+# Root-level copy of backend/requirements.txt -- Vercel's Python builder
+# requires requirements.txt at the project root, and its parser doesn't
+# support pip's `-r <path>` include syntax (tried that first; deploy failed
+# with "could not parse requirements.txt: Error parsing included file").
+# backend/requirements.txt (used for local dev, see README.md) stays the
+# source of truth -- keep both in sync if you add/remove a dependency.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+requests==2.32.3
+pydantic==2.13.4
+pydantic-settings==2.14.2
+python-dotenv==1.0.1
+psycopg[binary]==3.3.4
+yfinance==0.2.51
+pandas==3.0.3
+curl_cffi==0.15.0
+Bharat-sm-data==4.0.1

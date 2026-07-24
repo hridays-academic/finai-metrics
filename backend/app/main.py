@@ -122,12 +122,15 @@ fallback_provider: FinancialDataProvider = YFinanceProvider()
 
 # Recount from the actual Tapetide call sites in get_company/get_price_history
 # below if you add/remove a call anywhere -- see CLAUDE.md's quota breakdown.
-# analyst consensus: get_company_profile (1, cached alongside ratings) +
-# get_forecasts (1) = 2. price history: get_price_history x2 (5yr weekly
-# merge) + get_recent_price_history x1 (daily) = 3. Total = 5 per full
-# company view (down from ~10 pre-hybrid, since fundamentals no longer touch
-# Tapetide at all).
-TAPETIDE_CALLS_PER_SEARCH = 5
+# fundamentals: search_stocks (1) + get_company_profile (1, cached alongside
+# ratings) + get_financials x3 (profit_loss/balance_sheet/ratios) +
+# get_stock_ownership (1) = 6. analyst consensus: get_forecasts (1, profile
+# reused from fundamentals' cache) = 1. price history: get_price_history x2
+# (5yr weekly merge) + get_recent_price_history x1 (daily) = 3. Total = 10
+# per full company view (back up from the ~5/search hybrid-sourcing design,
+# see main.py's get_company docstring comment for why: Tickertape blocks
+# Vercel's IPs, so fundamentals moved back to Tapetide).
+TAPETIDE_CALLS_PER_SEARCH = 10
 
 # Simple in-process cache of the last-fetched company per ticker, so the chat
 # endpoint can attach context without the frontend having to resend the full
@@ -231,16 +234,44 @@ def get_company(
     current_user: Optional[dict] = Depends(_current_user),
     tapetide_token: Optional[str] = Depends(_tapetide_token),
 ) -> CompanyFinancialsResponse:
-    # Fundamentals always come from Bharat-SM-Data -- free, no quota, and
-    # everything compute_metric_groups/compute_health_snapshot need (see
-    # CLAUDE.md's "Hybrid sourcing" section). No fallback here: if Bharat
-    # itself fails, the search fails, same as any single-provider error.
+    # Fundamentals come from Tapetide now (2026-07), not Bharat-SM-Data --
+    # Tickertape (which bharat_sm_provider.py wraps) 403-blocks Vercel's
+    # cloud IP range for its search/profile endpoints, confirmed live after
+    # deploying there (the same class of anti-bot block bharat_sm_provider.py
+    # already documents for NSE's price-history API, just hitting the
+    # fundamentals path too this time -- Bharat-SM-Data is otherwise left
+    # wired in for get_recommendations below, which is a separate, lower-
+    # stakes problem to fix). Tapetide is a real metered API, not a scraper
+    # -- confirmed reachable from Vercel. This costs more of the user's
+    # quota per search (~10 Tapetide calls instead of ~5 -- recount from the
+    # real call sites below if this changes, see CLAUDE.md) and loses the
+    # current/quick ratio liquidity figures Bharat-SM-Data's fuller balance
+    # sheet uniquely provided (back to N/A, same as the pre-hybrid design).
+    # Unlike the old Bharat-only path, this now requires a Tapetide key up
+    # front -- consistent with price-history below, and with the frontend's
+    # TapetideKeyGate already blocking the whole app until one exists.
+    if not tapetide_token:
+        raise HTTPException(status_code=400, detail="A Tapetide API key is required.")
+
+    tapetide_reset_at: Optional[str] = None
+    quota_exhausted = False
+    tapetide = TapetideProvider(tapetide_token)
     try:
-        symbol, info, raw = _fetch_company_core(bharat_provider, query)
+        try:
+            symbol, info, raw = _fetch_company_core(tapetide, query)
+        except ProviderQuotaExceededError as exc:
+            logger.warning(
+                "Tapetide quota exhausted for query=%s -- falling back to yfinance for fundamentals", query
+            )
+            tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
+            quota_exhausted = True
+            symbol, info, raw = _fetch_company_core(fallback_provider, query)
     except CompanyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidTapetideKeyError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
     except DataProviderError as exc:
-        logger.warning("Bharat-SM-Data error for query=%s: %s", query, exc)
+        logger.warning("Data provider error fetching company data for query=%s: %s", query, exc)
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 -- surface as a friendly 500, but log the real cause
         logger.exception("Unexpected error fetching company data for query=%s", query)
@@ -249,21 +280,18 @@ def get_company(
             detail="Something went wrong fetching that company's data. Please try again.",
         ) from exc
 
-    # Analyst consensus is the one thing Bharat-SM-Data structurally can't
-    # provide (see bharat_sm_provider.py) -- Tapetide primary, yfinance
-    # fallback on quota exhaustion, chained off Bharat's own resolved ticker
-    # (info.resolved_symbol) with no extra Tapetide resolve_symbol call.
-    # Best-effort throughout: a bonus on top of the core fundamentals above,
-    # never something that should fail the whole request -- including simply
-    # having no Tapetide key at all, which just means no consensus data
-    # rather than an error (the frontend's sign-in gate should mean this
-    # never actually happens, but the backend doesn't assume that).
+    # Analyst consensus stays best-effort, reusing the SAME TapetideProvider
+    # instance from fundamentals above (its _profile_cache means this costs
+    # only one more call, get_forecasts, not a second profile fetch) --
+    # skipped entirely if we already know this key is out of quota today
+    # (quota_exhausted above). Retrying it would both fail again AND falsely
+    # inflate our own local call count, since tapetide_provider.py's counter
+    # increments before the network request, even for a call that
+    # immediately 429s.
     analyst_consensus = None
     consensus_source: Optional[DataSourceName] = None
-    tapetide_reset_at: Optional[str] = None
-    if tapetide_token:
+    if not quota_exhausted:
         try:
-            tapetide = TapetideProvider(tapetide_token)
             analyst_consensus = tapetide.get_analyst_consensus(info.resolved_symbol)
             consensus_source = DataSourceName.TAPETIDE
         except ProviderQuotaExceededError as exc:
@@ -271,17 +299,19 @@ def get_company(
                 "Tapetide quota exhausted for analyst consensus symbol=%s -- falling back to yfinance",
                 info.resolved_symbol,
             )
-            tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
-            try:
-                fallback_symbol, _exchange = fallback_provider.resolve_symbol(info.resolved_symbol)
-                analyst_consensus = fallback_provider.get_analyst_consensus(fallback_symbol)
-                consensus_source = DataSourceName.YFINANCE
-            except Exception:  # noqa: BLE001 -- still a bonus, not core
-                logger.warning(
-                    "Fallback analyst consensus also failed for symbol=%s", info.resolved_symbol, exc_info=True
-                )
+            tapetide_reset_at = tapetide_reset_at or _parse_tapetide_reset_at(str(exc))
+            quota_exhausted = True
         except Exception:  # noqa: BLE001 -- third-party analyst data is a bonus, not core
             logger.warning("Couldn't fetch analyst consensus for symbol=%s", info.resolved_symbol, exc_info=True)
+    if quota_exhausted and analyst_consensus is None:
+        try:
+            fallback_symbol, _exchange = fallback_provider.resolve_symbol(info.resolved_symbol)
+            analyst_consensus = fallback_provider.get_analyst_consensus(fallback_symbol)
+            consensus_source = DataSourceName.YFINANCE
+        except Exception:  # noqa: BLE001 -- still a bonus, not core
+            logger.warning(
+                "Fallback analyst consensus also failed for symbol=%s", info.resolved_symbol, exc_info=True
+            )
 
     metric_groups = compute_metric_groups(raw)
     health_snapshot = compute_health_snapshot(metric_groups)

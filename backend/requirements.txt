@@ -1,9 +1,14 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 requests==2.32.3
-pydantic==2.10.4
-pydantic-settings==2.7.1
+pydantic==2.13.4
+pydantic-settings==2.14.2
 python-dotenv==1.0.1
+
+# Neon Postgres driver (see app/services/db.py) -- replaced the stdlib
+# sqlite3 module once persistence moved off local disk for the Vercel
+# deployment (serverless functions have no persistent filesystem).
+psycopg[binary]==3.3.4
 
 # yfinance is the automatic fallback provider (see app/main.py) used when
 # Tapetide's daily quota is exhausted -- no longer just a reference

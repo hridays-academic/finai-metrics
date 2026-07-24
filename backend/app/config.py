@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = None
     claude_model: str = "claude-sonnet-4-5"
 
+    # Neon Postgres connection string (see db.py) -- backs user accounts,
+    # sessions, activity logs, and Tapetide per-key quota tracking. Required
+    # in any real deployment (Vercel's serverless functions have no
+    # persistent local disk, unlike the SQLite file this replaced); locally,
+    # set it in backend/.env.
+    database_url: Optional[str] = None
+
     # NOT a server-side secret anymore (2026-07) -- Tapetide (NSE/BSE quotes,
     # financials, ratios) is now bring-your-own-key: every user enters their
     # own Tapetide API key client-side, sent per-request as the

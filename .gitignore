@@ -4,8 +4,9 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/.env
 backend/.tapetide_cache/
-backend/.tapetide_quota_state.json
-backend/app.db
+
+# Vercel
+.vercel/
 
 # Frontend
 frontend/node_modules/
@@ -17,3 +18,5 @@ frontend/tsconfig.tsbuildinfo
 
 # Claude Code local session state (not project source)
 .claude/
+.vercel
+.env*

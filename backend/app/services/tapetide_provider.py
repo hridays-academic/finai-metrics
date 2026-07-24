@@ -64,7 +64,7 @@ one request's lifetime rather than the whole process -- an acceptable
 tradeoff given the hybrid-sourcing rewrite already made most call sites
 single-use per request anyway. Quota tracking (below) is keyed by a hash of
 the token specifically so this still works correctly with many different
-users' keys sharing the same on-disk state file.
+users' keys sharing the same `tapetide_quota` Postgres table.
 """
 import calendar
 import hashlib
@@ -84,6 +84,7 @@ from app.services.data_provider import (
     FinancialDataProvider,
     ProviderQuotaExceededError,
 )
+from app.services.db import get_conn
 
 
 class InvalidTapetideKeyError(DataProviderError):
@@ -102,42 +103,58 @@ PROFILE_CACHE_TTL_SECONDS = 60
 TAPETIDE_DAILY_QUOTA = 50
 
 # Persists the call counter across process restarts -- without this, every
-# dev-server reload (uvicorn --reload restarts the whole process, and thus
-# re-runs __init__, on every backend .py file save) or production redeploy
-# silently resets "calls used today" to 0 in memory, understating real usage
-# right up until the next 429 surprises you. Deliberately NOT gated behind
-# DEV_CACHE_DIR -- that's an opt-in, dev-only response cache; this is
-# always-on bookkeeping for a number the UI shows unconditionally. Always a
-# fixed path relative to the working directory the app is run from (see
-# README.md -- that's backend/), not configurable, since there's no reason
-# to ever point it elsewhere.
+# serverless cold start (Vercel) or dev-server reload (uvicorn --reload
+# restarts the whole process on every backend .py file save) would silently
+# reset "calls used today" to 0, understating real usage right up until the
+# next 429 surprises you. Deliberately NOT gated behind DEV_CACHE_DIR --
+# that's an opt-in, dev-only response cache; this is always-on bookkeeping
+# for a number the UI shows unconditionally.
 #
-# Keyed by a hash of the token (never the raw token itself -- this file is
-# plain, unencrypted JSON on disk) since every user now has their own
-# Tapetide key: {token_hash: {"date": ..., "calls_today": ...}}. A shared
-# single-scalar file (the pre-multi-user design) would otherwise mix every
-# user's usage into one number, which is worse than useless once each
+# Backed by Postgres now (the `tapetide_quota` table, see db.py) -- this was
+# a local JSON file (.tapetide_quota_state.json) before the app moved to
+# Vercel, whose serverless functions have no persistent filesystem to write
+# it to (everything on local disk is wiped on the next cold start/redeploy).
+#
+# Keyed by a hash of the token (never the raw token itself -- unlike the old
+# file, a real Postgres row isn't literally plaintext-on-disk, but there's
+# still no reason to store the raw key when a hash is all quota tracking
+# needs) since every user now has their own Tapetide key. A shared
+# single-scalar counter (the pre-multi-user design) would otherwise mix
+# every user's usage into one number, which is worse than useless once each
 # person's key has its own independent 50-calls/day budget.
-_QUOTA_STATE_PATH = Path(".tapetide_quota_state.json")
 
 
 def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()[:16]
 
 
-def _load_all_quota_state() -> dict[str, dict]:
-    if _QUOTA_STATE_PATH.exists():
-        try:
-            return _json.loads(_QUOTA_STATE_PATH.read_text())
-        except Exception:  # noqa: BLE001 -- a corrupt/unreadable state file just starts fresh
-            pass
-    return {}
-
-
-def _save_all_quota_state(state: dict[str, dict]) -> None:
+def _load_quota_state(token_hash: str) -> dict:
     try:
-        _QUOTA_STATE_PATH.write_text(_json.dumps(state))
-    except OSError:
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT quota_date, calls_today FROM tapetide_quota WHERE token_hash = %s",
+                (token_hash,),
+            ).fetchone()
+    except Exception:  # noqa: BLE001 -- a transient DB hiccup just starts the estimate fresh
+        return {}
+    if not row:
+        return {}
+    return {"date": row["quota_date"], "calls_today": row["calls_today"]}
+
+
+def _save_quota_state(token_hash: str, quota_date: str, calls_today: int) -> None:
+    try:
+        with get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO tapetide_quota (token_hash, quota_date, calls_today)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (token_hash) DO UPDATE
+                SET quota_date = EXCLUDED.quota_date, calls_today = EXCLUDED.calls_today
+                """,
+                (token_hash, quota_date, calls_today),
+            )
+    except Exception:  # noqa: BLE001
         pass  # best-effort -- the estimate just won't survive a restart if this fails
 
 
@@ -166,10 +183,10 @@ class TapetideProvider(FinancialDataProvider):
         self._request_id = 0
         self._profile_cache: dict[str, tuple[float, Any]] = {}
         # Local estimate of calls made today -- see TAPETIDE_DAILY_QUOTA and
-        # _QUOTA_STATE_PATH (persisted, keyed by this token's hash, so a
-        # process restart doesn't reset it and different users' keys don't
-        # share one counter).
-        entry = _load_all_quota_state().get(self._token_hash, {})
+        # _load_quota_state/_save_quota_state (Postgres-backed, keyed by this
+        # token's hash, so a process restart/cold start doesn't reset it and
+        # different users' keys don't share one counter).
+        entry = _load_quota_state(self._token_hash)
         self._calls_date = entry.get("date", date.today().isoformat())
         self._calls_today = entry.get("calls_today", 0)
         today = date.today().isoformat()
@@ -210,14 +227,11 @@ class TapetideProvider(FinancialDataProvider):
         return result
 
     def _persist_quota(self) -> None:
-        # Read-modify-write, not a per-key atomic update -- two requests for
-        # *different* users' keys landing at the exact same instant could
-        # theoretically clobber each other's write. Acceptable for this
-        # app's scale (a local/small-deployment SQLite-backed app already
-        # accepts the same class of risk elsewhere); not worth a file lock.
-        all_quota = _load_all_quota_state()
-        all_quota[self._token_hash] = {"date": self._calls_date, "calls_today": self._calls_today}
-        _save_all_quota_state(all_quota)
+        # Upsert on this key's own row (see db.py's ON CONFLICT) -- unlike
+        # the old read-modify-write-the-whole-file approach, two requests for
+        # *different* users' keys landing at the same instant no longer race
+        # against each other at all, since each writes only its own row.
+        _save_quota_state(self._token_hash, self._calls_date, self._calls_today)
 
     def get_quota_status(self) -> tuple[int, int]:
         """Returns (calls_used_today, calls_remaining_estimate) for THIS

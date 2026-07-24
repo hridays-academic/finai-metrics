@@ -81,7 +81,8 @@ backend/app/
     moonshot_service.py      Active AI backend, wraps the Moonshot (Kimi) API
     deepseek_service.py      Alternate AI backend using DeepSeek (not wired in)
     claude_service.py       Alternate AI backend using Anthropic Claude (not wired in)
-    db.py                    SQLite connection + schema (users, sessions, activity_log)
+    db.py                    Postgres (Neon) connection + schema (users, sessions,
+                              activity_log, tapetide_quota)
     auth_service.py          Signup/login/sessions/activity logging -- see
                               "Accounts & activity tracking" below
 ```
@@ -94,37 +95,43 @@ for price history/analyst consensus. Do not let provider-specific types/
 objects leak past this layer — always return the shared `CompanyInfo`/
 `RawFinancials` models.
 
-**Hybrid sourcing: three providers, each with one fixed job, no user choice
-involved.** (2026-07 -- this replaced an earlier design where the frontend
-had a source-switcher dropdown letting the user pick Tapetide/Bharat/
-yfinance per request; that dropdown is gone, see "Frontend layout" below.)
-The split exists purely to cut Tapetide call volume: `bharat_provider`
-(Bharat-SM-Data) serves company info + raw financials for **every** search,
-free and unmetered, and Tapetide is reserved for the two things Bharat
-structurally can't provide at all — price history and analyst consensus —
-with `fallback_provider` (yfinance) silently taking over those two
-specifically when a user's Tapetide quota is exhausted. Neither endpoint
-takes a `source` query param anymore. `bharat_provider` and
-`fallback_provider` stay module-level singletons in `main.py` (they need no
-per-user credential); Tapetide does NOT — see "Bring-your-own Tapetide key"
-below for why every `TapetideProvider` is now constructed fresh, per
-request, from that request's own key rather than one shared instance.
+**Sourcing (revised 2026-07): Tapetide serves fundamentals, price history,
+AND analyst consensus for `/api/company` and `/api/price-history` — not
+Bharat-SM-Data.** This reverses the "hybrid sourcing" design described
+below in the git history: `bharat_provider` (Bharat-SM-Data, wrapping
+Tickertape's public JSON API) briefly served company info + raw financials
+for every search, free and unmetered, with Tapetide reserved for the two
+things Bharat structurally couldn't provide. That broke the moment the app
+deployed to Vercel — **Tickertape 403-blocks Vercel's cloud IP range** for
+its search/profile endpoints (confirmed live: every `/api/company` request
+came back a 502, `bharat_provider.resolve_symbol` raising
+`DataProviderError` with a `too many 403 error responses` cause), the same
+anti-bot posture already documented below for NSE's price-history API, just
+hitting the fundamentals path too this time. Tapetide, being a real metered
+API rather than a scraper, is unaffected (confirmed reachable from Vercel).
+`bharat_provider` is still wired in as a module-level singleton and still
+used by `get_recommendations` (the homepage suggestions, see "Homepage
+recommendations" below) — that endpoint has its own, separate, not-yet-
+resolved version of this same problem, since it depends on being callable
+before a Tapetide key exists. Don't route `/api/company`/`/api/price-history`
+back through Bharat-SM-Data without first re-verifying Tickertape's block is
+gone (the same discipline this file already asks for NSE's block on price
+history).
 
-- `GET /api/company/{query}` always calls `bharat_provider` for
-  `info`/`raw` (no fallback -- if Bharat itself fails, the request fails,
-  same as any single-provider error), computes `metric_groups`/
-  `health_snapshot` from that, then -- only if the request carried a
-  Tapetide key -- separately attempts
-  `TapetideProvider(tapetide_token).get_analyst_consensus(info.resolved_symbol)`,
-  falling back to `fallback_provider.get_analyst_consensus(...)` (yfinance,
-  via its own `resolve_symbol`) on `ProviderQuotaExceededError`. This
-  second half is best-effort: any failure (either provider, or simply no
-  key present) just leaves `analyst_consensus` / `consensus_source` as
-  `None` rather than failing the whole response -- third-party analyst data
-  is a bonus on top of the fundamentals, not core to them.
-- `GET /api/price-history/{symbol}` requires a Tapetide key (400 if
-  missing -- unlike analyst consensus above, price history IS core to what
-  this endpoint does) and always tries Tapetide first, falling back to
+- `GET /api/company/{query}` now requires a Tapetide key (400 if missing —
+  this is new; the old Bharat-only fundamentals path never needed one).
+  Fetches `info`/`raw` via `TapetideProvider(tapetide_token)`, falling back
+  to `fallback_provider` (yfinance) on `ProviderQuotaExceededError` — same
+  fallback shape `/api/price-history` already used. Analyst consensus stays
+  best-effort and reuses the *same* `TapetideProvider` instance (its
+  `_profile_cache` means fetching it costs only one more call,
+  `get_forecasts`, not a second profile fetch) — skipped entirely if
+  fundamentals already exhausted this key's quota this request, rather than
+  constructing a fresh instance that would just fail again while also
+  falsely inflating the local call counter (see `_call_tool`'s counter,
+  which increments before the network request even fires).
+- `GET /api/price-history/{symbol}` unchanged: requires a Tapetide key (400
+  if missing), always tries Tapetide first, falling back to
   `fallback_provider` (yfinance) on `ProviderQuotaExceededError`
   (`DataProviderError`'s quota-specific subclass; `tapetide_provider.py`
   raises it from `_call_tool` for both known quota signals — HTTP 429, and
@@ -132,18 +139,22 @@ request, from that request's own key rather than one shared instance.
   the endpoint returns a 502; an invalid key specifically
   (`InvalidTapetideKeyError`) returns 401.
 
-`info.resolved_symbol` -- Bharat's plain ticker (e.g. `"RELIANCE"`), not
-Tickertape's internal sid (`"RELI"`) that `bharat_sm_provider.py` uses
-internally -- is what gets chained into both the Tapetide consensus call and
+`info.resolved_symbol` -- Tapetide's own plain ticker (e.g. `"RELIANCE"`,
+from its `get_company_profile` response) -- is what gets chained into
 `/api/price-history/{symbol}` (called by the frontend with this same
-value). Verified live that Tapetide's tools accept this bare-ticker form
-directly, with no extra `resolve_symbol` round-trip needed on that side.
+value). `bharat_provider` still produces its own version of this same
+shape for `get_recommendations`, using Bharat's plain ticker rather than
+Tickertape's internal sid (`"RELI"`) that `bharat_sm_provider.py` uses
+internally -- but that code path no longer feeds `/api/company`.
 
 `CompanyFinancialsResponse.consensus_source: "tapetide" | "yfinance" | None`
 and `PriceHistoryResponse.active_source: "tapetide" | "yfinance"` report
 which provider served each of those two pieces (`DataSourceName` enum --
-Bharat isn't a member; fundamentals are never reported per-response since
-they always come from the same place now). Neither field drives any UI
+Bharat isn't a member). There's no equivalent `fundamentals_source` field
+even though fundamentals can now genuinely come from either Tapetide or the
+yfinance fallback, same as price history -- nothing in the frontend has
+ever needed to distinguish that for fundamentals specifically, so it was
+never added; add one if that changes. Neither existing field drives any UI
 control anymore (no dropdown to reflect them into) -- their only remaining
 job is populating `tapetide_reset_at` when a fallback happens, which feeds
 `CompanySearch.tsx`'s "Tapetide resets in Xh Ym" countdown
@@ -166,21 +177,26 @@ no server-side "calls remaining" API of its own. `TapetideProvider` counts
 every real `_call_tool` invocation (`get_quota_status()`; dev-cache hits
 from `DEV_CACHE_DIR` do NOT count, since those never reach the network),
 reset at local midnight -- the same cadence as Tapetide's own quota reset.
-**The count is persisted to `backend/.tapetide_quota_state.json`
-(gitignored), keyed by a hash of the token, on every increment, not just
-kept in memory** -- without this, any process restart (uvicorn `--reload`
-firing on a routine `.py` edit during dev, or any redeploy in production)
-would silently zero out "calls used today" back to the full quota,
-understating real usage right up until Tapetide's own 429 catches you by
-surprise. Keyed by token hash (never the raw token -- this file is plain
-JSON on disk) specifically because every user has their own key now: a
-single shared counter (the pre-multi-user design) would blend everyone's
-usage into one number, which is worse than useless once each person's key
-has its own independent 50-calls/day budget. This is separate, always-on
-bookkeeping, deliberately not gated behind `DEV_CACHE_DIR` (that's an
-opt-in response cache; this is a number the UI shows unconditionally).
-`main.py`'s `TAPETIDE_CALLS_PER_SEARCH` (currently 5: 2 for analyst
-consensus + 3 for price history, see the quota breakdown below) converts
+**The count is persisted to the `tapetide_quota` Postgres table (Neon, see
+"Accounts & activity tracking" below), keyed by a hash of the token, on
+every increment, not just kept in memory** -- without this, any process
+restart (uvicorn `--reload` firing on a routine `.py` edit during dev, a
+serverless cold start, or any redeploy in production) would silently zero
+out "calls used today" back to the full quota, understating real usage
+right up until Tapetide's own 429 catches you by surprise. This was a local
+JSON file (`backend/.tapetide_quota_state.json`) before the app moved to
+Vercel (2026-07) -- serverless functions have no persistent filesystem, so
+that file was silently wiped on every cold start, same problem the old
+SQLite file had. Keyed by token hash (never the raw token) specifically
+because every user has their own key now: a single shared counter (the
+pre-multi-user design) would blend everyone's usage into one number, which
+is worse than useless once each person's key has its own independent
+50-calls/day budget. This is separate, always-on bookkeeping, deliberately
+not gated behind `DEV_CACHE_DIR` (that's an opt-in response cache; this is
+a number the UI shows unconditionally).
+`main.py`'s `TAPETIDE_CALLS_PER_SEARCH` (currently 10: 6 for fundamentals +
+1 for analyst consensus + 3 for price history, see the quota breakdown
+below) converts
 the remaining-calls figure into a "~N searches left today" estimate. This
 constant is a hand-kept mirror of the real call sites in
 `get_company`/`get_price_history` -- recount it from those functions if you
@@ -208,17 +224,21 @@ against elsewhere (see the `HealthSnapshot` vs `AnalystConsensus`
 distinction at the top). Fundamentals themselves are solid where they
 exist — verified live against known Reliance/TCS figures, and this source's
 balance sheet actually breaks out current assets/liabilities separately
-(Tickertape's `balTca`/`balTcl`), unlike Tapetide's condensed format —
-which is precisely why Bharat-SM-Data now serves fundamentals for **every**
-search (see "Hybrid sourcing" above): liquidity ratios (current/quick/cash
-ratio, working capital) that showed as permanent "N/A" under the old
-Tapetide-only flow are now genuinely available. Because of the permanent
-price-history gap, `get_price_history`/`get_recent_price_history`/
-`get_analyst_consensus` on this provider are simply never called by
-`main.py` — Tapetide (with yfinance fallback) covers those two
-unconditionally instead, no per-request branching needed. Don't route
-price history or analyst consensus through this provider without
-re-verifying NSE's block is gone.
+(Tickertape's `balTca`/`balTcl`), unlike Tapetide's condensed format. That
+made it attractive for `/api/company` to use for a while (liquidity ratios
+that show as permanent "N/A" under Tapetide alone would have been genuinely
+available) — but Tickertape 403-blocks Vercel's cloud IP range for its own
+search/profile endpoints too (see "Sourcing" above), which is a second,
+independent anti-bot block from the NSE one described here, not the same
+one. `get_price_history`/`get_recent_price_history`/`get_analyst_consensus`
+on this provider are still never called by `main.py` (the permanent gap
+described above), and as of the Tickertape-block discovery,
+`get_company_info`/`get_raw_financials` aren't either -- `bharat_provider`
+is only still reachable through `get_recommendations` now (see "Homepage
+recommendations" below, which has this same blocking problem, unresolved).
+Don't route `/api/company` back through this provider without re-verifying
+Tickertape's block is gone, and don't route price history or analyst
+consensus through it without re-verifying NSE's separate block is gone.
 
 **Tapetide is consumed as plain JSON-RPC over HTTP, not via an MCP client
 library.** `tapetide_provider.py`'s module docstring documents every field
@@ -237,15 +257,18 @@ to know:
 - Banks/NBFCs report their P&L top line as "Revenue" instead of "Sales" (a
   structural difference in Indian financial-sector filings, not a data gap);
   the provider falls back to that field name.
-- The free tier is rate-limited (50 calls/day as of writing). Since
-  fundamentals moved to Bharat-SM-Data (see "Hybrid sourcing" above), a full
-  search now costs exactly **5 calls**, not the ~10 it cost when Tapetide
-  served everything: `/api/company`'s analyst-consensus fetch costs 2
-  (`get_company_profile`, cached 60s and fetched with `include=["ratings"]`
-  so rating data rides along free, + `get_forecasts` for the price target);
-  `/api/price-history` costs 3 (`get_price_history` × 2 for the 5-year
-  weekly merge, `get_recent_price_history` × 1, daily, for the 1D/5D period
-  buttons). That's **10 complete searches per day** on the free tier
+- The free tier is rate-limited (50 calls/day as of writing). A full search
+  costs **10 calls** (back up from a brief ~5-call window when fundamentals
+  lived on Bharat-SM-Data -- see "Sourcing" above for why that reverted):
+  `/api/company`'s fundamentals fetch costs 6 (`search_stocks` for
+  `resolve_symbol` + `get_company_profile`, cached 60s and fetched with
+  `include=["ratings"]` so rating data rides along free, + `get_financials`
+  × 3 for profit_loss/balance_sheet/ratios + `get_stock_ownership`), and its
+  analyst-consensus fetch costs 1 more (`get_forecasts` -- the profile is
+  already cached from fundamentals, so no second `get_company_profile`
+  call); `/api/price-history` costs 3 (`get_price_history` × 2 for the
+  5-year weekly merge, `get_recent_price_history` × 1, daily, for the 1D/5D
+  period buttons). That's **5 complete searches per day** on the free tier
   starting from zero usage — recount from the actual `_call_tool` call
   sites in this file (and update `main.py`'s `TAPETIDE_CALLS_PER_SEARCH`,
   which powers the `/api/quota` searches-remaining estimate) if you add/
@@ -365,6 +388,32 @@ keep it that way unless there's a concrete reason to add a CSS framework.
 Fonts: Inter (sans, UI) + Lora (serif, used sparingly for body/long-form
 explainer text), both loaded via Google Fonts in `index.html`.
 
+**Responsive breakpoints (`app.css`).** Built 2026-07 after a live phone-width
+audit (375px viewport) found two severely broken layouts: `.summary-row`'s
+2-column grid clipped the Analyst Consensus card off the right edge of the
+screen entirely, and `.recommended-companies-grid`'s inline `repeat(N, 1fr)`
+column count (set per-render in `RecommendedCompanies.tsx` so 3-5 cards
+always share one desktop row) squeezed name/ticker text unreadably at phone
+width. Fixes live in a dedicated "Responsive: phone-width screens" section
+at the end of `app.css`, plus the pre-existing 900px `.charts-row` stack
+above it:
+- `max-width: 640px` is the general phone cutoff — sidebar/header/search-bar
+  padding, calculator result/scenario grids (3-col → 1-col; three equal
+  columns leave too little width per currency value), and `.metric-card`
+  corner rounding (every card gets its own radius here, since `.metric-cards`
+  normally rounds only the grid's outer first/last child on the assumption
+  each group fits one row — an assumption `auto-fit` breaks once rows wrap
+  at phone width).
+- `max-width: 760px` stacks `.summary-row` to one column — needs a wider
+  cutoff than 640px since two side-by-side compact cards stop fitting
+  before a general single-column phone layout would kick in.
+- `.recommended-companies-grid`'s inline style needs `!important` in the
+  media query to override (only a stylesheet rule, not higher specificity,
+  beats an inline style) — 2 columns below 860px, 1 column below 520px.
+- `.settings-panel`/`.auth-panel` and the Tapetide key gate needed no
+  breakpoint — their existing `max-width: 90vw` / centered-card patterns
+  already adapted correctly, confirmed live rather than assumed.
+
 **`useTheme.ts` sets the `data-theme` attribute in a `useLayoutEffect`, not
 a plain `useEffect` — this one matters, don't "simplify" it back.**
 `PriceChart.tsx`/`PriceForecastChart.tsx` each have their own `[theme]`-
@@ -442,12 +491,21 @@ development:
   still computes and returns `verdict` unchanged — only the frontend's
   presentation of it changed.
 - **It must cost zero Tapetide quota.** `get_recommendations` is hardcoded
-  to always use `bharat_provider`, never Tapetide — this predates and
-  matches the "Hybrid sourcing" design above (fundamentals always come from
-  Bharat now, everywhere in the app, not just here), and conveniently means
-  the homepage works even before a visitor has entered a Tapetide key at
-  all (see "Bring-your-own Tapetide key" below). The response is cached
-  in-process, keyed by the calendar date (`_recommendations_cache`), so
+  to always use `bharat_provider`, never Tapetide — this predates the
+  Tickertape-IP-block discovery documented in "Sourcing" above, and as of
+  that discovery, is now **broken in production** (Vercel): every candidate
+  fetch fails the same way `/api/company` used to, so `companies` comes
+  back empty (confirmed live: `GET /api/recommendations` returns
+  `{"companies": []}`, no error, since `get_recommendations`'s per-candidate
+  `try/except Exception: continue` swallows the failure rather than
+  crashing the homepage). Unlike `/api/company`, this endpoint hasn't been
+  switched to Tapetide, because doing so would cost real quota AND require
+  a key — defeating the entire point of this feature (working before a
+  visitor has entered a Tapetide key at all, see "Bring-your-own Tapetide
+  key" below). This is a known, unresolved gap, not a silent regression to
+  "fix" by reaching for Bharat or Tapetide without discussing the tradeoff
+  with the user first. The response is cached in-process, keyed by the
+  calendar date (`_recommendations_cache`), so
   it's computed once per day, not once per page load.
 
 `_RECOMMENDATION_POOL` (20 large-cap NSE tickers spanning sectors) is
@@ -464,7 +522,7 @@ Bharat-sourced badge never influences which provider answers the click.
 (2026-07) The only piece of genuinely persistent, user-specific state in
 this app -- everything else is either fetched live from a provider or an
 in-process cache that resets on restart (well, quota tracking is the
-exception there too, see `tapetide_provider.py`'s `_QUOTA_STATE_PATH`).
+exception there too, see `tapetide_provider.py`'s `tapetide_quota` table).
 
 **Sign-in is additive, never a gate.** Every feature in this app works
 fully signed-out, exactly as before this existed. Signing in (via the
@@ -474,21 +532,28 @@ endpoint require auth without discussing it with the user first -- that
 would be a real product change (turning an open tool into a walled one),
 not just an implementation detail.
 
-**Storage is SQLite (`backend/app.db`, gitignored), not Postgres/MySQL.**
-This app had zero database before this feature, and a single on-disk file
-needs no separate server process to run -- consistent with the project's
-existing bias against adding infrastructure (see the dev-only response
-caches in `tapetide_provider.py`/`bharat_sm_provider.py`, both plain files
-on disk, same reasoning). `db.py` creates three tables on startup (`users`,
-`sessions`, `activity_log`) via a plain `sqlite3.executescript` -- no ORM,
-deliberately; three small tables don't need one.
+**Storage is Postgres (Neon's free tier), not SQLite anymore.** This was
+SQLite (`backend/app.db`, gitignored) originally -- a single on-disk file
+needing no separate server process, consistent with the project's bias
+against adding infrastructure (see the dev-only response caches in
+`tapetide_provider.py`/`bharat_sm_provider.py`, both plain files on disk,
+same reasoning). That stopped working once the app moved to Vercel (2026-07,
+see "Deployment" below): serverless functions have no persistent local
+filesystem, so anything written to disk -- the SQLite file, and
+`tapetide_provider.py`'s old quota-tracking JSON file -- was silently wiped
+on every cold start/redeploy. Neon specifically because its free tier is
+permanent (not a trial) and needs no credit card. `db.py` creates four
+tables on startup (`users`, `sessions`, `activity_log`, `tapetide_quota`)
+via plain `psycopg` (v3) -- no ORM, deliberately; four small tables don't
+need one. Uses `row_factory=dict_row` so call sites still do `row["col"]`,
+same as `sqlite3.Row` did before.
 
 **Auth is session tokens in a DB table, not a JWT.** `auth_service.py`
 issues an opaque `secrets.token_urlsafe(32)` on signup/login, stored
 server-side in `sessions` with a 30-day expiry. Every request needing auth
 does a DB lookup rather than verifying a signature -- the right tradeoff at
-this scale (SQLite, a handful of users), since it makes revocation ("sign
-out everywhere") trivial (delete the row), which a stateless JWT can't do
+this scale (a handful of users), since it makes revocation ("sign out
+everywhere") trivial (delete the row), which a stateless JWT can't do
 without extra machinery. The frontend stores the token in `localStorage`
 (`lib/auth.ts`) and `lib/api.ts`'s `authHeaders()` attaches it to every
 request as `Authorization: Bearer <token>` automatically -- no per-call-site
@@ -572,8 +637,13 @@ their token.
 
 ## Environment variables
 
-Backend reads from `backend/.env` (see `backend/.env.example`):
+Backend reads from `backend/.env` locally (see `backend/.env.example`), or
+from Vercel project environment variables in production:
 
+- `DATABASE_URL` — required. Neon Postgres connection string (free tier, no
+  credit card) backing user accounts, sessions, activity logs, and Tapetide
+  quota tracking — see "Deployment" and "Accounts & activity tracking"
+  above. Use the **pooled** connection string, not the direct one.
 - `MOONSHOT_API_KEY` — required for the chat assistant to function. Get one
   at https://platform.kimi.ai
 - **No Tapetide key here** — see "Bring-your-own Tapetide key" above.
@@ -609,16 +679,22 @@ vars containing secrets — it only needs the backend's base URL.
 
 ## Known constraints / things not to "fix" without asking
 
-- **Fundamentals come from Bharat-SM-Data deliberately, price history and
-  analyst consensus from Tapetide deliberately** (see "Hybrid sourcing"
-  above and both providers' docstrings) — this is a fixed architectural
-  split, not something to "simplify" back to a single provider or make
-  user-selectable again. Tapetide's free tier is rate-limited (50 calls/day
-  at time of writing); both endpoints fall back to `YFinanceProvider`
-  automatically for the two things Tapetide covers when that quota is hit.
-  Some fields can still be genuinely unavailable depending on which
-  provider answered a given piece (e.g. analyst consensus is `None` if both
-  Tapetide and yfinance fail for it) — this is expected and documented, not
+- **Fundamentals, price history, and analyst consensus all come from
+  Tapetide deliberately now** (see "Sourcing" above and both providers'
+  docstrings) — this is a live production workaround for Tickertape
+  blocking Vercel's IPs, not a preference, and it costs real quota (10
+  calls/search instead of the ~5 a brief Bharat-fundamentals window had).
+  Don't "simplify" this back to Bharat-SM-Data for fundamentals, or make
+  sourcing user-selectable again, without first re-verifying live from an
+  actual Vercel deployment (not local dev, where Tickertape may work fine)
+  that the block is gone. Tapetide's free tier is rate-limited (50
+  calls/day at time of writing); all three fall back to `YFinanceProvider`
+  automatically when that quota is hit. Some fields can still be genuinely
+  unavailable depending on which provider answered a given piece (e.g.
+  analyst consensus is `None` if both Tapetide and yfinance fail for it,
+  and liquidity ratios are `None` regardless of provider now that
+  fundamentals aren't Bharat's fuller balance sheet -- see "Tapetide is
+  consumed as plain JSON-RPC" above) — this is expected and documented, not
   a bug to silently patch around with fabricated data. Missing fields
   should surface as "data unavailable for this metric," never a guessed
   value.
@@ -652,6 +728,59 @@ vars containing secrets — it only needs the backend's base URL.
   tool (fuzzy name/symbol/ISIN matching across ~8,200 NSE/BSE stocks), not a
   hardcoded lookup. Users can always type an explicit symbol (e.g. "RELIANCE")
   as a reliable fallback; `.NS`/`.BO` suffixes are stripped if present.
+
+## Deployment
+
+(2026-07) Deployed as a single Vercel project -- both the frontend and the
+backend, not split across two services. This follows directly from
+`lib/api.ts`'s `BASE_URL = "/api"` already being a same-origin relative
+path (written that way for the dev proxy in `vite.config.ts`, but it works
+unchanged in production too as long as both pieces share one domain).
+
+- **Frontend**: built via `vercel.json`'s `buildCommand`
+  (`cd frontend && npm install && npm run build`) and served as a static
+  site from `frontend/dist`.
+- **Backend**: `api/index.py` is the one file Vercel's Python builder needs
+  -- it just puts `backend/` on `sys.path` and re-exports FastAPI's `app`
+  object from `main.py` unchanged (FastAPI is ASGI, which Vercel's Python
+  runtime handles natively, no adapter). `vercel.json` rewrites every
+  `/api/*` request to this one function while preserving the original path,
+  so FastAPI's own route decorators (already written as e.g.
+  `"/api/company/{query}"`) match exactly as they do locally. A root-level
+  `requirements.txt` (`-r backend/requirements.txt`) exists only because
+  Vercel's Python builder looks for that file at the project root --
+  `backend/requirements.txt` stays the real, single source of truth.
+- **Why not two separate services** (frontend on Vercel, backend on
+  something else): investigated first. Every free tier with a real
+  persistent disk (Render, Fly.io, Railway) either dropped its free tier
+  entirely (now requires a card) or never had persistent storage on the
+  free plan to begin with (Render's free web services have an ephemeral
+  filesystem with no disk add-on available) -- see the Postgres migration
+  below for how persistence is actually handled instead. Once storage
+  no longer needs local disk, running the backend as Vercel functions
+  alongside the frontend is simpler than managing two platforms, and avoids
+  CORS entirely (same origin).
+- **`vercel.json`'s `maxDuration: 60`** (the max Vercel's Hobby tier allows
+  without enabling Fluid compute) gives headroom for `/api/company`'s worst
+  case -- a Bharat-SM-Data fetch followed by up to two sequential Tapetide
+  calls (each with its own 15s `requests` timeout in `tapetide_provider.py`)
+  -- rather than the Hobby default, which has been too short for this in
+  practice.
+- **Persistence moved to Neon Postgres** (see "Accounts & activity
+  tracking" and the quota-tracking section above) specifically because
+  Vercel's serverless functions have no persistent local filesystem --
+  anything written to disk (the old SQLite file, the old quota-tracking
+  JSON file) is wiped on every cold start/redeploy. Neon's free tier is
+  permanent and needs no credit card, unlike every "backend host with a
+  real disk" option that was considered first.
+- **`DATABASE_URL`** must be set as a Vercel project environment variable
+  (Project Settings -> Environment Variables), using Neon's **pooled**
+  connection string (the `-pooler` hostname, backed by PgBouncer) rather
+  than the direct one -- this app opens a fresh `psycopg` connection per
+  request (see `db.py`), which is exactly the "many short-lived serverless
+  connections" pattern the pooler exists for.
+- No Tapetide key is ever a Vercel env var, same as it never was a
+  `backend/.env` var -- see "Bring-your-own Tapetide key" below.
 
 ## Running locally
 
