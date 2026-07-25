@@ -30,6 +30,9 @@ interface AnalystTargets {
   mean: number;
   high: number;
   period: string | null;
+  // "YYYY-MM-DD" -- lets computeForecastRate turn the mean target into an
+  // annualized rate (needs to know how far out the target actually is).
+  targetDate: string | null;
 }
 
 interface PickedStock {
@@ -51,10 +54,16 @@ interface PickedStock {
   metricGroups: MetricGroup[];
 }
 
-interface HistoricalRate {
+interface ProjectionRate {
   ratePct: number;
-  actualYears: number;
+  spanYears: number;
   clamped: boolean; // true if we didn't have enough history and used the oldest point available
+  // "forecast": annualized from the analyst consensus mean target (what
+  // sell-side analysts expect going forward). "historical": annualized
+  // from the stock's own trailing 1yr price history -- only used as a
+  // fallback when a stock has no analyst coverage to derive a forecast
+  // rate from. The two are never blended -- see computeProjectionRate.
+  source: "forecast" | "historical";
 }
 
 // Finds the price point closest to `targetDate`, clamping to the oldest
@@ -73,22 +82,44 @@ function closestPoint(series: PricePoint[], targetTime: number): PricePoint {
   return closest;
 }
 
-// Fixed ~1-year lookback for "historical annual return" -- deliberately
-// NOT tied to whatever "Time period" the user is projecting forward with.
-// It used to be (targetDays = periodInYears * 365.25), which was a real
+// Preferred rate source for the main projection tiles: the analyst
+// consensus mean target, annualized from today to the target date. This is
+// forward-looking, same direction as the "Analyst price target scenario"
+// section below (which uses the same mean target) -- so the main tiles and
+// that section can no longer point in opposite directions the way a
+// trailing *historical* rate could (a stock can easily have had a down
+// year while analysts expect a recovery, which produced exactly that
+// "why is my gain negative when the forecast is positive" confusion in
+// practice). Only used when a target date + mean target both exist; falls
+// back to computeHistoricalRate otherwise (some stocks have no analyst
+// coverage at all -- see AnalystTargets).
+function computeForecastRate(stock: PickedStock): ProjectionRate | null {
+  const targets = stock.analystTargets;
+  const basePrice = stock.currentPrice;
+  if (!targets || !targets.targetDate || !basePrice || basePrice <= 0 || targets.mean <= 0) return null;
+
+  const targetTime = new Date(targets.targetDate).getTime();
+  const spanYears = (targetTime - Date.now()) / (365.25 * 86_400_000);
+  if (spanYears <= 0) return null; // a target date that's already passed -- don't divide by ~0
+
+  const ratePct = (Math.pow(targets.mean / basePrice, 1 / spanYears) - 1) * 100;
+  return { ratePct, spanYears, clamped: false, source: "forecast" };
+}
+
+// Fallback rate source, used only when a stock has no analyst coverage to
+// derive computeForecastRate from. Fixed ~1-year lookback, deliberately
+// NOT tied to whatever "Time period" the user is projecting forward with
+// -- it used to be (targetDays = periodInYears * 365.25), which was a real
 // bug: picking a short projection period like "1 Month" made this
 // annualize a mere 30-day price window, and CAGR math massively amplifies
-// short-term noise over a short window -- a perfectly real ~7% move over
-// 30 days compounds to a headline "133% annual return", which is
-// statistically meaningless as an annual rate and produced Future Value/
-// Total Gain tiles that didn't intuitively line up with the (differently-
-// horizoned, see the scenarios section below) analyst price target
-// numbers. A trailing 1-year window is what "annual return" conventionally
-// means for a stock, and keeps this number stable regardless of how short
-// a forward period someone types.
+// short-term noise over a short window (a perfectly real ~7% move over 30
+// days compounds to a headline "133% annual return"). A trailing 1-year
+// window is what "annual return" conventionally means for a stock, and
+// keeps this number stable regardless of how short a forward period
+// someone types.
 const HISTORICAL_RATE_LOOKBACK_DAYS = 365.25;
 
-function computeHistoricalRate(stock: PickedStock): HistoricalRate | null {
+function computeHistoricalRate(stock: PickedStock): ProjectionRate | null {
   const series = stock.points;
   if (series.length < 2) return null;
 
@@ -98,16 +129,20 @@ function computeHistoricalRate(stock: PickedStock): HistoricalRate | null {
   const past = closestPoint(series, targetTime);
   const pastTime = new Date(past.date).getTime();
 
-  const actualYears = (latestTime - pastTime) / (365.25 * 86_400_000);
-  if (actualYears <= 0 || past.close <= 0) return null;
+  const spanYears = (latestTime - pastTime) / (365.25 * 86_400_000);
+  if (spanYears <= 0 || past.close <= 0) return null;
 
-  const ratePct = (Math.pow(latest.close / past.close, 1 / actualYears) - 1) * 100;
+  const ratePct = (Math.pow(latest.close / past.close, 1 / spanYears) - 1) * 100;
   // Clamped means the 1-year lookback ran off the start of the series
   // (a recently-listed stock with under a year of history) -- NOT just
   // "the nearest weekly-spaced point wasn't exactly on the target date,"
   // which is normal and expected for weekly-resolution data.
   const earliestTime = new Date(series[0].date).getTime();
-  return { ratePct, actualYears, clamped: targetTime < earliestTime };
+  return { ratePct, spanYears, clamped: targetTime < earliestTime, source: "historical" };
+}
+
+function computeProjectionRate(stock: PickedStock): ProjectionRate | null {
+  return computeForecastRate(stock) ?? computeHistoricalRate(stock);
 }
 
 function toNumber(raw: string): number {
@@ -208,7 +243,7 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
   const [stockLoading, setStockLoading] = useState(false);
   const [stockError, setStockError] = useState<string | null>(null);
   const [pickedStock, setPickedStock] = useState<PickedStock | null>(null);
-  const [historicalRate, setHistoricalRate] = useState<HistoricalRate | null>(null);
+  const [projectionRate, setProjectionRate] = useState<ProjectionRate | null>(null);
 
   // "Shares" mode only makes sense once we know a real share price to
   // convert against -- falls back to "amount" automatically if there's no
@@ -224,21 +259,21 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
   const r = toNumber(rate);
   const periodInYears = Math.max(0, toNumber(periodValue)) * UNIT_TO_YEARS[periodUnit];
 
-  // Re-derive the picked stock's real historical return whenever the picked
-  // stock changes, and feed it straight into the rate field -- this is the
-  // ONLY thing that sets `rate` now (the field is read-only, see below), so
-  // a null result must reset it to "0" rather than silently leaving behind
-  // a stale number computed for a different stock. Deliberately NOT
-  // re-derived when the time period changes anymore (see
-  // computeHistoricalRate's comment) -- the rate is a fixed ~1yr trailing
-  // figure, independent of how far forward the user is projecting.
+  // Re-derive the picked stock's projection rate whenever the picked stock
+  // changes, and feed it straight into the rate field -- this is the ONLY
+  // thing that sets `rate` now (the field is read-only, see below), so a
+  // null result must reset it to "0" rather than silently leaving behind a
+  // stale number computed for a different stock. Deliberately NOT
+  // re-derived when the time period changes (see computeHistoricalRate's
+  // comment) -- whichever source is used, it's a fixed annualized figure,
+  // independent of how far forward the user is projecting.
   useEffect(() => {
     if (!pickedStock) {
-      setHistoricalRate(null);
+      setProjectionRate(null);
       return;
     }
-    const result = computeHistoricalRate(pickedStock);
-    setHistoricalRate(result);
+    const result = computeProjectionRate(pickedStock);
+    setProjectionRate(result);
     setRate(result ? result.ratePct.toFixed(1) : "0");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickedStock]);
@@ -255,7 +290,13 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
       const consensus = company.analyst_consensus;
       const analystTargets: AnalystTargets | null =
         consensus && consensus.target_low !== null && consensus.target_mean !== null && consensus.target_high !== null
-          ? { low: consensus.target_low, mean: consensus.target_mean, high: consensus.target_high, period: consensus.target_period }
+          ? {
+              low: consensus.target_low,
+              mean: consensus.target_mean,
+              high: consensus.target_high,
+              period: consensus.target_period,
+              targetDate: consensus.target_date,
+            }
           : null;
       setPickedStock({
         name: company.info.company_name,
@@ -280,7 +321,7 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
 
   function clearStock() {
     setPickedStock(null);
-    setHistoricalRate(null);
+    setProjectionRate(null);
     setStockError(null);
     setInvestmentMode("amount");
   }
@@ -351,8 +392,8 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
       <div className="calculator-card">
         <h2>Return Calculator</h2>
         <p className="calculator-subtitle">
-          Estimate how a lump-sum investment could grow, based on a real stock's actual
-          historical return.
+          Estimate how a lump-sum investment could grow, based on a real stock's analyst
+          price target (or its own historical return, if it has no analyst coverage).
         </p>
 
         <div className="calculator-stock-picker">
@@ -454,8 +495,18 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
               </div>
 
               <label className="calculator-field">
-                <span>{pickedStock.ticker}'s historical annual return</span>
-                <div className="calculator-input-wrap locked" title="Computed from real price history -- not editable">
+                <span>
+                  {pickedStock.ticker}'s {projectionRate?.source === "historical" ? "historical" : "analyst-implied"}{" "}
+                  annual return
+                </span>
+                <div
+                  className="calculator-input-wrap locked"
+                  title={
+                    projectionRate?.source === "historical"
+                      ? "Computed from real price history -- not editable"
+                      : "Computed from the analyst consensus price target -- not editable"
+                  }
+                >
                   <input type="number" value={rate} readOnly tabIndex={-1} />
                   <span className="calculator-input-suffix">%</span>
                   <svg
@@ -471,17 +522,26 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
                     <path d="M8 11V7.5a4 4 0 1 1 8 0V11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                   </svg>
                 </div>
-                {historicalRate ? (
+                {projectionRate ? (
                   <span className="calculator-field-note">
-                    {pickedStock.ticker} actually returned this annually over its last{" "}
-                    {historicalRate.actualYears >= 1
-                      ? `${historicalRate.actualYears.toFixed(1)} years`
-                      : `${Math.round(historicalRate.actualYears * 365)} days`}
-                    {historicalRate.clamped ? " (all the price history available)" : ""}.
+                    {projectionRate.source === "forecast" ? (
+                      <>
+                        Implied by analysts' mean price target for {pickedStock.ticker}
+                        {targets?.period ? ` (${targets.period})` : ""}, annualized.
+                      </>
+                    ) : (
+                      <>
+                        No analyst coverage for {pickedStock.ticker} -- using its own actual return over the last{" "}
+                        {projectionRate.spanYears >= 1
+                          ? `${projectionRate.spanYears.toFixed(1)} years`
+                          : `${Math.round(projectionRate.spanYears * 365)} days`}
+                        {projectionRate.clamped ? " (all the price history available)" : ""} instead.
+                      </>
+                    )}
                   </span>
                 ) : (
                   <span className="calculator-field-note">
-                    Not enough price history for {pickedStock.ticker} to compute this.
+                    Not enough data for {pickedStock.ticker} to compute this.
                   </span>
                 )}
               </label>
@@ -522,13 +582,14 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
 
             {/* Labeled with its own horizon for the same reason the
                 scenario section below labels "for FY2027..." -- this
-                section projects over whatever "Time period" was typed
-                above (here, driven by the fixed ~1yr historical rate,
-                see computeHistoricalRate), while the scenario section
-                below always projects to a separate, fixed analyst-target
-                date. Making both horizons visible side by side is what
-                makes the two sections' numbers comparable at a glance,
-                instead of silently using different timeframes. */}
+                section projects the rate above (now forecast-derived
+                when available, see computeProjectionRate) over whatever
+                "Time period" was typed here, while the scenario section
+                below always shows the actual, non-extrapolated analyst
+                target at its own real (fixed) target date. Making both
+                horizons visible side by side is what makes the two
+                sections' numbers comparable at a glance, instead of
+                silently using different timeframes. */}
             <div className="calculator-field-header">
               <span>
                 Projected over {Math.max(0, toNumber(periodValue)).toLocaleString("en-IN")}{" "}
@@ -605,8 +666,18 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
             )}
 
             <div className="calculator-disclaimer">
-              Historical return is computed from {pickedStock.ticker}'s actual past prices, but past performance
-              never guarantees future returns. Not investment advice.
+              {projectionRate?.source === "forecast" ? (
+                <>
+                  The rate above is implied by third-party analysts' price target for {pickedStock.ticker}, not
+                  FinAI Metrics' own view -- analyst targets are estimates and frequently don't play out. Not
+                  investment advice.
+                </>
+              ) : (
+                <>
+                  The rate above is computed from {pickedStock.ticker}'s actual past prices, but past performance
+                  never guarantees future returns. Not investment advice.
+                </>
+              )}
             </div>
           </>
         )}
