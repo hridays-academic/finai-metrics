@@ -1466,6 +1466,36 @@
   text-align: center;
 }
 
+/* "or" divider between the password form and the Google Sign-In button
+   below it -- a plain centered label on a horizontal rule through it,
+   the standard pattern for "two ways to do the same thing" in a form. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.2rem 0;
+  color: var(--text-tertiary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+/* Google's own rendered button (see GoogleSignInButton.tsx) sizes itself
+   via GSI's own `width` option -- this just centers that fixed-width
+   button within the wider form column around it. */
+.google-signin-button {
+  display: flex;
+  justify-content: center;
+}
+
 .auth-user-summary {
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-subtle);

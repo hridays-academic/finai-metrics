@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
-import { signUp, logIn, logOut, fetchActivity, ApiError } from "../lib/api";
+import { signUp, logIn, logOut, loginWithGoogle, fetchActivity, ApiError } from "../lib/api";
 import { setAuthToken, clearAuthToken } from "../lib/auth";
 import type { ActivityEntry, UserPublic } from "../lib/types";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 interface AuthPanelProps {
   user: UserPublic | null;
@@ -58,6 +59,20 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
     setError(null);
     try {
       const res = mode === "signup" ? await signUp(email, name, password) : await logIn(email, password);
+      setAuthToken(res.token);
+      onAuthChange(res.user);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleCredential(credential: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await loginWithGoogle(credential);
       setAuthToken(res.token);
       onAuthChange(res.user);
     } catch (err) {
@@ -157,6 +172,13 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
             <button type="submit" className="search-button auth-submit" disabled={loading}>
               {loading ? "..." : mode === "signup" ? "Create Account" : "Sign In"}
             </button>
+
+            {/* Renders nothing if VITE_GOOGLE_CLIENT_ID isn't configured --
+                see GoogleSignInButton.tsx. */}
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
+            <GoogleSignInButton onCredential={handleGoogleCredential} />
           </form>
         )}
       </div>

@@ -73,6 +73,21 @@ _SCHEMA_STATEMENTS = [
     # script -- consistent with this file's existing "idempotent, safe to
     # call on every cold start" schema model.
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS tapetide_key_encrypted TEXT",
+    # Added 2026-07 -- Google Sign-In (see auth_service.py's
+    # login_with_google). NULL for every password-based account; UNIQUE so
+    # the same Google account can never back two different rows. Matched
+    # first, before falling back to email (see login_with_google) -- an
+    # email match links Google Sign-In onto an existing password account
+    # rather than creating a duplicate.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT UNIQUE",
+    # password_hash/password_salt were NOT NULL from the original
+    # password-only design -- a Google-created account has neither (it
+    # never sets a password at all, not even a random unusable one, so
+    # there's nothing to accidentally guess). DROP NOT NULL is naturally
+    # idempotent (a no-op if already nullable), same safety property as the
+    # ADD COLUMN IF NOT EXISTS statements above.
+    "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL",
+    "ALTER TABLE users ALTER COLUMN password_salt DROP NOT NULL",
 ]
 
 

@@ -47,7 +47,13 @@ export default function SettingsPanel({
     setError(null);
     setPassword("");
     setNewKey("");
-    setKeyStep(user ? "verify" : "edit");
+    // Google-only accounts (user.has_password === false) have nothing to
+    // verify a password against -- /api/auth/login would always fail for
+    // them, permanently locking them out of this flow if they landed on
+    // "verify" anyway. Skip straight to the key field, same as anonymous
+    // visitors get: the already-authenticated session stands in for that
+    // check in the Google case.
+    setKeyStep(user && user.has_password ? "verify" : "edit");
   }
 
   function cancelConfigure() {

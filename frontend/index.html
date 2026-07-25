@@ -11,6 +11,11 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap"
       rel="stylesheet"
     />
+    <!-- Google Identity Services (GSI) -- renders the actual Sign in with
+         Google button (lib/googleAuth.ts wires it up) and hands back an ID
+         token JWT, which main.py's /api/auth/google verifies server-side.
+         No client secret involved anywhere in this flow. -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <div id="root"></div>

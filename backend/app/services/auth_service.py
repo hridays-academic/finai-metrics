@@ -23,6 +23,16 @@ own Tapetide key" section for the history), made because logging in from a
 new browser/device otherwise means re-entering the key every time. Still
 opt-in: `TapetideKeyGate.tsx` always offers "Continue without an account,"
 which never touches this at all.
+
+(2026-07) **Google Sign-In** (`login_with_google`) is a second way into an
+account, alongside email+password -- `main.py`'s `/api/auth/google`
+verifies the Google ID token first (this file trusts its inputs, doesn't
+re-verify anything), then this just finds-or-creates a user by `google_id`
+(falling back to a match on `email`, which links Google Sign-In onto an
+existing password account rather than creating a duplicate -- safe since
+Google already vouched for that email). A Google-created account has no
+password at all (`password_hash`/`password_salt` are nullable now, see
+db.py) -- it never sets one, so there's nothing to guess or leak.
 """
 import hashlib
 import re
@@ -96,7 +106,11 @@ def sign_up(email: str, name: str, password: str) -> tuple[int, str]:
     password_hash = _hash_password(password, salt)
 
     with get_conn() as conn:
-        existing = conn.execute("SELECT id FROM users WHERE email = %s", (email,)).fetchone()
+        existing = conn.execute(
+            "SELECT id, google_id FROM users WHERE email = %s", (email,)
+        ).fetchone()
+        if existing and existing["google_id"]:
+            raise AuthError("An account with that email already exists -- sign in with Google instead.")
         if existing:
             raise AuthError("An account with that email already exists. Try signing in instead.")
         # Postgres has no cursor.lastrowid (that's a sqlite3-ism) -- RETURNING
@@ -119,9 +133,14 @@ def log_in(email: str, password: str) -> tuple[int, str]:
         row = conn.execute(
             "SELECT id, password_hash, password_salt FROM users WHERE email = %s", (email,)
         ).fetchone()
-    # Same error for "no such user" and "wrong password" -- don't reveal
-    # which one it was, standard practice to avoid leaking valid emails.
-    if not row:
+    # Same error for "no such user", "wrong password", and "this account
+    # was created via Google and has no password at all" -- don't reveal
+    # which one it was, standard practice to avoid leaking valid emails
+    # (and doesn't hint that a given address should try Google Sign-In
+    # instead). A Google-only account's password_hash/password_salt are
+    # both NULL (see db.py) -- checking that up front avoids a crash on
+    # bytes.fromhex(None) below.
+    if not row or not row["password_hash"] or not row["password_salt"]:
         raise AuthError("Incorrect email or password.")
     salt = bytes.fromhex(row["password_salt"])
     if _hash_password(password, salt) != row["password_hash"]:
@@ -130,6 +149,36 @@ def log_in(email: str, password: str) -> tuple[int, str]:
     token = _create_session(row["id"])
     _log_activity(row["id"], "logged_in", None)
     return row["id"], token
+
+
+def login_with_google(email: str, name: str, google_id: str) -> tuple[int, str]:
+    """Finds-or-creates a user from an already-verified Google ID token
+    (main.py's /api/auth/google does the actual verification before
+    calling this). Matches on google_id first -- the stable identifier --
+    falling back to email so a Google sign-in for an address that already
+    has a password account links onto it instead of creating a duplicate.
+    Returns (user_id, session_token), same shape as sign_up/log_in."""
+    email = email.strip().lower()
+    name = name.strip() or email
+    with get_conn() as conn:
+        row = conn.execute("SELECT id FROM users WHERE google_id = %s", (google_id,)).fetchone()
+        is_new = False
+        if not row:
+            row = conn.execute("SELECT id FROM users WHERE email = %s", (email,)).fetchone()
+            if row:
+                conn.execute("UPDATE users SET google_id = %s WHERE id = %s", (google_id, row["id"]))
+        if not row:
+            cursor = conn.execute(
+                "INSERT INTO users (email, name, google_id) VALUES (%s, %s, %s) RETURNING id",
+                (email, name, google_id),
+            )
+            row = cursor.fetchone()
+            is_new = True
+
+    user_id = row["id"]
+    token = _create_session(user_id)
+    _log_activity(user_id, "signed_up" if is_new else "logged_in", "via Google")
+    return user_id, token
 
 
 def _create_session(user_id: int) -> str:
@@ -149,20 +198,23 @@ def log_out(token: str) -> None:
 
 
 def get_user_from_token(token: str) -> Optional[dict]:
-    """Returns {id, email, name, created_at, tapetide_key} for a valid,
-    unexpired session, else None. Never raises -- callers treat auth as
-    optional (see main.py's activity logging), so an invalid/expired/
-    missing token just means "anonymous", not an error. `tapetide_key` is
-    the decrypted, ready-to-use key (or None if this account never saved
-    one) -- see save_tapetide_key/get_tapetide_key above; this is what lets
-    TapetideKeyGate.tsx skip key entry entirely for a returning signed-in
-    user."""
+    """Returns {id, email, name, created_at, has_password, tapetide_key}
+    for a valid, unexpired session, else None. Never raises -- callers
+    treat auth as optional (see main.py's activity logging), so an
+    invalid/expired/missing token just means "anonymous", not an error.
+    `tapetide_key` is the decrypted, ready-to-use key (or None if this
+    account never saved one) -- see save_tapetide_key/get_tapetide_key
+    above; this is what lets TapetideKeyGate.tsx skip key entry entirely
+    for a returning signed-in user. `has_password` is False for a Google-
+    only account (see login_with_google) -- SettingsPanel.tsx needs it to
+    decide whether reconfiguring a saved key requires a password-
+    verification step first."""
     if not token:
         return None
     with get_conn() as conn:
         row = conn.execute(
             """
-            SELECT u.id, u.email, u.name, u.created_at, s.expires_at
+            SELECT u.id, u.email, u.name, u.created_at, u.password_hash, s.expires_at
             FROM sessions s JOIN users u ON u.id = s.user_id
             WHERE s.token = %s
             """,
@@ -177,6 +229,7 @@ def get_user_from_token(token: str) -> Optional[dict]:
         "email": row["email"],
         "name": row["name"],
         "created_at": row["created_at"],
+        "has_password": row["password_hash"] is not None,
         "tapetide_key": get_tapetide_key(row["id"]),
     }
 

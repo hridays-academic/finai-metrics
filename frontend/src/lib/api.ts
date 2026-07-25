@@ -175,6 +175,24 @@ export async function logIn(email: string, password: string): Promise<AuthRespon
   return res.json();
 }
 
+// Called with the raw ID token JWT from Google Identity Services'
+// credential callback (see lib/googleAuth.ts) -- main.py's /api/auth/google
+// verifies it server-side before ever trusting it. Same response shape as
+// signUp/logIn, so callers (AuthPanel.tsx, TapetideKeyGate.tsx) treat all
+// three interchangeably.
+export async function loginWithGoogle(credential: string): Promise<AuthResponse> {
+  const res = await fetch(`${BASE_URL}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ credential }),
+  });
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+  return res.json();
+}
+
 export async function logOut(): Promise<void> {
   await fetch(`${BASE_URL}/auth/logout`, { method: "POST", headers: authHeaders() });
 }

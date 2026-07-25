@@ -42,6 +42,16 @@ class Settings(BaseSettings):
     # plaintext.
     encryption_key: Optional[str] = None
 
+    # Google OAuth Client ID (see auth_service.py / main.py's /api/auth/google
+    # and frontend/src/lib/googleAuth.ts) -- the SAME value the frontend uses
+    # as VITE_GOOGLE_CLIENT_ID (Client IDs are public by design, safe in
+    # frontend bundle code). Required backend-side too: verify_oauth2_token
+    # checks the ID token's audience against this value, which is what
+    # actually prevents a token minted for some other app from being
+    # accepted here. No client secret anywhere -- the ID-token flow (Google
+    # Identity Services' `credential` callback) never needs one.
+    google_client_id: Optional[str] = None
+
     # NOT a server-side secret anymore (2026-07) -- Tapetide (NSE/BSE quotes,
     # financials, ratios) is now bring-your-own-key: every user enters their
     # own Tapetide API key client-side, sent per-request as the

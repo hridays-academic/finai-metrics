@@ -692,6 +692,49 @@ field, since their key was never protected by anything beyond
 `saveTapetideKeyToAccount`/`validateTapetideKey` functions
 `TapetideKeyGate.tsx` already uses.
 
+**Google Sign-In (2026-07) is a second way into an account, not a
+replacement for email+password.** Deliberately Google-only, not
+Google+Apple — Apple Sign-In requires enrolling in Apple's paid Developer
+Program ($99/year), which is a real cost decision left with the user
+rather than defaulted into quietly (same posture as "If it requires money,
+tell me before doing anything" elsewhere in this project's history).
+- **No client secret anywhere.** Uses Google Identity Services' (GSI) ID-
+  token flow: `frontend/src/lib/googleAuth.ts` renders Google's own button
+  (`google.accounts.id.renderButton`, loaded via the `<script>` tag in
+  `index.html`) and gets back a signed JWT (`credential`) in its callback —
+  that's it client-side, no popup/redirect flow to wire up. `main.py`'s
+  `POST /api/auth/google` is what actually verifies it
+  (`google.oauth2.id_token.verify_oauth2_token`, checking signature,
+  expiry, and that the token's audience matches `GOOGLE_CLIENT_ID` — i.e.
+  this token really was minted for this app). `GOOGLE_CLIENT_ID` is the
+  *same* value on both sides deliberately: it's a public identifier, safe
+  in frontend bundle code (as `VITE_GOOGLE_CLIENT_ID`), unlike a secret.
+- **`auth_service.py`'s `login_with_google`** finds-or-creates a user,
+  matching on the stable `google_id` first, falling back to a match on
+  `email` (links Google Sign-In onto an existing password account rather
+  than creating a duplicate — safe since Google already vouched for that
+  email by the time this function is called). A Google-created account has
+  no password at all — `users.password_hash`/`password_salt` are nullable
+  now (`db.py`), not just empty strings, so there's nothing to guess or
+  leak. `log_in` (the password path) checks for that explicitly before
+  hashing, rather than crashing on `bytes.fromhex(None)`.
+- **`GoogleSignInButton.tsx` renders nothing if `VITE_GOOGLE_CLIENT_ID`
+  isn't set** — every call site (`AuthPanel.tsx`'s form, `TapetideKeyGate.tsx`'s
+  `"signin"`/`"signup"` steps) includes it unconditionally rather than
+  checking first, so the button just silently doesn't appear in a
+  deployment that hasn't configured Google Sign-In (e.g. before the
+  Client ID was set up) instead of rendering broken.
+- **`UserPublic.has_password`** exists specifically so `SettingsPanel.tsx`
+  can tell a Google-only account apart from a password account before
+  deciding whether its "Configure" button leads to the password-
+  verification step or skips straight to the key field — a Google-only
+  account has nothing to verify (`POST /api/auth/login` would always fail
+  for it, permanently locking that account out of ever reconfiguring its
+  key otherwise). Skipping straight to the key field for both anonymous
+  visitors and Google-signed-in users is a deliberate equivalence: in both
+  cases, there's no password to re-check, and the already-authenticated
+  session itself stands in for that verification for the Google case.
+
 ## Environment variables
 
 Backend reads from `backend/.env` locally (see `backend/.env.example`), or

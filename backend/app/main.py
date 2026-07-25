@@ -13,6 +13,8 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from google.auth.transport import requests as google_auth_requests
+from google.oauth2 import id_token as google_id_token
 
 from app.config import get_settings
 from app.models import (
@@ -23,6 +25,7 @@ from app.models import (
     CompanyFinancialsResponse,
     CompanyInfo,
     DataSourceName,
+    GoogleAuthRequest,
     LogInRequest,
     PriceHistoryResponse,
     PricePoint,
@@ -530,6 +533,41 @@ def log_in(request: LogInRequest) -> AuthResponse:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     user = auth_service.get_user_from_token(token)
     assert user is not None
+    return AuthResponse(token=token, user=UserPublic(**user))
+
+
+@app.post("/api/auth/google", response_model=AuthResponse)
+def google_auth(request: GoogleAuthRequest) -> AuthResponse:
+    """Verifies the ID token Google Identity Services handed the frontend
+    (see frontend/src/lib/googleAuth.ts's credential callback) before
+    trusting anything in it -- `verify_oauth2_token` checks the signature,
+    expiry, and that the token's audience matches GOOGLE_CLIENT_ID (i.e.
+    this token was actually minted for this app, not some other one using
+    the same Google account). Same response shape as /api/auth/signup and
+    /api/auth/login -- the frontend treats all three interchangeably."""
+    client_id = settings.google_client_id
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Google Sign-In isn't configured on this server yet.")
+    try:
+        payload = google_id_token.verify_oauth2_token(
+            request.credential, google_auth_requests.Request(), client_id
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=401, detail="Couldn't verify that Google sign-in. Please try again."
+        ) from exc
+
+    email = payload.get("email")
+    google_id = payload.get("sub")
+    if not email or not google_id:
+        raise HTTPException(status_code=401, detail="Google didn't return the expected account details.")
+    if not payload.get("email_verified", False):
+        raise HTTPException(status_code=401, detail="Please verify your email with Google before signing in.")
+    name = payload.get("name") or email.split("@")[0]
+
+    _user_id, token = auth_service.login_with_google(email, name, google_id)
+    user = auth_service.get_user_from_token(token)
+    assert user is not None  # just created/found, token can't be invalid/expired yet
     return AuthResponse(token=token, user=UserPublic(**user))
 
 

@@ -1,8 +1,16 @@
 import { FormEvent, useState } from "react";
-import { validateTapetideKey, saveTapetideKeyToAccount, signUp, logIn, ApiError } from "../lib/api";
+import {
+  validateTapetideKey,
+  saveTapetideKeyToAccount,
+  signUp,
+  logIn,
+  loginWithGoogle,
+  ApiError,
+} from "../lib/api";
 import { setTapetideKey } from "../lib/tapetideKey";
 import { setAuthToken } from "../lib/auth";
 import type { UserPublic } from "../lib/types";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 const TAPETIDE_TOKENS_URL = "https://tapetide.com/settings/tokens";
 
@@ -56,22 +64,42 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
   const [keyLoading, setKeyLoading] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
 
+  // Shared by password sign-in/sign-up and Google Sign-In below -- either
+  // path ends with the same AuthResponse shape, so both funnel into
+  // whichever of "adopt the account's saved key" / "ask for one" applies.
+  function handleAuthSuccess(res: { token: string; user: UserPublic }) {
+    setAuthToken(res.token);
+    onAuthChange(res.user);
+    if (res.user.tapetide_key) {
+      // Account already has a key saved (returning user, signed in from
+      // a fresh browser) -- use it directly, no key-entry step needed.
+      setTapetideKey(res.user.tapetide_key);
+      onKeySet();
+    } else {
+      setStep("key");
+    }
+  }
+
   async function handleAuthSubmit(e: FormEvent) {
     e.preventDefault();
     setAuthLoading(true);
     setAuthError(null);
     try {
       const res = mode === "signup" ? await signUp(email, name, password) : await logIn(email, password);
-      setAuthToken(res.token);
-      onAuthChange(res.user);
-      if (res.user.tapetide_key) {
-        // Account already has a key saved (returning user, signed in from
-        // a fresh browser) -- use it directly, no key-entry step needed.
-        setTapetideKey(res.user.tapetide_key);
-        onKeySet();
-      } else {
-        setStep("key");
-      }
+      handleAuthSuccess(res);
+    } catch (err) {
+      setAuthError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleGoogleCredential(credential: string) {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const res = await loginWithGoogle(credential);
+      handleAuthSuccess(res);
     } catch (err) {
       setAuthError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -206,6 +234,13 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
             <button type="submit" className="search-button auth-submit" disabled={authLoading}>
               {authLoading ? "..." : mode === "signup" ? "Create Account" : "Sign In"}
             </button>
+
+            {/* Renders nothing if VITE_GOOGLE_CLIENT_ID isn't configured --
+                see GoogleSignInButton.tsx. */}
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
+            <GoogleSignInButton onCredential={handleGoogleCredential} />
           </form>
           <button type="button" className="tapetide-gate-skip" onClick={() => setStep("key")}>
             Continue without an account

@@ -247,12 +247,18 @@ class UserPublic(BaseModel):
     Tapetide key, decrypted and ready to use (None if this account never
     saved one) -- see auth_service.py's get_tapetide_key. Sending the
     decrypted key back to its own owner is fine: anyone with a valid
-    session token for this account already has the same trust level."""
+    session token for this account already has the same trust level.
+    `has_password` is False for a Google-only account (see
+    login_with_google) -- SettingsPanel.tsx uses it to skip the password-
+    verification step before reconfiguring a saved Tapetide key, since
+    that check would otherwise always fail for an account with no password
+    to verify."""
 
     id: int
     email: str
     name: str
     created_at: str
+    has_password: bool
     tapetide_key: Optional[str] = None
 
 
@@ -263,6 +269,13 @@ class AuthResponse(BaseModel):
 
 class TapetideKeyRequest(BaseModel):
     key: str
+
+
+class GoogleAuthRequest(BaseModel):
+    # The ID token JWT from Google Identity Services' credential callback
+    # (see frontend/src/lib/googleAuth.ts) -- main.py verifies it against
+    # GOOGLE_CLIENT_ID before trusting anything inside it.
+    credential: str
 
 
 class ActivityEntry(BaseModel):

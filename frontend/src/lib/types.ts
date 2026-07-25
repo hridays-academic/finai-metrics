@@ -143,6 +143,11 @@ export interface UserPublic {
   email: string;
   name: string;
   created_at: string;
+  // False for a Google-only account (see api.ts's loginWithGoogle) --
+  // SettingsPanel.tsx uses this to skip the password-verification step
+  // before reconfiguring a saved Tapetide key, since that check would
+  // otherwise always fail for an account with no password to verify.
+  has_password: boolean;
   // The account's saved Tapetide key, decrypted and ready to use -- null if
   // this account never saved one. See TapetideKeyGate.tsx.
   tapetide_key: string | null;
