@@ -13,6 +13,16 @@ const UNIT_TO_YEARS: Record<PeriodUnit, number> = {
   decade: 10,
 };
 
+// Lowercase, always-plural -- matches the <select>'s own always-plural
+// option labels ("Days", "Months", ...) rather than adding singular/plural
+// grammar logic for a label that's purely informational.
+const PERIOD_UNIT_LABEL: Record<PeriodUnit, string> = {
+  day: "days",
+  month: "months",
+  year: "years",
+  decade: "decades",
+};
+
 type InvestmentMode = "amount" | "shares";
 
 interface AnalystTargets {
@@ -26,7 +36,6 @@ interface PickedStock {
   name: string;
   ticker: string;
   points: PricePoint[];
-  recentPoints: PricePoint[];
   currentPrice: number | null;
   // Real third-party analyst price target (Tapetide), same Low/Mean/High
   // figures PriceForecastChart plots on the main search page -- null if
@@ -64,17 +73,28 @@ function closestPoint(series: PricePoint[], targetTime: number): PricePoint {
   return closest;
 }
 
-function computeHistoricalRate(stock: PickedStock, periodInYears: number): HistoricalRate | null {
-  const targetDays = periodInYears * 365.25;
-  // Prefer the daily series for short lookbacks -- weekly data is too sparse
-  // to resolve a 3-day or 2-week window meaningfully.
-  const useDailySeries = targetDays <= 180 && stock.recentPoints.length > 1;
-  const series = useDailySeries ? stock.recentPoints : stock.points;
+// Fixed ~1-year lookback for "historical annual return" -- deliberately
+// NOT tied to whatever "Time period" the user is projecting forward with.
+// It used to be (targetDays = periodInYears * 365.25), which was a real
+// bug: picking a short projection period like "1 Month" made this
+// annualize a mere 30-day price window, and CAGR math massively amplifies
+// short-term noise over a short window -- a perfectly real ~7% move over
+// 30 days compounds to a headline "133% annual return", which is
+// statistically meaningless as an annual rate and produced Future Value/
+// Total Gain tiles that didn't intuitively line up with the (differently-
+// horizoned, see the scenarios section below) analyst price target
+// numbers. A trailing 1-year window is what "annual return" conventionally
+// means for a stock, and keeps this number stable regardless of how short
+// a forward period someone types.
+const HISTORICAL_RATE_LOOKBACK_DAYS = 365.25;
+
+function computeHistoricalRate(stock: PickedStock): HistoricalRate | null {
+  const series = stock.points;
   if (series.length < 2) return null;
 
   const latest = series[series.length - 1];
   const latestTime = new Date(latest.date).getTime();
-  const targetTime = latestTime - targetDays * 86_400_000;
+  const targetTime = latestTime - HISTORICAL_RATE_LOOKBACK_DAYS * 86_400_000;
   const past = closestPoint(series, targetTime);
   const pastTime = new Date(past.date).getTime();
 
@@ -82,9 +102,10 @@ function computeHistoricalRate(stock: PickedStock, periodInYears: number): Histo
   if (actualYears <= 0 || past.close <= 0) return null;
 
   const ratePct = (Math.pow(latest.close / past.close, 1 / actualYears) - 1) * 100;
-  // Clamped means the requested lookback ran off the start of the series --
-  // NOT just "the nearest weekly-spaced point wasn't exactly on the target
-  // date," which is normal and expected for weekly-resolution data.
+  // Clamped means the 1-year lookback ran off the start of the series
+  // (a recently-listed stock with under a year of history) -- NOT just
+  // "the nearest weekly-spaced point wasn't exactly on the target date,"
+  // which is normal and expected for weekly-resolution data.
   const earliestTime = new Date(series[0].date).getTime();
   return { ratePct, actualYears, clamped: targetTime < earliestTime };
 }
@@ -204,21 +225,23 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
   const periodInYears = Math.max(0, toNumber(periodValue)) * UNIT_TO_YEARS[periodUnit];
 
   // Re-derive the picked stock's real historical return whenever the picked
-  // stock or the time period changes, and feed it straight into the rate
-  // field -- this is the ONLY thing that sets `rate` now (the field is
-  // read-only, see below), so a null result must reset it to "0" rather
-  // than silently leaving behind a stale number computed for a different
-  // stock/period.
+  // stock changes, and feed it straight into the rate field -- this is the
+  // ONLY thing that sets `rate` now (the field is read-only, see below), so
+  // a null result must reset it to "0" rather than silently leaving behind
+  // a stale number computed for a different stock. Deliberately NOT
+  // re-derived when the time period changes anymore (see
+  // computeHistoricalRate's comment) -- the rate is a fixed ~1yr trailing
+  // figure, independent of how far forward the user is projecting.
   useEffect(() => {
     if (!pickedStock) {
       setHistoricalRate(null);
       return;
     }
-    const result = computeHistoricalRate(pickedStock, periodInYears || UNIT_TO_YEARS.year);
+    const result = computeHistoricalRate(pickedStock);
     setHistoricalRate(result);
     setRate(result ? result.ratePct.toFixed(1) : "0");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickedStock, periodInYears]);
+  }, [pickedStock]);
 
   async function handlePickStock(e: FormEvent) {
     e.preventDefault();
@@ -238,7 +261,6 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
         name: company.info.company_name,
         ticker: company.info.resolved_symbol,
         points: history.points,
-        recentPoints: history.recent_points,
         currentPrice: company.raw.current_price,
         analystTargets,
         metricGroups: company.metric_groups,
@@ -498,6 +520,21 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
               </label>
             </div>
 
+            {/* Labeled with its own horizon for the same reason the
+                scenario section below labels "for FY2027..." -- this
+                section projects over whatever "Time period" was typed
+                above (here, driven by the fixed ~1yr historical rate,
+                see computeHistoricalRate), while the scenario section
+                below always projects to a separate, fixed analyst-target
+                date. Making both horizons visible side by side is what
+                makes the two sections' numbers comparable at a glance,
+                instead of silently using different timeframes. */}
+            <div className="calculator-field-header">
+              <span>
+                Projected over {Math.max(0, toNumber(periodValue)).toLocaleString("en-IN")}{" "}
+                {PERIOD_UNIT_LABEL[periodUnit]}
+              </span>
+            </div>
             <div className="calculator-results">
               <div className="calculator-result-tile">
                 <div className="label">Future value</div>

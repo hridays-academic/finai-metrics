@@ -474,6 +474,45 @@ marker needs `zOrder: "top"` in `createSeriesMarkers`, or the three dashed
 lines' strokes render on top of it since they all pass through that exact
 shared point.
 
+**`ReturnCalculator.tsx`'s "historical annual return" uses a fixed ~1-year
+lookback (`HISTORICAL_RATE_LOOKBACK_DAYS`), not whatever "Time period" the
+user is projecting forward with.** It used to be
+`targetDays = periodInYears * 365.25` — tying the lookback window directly
+to the projection period — which was a real, confirmed bug: picking a
+short period like "1 Month" made `computeHistoricalRate` annualize a mere
+30-day price window, and CAGR math (`(end/start)^(1/years) - 1`) massively
+amplifies noise over a short window — a perfectly ordinary ~7% move over
+30 days compounded to a headline "133% annual return." That number then
+fed the Future Value/Total Gain tiles for the *same* short period, so
+those tiles were internally self-consistent (de-annualizing recovers
+close to the real 30-day move) but the intermediate rate shown to the user
+was statistically meaningless, and would have produced absurd results had
+they typed a longer projection period while it was still keyed to a
+30-day lookback. A trailing 1-year window is what "annual return"
+conventionally means for a stock and stays stable regardless of the
+projection period; `PickedStock.recentPoints` (the ~6-7mo daily series,
+previously used for short lookbacks) is no longer needed anywhere in this
+component and was removed rather than left dead.
+
+**The "Analyst price target scenario" section is deliberately on a
+different, fixed horizon than the main projection tiles above it — not a
+bug, but previously not disclosed anywhere near the numbers themselves.**
+It always projects to Tapetide's `target_period` (e.g. "FY2027 (period
+ending Mar 2027)", ~8-9 months out), completely independent of "Time
+period," via a straight linear price-ratio scale-up
+(`p * (targetPrice / basePrice)`) with no compounding — the same "don't
+blend two different kinds of projections" principle as
+`PriceForecastChart` being its own card rather than overlaid on
+`PriceChart` (see above). Confirmed live as a source of real user
+confusion: a "Worst case" analyst scenario showing a *larger* rupee gain
+than the main "Total Gain" tile reads as backwards until you notice the
+two sections span different lengths of time. The scenario section already
+labeled its own horizon (`for {targets.period}` in its header) — the fix
+was adding an equivalent label to the main results section
+("Projected over N days/months/years/decades," reusing `periodValue`/
+`periodUnit`), so both horizons are visible side by side instead of the
+comparison being implicit.
+
 ## Homepage recommendations
 
 Before any search, the empty state shows 3-5 companies via
