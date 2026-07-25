@@ -1365,6 +1365,36 @@
   margin-top: 0.15rem;
 }
 
+/* "Configure" button on the Tapetide API Key settings row -- small pill,
+   same outline style as .show-more-pill (this app's established "small
+   secondary action" look) rather than the bold, full-width .search-button
+   used for primary form submits elsewhere in this panel. */
+.settings-key-configure {
+  flex-shrink: 0;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.settings-key-configure:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.settings-key-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.settings-key-form-actions .auth-submit {
+  flex: 1;
+}
+
 /* ---------- Auth panel (sign in/up + activity, reuses .settings-panel/.settings-backdrop) ---------- */
 
 .auth-mode-toggle {

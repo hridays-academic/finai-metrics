@@ -675,6 +675,23 @@ and `tapetide_provider.py`'s `_token_hash`/`_load_quota_state`. Each
 user's own 50-calls/day budget is tracked independently, keyed by a hash of
 their token.
 
+**`SettingsPanel.tsx` can reconfigure the active key after the fact**
+(2026-07) -- `TapetideKeyGate.tsx` only ever runs once, whenever no key is
+stored yet, so there was previously no in-app way to swap a key afterward
+short of clearing `localStorage` by hand. The Settings panel's "Tapetide
+API Key" row shows the active key's last 4 characters (read straight from
+`getTapetideKey()`, not `user.tapetide_key` -- the two can differ if
+someone's using a different key locally than the one saved to their
+account) and a "Configure" button. Signed-in users must re-enter their
+password first (reuses `POST /api/auth/login` purely as a "prove it's
+still you" check, not because the session token itself is distrusted --
+matches the user's explicit ask for a verification step before letting a
+saved credential be overwritten); anonymous users skip straight to the key
+field, since their key was never protected by anything beyond
+`localStorage` in the first place. Either path ends by calling the same
+`saveTapetideKeyToAccount`/`validateTapetideKey` functions
+`TapetideKeyGate.tsx` already uses.
+
 ## Environment variables
 
 Backend reads from `backend/.env` locally (see `backend/.env.example`), or

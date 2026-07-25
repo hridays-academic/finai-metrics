@@ -208,6 +208,11 @@ export default function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onClose={() => setSettingsOpen(false)}
+          user={user}
+          onTapetideKeyChange={() => {
+            setTapetideKeyState(getTapetideKey());
+            refreshQuota();
+          }}
         />
       )}
 
