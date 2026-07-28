@@ -537,24 +537,26 @@ constraints shaped this feature, both from direct user pushback during
 development:
 
 - **The verdict is real and computed, not a hand-picked label — but
-  (2026-07) deliberately NOT color-coded on the card anymore.** `main.py`'s
+  (2026-07) not shown on the card at all anymore.** `main.py`'s
   `get_recommendations` still calls `compute_metric_groups` +
   `compute_health_snapshot` — the exact same functions a real search uses —
   against each candidate, and still maps the resulting Strong/Mixed/Weak
   Fundamentals verdict onto the same `good`/`warning`/`bad` `MetricStatus`
   scale used everywhere else in the app (`_VERDICT_TO_STATUS`; a candidate
   that comes back "Not Enough Data" is still skipped entirely rather than
-  shown with a fabricated neutral badge). What changed is the frontend:
-  `RecommendedCompanies.tsx` no longer renders that status as a colored
-  border/name on the card itself — a green/yellow/red badge on an untouched
-  empty-state suggestion read as a "buy this" signal at a glance, the same
-  kind of misleading-as-advice framing `HealthSnapshot`'s own compliance
-  scoping already avoids. Every card is now plain neutral grey
-  (`.recommended-company-card`, no `.good`/`.warning`/`.bad` variants); the
-  verdict text still shows, just as plain uncolored text in the hover
-  popover once there's an explanation alongside it for context. The backend
-  still computes and returns `verdict` unchanged — only the frontend's
-  presentation of it changed.
+  shown with a fabricated neutral badge), and `RecommendedCompany` still
+  carries `verdict`/`explanation` in the API response, unchanged. What's
+  changed twice on the frontend since: first a green/yellow/red border on
+  an untouched empty-state suggestion read as a "buy this" signal at a
+  glance (the same misleading-as-advice framing `HealthSnapshot`'s own
+  compliance scoping already avoids), so the card itself went plain neutral
+  grey and the verdict moved into a hover popover instead; then (2026-07,
+  later) the popover itself was removed too, at the user's request — no
+  code reason, just a product call that the popover wasn't wanted.
+  `RecommendedCompanyCard` in `RecommendedCompanies.tsx` is now a plain
+  click target (name/ticker/sector + arrow, no hover state at all) — the
+  backend fields are simply unused by the frontend now, same "computed but
+  not currently rendered" pattern as the AI chat assistant (see above).
 - **It must cost zero Tapetide quota.** `get_recommendations` is hardcoded
   to always use `bharat_provider`, never Tapetide — this predates the
   Tickertape-IP-block discovery documented in "Sourcing" above, and as of
