@@ -343,8 +343,9 @@ frontend/src/
   main.tsx                  Vite entry point
   components/
     Header.tsx              Logo (left) + account icon + settings gear (top-right)
-    SettingsPanel.tsx        Slide-over: theme picker (money/dark/light, persisted to
-                              localStorage) + Tapetide key reconfiguration
+    SettingsPanel.tsx        Slide-over: theme (money/classic) + mode (dark/light)
+                              pickers, independently persisted to localStorage, +
+                              Tapetide key reconfiguration
     AuthPanel.tsx            Slide-over: sign in/up form, or (once signed in) account
                               summary + recent activity feed + sign out -- see "Accounts
                               & activity tracking" below
@@ -437,30 +438,64 @@ it wasn't independently reproduced frame-by-frame before fixing (a
 live-rendered canvas glitch that self-corrects on the next unrelated
 re-render is inherently hard to catch with a static screenshot).
 
-**Three themes, not two (2026-08): `"money"` (default), `"dark"`, `"light"`
-— `useTheme.ts`'s `Theme` type.** `"money"` is a lowkey money-green &
-black palette (`--bg-app: #0a0f0b`, `--accent: #4f9d6f`, gold for
-`--status-warning` rather than this app's usual amber, since gold fits the
-theme without inventing a new status vocabulary), added at the user's
-request as the new default. `"dark"` and `"light"` (`theme.css`) are the
-two *original* themes from before this change, kept byte-for-byte
-untouched specifically as a no-code-change revert path — picking either
-one from the Settings panel's theme picker fully restores the app's prior
-look; don't repurpose or delete either block without checking with the
-user first. `SettingsPanel.tsx`'s old binary dark-mode toggle switch
-(`.theme-toggle`/`.knob`, now removed) couldn't represent a third option,
-so it was replaced with a 3-way picker (`.theme-picker`, segmented-control
-style matching `.auth-mode-toggle`/`.calculator-mode-toggle` elsewhere in
-the app) with small preview swatches per option. Those swatch colors
-(`SettingsPanel.tsx`'s `THEME_OPTIONS`) are a hand-kept copy of each
-theme's `--bg-app`/`--accent`, not read live from CSS — there's no way to
-sample "what would this look like under a theme that isn't currently
-active" without something like an offscreen iframe per swatch, and these
-are purely decorative preview dots, not applied anywhere as real UI color.
-`useTheme()`'s API dropped `toggleTheme` (a binary dark/light concept that
-doesn't generalize past two options) in favor of just `setTheme(theme)`;
-`App.tsx`/`SettingsPanel.tsx` were updated accordingly
-(`onToggleTheme` → `onSetTheme`).
+**Theme and mode are two independent axes, not one flat list (2026-08) —
+`useTheme.ts`'s `ThemeName` (`"money"` default | `"classic"`) and
+`ThemeMode` (`"dark"` default | `"light"`).** First built as a single
+3-option list (`"money" | "dark" | "light"`), then corrected at the user's
+explicit request: a theme (color identity) and its mode (light/dark
+appearance) should be pickable independently, so *every* theme gets both a
+light and a dark variant rather than "money" only ever being dark. Both
+attributes (`data-theme`, `data-mode`) live on `<html>` together, set by
+the same `useLayoutEffect` in `useTheme.ts` (still `useLayoutEffect`, not
+`useEffect` — see below for why that specifically matters), each persisted
+to its own localStorage key. `theme.css` defines the resulting 2x2 matrix
+as four blocks: `[data-theme="money"][data-mode="dark"]`,
+`[data-theme="money"][data-mode="light"]`,
+`[data-theme="classic"][data-mode="dark"]`,
+`[data-theme="classic"][data-mode="light"]`.
+
+- **"Money"** is a lowkey money-green & black identity — dark mode:
+  `--bg-app: #0a0f0b`, `--accent: #4f9d6f`; light mode: a cream/paper
+  background (`--bg-app: #f6f8f4`, not pure white — a nod to actual
+  currency) with a deeper, more saturated green (`--accent: #2f7d52`) for
+  contrast, the same relationship "classic" light already has to its own
+  dark mode (re-tuned per-mode, not just inverted lightness on the same
+  hex values). Gold for `--status-warning` in both modes, rather than this
+  app's usual amber, since gold fits the money theme without inventing a
+  new status vocabulary.
+- **"Classic"** (both modes) is the *original*, only theme from before
+  "money" existed, kept byte-for-byte untouched specifically as a
+  no-code-change revert path — picking "Classic" (either mode) from the
+  Settings panel's theme picker fully restores the app's exact prior look.
+  Don't repurpose or delete either "classic" block without checking with
+  the user first.
+
+`SettingsPanel.tsx` has two separate picker rows now (`.theme-picker`,
+reused for both — segmented-control style matching
+`.auth-mode-toggle`/`.calculator-mode-toggle` elsewhere in the app), not
+one combined list: "Theme" (Money/Classic) and "Mode" (Dark/Light), so
+either can be changed without touching the other. Preview swatch colors in
+both (`SettingsPanel.tsx`'s `THEME_OPTIONS`/`MODE_OPTIONS`) are hand-kept
+copies of the real CSS values, not read live — there's no way to sample
+"what would this look like under a theme/mode that isn't currently active"
+without something like an offscreen iframe per swatch, and these are
+purely decorative preview dots, never applied anywhere as real UI color.
+Theme swatches always preview that theme's dark mode (its primary
+identity, regardless of the currently-selected mode); mode swatches are
+deliberately generic near-black/near-white circles, not theme-tinted,
+since mode is conceptually independent of which theme is active.
+
+`useTheme()` exports a combined `Theme = \`${ThemeName}-${ThemeMode}\``
+value (template literal type) purely for `PriceChart.tsx`/
+`PriceForecastChart.tsx`'s `useEffect` dependency arrays — both re-read
+CSS variables via `getComputedStyle` to re-theme their lightweight-charts
+canvas whenever this changes, never branching on the literal string.
+Either axis changing alone still needs to trigger that re-read (a
+theme-only change and a mode-only change both produce different CSS
+variable values), which is exactly why those two components need one
+*combined* changing value rather than depending on `themeName`/`mode`
+separately and risking a missed re-render if only one of the two effects'
+dependency arrays gets updated correctly.
 
 **`MetricCard`'s popover and `HealthSnapshot` both carry `definition`/
 `assessment`/`explanation` text computed server-side in `metrics.py`** (not

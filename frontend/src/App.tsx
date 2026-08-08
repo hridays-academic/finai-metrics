@@ -15,7 +15,7 @@ import { getTapetideKey, setTapetideKey } from "./lib/tapetideKey";
 import type { CompanyFinancialsResponse, QuotaStatus, UserPublic } from "./lib/types";
 
 export default function App() {
-  const { theme, setTheme } = useTheme();
+  const { theme, themeName, mode, setThemeName, setMode } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   // Read synchronously (localStorage, not a fetch) so there's no flash of
@@ -205,8 +205,10 @@ export default function App() {
 
       {settingsOpen && (
         <SettingsPanel
-          theme={theme}
-          onSetTheme={setTheme}
+          themeName={themeName}
+          mode={mode}
+          onSetThemeName={setThemeName}
+          onSetMode={setMode}
           onClose={() => setSettingsOpen(false)}
           user={user}
           onTapetideKeyChange={() => {

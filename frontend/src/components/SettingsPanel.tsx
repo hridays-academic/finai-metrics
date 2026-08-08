@@ -1,13 +1,15 @@
 import { FormEvent, useState } from "react";
-import type { Theme } from "../hooks/useTheme";
+import type { ThemeMode, ThemeName } from "../hooks/useTheme";
 import type { UserPublic } from "../lib/types";
 import { logIn, saveTapetideKeyToAccount, validateTapetideKey, ApiError } from "../lib/api";
 import { setAuthToken } from "../lib/auth";
 import { getTapetideKey, setTapetideKey } from "../lib/tapetideKey";
 
 interface SettingsPanelProps {
-  theme: Theme;
-  onSetTheme: (theme: Theme) => void;
+  themeName: ThemeName;
+  mode: ThemeMode;
+  onSetThemeName: (theme: ThemeName) => void;
+  onSetMode: (mode: ThemeMode) => void;
   onClose: () => void;
   user: UserPublic | null;
   // Called after the active Tapetide key changes, so App.tsx can re-read
@@ -16,18 +18,25 @@ interface SettingsPanelProps {
   onTapetideKeyChange: () => void;
 }
 
-// Preview swatch colors for the theme picker below -- hand-kept, approximate
-// copies of each theme's --bg-app/--accent from theme.css, not read live off
-// CSS variables. There's no way to sample "what would --accent look like
-// under data-theme=X" for a theme that ISN'T currently active without
+// Preview swatch colors for the pickers below -- hand-kept, approximate
+// copies of each combination's --bg-app/--accent from theme.css, not read
+// live off CSS variables. There's no way to sample "what would --accent
+// look like under a theme/mode that ISN'T currently active" without
 // something like an offscreen iframe per swatch, and these are purely
 // decorative preview dots (not applied anywhere as real UI color), so a
-// hand-kept copy is the pragmatic choice -- just keep both in sync if
-// theme.css's actual values change.
-const THEME_OPTIONS: { value: Theme; label: string; bg: string; accent: string }[] = [
+// hand-kept copy is the pragmatic choice -- just keep in sync if
+// theme.css's actual values change. Theme swatches always preview that
+// theme's DARK mode (its primary identity); the mode picker's own swatches
+// are deliberately generic (near-black / near-white) rather than
+// theme-tinted, since mode is a light/dark choice independent of theme.
+const THEME_OPTIONS: { value: ThemeName; label: string; bg: string; accent: string }[] = [
   { value: "money", label: "Money", bg: "#0a0f0b", accent: "#4f9d6f" },
-  { value: "dark", label: "Dark", bg: "#0e1116", accent: "#4fd1c5" },
-  { value: "light", label: "Light", bg: "#f5f7fa", accent: "#0f8f86" },
+  { value: "classic", label: "Classic", bg: "#0e1116", accent: "#4fd1c5" },
+];
+
+const MODE_OPTIONS: { value: ThemeMode; label: string; bg: string }[] = [
+  { value: "dark", label: "Dark", bg: "#0a0a0a" },
+  { value: "light", label: "Light", bg: "#f5f5f5" },
 ];
 
 type KeyStep = "closed" | "verify" | "edit";
@@ -42,8 +51,10 @@ type KeyStep = "closed" | "verify" | "edit";
 // anonymous users skip straight to the key field, matching how the key
 // was never protected by anything beyond localStorage in the first place.
 export default function SettingsPanel({
-  theme,
-  onSetTheme,
+  themeName,
+  mode,
+  onSetThemeName,
+  onSetMode,
   onClose,
   user,
   onTapetideKeyChange,
@@ -135,13 +146,31 @@ export default function SettingsPanel({
               <button
                 key={opt.value}
                 type="button"
-                className={`theme-picker-option ${theme === opt.value ? "active" : ""}`}
-                aria-pressed={theme === opt.value}
-                onClick={() => onSetTheme(opt.value)}
+                className={`theme-picker-option ${themeName === opt.value ? "active" : ""}`}
+                aria-pressed={themeName === opt.value}
+                onClick={() => onSetThemeName(opt.value)}
               >
                 <span className="theme-picker-swatch" style={{ background: opt.bg }}>
                   <span className="theme-picker-swatch-accent" style={{ background: opt.accent }} />
                 </span>
+                <span className="theme-picker-name">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="settings-theme-section">
+          <div className="settings-row-label">Mode</div>
+          <div className="theme-picker" role="group" aria-label="Choose light or dark mode">
+            {MODE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`theme-picker-option ${mode === opt.value ? "active" : ""}`}
+                aria-pressed={mode === opt.value}
+                onClick={() => onSetMode(opt.value)}
+              >
+                <span className="theme-picker-swatch" style={{ background: opt.bg }} />
                 <span className="theme-picker-name">{opt.label}</span>
               </button>
             ))}

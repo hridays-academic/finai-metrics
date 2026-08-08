@@ -1,18 +1,22 @@
-/* Theme tokens. "Money" (lowkey money-green & black) is the default
-   (data-theme="money" or no attribute at all) -- see SettingsPanel.tsx's
-   theme picker for how a user switches to "dark" or "light" instead.
-   Toggled by useTheme.ts, persisted to localStorage. Keep component CSS
-   reading these variables rather than hardcoding colors, so every theme
-   stays in sync automatically.
+/* Theme tokens -- TWO independent axes (2026-08), not one flat list:
+   `data-theme` ("money" default | "classic") picks the color identity,
+   `data-mode` ("dark" default | "light") picks light/dark appearance
+   within that identity. Both attributes are set together by useTheme.ts
+   (see its `theme`/`mode` state) and persisted to localStorage
+   separately, so any of the 4 combinations can be selected independently
+   via SettingsPanel.tsx's two pickers. Keep component CSS reading these
+   variables rather than hardcoding colors, so every combination stays in
+   sync automatically.
 
-   "dark" and "light" below are the ORIGINAL themes from before "money"
-   became the default (2026-08) -- deliberately left byte-for-byte
-   untouched as an easy, no-code-change revert path: picking either one
-   from the theme picker fully restores the app's prior look. Don't repurpose
-   or drop either block without discussing it with the user first. */
+   "classic" (both modes) is the ORIGINAL, only theme from before "money"
+   existed (2026-08) -- deliberately left byte-for-byte untouched as an
+   easy, no-code-change revert path: picking "Classic" from the theme
+   picker fully restores the app's prior look, in either mode. Don't
+   repurpose or drop either "classic" block without discussing it with the
+   user first. */
 
 :root,
-:root[data-theme="money"] {
+:root[data-theme="money"][data-mode="dark"] {
   color-scheme: dark;
 
   --bg-app: #0a0f0b;
@@ -52,7 +56,46 @@
   --assistant-bubble-bg: var(--bg-elevated);
 }
 
-:root[data-theme="dark"] {
+/* Money, light mode -- same green-identity/gold-warning palette as money
+   dark above, re-tuned for a light background (cream/paper rather than
+   pure white, a nod to actual currency) the same way "classic" light
+   below darkens/re-saturates its accent relative to its own dark mode for
+   contrast, rather than just inverting lightness on the same hex values. */
+:root[data-theme="money"][data-mode="light"] {
+  color-scheme: light;
+
+  --bg-app: #f6f8f4;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #eef3ec;
+
+  --text-primary: #10170f;
+  --text-secondary: #4a5c4d;
+  --text-tertiary: #7c8c7e;
+
+  --border-subtle: #e1e8e0;
+  --border-strong: #c8d4c6;
+
+  --accent: #2f7d52;
+  --accent-strong: #255f3f;
+  --accent-contrast: #ffffff;
+
+  --status-good: #1f7a4c;
+  --status-good-bg: rgba(31, 122, 76, 0.1);
+  --status-warning: #96730a;
+  --status-warning-bg: rgba(150, 115, 10, 0.12);
+  --status-bad: #b8333a;
+  --status-bad-bg: rgba(184, 51, 58, 0.1);
+  --status-neutral: #5c6b5e;
+  --status-neutral-bg: rgba(92, 107, 94, 0.1);
+
+  --shadow-elevated: 0 8px 24px rgba(16, 30, 16, 0.08);
+  --user-bubble-bg: var(--accent);
+  --user-bubble-text: #ffffff;
+  --assistant-bubble-bg: var(--bg-elevated);
+}
+
+:root[data-theme="classic"][data-mode="dark"] {
   color-scheme: dark;
 
   --bg-app: #0e1116;
@@ -86,7 +129,7 @@
   --assistant-bubble-bg: var(--bg-elevated);
 }
 
-:root[data-theme="light"] {
+:root[data-theme="classic"][data-mode="light"] {
   color-scheme: light;
 
   --bg-app: #f5f7fa;
