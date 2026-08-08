@@ -1497,13 +1497,23 @@
 }
 
 /* Liability disclaimer shown on the sign-up/sign-in form itself (both
-   AuthPanel.tsx and TapetideKeyGate.tsx's copy of the same form) -- same
-   small-muted-text convention as .calculator-disclaimer/.tapetide-gate-note
-   elsewhere in the app, not a blocking checkbox/consent gate. */
+   AuthPanel.tsx and TapetideKeyGate.tsx's copy of the same form), directly
+   above the submit button -- not a blocking checkbox/consent gate, but
+   deliberately a notch more visible than this app's other small-muted-text
+   disclaimers (.calculator-disclaimer/.tapetide-gate-note): text-secondary
+   rather than text-tertiary, a touch larger, and a subtle background tint
+   + padding so it reads as its own noticeable block rather than blending
+   into the surrounding form chrome (confirmed live that the original
+   plain-muted-text version, placed after the Google button, went
+   unnoticed). */
 .auth-disclaimer {
-  margin: 0.2rem 0 0;
-  font-size: 0.72rem;
-  color: var(--text-tertiary);
+  margin: 0.1rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.74rem;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 

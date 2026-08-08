@@ -231,6 +231,18 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
 
             {authError && <div className="search-error">{authError}</div>}
 
+            {/* Directly above the submit button, not after the Google
+                button/divider below -- it was easy to miss down there
+                (past a visual divider, reads as belonging to the "or"
+                alternative rather than the form itself). This placement
+                means it's in the way of every submit path, password or
+                Google. */}
+            <p className="auth-disclaimer">
+              Stackly Metrics provides financial data and educational information only. Any financial
+              decisions you make using data from this site are your own responsibility -- the site and
+              its owner(s) accept no liability for outcomes resulting from its use.
+            </p>
+
             <button type="submit" className="search-button auth-submit" disabled={authLoading}>
               {authLoading ? "..." : mode === "signup" ? "Create Account" : "Sign In"}
             </button>
@@ -241,12 +253,6 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
               <span>or</span>
             </div>
             <GoogleSignInButton onCredential={handleGoogleCredential} />
-
-            <p className="auth-disclaimer">
-              Stackly Metrics provides financial data and educational information only. Any financial
-              decisions you make using data from this site are your own responsibility -- the site and
-              its owner(s) accept no liability for outcomes resulting from its use.
-            </p>
           </form>
           <button type="button" className="tapetide-gate-skip" onClick={() => setStep("key")}>
             Continue without an account
