@@ -4,9 +4,10 @@ Guidance for Claude Code (and any future contributor) working in this repository
 
 ## What this project is
 
-**Stackly Metrics** (renamed 2026-08 from "FinAI Metrics" -- same app, no
-functional change; older comments/history throughout this file still say
-"FinAI Metrics" in places, left as-is rather than rewritten purely for the
+**Stackly** (renamed 2026-08 from "FinAI Metrics", briefly "Stackly
+Metrics" in between -- same app, no functional change through either rename;
+older comments/history throughout this file still say "FinAI Metrics" or
+"Stackly Metrics" in places, left as-is rather than rewritten purely for the
 name) — a web app that fetches financial data for Indian public listed
 companies (NSE/BSE) and computes standard financial ratios, with hover
 popovers explaining what each metric means and whether the company's actual
@@ -986,8 +987,14 @@ unchanged in production too as long as both pieces share one domain).
 
 **Live at `stackly-metrics.vercel.app`** (2026-08, renamed from
 `finai-metrics.vercel.app` alongside the app's own rename -- see "What this
-project is" above). Two things worth knowing if this ever needs touching
-again:
+project is" above). The Vercel *project* itself was renamed again shortly
+after, from `stackly-metrics` to `stackly` (dropping "Metrics" everywhere,
+including the dashboard), but the serving domain deliberately did NOT
+follow -- same "rename doesn't move the alias" behavior below, re-confirmed
+a second time, plus `stackly.vercel.app` still being someone else's site
+(see below) means there was no shorter domain to move to anyway. Don't
+expect the live URL to say just "stackly" without a fresh `alias set`.
+Two things worth knowing if this ever needs touching again:
 - **Renaming a Vercel project (`vercel project rename`) does NOT move its
   production `*.vercel.app` alias domain.** Confirmed live: after renaming
   the project, `vercel deploy --prod` kept aliasing to the *old* domain

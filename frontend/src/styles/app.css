@@ -155,10 +155,6 @@
   color: var(--text-primary);
 }
 
-.logo-wordmark span {
-  color: var(--accent);
-}
-
 .icon-button {
   position: relative;
   display: inline-flex;

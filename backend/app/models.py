@@ -122,7 +122,7 @@ class HealthSnapshot(BaseModel):
 
 class AnalystConsensus(BaseModel):
     """Third-party sell-side analyst opinion, aggregated and reported as-is --
-    this is NOT Stackly Metrics' own view, and must always be displayed with
+    this is NOT Stackly's own view, and must always be displayed with
     that attribution. See CLAUDE.md for why this is a meaningfully different
     (and acceptable) thing from the app generating its own buy/sell/hold call."""
 

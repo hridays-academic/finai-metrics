@@ -176,7 +176,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
                 means it's in the way of every submit path, password or
                 Google. */}
             <p className="auth-disclaimer">
-              Stackly Metrics provides financial data and educational information only. Any financial
+              Stackly provides financial data and educational information only. Any financial
               decisions you make using data from this site are your own responsibility -- the site and
               its owner(s) accept no liability for outcomes resulting from its use.
             </p>

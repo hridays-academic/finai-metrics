@@ -635,7 +635,7 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
                 </div>
                 <div className="calculator-field-note">
                   Based on Tapetide's third-party analyst consensus price target for {pickedStock.ticker} -- not
-                  Stackly Metrics' own view, and not investment advice.
+                  Stackly's own view, and not investment advice.
                 </div>
               </div>
             )}
@@ -669,7 +669,7 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
               {projectionRate?.source === "forecast" ? (
                 <>
                   The rate above is implied by third-party analysts' price target for {pickedStock.ticker}, not
-                  Stackly Metrics' own view -- analyst targets are estimates and frequently don't play out. Not
+                  Stackly's own view -- analyst targets are estimates and frequently don't play out. Not
                   investment advice.
                 </>
               ) : (
