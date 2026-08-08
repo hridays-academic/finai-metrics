@@ -1,9 +1,57 @@
-/* Theme tokens. Dark is the default (data-theme="dark" or no attribute at
-   all); data-theme="light" overrides. Toggled by useTheme.ts, persisted to
-   localStorage. Keep component CSS reading these variables rather than
-   hardcoding colors, so both themes stay in sync automatically. */
+/* Theme tokens. "Money" (lowkey money-green & black) is the default
+   (data-theme="money" or no attribute at all) -- see SettingsPanel.tsx's
+   theme picker for how a user switches to "dark" or "light" instead.
+   Toggled by useTheme.ts, persisted to localStorage. Keep component CSS
+   reading these variables rather than hardcoding colors, so every theme
+   stays in sync automatically.
+
+   "dark" and "light" below are the ORIGINAL themes from before "money"
+   became the default (2026-08) -- deliberately left byte-for-byte
+   untouched as an easy, no-code-change revert path: picking either one
+   from the theme picker fully restores the app's prior look. Don't repurpose
+   or drop either block without discussing it with the user first. */
 
 :root,
+:root[data-theme="money"] {
+  color-scheme: dark;
+
+  --bg-app: #0a0f0b;
+  --bg-surface: #131a14;
+  --bg-elevated: #1b241d;
+  --bg-hover: #232f25;
+
+  --text-primary: #eef3ee;
+  --text-secondary: #a3b3a6;
+  --text-tertiary: #6c7d6f;
+
+  --border-subtle: #232f25;
+  --border-strong: #334233;
+
+  --accent: #4f9d6f;
+  --accent-strong: #3f8059;
+  --accent-contrast: #04140b;
+
+  /* Status "good" is deliberately a touch brighter/more saturated than
+     --accent (both green, on purpose, given the theme) so a metric card's
+     status ribbon and a plain accent-colored button don't read as the same
+     element at a glance -- distinguishable by lightness/saturation, not hue. */
+  --status-good: #5cc98a;
+  --status-good-bg: rgba(92, 201, 138, 0.14);
+  /* Gold rather than this app's usual amber -- fits the money theme without
+     inventing a whole new status vocabulary. */
+  --status-warning: #d1a125;
+  --status-warning-bg: rgba(209, 161, 37, 0.14);
+  --status-bad: #e2636a;
+  --status-bad-bg: rgba(226, 99, 106, 0.14);
+  --status-neutral: #8a988c;
+  --status-neutral-bg: rgba(138, 152, 140, 0.12);
+
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --user-bubble-bg: var(--accent);
+  --user-bubble-text: var(--accent-contrast);
+  --assistant-bubble-bg: var(--bg-elevated);
+}
+
 :root[data-theme="dark"] {
   color-scheme: dark;
 

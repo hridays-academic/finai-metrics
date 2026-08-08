@@ -7,7 +7,7 @@ import { getTapetideKey, setTapetideKey } from "../lib/tapetideKey";
 
 interface SettingsPanelProps {
   theme: Theme;
-  onToggleTheme: () => void;
+  onSetTheme: (theme: Theme) => void;
   onClose: () => void;
   user: UserPublic | null;
   // Called after the active Tapetide key changes, so App.tsx can re-read
@@ -15,6 +15,20 @@ interface SettingsPanelProps {
   // TapetideKeyGate.tsx's onKeySet already uses.
   onTapetideKeyChange: () => void;
 }
+
+// Preview swatch colors for the theme picker below -- hand-kept, approximate
+// copies of each theme's --bg-app/--accent from theme.css, not read live off
+// CSS variables. There's no way to sample "what would --accent look like
+// under data-theme=X" for a theme that ISN'T currently active without
+// something like an offscreen iframe per swatch, and these are purely
+// decorative preview dots (not applied anywhere as real UI color), so a
+// hand-kept copy is the pragmatic choice -- just keep both in sync if
+// theme.css's actual values change.
+const THEME_OPTIONS: { value: Theme; label: string; bg: string; accent: string }[] = [
+  { value: "money", label: "Money", bg: "#0a0f0b", accent: "#4f9d6f" },
+  { value: "dark", label: "Dark", bg: "#0e1116", accent: "#4fd1c5" },
+  { value: "light", label: "Light", bg: "#f5f7fa", accent: "#0f8f86" },
+];
 
 type KeyStep = "closed" | "verify" | "edit";
 
@@ -29,7 +43,7 @@ type KeyStep = "closed" | "verify" | "edit";
 // was never protected by anything beyond localStorage in the first place.
 export default function SettingsPanel({
   theme,
-  onToggleTheme,
+  onSetTheme,
   onClose,
   user,
   onTapetideKeyChange,
@@ -114,21 +128,25 @@ export default function SettingsPanel({
           </button>
         </div>
 
-        <div className="settings-row">
-          <div>
-            <div className="settings-row-label">Dark mode</div>
-            <div className="settings-row-sub">Preference is saved on this device</div>
+        <div className="settings-theme-section">
+          <div className="settings-row-label">Theme</div>
+          <div className="theme-picker" role="group" aria-label="Choose a theme">
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`theme-picker-option ${theme === opt.value ? "active" : ""}`}
+                aria-pressed={theme === opt.value}
+                onClick={() => onSetTheme(opt.value)}
+              >
+                <span className="theme-picker-swatch" style={{ background: opt.bg }}>
+                  <span className="theme-picker-swatch-accent" style={{ background: opt.accent }} />
+                </span>
+                <span className="theme-picker-name">{opt.label}</span>
+              </button>
+            ))}
           </div>
-          <button
-            className="theme-toggle"
-            data-active={theme === "dark"}
-            role="switch"
-            aria-checked={theme === "dark"}
-            aria-label="Toggle dark mode"
-            onClick={onToggleTheme}
-          >
-            <span className="knob" />
-          </button>
+          <div className="settings-row-sub">Preference is saved on this device</div>
         </div>
 
         <div className="settings-row">

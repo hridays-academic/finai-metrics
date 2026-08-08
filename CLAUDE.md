@@ -343,7 +343,8 @@ frontend/src/
   main.tsx                  Vite entry point
   components/
     Header.tsx              Logo (left) + account icon + settings gear (top-right)
-    SettingsPanel.tsx        Slide-over: dark/light toggle (persisted to localStorage)
+    SettingsPanel.tsx        Slide-over: theme picker (money/dark/light, persisted to
+                              localStorage) + Tapetide key reconfiguration
     AuthPanel.tsx            Slide-over: sign in/up form, or (once signed in) account
                               summary + recent activity feed + sign out -- see "Accounts
                               & activity tracking" below
@@ -429,12 +430,37 @@ descendants. With a plain `useEffect` here, their child effects fired
 attribute, so they read the *previous* theme's colors and never corrected
 themselves until some unrelated re-render happened to trigger another
 read — matching a user-reported bug where the charts "glitched"
-specifically after a dark/light toggle, and specifically after a search
-(since that's the only time these two chart components are mounted at
-all). The fix follows directly from React's documented effect-ordering
-guarantees; it wasn't independently reproduced frame-by-frame before
-fixing (a live-rendered canvas glitch that self-corrects on the next
-unrelated re-render is inherently hard to catch with a static screenshot).
+specifically after a theme change, and specifically after a search (since
+that's the only time these two chart components are mounted at all). The
+fix follows directly from React's documented effect-ordering guarantees;
+it wasn't independently reproduced frame-by-frame before fixing (a
+live-rendered canvas glitch that self-corrects on the next unrelated
+re-render is inherently hard to catch with a static screenshot).
+
+**Three themes, not two (2026-08): `"money"` (default), `"dark"`, `"light"`
+— `useTheme.ts`'s `Theme` type.** `"money"` is a lowkey money-green &
+black palette (`--bg-app: #0a0f0b`, `--accent: #4f9d6f`, gold for
+`--status-warning` rather than this app's usual amber, since gold fits the
+theme without inventing a new status vocabulary), added at the user's
+request as the new default. `"dark"` and `"light"` (`theme.css`) are the
+two *original* themes from before this change, kept byte-for-byte
+untouched specifically as a no-code-change revert path — picking either
+one from the Settings panel's theme picker fully restores the app's prior
+look; don't repurpose or delete either block without checking with the
+user first. `SettingsPanel.tsx`'s old binary dark-mode toggle switch
+(`.theme-toggle`/`.knob`, now removed) couldn't represent a third option,
+so it was replaced with a 3-way picker (`.theme-picker`, segmented-control
+style matching `.auth-mode-toggle`/`.calculator-mode-toggle` elsewhere in
+the app) with small preview swatches per option. Those swatch colors
+(`SettingsPanel.tsx`'s `THEME_OPTIONS`) are a hand-kept copy of each
+theme's `--bg-app`/`--accent`, not read live from CSS — there's no way to
+sample "what would this look like under a theme that isn't currently
+active" without something like an offscreen iframe per swatch, and these
+are purely decorative preview dots, not applied anywhere as real UI color.
+`useTheme()`'s API dropped `toggleTheme` (a binary dark/light concept that
+doesn't generalize past two options) in favor of just `setTheme(theme)`;
+`App.tsx`/`SettingsPanel.tsx` were updated accordingly
+(`onToggleTheme` → `onSetTheme`).
 
 **`MetricCard`'s popover and `HealthSnapshot` both carry `definition`/
 `assessment`/`explanation` text computed server-side in `metrics.py`** (not
