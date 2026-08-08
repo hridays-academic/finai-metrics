@@ -118,7 +118,7 @@ export default function AnalystConsensus({ consensus, currentPrice, currency, co
       )}
 
       <div className="analyst-disclaimer">
-        Aggregated third-party sell-side analyst opinion (via Tapetide) -- not FinAI Metrics'
+        Aggregated third-party sell-side analyst opinion (via Tapetide) -- not Stackly Metrics'
         own view, and not investment advice.
       </div>
     </div>

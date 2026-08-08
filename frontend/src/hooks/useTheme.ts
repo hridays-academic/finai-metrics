@@ -2,8 +2,11 @@ import { useCallback, useLayoutEffect, useState } from "react";
 
 // Two independent axes (2026-08) -- ThemeName picks the color identity,
 // ThemeMode picks light/dark appearance within it. See theme.css for the
-// resulting 2x2 matrix of actual palettes.
-export type ThemeName = "money" | "classic";
+// resulting 2x2 matrix of actual palettes. Named "green"/"blue" (renamed
+// from "money"/"classic" shortly after they launched, same colors) --
+// color names rather than concept names, so a future third theme doesn't
+// need a name that fits the same "concept" pattern.
+export type ThemeName = "green" | "blue";
 export type ThemeMode = "dark" | "light";
 
 // Combined identifier, exported as `Theme` for PriceChart.tsx/
@@ -20,11 +23,11 @@ const MODE_KEY = "finai-metrics-mode";
 
 function getInitialThemeName(): ThemeName {
   const stored = localStorage.getItem(THEME_KEY);
-  if (stored === "money" || stored === "classic") return stored;
-  // "money" (lowkey money-green & black) is the default theme (2026-08) --
-  // "classic" is the original theme, kept fully intact and selectable in
+  if (stored === "green" || stored === "blue") return stored;
+  // "green" (lowkey money-green & black) is the default theme (2026-08) --
+  // "blue" is the original theme, kept fully intact and selectable in
   // SettingsPanel.tsx's theme picker as a no-code-change revert path.
-  return "money";
+  return "green";
 }
 
 function getInitialMode(): ThemeMode {

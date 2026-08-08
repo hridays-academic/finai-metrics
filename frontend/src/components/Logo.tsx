@@ -17,7 +17,7 @@ export default function Logo({ onClick }: LogoProps) {
         <circle cx="19.5" cy="7.5" r="1.6" fill="var(--accent-contrast)" />
       </svg>
       <span className="logo-wordmark">
-        FinAI <span>Metrics</span>
+        Stackly <span>Metrics</span>
       </span>
     </button>
   );

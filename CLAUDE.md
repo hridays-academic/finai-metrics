@@ -4,7 +4,10 @@ Guidance for Claude Code (and any future contributor) working in this repository
 
 ## What this project is
 
-**FinAI Metrics** — a web app that fetches financial data for Indian public listed
+**Stackly Metrics** (renamed 2026-08 from "FinAI Metrics" -- same app, no
+functional change; older comments/history throughout this file still say
+"FinAI Metrics" in places, left as-is rather than rewritten purely for the
+name) — a web app that fetches financial data for Indian public listed
 companies (NSE/BSE) and computes standard financial ratios, with hover
 popovers explaining what each metric means and whether the company's actual
 value is healthy, an aggregate "Financial Health Snapshot" verdict, a
@@ -343,7 +346,7 @@ frontend/src/
   main.tsx                  Vite entry point
   components/
     Header.tsx              Logo (left) + account icon + settings gear (top-right)
-    SettingsPanel.tsx        Slide-over: theme (money/classic) + mode (dark/light)
+    SettingsPanel.tsx        Slide-over: theme (green/blue) + mode (dark/light)
                               pickers, independently persisted to localStorage, +
                               Tapetide key reconfiguration
     AuthPanel.tsx            Slide-over: sign in/up form, or (once signed in) account
@@ -439,41 +442,45 @@ live-rendered canvas glitch that self-corrects on the next unrelated
 re-render is inherently hard to catch with a static screenshot).
 
 **Theme and mode are two independent axes, not one flat list (2026-08) —
-`useTheme.ts`'s `ThemeName` (`"money"` default | `"classic"`) and
+`useTheme.ts`'s `ThemeName` (`"green"` default | `"blue"`) and
 `ThemeMode` (`"dark"` default | `"light"`).** First built as a single
 3-option list (`"money" | "dark" | "light"`), then corrected at the user's
 explicit request: a theme (color identity) and its mode (light/dark
 appearance) should be pickable independently, so *every* theme gets both a
-light and a dark variant rather than "money" only ever being dark. Both
-attributes (`data-theme`, `data-mode`) live on `<html>` together, set by
-the same `useLayoutEffect` in `useTheme.ts` (still `useLayoutEffect`, not
+light and a dark variant rather than the green theme only ever being dark.
+`"money"`/`"classic"` were the theme's original internal names (and still
+the vocabulary used to describe *why* the palettes look the way they do,
+below) — renamed to `"green"`/`"blue"` almost immediately after, same
+colors, just color names instead of concept names. Both attributes
+(`data-theme`, `data-mode`) live on `<html>` together, set by the same
+`useLayoutEffect` in `useTheme.ts` (still `useLayoutEffect`, not
 `useEffect` — see below for why that specifically matters), each persisted
 to its own localStorage key. `theme.css` defines the resulting 2x2 matrix
-as four blocks: `[data-theme="money"][data-mode="dark"]`,
-`[data-theme="money"][data-mode="light"]`,
-`[data-theme="classic"][data-mode="dark"]`,
-`[data-theme="classic"][data-mode="light"]`.
+as four blocks: `[data-theme="green"][data-mode="dark"]`,
+`[data-theme="green"][data-mode="light"]`,
+`[data-theme="blue"][data-mode="dark"]`,
+`[data-theme="blue"][data-mode="light"]`.
 
-- **"Money"** is a lowkey money-green & black identity — dark mode:
+- **"Green"** is a lowkey money-green & black identity — dark mode:
   `--bg-app: #0a0f0b`, `--accent: #4f9d6f`; light mode: a cream/paper
   background (`--bg-app: #f6f8f4`, not pure white — a nod to actual
   currency) with a deeper, more saturated green (`--accent: #2f7d52`) for
-  contrast, the same relationship "classic" light already has to its own
+  contrast, the same relationship "blue" light already has to its own
   dark mode (re-tuned per-mode, not just inverted lightness on the same
   hex values). Gold for `--status-warning` in both modes, rather than this
-  app's usual amber, since gold fits the money theme without inventing a
-  new status vocabulary.
-- **"Classic"** (both modes) is the *original*, only theme from before
-  "money" existed, kept byte-for-byte untouched specifically as a
-  no-code-change revert path — picking "Classic" (either mode) from the
+  app's usual amber, since gold fits the money-green theme without
+  inventing a new status vocabulary.
+- **"Blue"** (both modes) is the *original*, only theme from before the
+  green theme existed, kept byte-for-byte untouched specifically as a
+  no-code-change revert path — picking "Blue" (either mode) from the
   Settings panel's theme picker fully restores the app's exact prior look.
-  Don't repurpose or delete either "classic" block without checking with
+  Don't repurpose or delete either "blue" block without checking with
   the user first.
 
 `SettingsPanel.tsx` has two separate picker rows now (`.theme-picker`,
 reused for both — segmented-control style matching
 `.auth-mode-toggle`/`.calculator-mode-toggle` elsewhere in the app), not
-one combined list: "Theme" (Money/Classic) and "Mode" (Dark/Light), so
+one combined list: "Theme" (Green/Blue) and "Mode" (Dark/Light), so
 either can be changed without touching the other. Preview swatch colors in
 both (`SettingsPanel.tsx`'s `THEME_OPTIONS`/`MODE_OPTIONS`) are hand-kept
 copies of the real CSS values, not read live — there's no way to sample
@@ -976,6 +983,34 @@ backend, not split across two services. This follows directly from
 `lib/api.ts`'s `BASE_URL = "/api"` already being a same-origin relative
 path (written that way for the dev proxy in `vite.config.ts`, but it works
 unchanged in production too as long as both pieces share one domain).
+
+**Live at `stackly-metrics.vercel.app`** (2026-08, renamed from
+`finai-metrics.vercel.app` alongside the app's own rename -- see "What this
+project is" above). Two things worth knowing if this ever needs touching
+again:
+- **Renaming a Vercel project (`vercel project rename`) does NOT move its
+  production `*.vercel.app` alias domain.** Confirmed live: after renaming
+  the project, `vercel deploy --prod` kept aliasing to the *old* domain
+  (`finai-metrics.vercel.app`) — the new name only changed the project's
+  internal label/dashboard identity and its auto-generated per-deployment
+  preview URLs. Claiming the new domain needed an explicit
+  `vercel alias set <deployment-url> stackly-metrics.vercel.app`. Also
+  confirmed live: `stackly.vercel.app` (the first choice) turned out to
+  already be a real, unrelated site owned by someone else -- `*.vercel.app`
+  subdomains are global across all Vercel accounts, not scoped per-user, so
+  short/generic names can't be assumed free without checking first.
+- **A manually-`alias set` domain isn't automatically exempt from SSO
+  deployment protection the way a project's original default domain is.**
+  `stackly-metrics.vercel.app` 302-redirected to a `vercel.com/sso-api`
+  login gate on first check, even though `finai-metrics.vercel.app` (the
+  original, Vercel-auto-provisioned production alias) never did — this
+  project had `ssoProtection: "all_except_custom_domains"` set (from
+  project creation), and an ad-hoc `.vercel.app` alias apparently doesn't
+  count as a "custom domain" for that exemption the way the project's
+  original auto-assigned domain did. Fixed with
+  `vercel project protection disable <project> --sso` -- appropriate here
+  since this is meant to be a public site with no visitor-facing
+  authentication gate of its own beyond the app's own sign-in.
 
 - **Frontend**: built via `vercel.json`'s `buildCommand`
   (`cd frontend && npm install && npm run build`) and served as a static

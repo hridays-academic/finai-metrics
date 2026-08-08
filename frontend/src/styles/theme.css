@@ -1,22 +1,24 @@
 /* Theme tokens -- TWO independent axes (2026-08), not one flat list:
-   `data-theme` ("money" default | "classic") picks the color identity,
+   `data-theme` ("green" default | "blue") picks the color identity,
    `data-mode` ("dark" default | "light") picks light/dark appearance
    within that identity. Both attributes are set together by useTheme.ts
    (see its `theme`/`mode` state) and persisted to localStorage
    separately, so any of the 4 combinations can be selected independently
    via SettingsPanel.tsx's two pickers. Keep component CSS reading these
    variables rather than hardcoding colors, so every combination stays in
-   sync automatically.
+   sync automatically. ("green"/"blue" were briefly called "money"/
+   "classic" at launch -- renamed almost immediately, same colors, just
+   color names instead of concept names.)
 
-   "classic" (both modes) is the ORIGINAL, only theme from before "money"
+   "blue" (both modes) is the ORIGINAL, only theme from before "green"
    existed (2026-08) -- deliberately left byte-for-byte untouched as an
-   easy, no-code-change revert path: picking "Classic" from the theme
+   easy, no-code-change revert path: picking "Blue" from the theme
    picker fully restores the app's prior look, in either mode. Don't
-   repurpose or drop either "classic" block without discussing it with the
+   repurpose or drop either "blue" block without discussing it with the
    user first. */
 
 :root,
-:root[data-theme="money"][data-mode="dark"] {
+:root[data-theme="green"][data-mode="dark"] {
   color-scheme: dark;
 
   --bg-app: #0a0f0b;
@@ -41,8 +43,8 @@
      element at a glance -- distinguishable by lightness/saturation, not hue. */
   --status-good: #5cc98a;
   --status-good-bg: rgba(92, 201, 138, 0.14);
-  /* Gold rather than this app's usual amber -- fits the money theme without
-     inventing a whole new status vocabulary. */
+  /* Gold rather than this app's usual amber -- fits the green (money)
+     theme without inventing a whole new status vocabulary. */
   --status-warning: #d1a125;
   --status-warning-bg: rgba(209, 161, 37, 0.14);
   --status-bad: #e2636a;
@@ -56,12 +58,12 @@
   --assistant-bubble-bg: var(--bg-elevated);
 }
 
-/* Money, light mode -- same green-identity/gold-warning palette as money
+/* Green, light mode -- same green-identity/gold-warning palette as green
    dark above, re-tuned for a light background (cream/paper rather than
-   pure white, a nod to actual currency) the same way "classic" light
-   below darkens/re-saturates its accent relative to its own dark mode for
+   pure white, a nod to actual currency) the same way "blue" light below
+   darkens/re-saturates its accent relative to its own dark mode for
    contrast, rather than just inverting lightness on the same hex values. */
-:root[data-theme="money"][data-mode="light"] {
+:root[data-theme="green"][data-mode="light"] {
   color-scheme: light;
 
   --bg-app: #f6f8f4;
@@ -95,7 +97,7 @@
   --assistant-bubble-bg: var(--bg-elevated);
 }
 
-:root[data-theme="classic"][data-mode="dark"] {
+:root[data-theme="blue"][data-mode="dark"] {
   color-scheme: dark;
 
   --bg-app: #0e1116;
@@ -129,7 +131,7 @@
   --assistant-bubble-bg: var(--bg-elevated);
 }
 
-:root[data-theme="classic"][data-mode="light"] {
+:root[data-theme="blue"][data-mode="light"] {
   color-scheme: light;
 
   --bg-app: #f5f7fa;

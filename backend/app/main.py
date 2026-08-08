@@ -81,7 +81,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("finai")
 
 settings = get_settings()
-app = FastAPI(title="FinAI Metrics API")
+app = FastAPI(title="Stackly Metrics API")
 
 app.add_middleware(
     CORSMiddleware,

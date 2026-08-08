@@ -30,8 +30,8 @@ interface SettingsPanelProps {
 // are deliberately generic (near-black / near-white) rather than
 // theme-tinted, since mode is a light/dark choice independent of theme.
 const THEME_OPTIONS: { value: ThemeName; label: string; bg: string; accent: string }[] = [
-  { value: "money", label: "Money", bg: "#0a0f0b", accent: "#4f9d6f" },
-  { value: "classic", label: "Classic", bg: "#0e1116", accent: "#4fd1c5" },
+  { value: "green", label: "Green", bg: "#0a0f0b", accent: "#4f9d6f" },
+  { value: "blue", label: "Blue", bg: "#0e1116", accent: "#4fd1c5" },
 ];
 
 const MODE_OPTIONS: { value: ThemeMode; label: string; bg: string }[] = [

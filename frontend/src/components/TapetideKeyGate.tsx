@@ -153,7 +153,7 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
     return (
       <div className="tapetide-gate-overlay" role="dialog" aria-modal="true" aria-label="Sign in or continue">
         <div className="tapetide-gate-card">
-          <h2>Welcome to FinAI Metrics</h2>
+          <h2>Welcome to Stackly Metrics</h2>
           <p className="tapetide-gate-intro">
             Sign in to reuse a Tapetide key you've already saved, or sign up to save one for next time.
           </p>
@@ -241,6 +241,12 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
               <span>or</span>
             </div>
             <GoogleSignInButton onCredential={handleGoogleCredential} />
+
+            <p className="auth-disclaimer">
+              Stackly Metrics provides financial data and educational information only. Any financial
+              decisions you make using data from this site are your own responsibility -- the site and
+              its owner(s) accept no liability for outcomes resulting from its use.
+            </p>
           </form>
           <button type="button" className="tapetide-gate-skip" onClick={() => setStep("key")}>
             Continue without an account
@@ -256,7 +262,7 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
       <div className="tapetide-gate-card">
         <h2>Connect your Tapetide account</h2>
         <p className="tapetide-gate-intro">
-          FinAI Metrics fetches real NSE/BSE price history and analyst data through{" "}
+          Stackly Metrics fetches real NSE/BSE price history and analyst data through{" "}
           <a href={TAPETIDE_TOKENS_URL} target="_blank" rel="noopener noreferrer">
             Tapetide
           </a>
