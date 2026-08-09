@@ -69,6 +69,11 @@ export default function CompanySearch({ onSearch, loading, error, quota, tapetid
         Tip: use the exact NSE/BSE ticker (e.g. "RELIANCE.NS" or "TATASTEEL.BO") for the most
         reliable match.
       </div>
+      <p className="page-disclaimer">
+        Stackly provides financial data and educational information only. Any financial decisions
+        you make using data from this site are your own responsibility -- the site and its
+        owner(s) accept no liability for outcomes resulting from its use.
+      </p>
     </div>
   );
 }

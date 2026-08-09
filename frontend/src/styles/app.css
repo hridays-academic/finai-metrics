@@ -1513,6 +1513,22 @@
   line-height: 1.5;
 }
 
+/* Same liability disclaimer text as .auth-disclaimer, but shown
+   page-level (search home + calculator) rather than gated behind a
+   sign-up/sign-in form -- most visitors never open that form, so this is
+   the copy that's actually seen day to day. Plain text in --status-bad
+   (this app's existing red-for-danger token, not a one-off color) rather
+   than a bordered box: needs to read as "important, take note" without
+   looking like an error/failure state, so no background tint or border,
+   just enough size/color to not blend into the surrounding muted-grey
+   hint/subtitle text next to it. */
+.page-disclaimer {
+  margin: 0.35rem 0 0;
+  font-size: 0.74rem;
+  color: var(--status-bad);
+  line-height: 1.5;
+}
+
 .auth-user-summary {
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-subtle);

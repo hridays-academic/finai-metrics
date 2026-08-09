@@ -395,6 +395,11 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
           Estimate how a lump-sum investment could grow, based on a real stock's analyst
           price target (or its own historical return, if it has no analyst coverage).
         </p>
+        <p className="page-disclaimer">
+          Stackly provides financial data and educational information only. Any financial decisions
+          you make using data from this site are your own responsibility -- the site and its
+          owner(s) accept no liability for outcomes resulting from its use.
+        </p>
 
         <div className="calculator-stock-picker">
           <div className="calculator-field-header">
