@@ -593,6 +593,30 @@ history if you touch this file again:
    `PickedStock.recentPoints` (the ~6-7mo daily series, used by the very
    first, period-coupled version above) is no longer needed anywhere in
    this component and was removed rather than left dead.
+4. **(2026-08) Fixed a reintroduction of iteration 1's exact bug, just via
+   a different path.** Tapetide's `target_date` is typically well under a
+   year out (~7-10 months, see `AnalystConsensus`'s own docs above) --
+   annualizing that short a real span with `(mean/base)^(1/spanYears) - 1`
+   amplifies it the same way iteration 1's user-chosen short window did.
+   Confirmed live with real cached RELIANCE data: a genuine ~28% raw
+   upside to a ~0.64yr-out target compounded to a headline ~47% "annual
+   return" -- a user-reported, verified mismatch (they expected ~30-40%,
+   matching the raw figure, and saw ~50%). Fixed in both
+   `computeForecastRate` and `computeHistoricalRate` by flooring the
+   exponent's denominator at 1yr (`1 / Math.max(spanYears, 1)`): a target
+   under a year out now uses its own real, un-extrapolated return as-is
+   instead of being stretched to a fictitious annual pace; spans of a year
+   or more are unaffected and still get real annualization.
+   `ProjectionRate.annualized` (`spanYears >= 1`) tracks which case
+   applies, and both the rate field's label ("expected return" vs "annual
+   return") and its helper text change accordingly so a sub-1yr figure is
+   never presented as if it were a true annual rate.
+   **This deliberately breaks the iteration-3 invariant above for
+   spanYears < 1** -- the main tiles no longer algebraically reduce to the
+   scenario section's figure at "Time period" = spanYears in that case,
+   since the rate itself is no longer a true per-year figure to compound.
+   Accepted trade-off: a mislabeled/inflated headline number is worse than
+   a lost algebraic coincidence most users would never notice either way.
 
 **The "Analyst price target scenario" section is still on a different,
 fixed horizon than the main projection tiles above it — a deliberate,
