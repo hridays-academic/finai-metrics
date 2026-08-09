@@ -353,8 +353,9 @@ frontend/src/
     AuthPanel.tsx            Slide-over: sign in/up form, or (once signed in) account
                               summary + recent activity feed + sign out -- see "Accounts
                               & activity tracking" below
-    Sidebar.tsx              Left icon rail: switches between the search page and
-                              ReturnCalculator (the app's two top-level views)
+    Sidebar.tsx              Left icon rail: switches between the search page,
+                              ReturnCalculator, and StockMarketSimulator (the app's
+                              three top-level views)
     CompanySearch.tsx        Ticker/company name input + "~N searches left today" quota
                               counter + Tapetide-reset countdown (no source dropdown --
                               sourcing is now fixed/hybrid, see "Hybrid sourcing" above)
@@ -377,6 +378,15 @@ frontend/src/
                               calculator personalized to a real picked stock -- historical
                               CAGR, analyst target scenarios, and a risk profile, all
                               computed from real data already fetched elsewhere in the app
+    StockMarketSimulator.tsx Third top-level page (via Sidebar): a Monte Carlo "what if"
+                              game -- generates a random future price path for a picked
+                              stock from its own historical drift/volatility, animates it
+                              drawing on SimulatorChart.tsx, and shows a hypothetical
+                              portfolio outcome. Explicitly not a forecast -- see below
+    SimulatorChart.tsx       Standalone lightweight-charts line, same pattern as
+                              PriceForecastChart.tsx, colored --status-warning (not
+                              --accent) specifically to visually flag the line as
+                              synthetic rather than real observed price data
   hooks/
     useTheme.ts               Reads/writes theme to localStorage
   lib/
@@ -597,6 +607,68 @@ non-extrapolated Low/Mean/High range at the actual target date -- the same
 horizon too ("Projected over N days/months/years/decades," reusing
 `periodValue`/`periodUnit`) specifically so both sections' timeframes are
 visible side by side rather than implicit.
+
+## Market Simulator
+
+(2026-08) The app's third top-level page (`StockMarketSimulator.tsx`, via
+Sidebar). Deliberately a different kind of tool than Return Calculator's
+deterministic, analyst-target-driven projection above -- this one is a
+Monte Carlo "what if" game: it generates a *random* future weekly price
+path for a picked stock via geometric Brownian motion, seeded by that
+stock's own historical drift/volatility (mean and standard deviation of
+weekly log returns, computed from the same ~5yr weekly `points` series
+Return Calculator's volatility factor already uses), then shows what a
+hypothetical investment would be worth at the end of that one random path.
+Running it again with the exact same stock produces a *different* path
+every time -- that's the point, not a bug to seed away.
+
+- **Not a forecast, and disclosed as such twice.** A `.page-disclaimer`
+  line (same red, page-level treatment as the search and calculator pages
+  -- see below) states up front that this is a random simulation, not a
+  prediction, with no liability accepted for decisions made from it; a
+  second `.calculator-field-note` under the results repeats the same point
+  in the context of the actual numbers shown. This is a stronger
+  disclaimer than Return Calculator's, deliberately -- that page's rate is
+  at least *derived* from a real analyst consensus or real past prices;
+  this page's entire output is synthetic, generated fresh on every click,
+  so the risk of it being misread as a real prediction is higher, not
+  lower.
+- **`SimulatorChart.tsx` colors its line `--status-warning`, not `--accent`.**
+  Every other chart in the app (`PriceChart`, `PriceForecastChart`) uses
+  `--accent` for what is, ultimately, real fetched data. Reusing that same
+  color for a randomly-generated path would visually imply it belongs to
+  the same category of trustworthiness. `--status-warning` (this app's
+  existing "uncertain/caution" token) was already the right semantic fit
+  without inventing a new color.
+- **The path animates in over ~2.2s regardless of horizon length**
+  (`StockMarketSimulator.tsx`'s animation `useEffect`, tick interval =
+  `2200 / totalSteps` steps, clamped to a 30ms floor) rather than appearing
+  all at once -- a chart that's already fully drawn the instant you click
+  "Run Simulation" reads as a static chart, not something being simulated
+  live. The full path is computed synchronously up front (not generated
+  tick-by-tick) purely so the result tiles below can show final numbers
+  immediately without waiting on the animation to finish; the animation is
+  a visual replay of an already-known path, not the actual computation.
+- **Changing the horizon toggle does NOT auto-regenerate the chart** -- same
+  "locked until you act" pattern as Return Calculator's Time period field.
+  `pathHorizon` state tracks which horizon the *currently displayed* `path`
+  was actually generated for, kept deliberately separate from the live
+  `horizon` toggle value, specifically so the results header ("Simulated
+  outcome after N Months/Years") can't end up describing a horizon that
+  doesn't match what's actually on screen if someone clicks a different
+  toggle option without pressing "Run New Simulation" afterward -- a real
+  bug caught and fixed before this shipped, not a hypothetical.
+- **Picking a stock costs the same Tapetide quota as Return Calculator's
+  stock picker** (one `fetchCompany` + one `fetchPriceHistory` call pair --
+  see "Sourcing" above), shown via the same `QuotaCounter`. Re-running the
+  simulation itself, including every "Run New Simulation" click, is pure
+  client-side math on data already fetched and costs nothing -- worth
+  knowing since it's not obvious from the UI alone which action spends
+  quota and which doesn't.
+- A stock with under ~10 weeks of price history (`computeWeeklyStats`'
+  minimum) can't have a simulation generated for it at all -- shown as a
+  plain "Not enough price history for {ticker} to run a simulation" note
+  rather than a silently blank chart area.
 
 ## Homepage recommendations
 

@@ -1,4 +1,4 @@
-export type View = "search" | "calculator";
+export type View = "search" | "calculator" | "simulator";
 
 interface SidebarProps {
   view: View;
@@ -6,9 +6,10 @@ interface SidebarProps {
 }
 
 // Slim icon rail pinned to the left edge, full viewport height -- the app's
-// primary nav between the two top-level pages (stock search, return
-// calculator). Icons match Header.tsx's gear icon: 1.6 stroke width,
-// currentColor, no fill, so all icon-buttons in the app read as one family.
+// primary nav between the three top-level pages (stock search, return
+// calculator, market simulator). Icons match Header.tsx's gear icon: 1.6
+// stroke width, currentColor, no fill, so all icon-buttons in the app read
+// as one family.
 export default function Sidebar({ view, onChange }: SidebarProps) {
   return (
     <nav className="sidebar" aria-label="Primary">
@@ -43,6 +44,31 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
           <circle cx="8.4" cy="17" r="1" fill="currentColor" />
           <circle cx="12" cy="17" r="1" fill="currentColor" />
           <circle cx="15.6" cy="17" r="1" fill="currentColor" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        className={`sidebar-icon-button ${view === "simulator" ? "active" : ""}`}
+        aria-label="Market simulator"
+        aria-current={view === "simulator"}
+        title="Market simulator"
+        onClick={() => onChange("simulator")}
+      >
+        {/* Solid bars (real past history) crossed by a dashed rising line
+            (a simulated/hypothetical path) -- distinguishes this from the
+            calculator's icon at a glance without needing a dice/random
+            glyph that wouldn't obviously read as "stock market" on its own. */}
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 20V13M11 20V9M17 20V15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <path
+            d="M4 11L9.5 6L14.5 9L20 3.5"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="1 3.2"
+          />
         </svg>
       </button>
     </nav>

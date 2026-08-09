@@ -2175,6 +2175,26 @@
   line-height: 1.4;
 }
 
+/* ---------- Market simulator ---------- */
+/* Reuses .calculator-card/.calculator-field/.calculator-results/etc.
+   wholesale (StockMarketSimulator.tsx applies both classes to the same
+   elements, e.g. className="calculator-card simulator-card") -- only the
+   handful of things genuinely unique to this page get their own rules. */
+
+.simulator-card {
+  max-width: 760px;
+}
+
+.simulator-run-button {
+  display: block;
+  width: 100%;
+  margin: 0.9rem 0 1.3rem;
+}
+
+.simulator-chart-card {
+  margin-bottom: 1.3rem;
+}
+
 /* ---------- Tapetide bring-your-own-key gate ---------- */
 
 .tapetide-gate-overlay {

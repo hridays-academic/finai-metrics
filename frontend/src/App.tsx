@@ -8,6 +8,7 @@ import CompanySearch from "./components/CompanySearch";
 import MetricsDashboard from "./components/MetricsDashboard";
 import RecommendedCompanies from "./components/RecommendedCompanies";
 import ReturnCalculator from "./components/ReturnCalculator";
+import StockMarketSimulator from "./components/StockMarketSimulator";
 import { useTheme } from "./hooks/useTheme";
 import { fetchCompany, fetchQuota, fetchMe, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
@@ -197,8 +198,10 @@ export default function App() {
                 </div>
               </div>
             </>
-          ) : (
+          ) : view === "calculator" ? (
             <ReturnCalculator quota={quota} onQuotaSpent={refreshQuota} />
+          ) : (
+            <StockMarketSimulator quota={quota} onQuotaSpent={refreshQuota} theme={theme} />
           )}
         </main>
       </div>
