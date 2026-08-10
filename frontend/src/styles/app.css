@@ -1524,8 +1524,16 @@
    hint/subtitle text next to it. */
 .page-disclaimer {
   margin: 0.35rem 0 0;
-  font-size: 0.74rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--status-bad);
+  /* Punches up saturation/brightness over the raw --status-bad token --
+     that color is tuned to read as "this metric is unhealthy" next to
+     calm neutral tones elsewhere, not to grab attention on its own, which
+     is what a liability disclaimer actually needs. Applied as a filter
+     (not a new hardcoded hex) so it still tracks each of the 4 theme/mode
+     combinations' own red rather than clashing with one of them. */
+  filter: saturate(1.4) brightness(1.15);
   line-height: 1.5;
 }
 
