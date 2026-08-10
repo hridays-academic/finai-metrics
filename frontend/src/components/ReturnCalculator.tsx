@@ -55,14 +55,23 @@ interface PickedStock {
 }
 
 interface ProjectionRate {
+  // TRUE compound-annual rate (CAGR) -- always a real per-year figure, never
+  // floored/faked. This is what the Time Period compounding math
+  // (`p * (1+ratePct/100)^periodInYears`) actually uses, so an arbitrary
+  // Time Period selection always compounds coherently -- see the comment on
+  // computeForecastRate for why a non-true-annual rate broke that.
   ratePct: number;
+  // The real, NON-annualized return actually observed/implied over
+  // `spanYears` -- i.e. what you'd literally see if you looked at the two
+  // endpoints with no extrapolation. Equal to ratePct when spanYears is
+  // exactly 1; smaller than ratePct whenever spanYears < 1, since ratePct
+  // is then an extrapolated full-year pace of a shorter real move. Shown
+  // alongside ratePct specifically so a sub-1yr analyst target's headline
+  // annualized number is never presented without the real figure it was
+  // stretched from.
+  rawPct: number;
   spanYears: number;
   clamped: boolean; // true if we didn't have enough history and used the oldest point available
-  // False when spanYears < 1 and the exponent below was floored at 1yr
-  // instead of the real (shorter) span -- see the comment on
-  // computeForecastRate for why. When false, `ratePct` is the real,
-  // un-extrapolated return over `spanYears`, not a true annual rate.
-  annualized: boolean;
   // "forecast": annualized from the analyst consensus mean target (what
   // sell-side analysts expect going forward). "historical": annualized
   // from the stock's own trailing 1yr price history -- only used as a
@@ -107,19 +116,19 @@ function computeForecastRate(stock: PickedStock): ProjectionRate | null {
   const spanYears = (targetTime - Date.now()) / (365.25 * 86_400_000);
   if (spanYears <= 0) return null; // a target date that's already passed -- don't divide by ~0
 
-  // Analyst target dates are typically well under a year out (Tapetide's
-  // target_period is usually ~7-10 months away, see CLAUDE.md) -- compounding
-  // that partial-year move up to a full-year pace massively overstates it,
-  // the exact same "short window -> inflated CAGR" distortion
-  // computeHistoricalRate below already guards against (a real, confirmed
-  // case: RELIANCE's ~28% raw upside to its ~0.64yr-out target compounded to
-  // a headline ~47% "annual return"). Flooring the exponent's denominator at
-  // 1 year means a sub-1yr target's real, un-extrapolated return is used
-  // as-is instead of being stretched into a fictitious annual pace; spans of
-  // a year or more are unaffected and still get real annualization.
-  const annualized = spanYears >= 1;
-  const ratePct = (Math.pow(targets.mean / basePrice, 1 / Math.max(spanYears, 1)) - 1) * 100;
-  return { ratePct, spanYears, clamped: false, annualized, source: "forecast" };
+  // True CAGR -- see the ProjectionRate.ratePct comment for why this must
+  // stay a real per-year figure (a floored/capped version broke the Time
+  // Period compounding math for any period other than ~this exact span, a
+  // real, confirmed bug: RELIANCE's ~27% raw upside to its ~0.64yr-out
+  // target, compounded over a 1.5yr Time Period at a FLOORED rate, produced
+  // a nonsensical ~45% total return that didn't match the rate shown OR the
+  // real target move). rawPct is the real, non-extrapolated move to the
+  // actual target date -- shown alongside ratePct in the UI so the
+  // annualized figure is never presented without the number it was
+  // stretched from.
+  const rawPct = (targets.mean / basePrice - 1) * 100;
+  const ratePct = (Math.pow(targets.mean / basePrice, 1 / spanYears) - 1) * 100;
+  return { ratePct, rawPct, spanYears, clamped: false, source: "forecast" };
 }
 
 // Fallback rate source, used only when a stock has no analyst coverage to
@@ -148,20 +157,17 @@ function computeHistoricalRate(stock: PickedStock): ProjectionRate | null {
   const spanYears = (latestTime - pastTime) / (365.25 * 86_400_000);
   if (spanYears <= 0 || past.close <= 0) return null;
 
-  // Same floor as computeForecastRate above, for the same reason: a
-  // recently-listed stock with under a year of trading history clamps
-  // `past` to the earliest available point (see `clamped` below), which can
-  // leave `spanYears` well under 1 -- annualizing that short a real window
-  // would reintroduce the exact short-window CAGR amplification this
-  // lookback was already changed to a fixed ~1yr window to avoid.
-  const annualized = spanYears >= 1;
-  const ratePct = (Math.pow(latest.close / past.close, 1 / Math.max(spanYears, 1)) - 1) * 100;
+  // True CAGR -- see ProjectionRate.ratePct. rawPct is the real move over
+  // the actual (possibly clamped-short) window, same pairing as
+  // computeForecastRate above.
+  const rawPct = (latest.close / past.close - 1) * 100;
+  const ratePct = (Math.pow(latest.close / past.close, 1 / spanYears) - 1) * 100;
   // Clamped means the 1-year lookback ran off the start of the series
   // (a recently-listed stock with under a year of history) -- NOT just
   // "the nearest weekly-spaced point wasn't exactly on the target date,"
   // which is normal and expected for weekly-resolution data.
   const earliestTime = new Date(series[0].date).getTime();
-  return { ratePct, spanYears, clamped: targetTime < earliestTime, annualized, source: "historical" };
+  return { ratePct, rawPct, spanYears, clamped: targetTime < earliestTime, source: "historical" };
 }
 
 function computeProjectionRate(stock: PickedStock): ProjectionRate | null {
@@ -525,7 +531,7 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
               <label className="calculator-field">
                 <span>
                   {pickedStock.ticker}'s {projectionRate?.source === "historical" ? "historical" : "analyst-implied"}{" "}
-                  {projectionRate && !projectionRate.annualized ? "expected return" : "annual return"}
+                  annual return
                 </span>
                 <div
                   className="calculator-input-wrap locked"
@@ -555,14 +561,14 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
                     {projectionRate.source === "forecast" ? (
                       <>
                         Implied by analysts' mean price target for {pickedStock.ticker}
-                        {targets?.period ? ` (${targets.period})` : ""}
-                        {projectionRate.annualized ? (
-                          ", annualized."
-                        ) : (
+                        {targets?.period ? ` (${targets.period})` : ""}, annualized to a full year.
+                        {projectionRate.spanYears < 1 && (
                           <>
                             {" "}
-                            -- the target date is under a year away, so this is the real, un-extrapolated return to
-                            that date, not stretched into a full year's pace.
+                            The target itself is only {Math.round(projectionRate.spanYears * 365)} days away and
+                            implies a {projectionRate.rawPct >= 0 ? "+" : ""}
+                            {projectionRate.rawPct.toFixed(1)}% move by then -- the rate above is that pace
+                            stretched to a full year, not a claim it continues at that speed.
                           </>
                         )}
                       </>
@@ -572,8 +578,16 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
                         {projectionRate.spanYears >= 1
                           ? `${projectionRate.spanYears.toFixed(1)} years`
                           : `${Math.round(projectionRate.spanYears * 365)} days`}
-                        {projectionRate.clamped ? " (all the price history available)" : ""}
-                        {!projectionRate.annualized ? ", shown as-is rather than annualized" : ""} instead.
+                        {projectionRate.clamped ? " (all the price history available)" : ""}, annualized to a full
+                        year.
+                        {projectionRate.spanYears < 1 && (
+                          <>
+                            {" "}
+                            Over that window it actually moved {projectionRate.rawPct >= 0 ? "+" : ""}
+                            {projectionRate.rawPct.toFixed(1)}% -- the rate above is that pace stretched to a full
+                            year.
+                          </>
+                        )}
                       </>
                     )}
                   </span>

@@ -593,30 +593,44 @@ history if you touch this file again:
    `PickedStock.recentPoints` (the ~6-7mo daily series, used by the very
    first, period-coupled version above) is no longer needed anywhere in
    this component and was removed rather than left dead.
-4. **(2026-08) Fixed a reintroduction of iteration 1's exact bug, just via
-   a different path.** Tapetide's `target_date` is typically well under a
-   year out (~7-10 months, see `AnalystConsensus`'s own docs above) --
-   annualizing that short a real span with `(mean/base)^(1/spanYears) - 1`
-   amplifies it the same way iteration 1's user-chosen short window did.
-   Confirmed live with real cached RELIANCE data: a genuine ~28% raw
-   upside to a ~0.64yr-out target compounded to a headline ~47% "annual
-   return" -- a user-reported, verified mismatch (they expected ~30-40%,
-   matching the raw figure, and saw ~50%). Fixed in both
-   `computeForecastRate` and `computeHistoricalRate` by flooring the
-   exponent's denominator at 1yr (`1 / Math.max(spanYears, 1)`): a target
-   under a year out now uses its own real, un-extrapolated return as-is
-   instead of being stretched to a fictitious annual pace; spans of a year
-   or more are unaffected and still get real annualization.
-   `ProjectionRate.annualized` (`spanYears >= 1`) tracks which case
-   applies, and both the rate field's label ("expected return" vs "annual
-   return") and its helper text change accordingly so a sub-1yr figure is
-   never presented as if it were a true annual rate.
-   **This deliberately breaks the iteration-3 invariant above for
-   spanYears < 1** -- the main tiles no longer algebraically reduce to the
-   scenario section's figure at "Time period" = spanYears in that case,
-   since the rate itself is no longer a true per-year figure to compound.
-   Accepted trade-off: a mislabeled/inflated headline number is worse than
-   a lost algebraic coincidence most users would never notice either way.
+4. **(2026-08) Attempted fix, later reverted (see iteration 5) for
+   reintroducing iteration 1's exact bug via a different path.** Tapetide's
+   `target_date` is typically well under a year out (~7-10 months, see
+   `AnalystConsensus`'s own docs above) -- annualizing that short a real
+   span with `(mean/base)^(1/spanYears) - 1` amplifies it the same way
+   iteration 1's user-chosen short window did. Confirmed live with real
+   cached RELIANCE data: a genuine ~28% raw upside to a ~0.64yr-out target
+   compounded to a headline ~47% "annual return" -- a user-reported,
+   verified mismatch (they expected ~30-40%, matching the raw figure, and
+   saw ~50%). "Fixed" by flooring the exponent's denominator at 1yr in both
+   `computeForecastRate`/`computeHistoricalRate`, on the theory that a
+   sub-1yr target should show its real, un-extrapolated return instead of
+   a stretched annual pace -- explicitly flagged at the time as breaking
+   the iteration-3 invariant (main tiles no longer reduce to the scenario
+   section's figure) as an "accepted trade-off." That trade-off turned out
+   to be a real bug, not a cosmetic one -- see iteration 5.
+5. **(2026-08) Reverted iteration 4 -- the floor broke Time Period
+   compounding, a second user-reported, verified mismatch.** The floored
+   rate is only the true annual pace at exactly `Time Period = spanYears`;
+   compounding it via `p*(1+r)^t` for ANY other `t` (which is the whole
+   point of the Time Period field) no longer means anything, because a
+   floored rate isn't a real per-year figure. Confirmed live: RELIANCE's
+   floored ~27% rate compounded over a 1.5yr Time Period produced a
+   "Total Return" of ~45% -- not the rate shown, not the real target
+   return, not annualized correctly for 1.5 years, just wrong. `ratePct`
+   is now ALWAYS true CAGR again (`(mean/base)^(1/spanYears) - 1`,
+   uncapped) so Time Period compounding is coherent for every value, and
+   the iteration-3 invariant (main tiles == scenario section at
+   `Time Period = spanYears`) holds again unconditionally. The real,
+   non-annualized number iteration 4 was trying to surface didn't
+   disappear -- `ProjectionRate.rawPct` carries it separately now, and the
+   rate field's helper text shows both together whenever `spanYears < 1`
+   ("implies a +27% move by then -- the rate above is that pace stretched
+   to a full year") instead of silently substituting one number for the
+   other. Lesson: a "more honest number" that breaks the field it feeds
+   into isn't more honest, it's just wrong in a different place -- fix
+   confusing *labeling* with better labels, not by changing what the
+   underlying rate mathematically means.
 
 **The "Analyst price target scenario" section is still on a different,
 fixed horizon than the main projection tiles above it — a deliberate,
