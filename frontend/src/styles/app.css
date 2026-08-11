@@ -1058,18 +1058,35 @@
   color: var(--text-tertiary);
 }
 
+/* Matches .metric-cards/.metric-card's panel style below (redesigned
+   2026-07-14) -- this row previously kept its own individually-boxed
+   tiles from before that redesign (see design-backups/metric-cards-v1-boxed/),
+   so it visually read as an older, mismatched design sitting directly above
+   the newer seamless-panel metric groups. Same grid-gap seam trick: tiles
+   butt up against each other with a 1px surface-color line instead of each
+   carrying its own separate bordered box. */
 .highlights-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.75rem;
+  gap: 1px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
   margin-top: 1rem;
 }
 
 .highlight-tile {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
   padding: 0.75rem 0.9rem;
+}
+
+.highlight-tile:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+.highlight-tile:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 
 .highlight-tile .label {
@@ -2430,8 +2447,11 @@
      rounded -- auto-fit wraps to multiple rows below this width, which
      left interior row-edge cards with square corners. Rounding every card
      individually here is a deliberate departure from the "seamless panel"
-     look in exchange for correctness once rows wrap. */
-  .metric-card {
+     look in exchange for correctness once rows wrap. Same reasoning, same
+     fix, for .highlight-tile below -- it uses the identical first/last-child
+     rounding trick and 5 tiles definitely wrap at this width. */
+  .metric-card,
+  .highlight-tile {
     border-radius: 10px;
   }
 
