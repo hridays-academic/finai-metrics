@@ -200,7 +200,7 @@ def get_recommendations() -> RecommendationsResponse:
             symbol, _exchange = bharat_provider.resolve_symbol(ticker)
             info = bharat_provider.get_company_info(symbol)
             raw = bharat_provider.get_raw_financials(symbol)
-            snapshot = compute_health_snapshot(compute_metric_groups(raw))
+            snapshot = compute_health_snapshot(compute_metric_groups(raw, info.company_name))
             status = _VERDICT_TO_STATUS.get(snapshot.verdict)
             if status is None:
                 continue
@@ -359,7 +359,7 @@ def get_company(
                 "Fallback analyst consensus also failed for symbol=%s", info.resolved_symbol, exc_info=True
             )
 
-    metric_groups = compute_metric_groups(raw)
+    metric_groups = compute_metric_groups(raw, info.company_name)
     health_snapshot = compute_health_snapshot(metric_groups)
     response = CompanyFinancialsResponse(
         info=info,

@@ -12,10 +12,15 @@ a fabricated number.
 
 Each metric also carries a plain-English `definition` (what the ratio *is*)
 and a value-aware `assessment` (whether *this* company's number is in a
-healthy range, and why) -- both shown in the frontend's hover popup. These
-stay strictly descriptive/educational (e.g. "this is below the level
-typically considered healthy") and must never be worded as investment advice
-("you should sell") -- see CLAUDE.md on why that line matters.
+healthy range, why, and what that actually means in practice) -- both shown
+in the frontend's hover popup. `assessment` is built from two parts: a
+company-named, value-aware sentence (the ratio's actual number and whether
+it's healthy) plus a fixed "why this matters" clause per metric (what a
+high/low reading actually implies for the business, e.g. why heavy debt is
+riskier than the ratio alone conveys). Both stay strictly descriptive/
+educational (e.g. "this is below the level typically considered healthy")
+and must never be worded as investment advice ("you should sell") -- see
+CLAUDE.md on why that line matters.
 """
 from typing import Optional
 
@@ -60,21 +65,36 @@ def _fmt(value: float, unit: str) -> str:
     return f"{value:,.2f}"
 
 
-def _build_assessment(value: float, unit: str, status: MetricStatus, good: float, warn: float, direction: str) -> str:
+def _build_assessment(
+    company_name: str, value: float, unit: str, status: MetricStatus, good: float, warn: float, direction: str, why: str
+) -> str:
     v = _fmt(value, unit)
     g = _fmt(good, unit)
     w = _fmt(warn, unit)
     if direction == "high":
         if status == MetricStatus.GOOD:
-            return f"At {v}, this is in a healthy range for this ratio (typically at or above {g})."
-        if status == MetricStatus.WARNING:
-            return f"At {v}, this is moderate -- below the {g} level usually considered strong, though not yet a warning sign."
-        return f"At {v}, this is below the {w} level typically considered healthy, which is usually seen as a warning sign."
-    if status == MetricStatus.GOOD:
-        return f"At {v}, this is in a healthy range for this ratio (typically at or below {g})."
-    if status == MetricStatus.WARNING:
-        return f"At {v}, this is moderate -- above the {g} level usually considered conservative, though not yet a warning sign."
-    return f"At {v}, this is above the {w} level typically considered risky."
+            base = f"{company_name}'s {v} is in a healthy range for this ratio (typically at or above {g})."
+        elif status == MetricStatus.WARNING:
+            base = (
+                f"{company_name}'s {v} is moderate -- below the {g} level usually considered strong, "
+                "though not yet a warning sign."
+            )
+        else:
+            base = (
+                f"{company_name}'s {v} is below the {w} level typically considered healthy, "
+                "which is usually seen as a warning sign."
+            )
+    else:
+        if status == MetricStatus.GOOD:
+            base = f"{company_name}'s {v} is in a healthy range for this ratio (typically at or below {g})."
+        elif status == MetricStatus.WARNING:
+            base = (
+                f"{company_name}'s {v} is moderate -- above the {g} level usually considered conservative, "
+                "though not yet a warning sign."
+            )
+        else:
+            base = f"{company_name}'s {v} is above the {w} level typically considered risky."
+    return f"{base} {why}"
 
 
 def _metric(
@@ -85,6 +105,8 @@ def _metric(
     definition: str,
     formula: str,
     benchmark_note: str,
+    why: str,
+    company_name: str,
     *,
     good: Optional[float] = None,
     warn: Optional[float] = None,
@@ -97,13 +119,13 @@ def _metric(
         assessment = "Not available for this company from the current data source."
     elif override_status is not None:
         status = override_status
-        assessment = override_assessment or benchmark_note
+        assessment = f"{override_assessment or benchmark_note} {why}"
     elif good is None:
         status = MetricStatus.NEUTRAL
-        assessment = benchmark_note
+        assessment = f"{benchmark_note} {why}"
     else:
         status = _status_high_good(value, good, warn) if direction == "high" else _status_low_good(value, good, warn)
-        assessment = _build_assessment(value, unit, status, good, warn, direction)
+        assessment = _build_assessment(company_name, value, unit, status, good, warn, direction, why)
 
     return Metric(
         key=key,
@@ -118,17 +140,17 @@ def _metric(
     )
 
 
-def compute_metric_groups(raw: RawFinancials) -> list[MetricGroup]:
+def compute_metric_groups(raw: RawFinancials, company_name: str) -> list[MetricGroup]:
     return [
-        _liquidity_group(raw),
-        _profitability_group(raw),
-        _leverage_group(raw),
-        _efficiency_group(raw),
-        _valuation_group(raw),
+        _liquidity_group(raw, company_name),
+        _profitability_group(raw, company_name),
+        _leverage_group(raw, company_name),
+        _efficiency_group(raw, company_name),
+        _valuation_group(raw, company_name),
     ]
 
 
-def _liquidity_group(r: RawFinancials) -> MetricGroup:
+def _liquidity_group(r: RawFinancials, company_name: str) -> MetricGroup:
     current_ratio = _safe_div(r.current_assets, r.current_liabilities)
     quick_assets = (
         r.current_assets - r.inventory
@@ -166,6 +188,9 @@ def _liquidity_group(r: RawFinancials) -> MetricGroup:
                 "its near-term obligations.",
                 "Current Assets / Current Liabilities",
                 "Healthy range is roughly 1.5x-3x; below 1x can signal short-term cash strain.",
+                "A low current ratio can force a company to raise emergency cash -- through debt "
+                "or selling assets at a discount -- if a large bill comes due unexpectedly.",
+                company_name,
                 good=1.5, warn=1.0,
             ),
             _metric(
@@ -175,6 +200,10 @@ def _liquidity_group(r: RawFinancials) -> MetricGroup:
                 "right away.",
                 "(Current Assets - Inventory) / Current Liabilities",
                 "Above 1x means short-term obligations are covered without selling inventory.",
+                "This matters most for businesses that hold slow-moving inventory (like "
+                "manufacturers), where the current ratio alone can overstate how quickly cash "
+                "is really available.",
+                company_name,
                 good=1.0, warn=0.5,
             ),
             _metric(
@@ -183,6 +212,10 @@ def _liquidity_group(r: RawFinancials) -> MetricGroup:
                 "short-term assets -- the cash cushion available to run day-to-day operations.",
                 "Current Assets - Current Liabilities",
                 "Positive means current assets exceed current liabilities.",
+                "A negative number here doesn't automatically mean trouble -- some large, "
+                "cash-generating businesses run on negative working capital by design -- but "
+                "it's worth checking why alongside the current and quick ratios.",
+                company_name,
                 override_status=wc_status, override_assessment=wc_assessment,
             ),
             _metric(
@@ -192,13 +225,17 @@ def _liquidity_group(r: RawFinancials) -> MetricGroup:
                 "inventory?",
                 "Cash & Equivalents / Current Liabilities",
                 "Measures ability to cover short-term liabilities with cash alone; >0.5x is strong.",
+                "This is the most conservative liquidity check, since it ignores unpaid customer "
+                "bills and unsold inventory entirely -- useful for judging how a company would "
+                "cope if collections suddenly slowed.",
+                company_name,
                 good=0.5, warn=0.2,
             ),
         ],
     )
 
 
-def _profitability_group(r: RawFinancials) -> MetricGroup:
+def _profitability_group(r: RawFinancials, company_name: str) -> MetricGroup:
     gross_margin = _safe_div(r.gross_profit, r.revenue)
     operating_margin = _safe_div(r.operating_income, r.revenue)
     net_margin = _safe_div(r.net_income, r.revenue)
@@ -228,6 +265,9 @@ def _profitability_group(r: RawFinancials) -> MetricGroup:
                 "goods or services, before overhead, marketing, or admin costs.",
                 "Gross Profit / Revenue x 100",
                 "Varies a lot by industry; compare against sector peers rather than an absolute bar.",
+                "A thin gross margin leaves little room to absorb rising costs or fund growth "
+                "before even reaching operating expenses.",
+                company_name,
                 good=40, warn=20,
             ),
             _metric(
@@ -237,6 +277,9 @@ def _profitability_group(r: RawFinancials) -> MetricGroup:
                 "efficiency.",
                 "Operating Income / Revenue x 100",
                 "Reflects core operating efficiency before interest and tax.",
+                "This strips out interest and tax, so it isolates how efficiently the core "
+                "business itself is run, separate from how it's financed or taxed.",
+                company_name,
                 good=15, warn=5,
             ),
             _metric(
@@ -245,6 +288,10 @@ def _profitability_group(r: RawFinancials) -> MetricGroup:
                 "interest payment, and tax is paid.",
                 "Net Income / Revenue x 100",
                 "Above ~10% is generally considered healthy, but varies by sector.",
+                "This is the bottom line after everything -- interest, tax, one-off items -- so "
+                "it can swing more than operating margin for reasons unrelated to day-to-day "
+                "performance.",
+                company_name,
                 good=10, warn=3,
             ),
             _metric(
@@ -253,6 +300,10 @@ def _profitability_group(r: RawFinancials) -> MetricGroup:
                 "-- a core measure of how efficiently it rewards its owners.",
                 "Net Income / Average Total Equity x 100",
                 "Above ~15% is generally considered strong for shareholders.",
+                "A high ROE driven mainly by heavy borrowing (check Debt-to-Equity alongside "
+                "this) is a different, riskier story than one driven by genuinely efficient "
+                "operations.",
+                company_name,
                 good=15, warn=8,
             ),
             _metric(
@@ -261,6 +312,10 @@ def _profitability_group(r: RawFinancials) -> MetricGroup:
                 "regardless of how those assets were financed.",
                 "Net Income / Average Total Assets x 100",
                 "Measures how efficiently assets generate profit.",
+                "Comparing this to ROE shows how much of the company's returns come from "
+                "leverage -- a big gap between the two usually means debt is doing a lot of "
+                "the work.",
+                company_name,
                 good=5, warn=2,
             ),
             _metric(
@@ -269,13 +324,17 @@ def _profitability_group(r: RawFinancials) -> MetricGroup:
                 "shareholder equity and borrowed money -- to generate profit.",
                 "EBIT / (Total Assets - Current Liabilities) x 100",
                 "Above ~15% suggests efficient use of both equity and debt capital.",
+                "Because this includes both equity and debt in the denominator, it's a fairer "
+                "efficiency comparison between companies with different capital structures than "
+                "ROE alone.",
+                company_name,
                 good=15, warn=8,
             ),
         ],
     )
 
 
-def _leverage_group(r: RawFinancials) -> MetricGroup:
+def _leverage_group(r: RawFinancials, company_name: str) -> MetricGroup:
     debt_to_equity = _safe_div(r.total_debt, r.total_equity)
     interest_coverage = _safe_div(r.ebit, r.interest_expense)
     debt_to_assets = _safe_div(r.total_debt, r.total_assets)
@@ -290,6 +349,9 @@ def _leverage_group(r: RawFinancials) -> MetricGroup:
                 "shareholders. Higher means more of the business is funded by debt.",
                 "Total Debt / Total Equity",
                 "Below 1x is conservative; above 2x indicates heavier reliance on debt.",
+                "Higher debt raises fixed interest obligations that must be paid regardless of "
+                "how business is going, which can turn a bad year into a much worse one.",
+                company_name,
                 good=1.0, warn=2.0, direction="low",
             ),
             _metric(
@@ -298,6 +360,10 @@ def _leverage_group(r: RawFinancials) -> MetricGroup:
                 "payments -- a measure of how easily it can service its debt.",
                 "EBIT / Interest Expense",
                 "Below 1.5x can signal difficulty servicing debt from operating earnings.",
+                "This is a more direct test of debt safety than Debt-to-Equity alone -- a "
+                "company can carry a lot of debt and still be fine if its earnings comfortably "
+                "cover the interest.",
+                company_name,
                 good=3.0, warn=1.5,
             ),
             _metric(
@@ -306,13 +372,16 @@ def _leverage_group(r: RawFinancials) -> MetricGroup:
                 "equity.",
                 "Total Debt / Total Assets",
                 "Share of assets financed by debt; lower generally means lower solvency risk.",
+                "This shows what fraction of everything the company owns was actually paid for "
+                "with borrowed money, versus shareholders' own capital.",
+                company_name,
                 good=0.4, warn=0.6, direction="low",
             ),
         ],
     )
 
 
-def _efficiency_group(r: RawFinancials) -> MetricGroup:
+def _efficiency_group(r: RawFinancials, company_name: str) -> MetricGroup:
     avg_assets = _avg(r.total_assets, r.prior_total_assets)
     asset_turnover = _safe_div(r.revenue, avg_assets)
 
@@ -337,6 +406,10 @@ def _efficiency_group(r: RawFinancials) -> MetricGroup:
                 "measure of how productively assets are being used.",
                 "Revenue / Average Total Assets",
                 "Higher means more revenue generated per unit of assets; varies widely by industry.",
+                "Capital-intensive businesses (like utilities or manufacturers) naturally run "
+                "lower here than asset-light ones (like software) -- compare within the same "
+                "industry, not across.",
+                company_name,
                 good=1.0, warn=0.5,
             ),
             _metric(
@@ -345,6 +418,9 @@ def _efficiency_group(r: RawFinancials) -> MetricGroup:
                 "higher generally means inventory isn't sitting idle.",
                 "COGS / Average Inventory (falls back to Revenue if COGS unavailable)",
                 "Higher generally means inventory is sold and replenished more often.",
+                "Slow turnover can mean unsold stock tying up cash, or an early sign of "
+                "weakening demand for what the company sells.",
+                company_name,
                 good=6.0, warn=3.0,
             ),
             _metric(
@@ -353,13 +429,16 @@ def _efficiency_group(r: RawFinancials) -> MetricGroup:
                 "payments -- higher means customers are paying faster.",
                 "Revenue / Average Receivables",
                 "Higher means customer collections happen faster.",
+                "A falling number over time can be an early warning that customers are taking "
+                "longer to pay -- sometimes a signal of their own financial stress.",
+                company_name,
                 good=8.0, warn=4.0,
             ),
         ],
     )
 
 
-def _valuation_group(r: RawFinancials) -> MetricGroup:
+def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
     pe_ratio = _safe_div(r.current_price, r.eps)
     pb_ratio = _safe_div(r.current_price, r.book_value_per_share)
     dividend_yield = _safe_div(r.dividends_per_share, r.current_price)
@@ -378,6 +457,10 @@ def _valuation_group(r: RawFinancials) -> MetricGroup:
                 "earnings -- used to compare how \"expensive\" a stock is relative to its profits.",
                 "Current Price / EPS",
                 "Compare against sector peers and historical average -- context-dependent.",
+                "A high P/E can mean investors expect strong future growth -- or that the stock "
+                "is simply expensive relative to current earnings; it doesn't tell you which on "
+                "its own.",
+                company_name,
             ),
             _metric(
                 "pb_ratio", "P/B Ratio", pb_ratio, "x",
@@ -385,12 +468,19 @@ def _valuation_group(r: RawFinancials) -> MetricGroup:
                 "(assets minus liabilities) per share.",
                 "Current Price / Book Value per Share",
                 "Below 1x can indicate undervaluation or underlying distress -- check further.",
+                "This is most meaningful for asset-heavy businesses (like banks or "
+                "manufacturers) -- less so for asset-light ones (like software) where most "
+                "value isn't on the balance sheet.",
+                company_name,
             ),
             _metric(
                 "eps", "Earnings per Share (EPS)", r.eps, "INR",
                 "The portion of a company's profit allocated to each individual share outstanding.",
                 "Net Income / Shares Outstanding",
                 "Net income attributable to each outstanding share.",
+                "On its own this is hard to compare across companies with different share "
+                "counts -- it's most useful tracked over time for the same company.",
+                company_name,
             ),
             _metric(
                 "dividend_yield", "Dividend Yield", dividend_yield, "%",
@@ -398,6 +488,9 @@ def _valuation_group(r: RawFinancials) -> MetricGroup:
                 "price -- a measure of cash income relative to the stock's price.",
                 "Dividends per Share / Current Price x 100",
                 "Annual dividend income relative to share price.",
+                "A very high yield can sometimes mean the market expects a dividend cut, since "
+                "yield rises automatically as a falling share price shrinks the denominator.",
+                company_name,
             ),
             _metric(
                 "market_cap", "Market Capitalization", r.market_cap, "INR",
@@ -405,6 +498,9 @@ def _valuation_group(r: RawFinancials) -> MetricGroup:
                 "multiplied by number of shares.",
                 "Current Price x Shares Outstanding",
                 "Total market value of outstanding shares.",
+                "This is what the market currently thinks the whole company is worth -- a "
+                "starting point for classifying company size, not a judgment of value for money.",
+                company_name,
             ),
         ],
     )
