@@ -72,11 +72,12 @@ interface ProjectionRate {
   rawPct: number;
   spanYears: number;
   clamped: boolean; // true if we didn't have enough history and used the oldest point available
-  // "forecast": annualized from the analyst consensus mean target (what
-  // sell-side analysts expect going forward). "historical": annualized
-  // from the stock's own trailing 1yr price history -- only used as a
-  // fallback when a stock has no analyst coverage to derive a forecast
-  // rate from. The two are never blended -- see computeProjectionRate.
+  // "historical": annualized from the stock's own trailing 1yr price
+  // history -- the default and primary basis (see computeProjectionRate).
+  // "forecast": annualized from the analyst consensus mean target --
+  // fallback only, used when a stock doesn't have enough price history to
+  // compute a historical rate (e.g. a very recent listing). The two are
+  // never blended.
   source: "forecast" | "historical";
 }
 
@@ -96,17 +97,16 @@ function closestPoint(series: PricePoint[], targetTime: number): PricePoint {
   return closest;
 }
 
-// Preferred rate source for the main projection tiles: the analyst
-// consensus mean target, annualized from today to the target date. This is
-// forward-looking, same direction as the "Analyst price target scenario"
-// section below (which uses the same mean target) -- so the main tiles and
-// that section can no longer point in opposite directions the way a
-// trailing *historical* rate could (a stock can easily have had a down
-// year while analysts expect a recovery, which produced exactly that
-// "why is my gain negative when the forecast is positive" confusion in
-// practice). Only used when a target date + mean target both exist; falls
-// back to computeHistoricalRate otherwise (some stocks have no analyst
-// coverage at all -- see AnalystTargets).
+// Fallback rate source, used only when a stock doesn't have enough price
+// history for computeHistoricalRate below to compute a trailing rate from
+// (a very recently listed stock). Annualizes the analyst consensus mean
+// target from today to the target date -- forward-looking, same direction
+// as the "Analyst price target scenario" section below, which uses the
+// same mean target. NOT the primary source anymore -- see
+// computeProjectionRate for why trailing historical performance is
+// preferred (annualizing a sub-1yr analyst horizon, even honestly, kept
+// producing numbers that read as too high relative to what the stock has
+// actually done -- a real, repeated, user-reported problem).
 function computeForecastRate(stock: PickedStock): ProjectionRate | null {
   const targets = stock.analystTargets;
   const basePrice = stock.currentPrice;
@@ -131,25 +131,38 @@ function computeForecastRate(stock: PickedStock): ProjectionRate | null {
   return { ratePct, rawPct, spanYears, clamped: false, source: "forecast" };
 }
 
-// Fallback rate source, used only when a stock has no analyst coverage to
-// derive computeForecastRate from. Fixed ~1-year lookback, deliberately
-// NOT tied to whatever "Time period" the user is projecting forward with
-// -- it used to be (targetDays = periodInYears * 365.25), which was a real
+// Primary rate source for the main projection tiles: how this stock has
+// ACTUALLY performed, annualized over a trailing ~1-year window. Preferred
+// over the analyst-forecast rate (see computeForecastRate) because
+// annualizing a sub-1yr analyst target -- even done honestly, with the raw
+// figure shown alongside it -- kept producing headline numbers that read
+// as implausibly high compared to a stock's real performance (a real,
+// twice-repeated, user-reported problem: RELIANCE's true CAGR to its
+// FY2027 target was ~46%/yr, while its real trailing performance is
+// -3% to +6% depending on the window). Fixed ~1-year lookback, deliberately
+// NOT tied to whatever "Time period" the user is projecting forward with --
+// it used to be (targetDays = periodInYears * 365.25), which was a real
 // bug: picking a short projection period like "1 Month" made this
 // annualize a mere 30-day price window, and CAGR math massively amplifies
 // short-term noise over a short window (a perfectly real ~7% move over 30
-// days compounds to a headline "133% annual return"). A trailing 1-year
-// window is what "annual return" conventionally means for a stock, and
-// keeps this number stable regardless of how short a forward period
-// someone types.
+// days compounds to a headline "133% annual return").
 const HISTORICAL_RATE_LOOKBACK_DAYS = 365.25;
 
 function computeHistoricalRate(stock: PickedStock): ProjectionRate | null {
   const series = stock.points;
-  if (series.length < 2) return null;
+  const currentPrice = stock.currentPrice;
+  // Anchored to the live current price and the real current time, NOT
+  // series[series.length - 1] -- Tapetide's price-history feed has been
+  // observed live serving a "latest" weekly point several months stale
+  // (confirmed: a fetch made in August returned a series ending in March).
+  // Computing a "1-year" span from a stale endpoint silently computes the
+  // wrong window entirely, and uses a stale closing price instead of
+  // today's real one. The live current price (already fetched fresh for
+  // the stock picker, same value the analyst-target math uses) has no such
+  // lag, so it's used as the series' effective endpoint instead.
+  if (series.length < 1 || !currentPrice || currentPrice <= 0) return null;
 
-  const latest = series[series.length - 1];
-  const latestTime = new Date(latest.date).getTime();
+  const latestTime = Date.now();
   const targetTime = latestTime - HISTORICAL_RATE_LOOKBACK_DAYS * 86_400_000;
   const past = closestPoint(series, targetTime);
   const pastTime = new Date(past.date).getTime();
@@ -160,8 +173,8 @@ function computeHistoricalRate(stock: PickedStock): ProjectionRate | null {
   // True CAGR -- see ProjectionRate.ratePct. rawPct is the real move over
   // the actual (possibly clamped-short) window, same pairing as
   // computeForecastRate above.
-  const rawPct = (latest.close / past.close - 1) * 100;
-  const ratePct = (Math.pow(latest.close / past.close, 1 / spanYears) - 1) * 100;
+  const rawPct = (currentPrice / past.close - 1) * 100;
+  const ratePct = (Math.pow(currentPrice / past.close, 1 / spanYears) - 1) * 100;
   // Clamped means the 1-year lookback ran off the start of the series
   // (a recently-listed stock with under a year of history) -- NOT just
   // "the nearest weekly-spaced point wasn't exactly on the target date,"
@@ -170,8 +183,12 @@ function computeHistoricalRate(stock: PickedStock): ProjectionRate | null {
   return { ratePct, rawPct, spanYears, clamped: targetTime < earliestTime, source: "historical" };
 }
 
+// Trailing historical performance first -- see computeHistoricalRate for
+// why this is now the default. Only falls back to the analyst-forecast
+// rate when a stock genuinely doesn't have enough price history yet (a
+// very recent listing).
 function computeProjectionRate(stock: PickedStock): ProjectionRate | null {
-  return computeForecastRate(stock) ?? computeHistoricalRate(stock);
+  return computeHistoricalRate(stock) ?? computeForecastRate(stock);
 }
 
 function toNumber(raw: string): number {
@@ -530,14 +547,14 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
 
               <label className="calculator-field">
                 <span>
-                  {pickedStock.ticker}'s {projectionRate?.source === "historical" ? "historical" : "analyst-implied"}{" "}
-                  annual return
+                  {pickedStock.ticker}'s annual return
+                  {projectionRate?.source === "historical" ? " (trailing historical performance)" : " (analyst-implied)"}
                 </span>
                 <div
                   className="calculator-input-wrap locked"
                   title={
                     projectionRate?.source === "historical"
-                      ? "Computed from real price history -- not editable"
+                      ? "Computed from real, trailing historical price performance -- not editable"
                       : "Computed from the analyst consensus price target -- not editable"
                   }
                 >
@@ -558,10 +575,29 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
                 </div>
                 {projectionRate ? (
                   <span className="calculator-field-note">
-                    {projectionRate.source === "forecast" ? (
+                    {projectionRate.source === "historical" ? (
                       <>
-                        Implied by analysts' mean price target for {pickedStock.ticker}
-                        {targets?.period ? ` (${targets.period})` : ""}, annualized to a full year.
+                        This rate is calculated from {pickedStock.ticker}'s own trailing historical price
+                        performance over the last{" "}
+                        {projectionRate.spanYears >= 1
+                          ? `${projectionRate.spanYears.toFixed(1)} years`
+                          : `${Math.round(projectionRate.spanYears * 365)} days`}
+                        {projectionRate.clamped ? " (all the price history available)" : ""}, annualized to a full
+                        year -- not an analyst forecast, and not a prediction of future performance.
+                        {projectionRate.spanYears < 1 && (
+                          <>
+                            {" "}
+                            Over that window it actually moved {projectionRate.rawPct >= 0 ? "+" : ""}
+                            {projectionRate.rawPct.toFixed(1)}% -- the rate above is that pace stretched to a full
+                            year.
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        Not enough price history yet for {pickedStock.ticker} to calculate a trailing return --
+                        using analysts' mean price target for {pickedStock.ticker}
+                        {targets?.period ? ` (${targets.period})` : ""} instead, annualized to a full year.
                         {projectionRate.spanYears < 1 && (
                           <>
                             {" "}
@@ -569,23 +605,6 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
                             implies a {projectionRate.rawPct >= 0 ? "+" : ""}
                             {projectionRate.rawPct.toFixed(1)}% move by then -- the rate above is that pace
                             stretched to a full year, not a claim it continues at that speed.
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        No analyst coverage for {pickedStock.ticker} -- using its own actual return over the last{" "}
-                        {projectionRate.spanYears >= 1
-                          ? `${projectionRate.spanYears.toFixed(1)} years`
-                          : `${Math.round(projectionRate.spanYears * 365)} days`}
-                        {projectionRate.clamped ? " (all the price history available)" : ""}, annualized to a full
-                        year.
-                        {projectionRate.spanYears < 1 && (
-                          <>
-                            {" "}
-                            Over that window it actually moved {projectionRate.rawPct >= 0 ? "+" : ""}
-                            {projectionRate.rawPct.toFixed(1)}% -- the rate above is that pace stretched to a full
-                            year.
                           </>
                         )}
                       </>

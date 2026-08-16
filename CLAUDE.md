@@ -631,6 +631,43 @@ history if you touch this file again:
    into isn't more honest, it's just wrong in a different place -- fix
    confusing *labeling* with better labels, not by changing what the
    underlying rate mathematically means.
+6. **(2026-08) Flipped the priority: trailing historical performance is
+   now the DEFAULT, analyst-forecast is now the fallback -- reversing
+   iteration 3's own choice.** Iterations 4/5 kept trying to fix the
+   *display* of the forecast-annualized rate, but the deeper problem
+   never went away: annualizing a sub-1yr analyst target, however
+   honestly labeled, kept producing headline numbers a user twice
+   reported as implausibly high -- first "~50%, should be 30-40%," then
+   after the raw figure was surfaced, still "~50%, should be ~15%."
+   Investigated with real live data rather than guessing a third
+   formula: RELIANCE's true forecast-annualized CAGR was ~46%/yr, while
+   its actual trailing performance over 1/3/5 years was -3% to +6% --
+   *nowhere near* either the forecast-derived number or the user's
+   expected ~15%. There is no honest RELIANCE-specific figure that lands
+   near a generic "stocks return ~15%" intuition; the fix isn't a better
+   formula, it's changing what's being measured. `computeProjectionRate`
+   now tries `computeHistoricalRate` first, falling back to
+   `computeForecastRate` only when a stock has no price history yet (a
+   very recent listing) -- inverting iteration 3's `computeForecastRate
+   ?? computeHistoricalRate`. This reintroduces the exact "main tiles vs.
+   scenario section can point in different directions" risk iteration 3
+   moved away from (a stock can have a weak trailing year while analysts
+   expect a recovery) -- accepted as the better trade-off given two
+   real, escalating complaints about the forecast-first design and zero
+   complaints about the historical one.
+   **Also fixed a real, separate bug found while investigating:**
+   `computeHistoricalRate` anchored to `series[series.length - 1]` --
+   Tapetide's price-history feed was confirmed live to sometimes serve a
+   "latest" weekly point several months stale (a fetch made in August
+   returned a series ending in March), silently computing the wrong
+   1-year window and pricing off a stale close. Now anchored to the live
+   current price and `Date.now()` instead (the same fresh price already
+   fetched for the stock picker) -- the price-history *series* is still
+   used to find the point ~1 year back, just not trusted for "today."
+   The rate field's label and helper text now say explicitly "trailing
+   historical performance" whenever this basis is used, per direct user
+   request, so it's never ambiguous that the number is backward-looking,
+   not a forecast.
 
 **The "Analyst price target scenario" section is still on a different,
 fixed horizon than the main projection tiles above it — a deliberate,
