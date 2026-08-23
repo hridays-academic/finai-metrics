@@ -660,6 +660,36 @@ history if you touch this file again:
    historical performance" whenever this basis is used, per direct user
    request, so it's never ambiguous that the number is backward-looking,
    not a forecast.
+7. **(2026-08) Switched `computeHistoricalRate` from a rolling trailing-
+   365-days-from-today window to a fixed most-recently-completed-calendar-
+   year window (Jan 1 -- Dec 31).** Iteration 6 fixed *which endpoint*
+   anchors the window (live price/`Date.now()` instead of a possibly-stale
+   `series[series.length-1]`) but kept the window itself rolling -- which
+   turned out to have its own, different problem: a rolling window's
+   answer silently changes depending on what day you happen to look. Real,
+   confirmed user report: RELIANCE's rolling trailing-12-months figure was
+   -6.84% (confirmed live against Tapetide's own public `/stocks/RELIANCE`
+   "1Y" chart, no API key needed) at the same time its 2025 calendar year
+   alone was a real, Google-confirmed +29% -- the stock rallied hard
+   through 2025 and gave back a lot of it in a 2026 pullback, so *both*
+   figures are simultaneously true; they just answer different questions.
+   Landing on "the day you happen to check" right after a pullback reads as
+   a wrong/broken number even though the math was correct. A fixed
+   Jan-Dec window doesn't have that problem -- it's the same unambiguous
+   number regardless of what day you load the calculator, at the cost of
+   being a full year stale by December (a real, accepted trade-off, not
+   fixed here). `computeHistoricalRate` now finds the series points closest
+   to Jan 1 and Dec 31 of `currentYear - 1` and returns their simple
+   close-to-close return; if the series doesn't reach back to the start of
+   that year at all (a recently-listed stock), it returns `null` so
+   `computeProjectionRate` falls through to `computeForecastRate` --
+   same fallback shape as before, just a stricter "not available" check
+   than the old `clamped`-to-oldest-point behavior (which has been removed
+   entirely -- a partial-year return computed from a wrong starting point
+   would be actively misleading, not just imprecise). The rate label now
+   says "`{year} calendar-year performance`" instead of "trailing
+   historical performance" so it's unambiguous which specific window
+   produced the number.
 
 **The "Analyst price target scenario" section is still on a different,
 fixed horizon than the main projection tiles above it — a deliberate,
