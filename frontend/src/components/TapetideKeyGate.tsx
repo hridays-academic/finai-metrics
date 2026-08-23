@@ -275,6 +275,14 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
           . It's free, but every visitor needs their own API key -- here's how to get one:
         </p>
 
+        <video
+          className="tapetide-gate-video"
+          src="/videos/tapetide-key-guide.mp4"
+          controls
+          playsInline
+          preload="metadata"
+        />
+
         <ol className="tapetide-gate-steps">
           <li>
             Go to{" "}

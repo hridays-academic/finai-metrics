@@ -2178,6 +2178,15 @@
   text-underline-offset: 2px;
 }
 
+.tapetide-gate-video {
+  display: block;
+  width: 100%;
+  margin: 0 0 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: #000;
+}
+
 .tapetide-gate-steps {
   margin: 0 0 1.5rem;
   padding-left: 1.3rem;
