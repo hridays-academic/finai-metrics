@@ -8,7 +8,7 @@ app/services/*. Run with:
 """
 import logging
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -31,8 +31,6 @@ from app.models import (
     PricePoint,
     QuotaStatus,
     RawFinancials,
-    RecommendedCompany,
-    RecommendationsResponse,
     SignUpRequest,
     TapetideKeyRequest,
     UserPublic,
@@ -44,7 +42,6 @@ from app.services.data_provider import (
     FinancialDataProvider,
     ProviderQuotaExceededError,
 )
-from app.services.bharat_sm_provider import BharatSMProvider
 from app.services.metrics import compute_health_snapshot, compute_metric_groups
 from app.services.tapetide_provider import InvalidTapetideKeyError, TapetideProvider
 from app.services.yfinance_provider import YFinanceProvider
@@ -114,14 +111,10 @@ def _tapetide_token(x_tapetide_token: Optional[str] = Header(None)) -> Optional[
     return x_tapetide_token.strip() if x_tapetide_token and x_tapetide_token.strip() else None
 
 
-# Hybrid sourcing (see CLAUDE.md): Bharat-SM-Data serves company info + raw
-# financials for every search (free, no quota, no per-user key needed) --
-# Tapetide is reserved for the two things Bharat structurally can't provide,
-# ever: price history and analyst consensus (see bharat_sm_provider.py's
-# module docstring). yfinance remains the automatic fallback for those two
-# when a user's Tapetide quota is exhausted. Unlike Tapetide, neither of
-# these needs a per-user key, so they stay shared, module-level singletons.
-bharat_provider: FinancialDataProvider = BharatSMProvider()
+# yfinance is the automatic fallback for price history and analyst consensus
+# when a user's Tapetide quota is exhausted (see CLAUDE.md's "Sourcing"
+# section). Doesn't need a per-user key, so it stays a shared, module-level
+# singleton.
 fallback_provider: FinancialDataProvider = YFinanceProvider()
 
 # Recount from the actual Tapetide call sites in get_company/get_price_history
@@ -150,77 +143,6 @@ _last_company_by_ticker: dict[str, CompanyFinancialsResponse] = {}
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
-
-
-# Homepage suggestion pool -- large, liquid, well-known NSE large-caps
-# spanning sectors, rotated daily (see get_recommendations). Always sourced
-# from Bharat-SM-Data, never Tapetide: computing a real health verdict for
-# 5 companies up front costs ~10 Tapetide calls each (50 total) -- nearly
-# the whole free-tier daily quota just from loading the empty page, before
-# the user has searched anything. Bharat-SM-Data costs nothing (see
-# bharat_sm_provider.py) and has everything compute_health_snapshot needs.
-_RECOMMENDATION_POOL = [
-    "RELIANCE", "TCS", "HDFCBANK", "INFY", "ITC", "ICICIBANK", "SBIN",
-    "BHARTIARTL", "LT", "KOTAKBANK", "AXISBANK", "MARUTI", "ASIANPAINT",
-    "WIPRO", "TATAMOTORS", "TATASTEEL", "SUNPHARMA", "BAJFINANCE", "TITAN",
-    "HCLTECH",
-]
-_RECOMMENDATIONS_PER_DAY = 5
-
-# compute_health_snapshot's verdict strings -> the same good/warning/bad
-# scale used everywhere else in the app (MetricStatus), not a new palette.
-# "Not Enough Data" has no slot here -- that candidate is skipped entirely
-# rather than shown with a fabricated "neutral" badge.
-_VERDICT_TO_STATUS = {
-    "Strong Fundamentals": "good",
-    "Mixed Fundamentals": "warning",
-    "Weak Fundamentals": "bad",
-}
-
-# Keyed by "YYYY-MM-DD" -- recomputed once per calendar day, not per request.
-_recommendations_cache: dict[str, RecommendationsResponse] = {}
-
-
-@app.get("/api/recommendations", response_model=RecommendationsResponse)
-def get_recommendations() -> RecommendationsResponse:
-    today = date.today().isoformat()
-    cached = _recommendations_cache.get(today)
-    if cached:
-        return cached
-
-    # Deterministic (not random) daily rotation: every request the same day
-    # gets the same 5, and the set visibly changes from one day to the next.
-    start = date.today().timetuple().tm_yday % len(_RECOMMENDATION_POOL)
-    picks: list[RecommendedCompany] = []
-    for offset in range(len(_RECOMMENDATION_POOL)):
-        if len(picks) >= _RECOMMENDATIONS_PER_DAY:
-            break
-        ticker = _RECOMMENDATION_POOL[(start + offset) % len(_RECOMMENDATION_POOL)]
-        try:
-            symbol, _exchange = bharat_provider.resolve_symbol(ticker)
-            info = bharat_provider.get_company_info(symbol)
-            raw = bharat_provider.get_raw_financials(symbol)
-            snapshot = compute_health_snapshot(compute_metric_groups(raw, info.company_name))
-            status = _VERDICT_TO_STATUS.get(snapshot.verdict)
-            if status is None:
-                continue
-            picks.append(
-                RecommendedCompany(
-                    ticker=ticker,
-                    name=info.company_name,
-                    sector=info.sector,
-                    verdict=status,
-                    explanation=snapshot.explanation,
-                )
-            )
-        except Exception:  # noqa: BLE001 -- one bad candidate shouldn't break the homepage
-            logger.warning("Skipping recommendation candidate %s", ticker, exc_info=True)
-            continue
-
-    response = RecommendationsResponse(date=today, companies=picks)
-    _recommendations_cache.clear()  # drop any stale prior-day entry
-    _recommendations_cache[today] = response
-    return response
 
 
 def _normalize_for_match(s: str) -> str:
@@ -285,10 +207,8 @@ def get_company(
     # cloud IP range for its search/profile endpoints, confirmed live after
     # deploying there (the same class of anti-bot block bharat_sm_provider.py
     # already documents for NSE's price-history API, just hitting the
-    # fundamentals path too this time -- Bharat-SM-Data is otherwise left
-    # wired in for get_recommendations below, which is a separate, lower-
-    # stakes problem to fix). Tapetide is a real metered API, not a scraper
-    # -- confirmed reachable from Vercel. This costs more of the user's
+    # fundamentals path too this time). Tapetide is a real metered API, not
+    # a scraper -- confirmed reachable from Vercel. This costs more of the user's
     # quota per search (~10 Tapetide calls instead of ~5 -- recount from the
     # real call sites below if this changes, see CLAUDE.md) and loses the
     # current/quick ratio liquidity figures Bharat-SM-Data's fuller balance

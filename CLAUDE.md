@@ -18,9 +18,9 @@ today's price to the target date — deliberately its own card, not overlaid
 on the price history chart, where a ~9-month-out fan was an imperceptible
 sliver against 5 years of history), and third-party analyst consensus
 (rating breakdown + price target range). Before any search, the empty state
-shows a daily-rotating set of "recommended" companies, each badged with its
-real, freshly-computed Health Snapshot verdict (see "Homepage
-recommendations" below).
+is just a plain "search a company" prompt -- it briefly showed a
+daily-rotating set of "recommended" companies, removed 2026-08 (see
+"Homepage recommendations" below for why).
 
 **On "analyst consensus" vs. the app's own opinion:** `HealthSnapshot` (our
 verdict) and `AnalystConsensus` (sell-side analysts' verdict, reported
@@ -77,9 +77,9 @@ backend/app/
                             (the two things Bharat-SM-Data structurally can't provide)
     yfinance_provider.py   Automatic fallback for the above, used when Tapetide's
                             quota is exhausted
-    bharat_sm_provider.py  Serves company info + raw financials for every search --
-                            free, no quota (see its module docstring for why price
-                            history/analyst consensus can't come from here instead)
+    bharat_sm_provider.py  Not wired into main.py anymore (see "Sourcing" below) --
+                            kept as a dormant, fully-implemented provider in case
+                            Tickertape's IP block on Vercel ever lifts
     metrics.py              Pure functions: computes ratios from raw financials
     ai_prompt.py             Shared system prompt + context formatting (provider-agnostic)
     moonshot_service.py      Active AI backend, wraps the Moonshot (Kimi) API
@@ -113,14 +113,15 @@ came back a 502, `bharat_provider.resolve_symbol` raising
 anti-bot posture already documented below for NSE's price-history API, just
 hitting the fundamentals path too this time. Tapetide, being a real metered
 API rather than a scraper, is unaffected (confirmed reachable from Vercel).
-`bharat_provider` is still wired in as a module-level singleton and still
-used by `get_recommendations` (the homepage suggestions, see "Homepage
-recommendations" below) — that endpoint has its own, separate, not-yet-
-resolved version of this same problem, since it depends on being callable
-before a Tapetide key exists. Don't route `/api/company`/`/api/price-history`
-back through Bharat-SM-Data without first re-verifying Tickertape's block is
-gone (the same discipline this file already asks for NSE's block on price
-history).
+`bharat_provider`'s last remaining caller, `get_recommendations` (the
+homepage suggestions), was removed (2026-08, see "Homepage recommendations"
+below) — `bharat_sm_provider.py` is now not wired into `main.py` at all,
+kept only as a dormant, fully-implemented provider (same "kept but not
+currently wired in" pattern as `deepseek_service.py`/`claude_service.py`)
+in case Tickertape's block ever lifts. Don't route `/api/company`/
+`/api/price-history` back through Bharat-SM-Data without first re-verifying
+Tickertape's block is gone (the same discipline this file already asks for
+NSE's block on price history).
 
 - `GET /api/company/{query}` now requires a Tapetide key (400 if missing —
   this is new; the old Bharat-only fundamentals path never needed one).
@@ -146,10 +147,7 @@ history).
 `info.resolved_symbol` -- Tapetide's own plain ticker (e.g. `"RELIANCE"`,
 from its `get_company_profile` response) -- is what gets chained into
 `/api/price-history/{symbol}` (called by the frontend with this same
-value). `bharat_provider` still produces its own version of this same
-shape for `get_recommendations`, using Bharat's plain ticker rather than
-Tickertape's internal sid (`"RELI"`) that `bharat_sm_provider.py` uses
-internally -- but that code path no longer feeds `/api/company`.
+value).
 
 `CompanyFinancialsResponse.consensus_source: "tapetide" | "yfinance" | None`
 and `PriceHistoryResponse.active_source: "tapetide" | "yfinance"` report
@@ -234,15 +232,15 @@ that show as permanent "N/A" under Tapetide alone would have been genuinely
 available) — but Tickertape 403-blocks Vercel's cloud IP range for its own
 search/profile endpoints too (see "Sourcing" above), which is a second,
 independent anti-bot block from the NSE one described here, not the same
-one. `get_price_history`/`get_recent_price_history`/`get_analyst_consensus`
-on this provider are still never called by `main.py` (the permanent gap
-described above), and as of the Tickertape-block discovery,
-`get_company_info`/`get_raw_financials` aren't either -- `bharat_provider`
-is only still reachable through `get_recommendations` now (see "Homepage
-recommendations" below, which has this same blocking problem, unresolved).
-Don't route `/api/company` back through this provider without re-verifying
-Tickertape's block is gone, and don't route price history or analyst
-consensus through it without re-verifying NSE's separate block is gone.
+one. None of this provider's methods are called by `main.py` anymore (see
+"Sourcing" above) -- `get_price_history`/`get_recent_price_history`/
+`get_analyst_consensus` never were (the permanent gap described above), and
+`get_company_info`/`get_raw_financials` stopped being once
+`get_recommendations`, their last caller, was removed (2026-08, see
+"Homepage recommendations" below). Don't route `/api/company` back through
+this provider without re-verifying Tickertape's block is gone, and don't
+route price history or analyst consensus through it without re-verifying
+NSE's separate block is gone.
 
 **Tapetide is consumed as plain JSON-RPC over HTTP, not via an MCP client
 library.** `tapetide_provider.py`'s module docstring documents every field
@@ -361,9 +359,6 @@ frontend/src/
                               sourcing is now fixed/hybrid, see "Hybrid sourcing" above)
     QuotaCounter.tsx          The "~N searches left today" pill -- shared by
                               CompanySearch.tsx and ReturnCalculator.tsx so both stay in sync
-    RecommendedCompanies.tsx Empty-state suggestions, daily-rotating; badge verdict is
-                              real Health Snapshot data but shown as plain grey text now,
-                              not color-coded (see "Homepage recommendations" below)
     MetricsDashboard.tsx     Full-width, grouped color-coded metric cards
     MetricCard.tsx           Single metric card; hover/tap opens a popover with
                               its plain-English definition + value-aware assessment
@@ -407,12 +402,12 @@ explainer text), both loaded via Google Fonts in `index.html`.
 **Responsive breakpoints (`app.css`).** Built 2026-07 after a live phone-width
 audit (375px viewport) found two severely broken layouts: `.summary-row`'s
 2-column grid clipped the Analyst Consensus card off the right edge of the
-screen entirely, and `.recommended-companies-grid`'s inline `repeat(N, 1fr)`
-column count (set per-render in `RecommendedCompanies.tsx` so 3-5 cards
-always share one desktop row) squeezed name/ticker text unreadably at phone
-width. Fixes live in a dedicated "Responsive: phone-width screens" section
-at the end of `app.css`, plus the pre-existing 900px `.charts-row` stack
-above it:
+screen entirely, and (now removed along with the recommendations feature
+itself, see "Homepage recommendations" below) `.recommended-companies-grid`'s
+inline `repeat(N, 1fr)` column count squeezed name/ticker text unreadably at
+phone width. Fixes live in a dedicated "Responsive: phone-width screens"
+section at the end of `app.css`, plus the pre-existing 900px `.charts-row`
+stack above it:
 - `max-width: 640px` is the general phone cutoff — sidebar/header/search-bar
   padding, calculator result/scenario grids (3-col → 1-col; three equal
   columns leave too little width per currency value), and `.metric-card`
@@ -423,9 +418,6 @@ above it:
 - `max-width: 760px` stacks `.summary-row` to one column — needs a wider
   cutoff than 640px since two side-by-side compact cards stop fitting
   before a general single-column phone layout would kick in.
-- `.recommended-companies-grid`'s inline style needs `!important` in the
-  media query to override (only a stylesheet rule, not higher specificity,
-  beats an inline style) — 2 columns below 860px, 1 column below 520px.
 - `.settings-panel`/`.auth-panel` and the Tapetide key gate needed no
   breakpoint — their existing `max-width: 90vw` / centered-card patterns
   already adapted correctly, confirmed live rather than assumed.
@@ -745,60 +737,28 @@ every time -- that's the point, not a bug to seed away.
   plain "Not enough price history for {ticker} to run a simulation" note
   rather than a silently blank chart area.
 
-## Homepage recommendations
+## Homepage recommendations (removed 2026-08)
 
-Before any search, the empty state shows 3-5 companies via
-`RecommendedCompanies.tsx`, fetched from `GET /api/recommendations`. Two
-constraints shaped this feature, both from direct user pushback during
-development:
-
-- **The verdict is real and computed, not a hand-picked label — but
-  (2026-07) not shown on the card at all anymore.** `main.py`'s
-  `get_recommendations` still calls `compute_metric_groups` +
-  `compute_health_snapshot` — the exact same functions a real search uses —
-  against each candidate, and still maps the resulting Strong/Mixed/Weak
-  Fundamentals verdict onto the same `good`/`warning`/`bad` `MetricStatus`
-  scale used everywhere else in the app (`_VERDICT_TO_STATUS`; a candidate
-  that comes back "Not Enough Data" is still skipped entirely rather than
-  shown with a fabricated neutral badge), and `RecommendedCompany` still
-  carries `verdict`/`explanation` in the API response, unchanged. What's
-  changed twice on the frontend since: first a green/yellow/red border on
-  an untouched empty-state suggestion read as a "buy this" signal at a
-  glance (the same misleading-as-advice framing `HealthSnapshot`'s own
-  compliance scoping already avoids), so the card itself went plain neutral
-  grey and the verdict moved into a hover popover instead; then (2026-07,
-  later) the popover itself was removed too, at the user's request — no
-  code reason, just a product call that the popover wasn't wanted.
-  `RecommendedCompanyCard` in `RecommendedCompanies.tsx` is now a plain
-  click target (name/ticker/sector + arrow, no hover state at all) — the
-  backend fields are simply unused by the frontend now, same "computed but
-  not currently rendered" pattern as the AI chat assistant (see above).
-- **It must cost zero Tapetide quota.** `get_recommendations` is hardcoded
-  to always use `bharat_provider`, never Tapetide — this predates the
-  Tickertape-IP-block discovery documented in "Sourcing" above, and as of
-  that discovery, is now **broken in production** (Vercel): every candidate
-  fetch fails the same way `/api/company` used to, so `companies` comes
-  back empty (confirmed live: `GET /api/recommendations` returns
-  `{"companies": []}`, no error, since `get_recommendations`'s per-candidate
-  `try/except Exception: continue` swallows the failure rather than
-  crashing the homepage). Unlike `/api/company`, this endpoint hasn't been
-  switched to Tapetide, because doing so would cost real quota AND require
-  a key — defeating the entire point of this feature (working before a
-  visitor has entered a Tapetide key at all, see "Bring-your-own Tapetide
-  key" below). This is a known, unresolved gap, not a silent regression to
-  "fix" by reaching for Bharat or Tapetide without discussing the tradeoff
-  with the user first. The response is cached in-process, keyed by the
-  calendar date (`_recommendations_cache`), so
-  it's computed once per day, not once per page load.
-
-`_RECOMMENDATION_POOL` (20 large-cap NSE tickers spanning sectors) is
-rotated through deterministically — `day_of_year % len(pool)` picks the
-start of a 5-ticker window — specifically *not* randomly, so every request
-on the same day returns the same set (no flicker on refresh) while the set
-still visibly changes day to day. **Clicking a recommended card is a normal
-search** (`onSelect` → the same `handleSearch` the search bar uses), so it
-goes through the app's regular hybrid sourcing like any other search — the
-Bharat-sourced badge never influences which provider answers the click.
+Before any search, the empty state used to show 3-5 companies via
+`RecommendedCompanies.tsx`, fetched from `GET /api/recommendations` --
+`main.py`'s `get_recommendations` ran `compute_metric_groups` +
+`compute_health_snapshot` (the same functions a real search uses) against a
+rotating pool of 20 large-cap NSE tickers, sourced from `bharat_provider`
+specifically so loading the homepage cost zero Tapetide quota and needed no
+key. Removed entirely at the user's request rather than fixed, because it
+was already broken in production and staying that way: Tickertape
+403-blocks Vercel's cloud IP range (see "Sourcing" above), so every
+candidate fetch failed and `GET /api/recommendations` had been silently
+returning `{"companies": []}` with no visible error. Re-pointing it at
+Tapetide instead would have fixed the block but defeated the point of the
+feature (it needs to work before a visitor has entered a Tapetide key, and
+without spending their quota just to load the homepage) -- CLAUDE.md had
+flagged this exact tradeoff as a known, unresolved gap needing a product
+decision, and the decision made was to drop the feature rather than pay
+that cost. The empty state (`App.tsx`) is now just the plain
+"No company loaded yet" prompt with no suggestions below it.
+`bharat_sm_provider.py` (`get_recommendations`' only remaining caller) is
+now fully unwired from `main.py` -- see "Sourcing" above.
 
 ## Accounts & activity tracking
 
@@ -876,9 +836,9 @@ key**, entered client-side and never persisted server-side.
 **There is no `TAPETIDE_TOKEN` env var anymore.** `TapetideProvider.__init__`
 takes `token: str` as a required constructor argument and is instantiated
 fresh, per request, from whatever key that specific request carried --
-there is no module-level singleton in `main.py` the way `bharat_provider`/
-`fallback_provider` still are (see "Hybrid sourcing" above for why those
-two didn't need this treatment). The key travels as the `X-Tapetide-Token`
+there is no module-level singleton in `main.py` the way `fallback_provider`
+still is (see "Sourcing" above for why that one didn't need this
+treatment). The key travels as the `X-Tapetide-Token`
 header, read via `main.py`'s `_tapetide_token` dependency (returns `None`
 if missing/blank -- callers decide whether that's fatal).
 
@@ -1121,8 +1081,7 @@ vars containing secrets — it only needs the backend's base URL.
   either direction). Deliberately lenient, not exact-only, so abbreviation-
   style searches keep working ("TCS", "L&T", "ITC", a partial company
   name) — unit-tested against exactly those cases plus the AAPL scenario
-  before deploying. Doesn't apply to `get_recommendations`, which only ever
-  queries a fixed, curated ticker pool, never free-text user input.
+  before deploying.
 
 ## Deployment
 

@@ -125,19 +125,6 @@ export interface QuotaStatus {
   tapetide_reset_at: string; // next local midnight IST
 }
 
-export interface RecommendedCompany {
-  ticker: string;
-  name: string;
-  sector: string | null;
-  verdict: MetricStatus; // "good" | "warning" | "bad" -- "neutral" unused here
-  explanation: string;
-}
-
-export interface RecommendationsResponse {
-  date: string; // "YYYY-MM-DD"
-  companies: RecommendedCompany[];
-}
-
 export interface UserPublic {
   id: number;
   email: string;

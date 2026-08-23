@@ -6,7 +6,6 @@ import TapetideKeyGate from "./components/TapetideKeyGate";
 import Sidebar, { type View } from "./components/Sidebar";
 import CompanySearch from "./components/CompanySearch";
 import MetricsDashboard from "./components/MetricsDashboard";
-import RecommendedCompanies from "./components/RecommendedCompanies";
 import ReturnCalculator from "./components/ReturnCalculator";
 import StockMarketSimulator from "./components/StockMarketSimulator";
 import { useTheme } from "./hooks/useTheme";
@@ -121,8 +120,8 @@ export default function App() {
     refreshQuota();
   }
 
-  // Clicking the logo goes back to the empty state with recommendations,
-  // same as a fresh page load -- no network call, just resets local state.
+  // Clicking the logo goes back to the empty state, same as a fresh page
+  // load -- no network call, just resets local state.
   function handleGoHome() {
     setView("search");
     setCompany(null);
@@ -192,7 +191,6 @@ export default function App() {
                     <div className="empty-state">
                       <h2>No company loaded yet</h2>
                       <p>Search an NSE/BSE-listed company above to see its financial metrics.</p>
-                      <RecommendedCompanies onSelect={handleSearch} />
                     </div>
                   )}
                 </div>
@@ -233,9 +231,8 @@ export default function App() {
       {/* Blocking overlay, not conditionally rendered instead of the app --
           the app tree stays fully mounted underneath so there's something
           real (blurred) behind the gate rather than a blank page. Every
-          Tapetide-touching request behind it will 400 until this clears;
-          Bharat-only things (recommendations, etc.) work fine in the
-          meantime, which is fine -- the gate still blocks all interaction. */}
+          Tapetide-touching request behind it will 400 until this clears --
+          the gate still blocks all interaction regardless. */}
       {!tapetideKey && (
         <TapetideKeyGate
           user={user}

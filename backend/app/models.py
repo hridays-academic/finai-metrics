@@ -189,32 +189,6 @@ class QuotaStatus(BaseModel):
     tapetide_reset_at: str  # next local midnight IST
 
 
-class RecommendedCompany(BaseModel):
-    """A homepage suggestion, shown before any search. `verdict`/`explanation`
-    are the company's REAL, freshly-computed HealthSnapshot (same function
-    that powers a real search's verdict box) -- never a fabricated or
-    hand-picked "this one's good" label. Sourced from Bharat-SM-Data
-    specifically so loading the homepage costs zero Tapetide quota (see
-    main.py's `get_recommendations`) -- unlike a real search, which sources
-    fundamentals from Tapetide now (see CLAUDE.md's "Sourcing" section).
-    Bharat-SM-Data is currently IP-blocked from this app's Vercel
-    deployment, so this endpoint is a known, unresolved gap (see CLAUDE.md)
-    -- clicking through to view the company still costs the same Tapetide/
-    yfinance calls a normal search would; this endpoint only supplies the
-    badge."""
-
-    ticker: str
-    name: str
-    sector: Optional[str] = None
-    verdict: MetricStatus  # "good" | "warning" | "bad" -- "neutral" is never used here
-    explanation: str
-
-
-class RecommendationsResponse(BaseModel):
-    date: str  # "YYYY-MM-DD" -- the day this set was computed/rotated for
-    companies: list[RecommendedCompany]
-
-
 class ChatMessage(BaseModel):
     role: str  # "user" | "assistant"
     content: str

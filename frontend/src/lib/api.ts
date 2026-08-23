@@ -4,7 +4,6 @@ import type {
   CompanyFinancialsResponse,
   PriceHistoryResponse,
   QuotaStatus,
-  RecommendationsResponse,
   UserPublic,
 } from "./types";
 import { getAuthToken } from "./auth";
@@ -100,15 +99,6 @@ export async function fetchPriceHistory(symbol: string): Promise<PriceHistoryRes
   } finally {
     _inFlightPriceHistory.delete(symbol);
   }
-}
-
-export async function fetchRecommendations(): Promise<RecommendationsResponse> {
-  const res = await fetch(`${BASE_URL}/recommendations`);
-  if (!res.ok) {
-    const { message, resetAt } = await parseErrorDetail(res);
-    throw new ApiError(message, res.status, resetAt);
-  }
-  return res.json();
 }
 
 export async function fetchQuota(): Promise<QuotaStatus> {
