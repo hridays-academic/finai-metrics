@@ -255,7 +255,7 @@ class TapetideProvider(FinancialDataProvider):
         ProviderQuotaExceededError/DataProviderError same as any other call."""
         self._call_tool("search_stocks", {"query": "RELIANCE", "limit": 1}, use_cache=False)
 
-    def _call_tool(self, name: str, arguments: dict[str, Any], *, use_cache: bool = True) -> Any:
+    def _call_tool(self, name: str, arguments: dict[str, Any], *, use_cache: bool = True, timeout: int = 15) -> Any:
         if use_cache and self._cache_dir:
             cache_path = self._cache_path(name, arguments)
             if cache_path.exists():
@@ -279,7 +279,7 @@ class TapetideProvider(FinancialDataProvider):
             "params": {"name": name, "arguments": arguments},
         }
         try:
-            resp = self._session.post(self._url, json=payload, timeout=15)
+            resp = self._session.post(self._url, json=payload, timeout=timeout)
         except requests.RequestException as exc:
             raise DataProviderError(f"Couldn't reach Tapetide: {exc}") from exc
 
@@ -513,11 +513,18 @@ class TapetideProvider(FinancialDataProvider):
         # side-effect of the size cap: a daily-resolution 5-year chart is
         # both a much larger payload and a noisier, harder-to-read line than
         # this app's "understand the trend at a glance" goal calls for.
+        # Longer timeout than _call_tool's 15s default -- confirmed live that
+        # this specific call (larger weekly-history payload) sometimes needs
+        # more than 15s to come back even when Tapetide is otherwise healthy,
+        # producing a real, repeated "Read timed out" failure on an
+        # otherwise-fine request. 20s here still fits the worst-case chain
+        # (recent + older + get_recent_price_history below) inside
+        # vercel.json's 60s function budget with margin to spare (20+20+15=55s).
         recent = self._call_tool(
-            "get_price_history", {"symbol": symbol, "days": 1000, "interval": "weekly"}
+            "get_price_history", {"symbol": symbol, "days": 1000, "interval": "weekly"}, timeout=20
         )
         older = self._call_tool(
-            "get_price_history", {"symbol": symbol, "days": 1825, "interval": "weekly"}
+            "get_price_history", {"symbol": symbol, "days": 1825, "interval": "weekly"}, timeout=20
         )
 
         by_date: dict[str, dict] = {}
