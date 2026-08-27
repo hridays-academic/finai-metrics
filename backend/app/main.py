@@ -238,7 +238,11 @@ def get_company(
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     except DataProviderError as exc:
         logger.warning("Data provider error fetching company data for query=%s: %s", query, exc)
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't fetch this company's data right now -- the data provider may be temporarily "
+            "unavailable. Please try again in a moment.",
+        ) from exc
     except Exception as exc:  # noqa: BLE001 -- surface as a friendly 500, but log the real cause
         logger.exception("Unexpected error fetching company data for query=%s", query)
         raise HTTPException(
@@ -352,7 +356,11 @@ def get_price_history(
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     except DataProviderError as exc:
         logger.warning("Data provider error fetching price history for symbol=%s: %s", resolved, exc)
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't load price history right now -- the data provider may be temporarily "
+            "unavailable. Please try again in a moment.",
+        ) from exc
     except Exception as exc:  # noqa: BLE001
         logger.exception("Unexpected error fetching price history for symbol=%s", resolved)
         raise HTTPException(
@@ -402,7 +410,12 @@ def validate_tapetide_key(tapetide_token: Optional[str] = Depends(_tapetide_toke
     except ProviderQuotaExceededError:
         pass  # key is valid, just already out of quota today
     except DataProviderError as exc:
-        raise HTTPException(status_code=502, detail=f"Couldn't verify the key right now: {exc}") from exc
+        logger.warning("Data provider error validating Tapetide key: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't verify the key right now -- the data provider may be temporarily unavailable. "
+            "Please try again in a moment.",
+        ) from exc
     return {"status": "ok"}
 
 
@@ -429,7 +442,12 @@ def save_tapetide_key(
     except ProviderQuotaExceededError:
         pass  # key is valid, just already out of quota today -- still worth saving
     except DataProviderError as exc:
-        raise HTTPException(status_code=502, detail=f"Couldn't verify the key right now: {exc}") from exc
+        logger.warning("Data provider error validating Tapetide key for account save: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't verify the key right now -- the data provider may be temporarily unavailable. "
+            "Please try again in a moment.",
+        ) from exc
     auth_service.save_tapetide_key(current_user["id"], key)
     return UserPublic(**{**current_user, "tapetide_key": key})
 
