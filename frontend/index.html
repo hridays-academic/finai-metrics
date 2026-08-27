@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stackly</title>
+    <!-- Google Analytics (GA4). This is a single-page app -- every view is
+         client-side rendered from this one index.html, so one tag here
+         covers the whole site; it must not be duplicated per-route. -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9WD92738M5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-9WD92738M5');
+    </script>
     <meta name="description" content="Financial metrics and AI-explained ratios for Indian public listed companies." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
