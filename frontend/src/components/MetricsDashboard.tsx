@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CompanyFinancialsResponse } from "../lib/types";
 import { formatRawValue } from "../lib/format";
 import MetricCard from "./MetricCard";
@@ -7,6 +7,40 @@ import PriceChart from "./PriceChart";
 import PriceForecastChart from "./PriceForecastChart";
 import AnalystConsensus from "./AnalystConsensus";
 import type { Theme } from "../hooks/useTheme";
+
+// One small glyph per metric-group category -- purely for faster visual
+// scanning of a dense, 5-group page (matches the sidebar/header icon
+// family: 1.6-1.8 stroke, currentColor, no fill). Falls back to no icon
+// for a group key this map doesn't recognize, rather than guessing.
+const GROUP_ICONS: Record<string, JSX.Element> = {
+  liquidity: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3C12 3 6 10.5 6 15a6 6 0 0 0 12 0c0-4.5-6-12-6-12z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+    </svg>
+  ),
+  profitability: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 19h16M7 19V10M12 19V5M17 19v7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  ),
+  leverage: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3v18M6 7l6-4 6 4M4 7h4l-2 6a2 2 0 0 1-4 0l2-6zM16 7h4l-2 6a2 2 0 0 1-4 0l2-6z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  efficiency: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  ),
+  valuation: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 7.5v9M9.5 9.8c0-1 1-1.8 2.5-1.8s2.5.7 2.5 1.7c0 2.3-5 1.3-5 3.6 0 1 1 1.7 2.5 1.7s2.5-.8 2.5-1.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
+};
 
 // Reused above (top of the collapsed section) and below (end of the
 // expanded section) -- so collapsing back doesn't require scrolling all
@@ -63,6 +97,18 @@ export default function MetricsDashboard({ data, theme, onTapetideResetAtChange 
     raw.current_price !== null;
 
   const hasConsensus = !!analyst_consensus;
+
+  // Refs per group, keyed by group.key, so the quick-jump nav can
+  // smooth-scroll .metrics-pane to a specific group without hiding any of
+  // the others behind a tab -- every group stays visible and scannable at
+  // once, this is purely a faster way to get to one, not a replacement for
+  // scrolling.
+  const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  function jumpToGroup(key: string) {
+    const el = groupRefs.current[key];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <div>
@@ -134,16 +180,45 @@ export default function MetricsDashboard({ data, theme, onTapetideResetAtChange 
             ))}
           </div>
 
-          {metric_groups.map((group) => (
-            <div className="metric-group" key={group.key}>
-              <h3>{group.label}</h3>
-              <div className="metric-cards">
-                {group.metrics.map((metric) => (
-                  <MetricCard metric={metric} key={metric.key} />
-                ))}
+          {/* Jumps to a group via scrollIntoView -- every group stays fully
+              visible and expanded at all times (see the ref comment above),
+              this is just a faster way to reach one on a long page, never a
+              tab that hides the rest. */}
+          <div className="group-jump-nav">
+            {metric_groups.map((group) => (
+              <button
+                type="button"
+                className="group-jump-pill"
+                key={group.key}
+                onClick={() => jumpToGroup(group.key)}
+              >
+                {GROUP_ICONS[group.key]}
+                {group.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="metric-groups-grid">
+            {metric_groups.map((group) => (
+              <div
+                className="metric-group"
+                key={group.key}
+                ref={(el) => {
+                  groupRefs.current[group.key] = el;
+                }}
+              >
+                <h3>
+                  {GROUP_ICONS[group.key]}
+                  {group.label}
+                </h3>
+                <div className="metric-cards">
+                  {group.metrics.map((metric) => (
+                    <MetricCard metric={metric} key={metric.key} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
 
           <ShowMoreToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
         </div>
