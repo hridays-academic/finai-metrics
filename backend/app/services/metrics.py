@@ -194,10 +194,10 @@ def _liquidity_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 good=1.5, warn=1.0,
             ),
             _metric(
-                "quick_ratio", "Quick Ratio (Acid-Test)", quick_ratio, "x",
-                "Like the current ratio, but excludes inventory, since inventory can be slow or "
-                "hard to sell quickly -- a stricter test of whether short-term bills can be paid "
-                "right away.",
+                "quick_ratio", "Quick Ratio", quick_ratio, "x",
+                "Also called the Acid-Test ratio. Like the current ratio, but excludes "
+                "inventory, since inventory can be slow or hard to sell quickly -- a stricter "
+                "test of whether short-term bills can be paid right away.",
                 "(Current Assets - Inventory) / Current Liabilities",
                 "Above 1x means short-term obligations are covered without selling inventory.",
                 "This matters most for businesses that hold slow-moving inventory (like "
@@ -295,9 +295,10 @@ def _profitability_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 good=10, warn=3,
             ),
             _metric(
-                "roe", "Return on Equity (ROE)", roe, "%",
-                "How much profit a company generates for every rupee shareholders have invested "
-                "-- a core measure of how efficiently it rewards its owners.",
+                "roe", "ROE", roe, "%",
+                "Return on Equity -- how much profit a company generates for every rupee "
+                "shareholders have invested, a core measure of how efficiently it rewards its "
+                "owners.",
                 "Net Income / Average Total Equity x 100",
                 "Above ~15% is generally considered strong for shareholders.",
                 "A high ROE driven mainly by heavy borrowing (check Debt-to-Equity alongside "
@@ -307,9 +308,9 @@ def _profitability_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 good=15, warn=8,
             ),
             _metric(
-                "roa", "Return on Assets (ROA)", roa, "%",
-                "How much profit a company generates for every rupee of assets it owns, "
-                "regardless of how those assets were financed.",
+                "roa", "ROA", roa, "%",
+                "Return on Assets -- how much profit a company generates for every rupee of "
+                "assets it owns, regardless of how those assets were financed.",
                 "Net Income / Average Total Assets x 100",
                 "Measures how efficiently assets generate profit.",
                 "Comparing this to ROE shows how much of the company's returns come from "
@@ -319,9 +320,9 @@ def _profitability_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 good=5, warn=2,
             ),
             _metric(
-                "roce", "Return on Capital Employed (ROCE)", roce, "%",
-                "How efficiently a company uses all the capital invested in it -- both "
-                "shareholder equity and borrowed money -- to generate profit.",
+                "roce", "ROCE", roce, "%",
+                "Return on Capital Employed -- how efficiently a company uses all the capital "
+                "invested in it, both shareholder equity and borrowed money, to generate profit.",
                 "EBIT / (Total Assets - Current Liabilities) x 100",
                 "Above ~15% suggests efficient use of both equity and debt capital.",
                 "Because this includes both equity and debt in the denominator, it's a fairer "
@@ -355,7 +356,7 @@ def _leverage_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 good=1.0, warn=2.0, direction="low",
             ),
             _metric(
-                "interest_coverage", "Interest Coverage Ratio", interest_coverage, "x",
+                "interest_coverage", "Interest Coverage", interest_coverage, "x",
                 "How many times over a company's operating earnings could cover its interest "
                 "payments -- a measure of how easily it can service its debt.",
                 "EBIT / Interest Expense",
@@ -474,8 +475,9 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 company_name,
             ),
             _metric(
-                "eps", "Earnings per Share (EPS)", r.eps, "INR",
-                "The portion of a company's profit allocated to each individual share outstanding.",
+                "eps", "EPS", r.eps, "INR",
+                "Earnings per Share -- the portion of a company's profit allocated to each "
+                "individual share outstanding.",
                 "Net Income / Shares Outstanding",
                 "Net income attributable to each outstanding share.",
                 "On its own this is hard to compare across companies with different share "
@@ -493,7 +495,7 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 company_name,
             ),
             _metric(
-                "market_cap", "Market Capitalization", r.market_cap, "INR",
+                "market_cap", "Market Cap", r.market_cap, "INR",
                 "The total market value of all a company's outstanding shares -- share price "
                 "multiplied by number of shares.",
                 "Current Price x Shares Outstanding",

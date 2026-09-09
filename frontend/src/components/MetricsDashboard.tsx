@@ -171,19 +171,13 @@ export default function MetricsDashboard({ data, theme, onTapetideResetAtChange 
           expanded content happens to be for a given company. */}
       <div className={`expanded-details-wrapper ${expanded ? "expanded" : ""}`}>
         <div className="expanded-details">
-          <div className="highlights-row">
-            {highlights.map(([label, value]) => (
-              <div className="highlight-tile" key={label}>
-                <div className="label">{label}</div>
-                <div className="value">{formatRawValue(value, raw.currency)}</div>
-              </div>
-            ))}
-          </div>
-
           {/* Jumps to a group via scrollIntoView -- every group stays fully
               visible and expanded at all times (see the ref comment above),
               this is just a faster way to reach one on a long page, never a
-              tab that hides the rest. */}
+              tab that hides the rest. Sits above the raw-figures row (not
+              below it) so it's the first thing seen on expanding, not
+              something you have to scroll past a whole row of numbers to
+              find. */}
           <div className="group-jump-nav">
             {metric_groups.map((group) => (
               <button
@@ -195,6 +189,15 @@ export default function MetricsDashboard({ data, theme, onTapetideResetAtChange 
                 {GROUP_ICONS[group.key]}
                 {group.label}
               </button>
+            ))}
+          </div>
+
+          <div className="highlights-row">
+            {highlights.map(([label, value]) => (
+              <div className="highlight-tile" key={label}>
+                <div className="label">{label}</div>
+                <div className="value">{formatRawValue(value, raw.currency)}</div>
+              </div>
             ))}
           </div>
 

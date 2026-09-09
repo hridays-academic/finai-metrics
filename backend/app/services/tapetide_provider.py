@@ -182,17 +182,6 @@ class TapetideProvider(FinancialDataProvider):
         )
         self._request_id = 0
         self._profile_cache: dict[str, tuple[float, Any]] = {}
-        # Local estimate of calls made today -- see TAPETIDE_DAILY_QUOTA and
-        # _load_quota_state/_save_quota_state (Postgres-backed, keyed by this
-        # token's hash, so a process restart/cold start doesn't reset it and
-        # different users' keys don't share one counter).
-        entry = _load_quota_state(self._token_hash)
-        self._calls_date = entry.get("date", date.today().isoformat())
-        self._calls_today = entry.get("calls_today", 0)
-        today = date.today().isoformat()
-        if self._calls_date != today:
-            self._calls_date = today
-            self._calls_today = 0
 
         # Dev-only, opt-in on-disk cache for _call_tool responses -- set
         # DEV_CACHE_DIR in backend/.env to stop repeated local testing
@@ -210,6 +199,32 @@ class TapetideProvider(FinancialDataProvider):
         self._cache_dir = Path(settings.dev_cache_dir) if settings.dev_cache_dir else None
         if self._cache_dir:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Local estimate of calls made today -- see TAPETIDE_DAILY_QUOTA and
+        # _load_quota_state/_save_quota_state (Postgres-backed, keyed by this
+        # token's hash, so a process restart/cold start doesn't reset it and
+        # different users' keys don't share one counter). Skipped entirely
+        # in dev-cache mode: quota tracking exists to protect the real
+        # Tapetide free tier, which a fully dev-cached request never
+        # touches at all -- confirmed live that this Postgres round-trip
+        # (a local dev machine talking to Neon over the public internet,
+        # not the pooled/nearby connection a real deployment gets) was
+        # adding several real seconds to *every* request regardless of
+        # whether the Tapetide data itself was cache-served, which read as
+        # "caching isn't working" even though the actual, quota-relevant
+        # caching was fine. Production never sets DEV_CACHE_DIR, so this
+        # skip never applies there.
+        if self._cache_dir:
+            self._calls_date = date.today().isoformat()
+            self._calls_today = 0
+        else:
+            entry = _load_quota_state(self._token_hash)
+            self._calls_date = entry.get("date", date.today().isoformat())
+            self._calls_today = entry.get("calls_today", 0)
+            today = date.today().isoformat()
+            if self._calls_date != today:
+                self._calls_date = today
+                self._calls_today = 0
 
     def _cache_path(self, name: str, arguments: dict[str, Any]) -> Path:
         key = _json.dumps({"name": name, "arguments": arguments}, sort_keys=True)
