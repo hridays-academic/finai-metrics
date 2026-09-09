@@ -22,14 +22,24 @@ export default function MetricCard({ metric }: { metric: Metric }) {
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
+      // The nearest ancestor that actually clips content (.expanded-details,
+      // required for the "Show more" collapse/expand height animation --
+      // see app.css) can cut off a flipped-above popover well before it
+      // reaches the top of the *viewport*. Confirmed live: the Liquidity
+      // group's cards sit right at the top of that container, and a
+      // flipped popover there had its title/definition silently clipped
+      // even though there was plainly empty viewport space above it --
+      // the clip was against this container's own top edge, not the
+      // screen's. Space above is measured to whichever boundary is
+      // closer: the true viewport top, or this container's top.
+      const clipAncestor = cardRef.current?.closest(".expanded-details");
+      const clipTop = clipAncestor ? clipAncestor.getBoundingClientRect().top : 0;
+      const spaceAbove = rect.top - Math.max(0, clipTop);
       // Only flip above when doing so actually helps -- i.e. there's more
       // room above than below -- not just whenever below falls short of
-      // POPOVER_APPROX_HEIGHT. A card near the top of the scrolled viewport
-      // has little room in EITHER direction; blindly flipping there just
-      // trades a bottom clip for a top clip (confirmed live: a popover
-      // opening "above" a second-row card ran clean off the top of the
-      // screen instead of the bottom, since above had even less room).
+      // POPOVER_APPROX_HEIGHT. A card near the top has little room in
+      // EITHER direction; blindly flipping there just trades one clip for
+      // another.
       setOpenAbove(spaceBelow < POPOVER_APPROX_HEIGHT && spaceAbove > spaceBelow);
     }
     setOpen(true);
