@@ -1162,7 +1162,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   background: var(--border-subtle);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  margin-top: 1rem;
+  margin: 1rem 0 1.35rem;
 }
 
 .highlight-tile {
@@ -1221,15 +1221,20 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
    design-backups/metric-cards-v1-boxed/ for the prior (heavier, bordered,
    badge-carrying) version and how to restore it. */
 
+/* Every group -- including the first one, Liquidity -- gets the same
+   padding-top + divider line now. It used to skip both (padding-top: 0,
+   no border) on the assumption it was the very first thing in the
+   section, sitting right after "Show more" with nothing above it. That
+   stopped being true once the jump-nav + raw-figures row moved above it
+   (see MetricsDashboard.tsx) -- with the old override still in place,
+   Liquidity sat pressed right up against the figures row above it while
+   every other group kept its normal breathing room, reading as a real
+   spacing bug (confirmed live) rather than an intentional flush-top
+   design. */
 .metric-group {
   margin-bottom: 1.35rem;
   padding-top: 0.9rem;
   border-top: 1px solid var(--border-subtle);
-}
-
-.metric-group:first-child {
-  padding-top: 0;
-  border-top: none;
 }
 
 .metric-group h3 {
@@ -2051,9 +2056,13 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+/* Same satisfying "pop" as the price chart's period selector -- one
+   shared segmented-control feel across the whole app instead of this
+   toggle being the one place selection just flatly recolors. */
 .calculator-mode-toggle button.active {
   background: var(--accent);
   color: var(--accent-contrast);
+  animation: period-pop 0.3s var(--ease-snap);
 }
 
 .calculator-mode-toggle button:disabled {
@@ -2191,6 +2200,12 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   border-radius: 10px;
   padding: 0.7rem 0.6rem;
   text-align: center;
+  transition: transform 0.25s var(--ease-snap), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.calculator-result-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
 .calculator-result-tile .label {
@@ -2239,11 +2254,19 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   border-left: 3px solid var(--status-neutral);
   border-radius: 10px;
   padding: 0.7rem 0.7rem;
+  transition: transform 0.25s var(--ease-snap), box-shadow 0.2s ease;
+}
+.calculator-scenario-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
-.calculator-scenario-tile.good { border-left-color: var(--status-good); }
-.calculator-scenario-tile.warning { border-left-color: var(--status-warning); }
-.calculator-scenario-tile.bad { border-left-color: var(--status-bad); }
+/* Same faint status-tinted wash as .metric-card elsewhere in the app --
+   consistency across every "here's a good/warning/bad figure" surface,
+   not just the main search page's metric grid. */
+.calculator-scenario-tile.good { border-left-color: var(--status-good); background: var(--status-good-bg); }
+.calculator-scenario-tile.warning { border-left-color: var(--status-warning); background: var(--status-warning-bg); }
+.calculator-scenario-tile.bad { border-left-color: var(--status-bad); background: var(--status-bad-bg); }
 
 .calculator-scenario-label {
   font-size: 0.68rem;
@@ -2293,11 +2316,16 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   border-left: 3px solid var(--status-neutral);
   border-radius: 10px;
   padding: 0.65rem 0.8rem;
+  transition: transform 0.25s var(--ease-snap), box-shadow 0.2s ease;
+}
+.calculator-risk-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
-.calculator-risk-row.good { border-left-color: var(--status-good); }
-.calculator-risk-row.warning { border-left-color: var(--status-warning); }
-.calculator-risk-row.bad { border-left-color: var(--status-bad); }
+.calculator-risk-row.good { border-left-color: var(--status-good); background: var(--status-good-bg); }
+.calculator-risk-row.warning { border-left-color: var(--status-warning); background: var(--status-warning-bg); }
+.calculator-risk-row.bad { border-left-color: var(--status-bad); background: var(--status-bad-bg); }
 
 .calculator-risk-row-top {
   display: flex;
