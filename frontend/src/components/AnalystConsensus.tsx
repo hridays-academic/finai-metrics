@@ -6,9 +6,12 @@ interface AnalystConsensusProps {
   currentPrice: number | null;
   currency: string;
   // Smaller type/padding, no top margin -- used inline in the summary row
-  // instead of as a standalone full-width card. Same content either way
-  // (mirrors HealthSnapshot's `compact` prop).
+  // instead of as a standalone full-width card. Same content either way.
   compact?: boolean;
+  // Spans the summary row's full width -- the row used to hold this card
+  // alongside a HealthSnapshot tile; now that HealthSnapshot has been
+  // removed from the page (2026-09), this is the row's only occupant.
+  fullWidth?: boolean;
 }
 
 function fmtPrice(value: number, currency: string): string {
@@ -16,7 +19,7 @@ function fmtPrice(value: number, currency: string): string {
   return `${prefix}${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
-export default function AnalystConsensus({ consensus, currentPrice, currency, compact }: AnalystConsensusProps) {
+export default function AnalystConsensus({ consensus, currentPrice, currency, compact, fullWidth }: AnalystConsensusProps) {
   const { total, buy_pct, hold_pct, sell_pct, consensus_label } = consensus;
   const hasTarget = consensus.target_low !== null && consensus.target_high !== null;
   const badgeTone = consensusTone(consensus_label);
@@ -52,7 +55,7 @@ export default function AnalystConsensus({ consensus, currentPrice, currency, co
       : null;
 
   return (
-    <div className={`analyst-card ${compact ? "compact" : ""}`}>
+    <div className={`analyst-card ${compact ? "compact" : ""} ${fullWidth ? "full-width" : ""}`}>
       <div className="analyst-header">
         <h3>Analyst Consensus</h3>
         <span className={`analyst-badge ${badgeTone}`}>{consensus_label}</span>

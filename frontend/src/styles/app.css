@@ -255,20 +255,40 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  /* A very faint radial wash instead of a flat solid fill -- the whole app
-     previously read as one uniform slab of --bg-app with no depth at all
-     behind the cards sitting on it. background-size larger than the
-     viewport + a slow animated background-position (not the gradient's own
-     coordinates, which don't reliably animate) gives it a slow, barely-
-     perceptible drift rather than a static glow -- "alive" without
-     anything that competes with real content for attention. Anchored to
-     .app-main itself (not the scrolling .metrics-pane underneath it), so
-     the drift is the only motion, never a jump on scroll. */
-  background: radial-gradient(ellipse 1400px 900px at 50% 50%, var(--bg-hover) 0%, transparent 55%),
-    var(--bg-app);
   background-size: 200% 200%;
   animation: bg-drift 30s ease-in-out infinite alternate;
   background-attachment: fixed;
+}
+
+/* A very faint radial wash instead of a flat solid fill -- the whole app
+   previously read as one uniform slab of --bg-app with no depth at all
+   behind the cards sitting on it. background-size larger than the
+   viewport + a slow animated background-position (not the gradient's own
+   coordinates, which don't reliably animate) gives it a slow, barely-
+   perceptible drift rather than a static glow -- "alive" without
+   anything that competes with real content for attention. Anchored to
+   .app-main itself (not the scrolling .metrics-pane underneath it), so
+   the drift is the only motion, never a jump on scroll.
+   Dark mode: --bg-hover is already dramatically lighter than --bg-app, so
+   a plain wash of it reads as a clear glow with no extra tinting needed. */
+:root:not([data-mode="light"]) .app-main {
+  background: radial-gradient(ellipse 1400px 900px at 50% 50%, var(--bg-hover) 0%, transparent 55%),
+    var(--bg-app);
+}
+
+/* Light mode: --bg-hover is only a hair off --bg-app (both near-white), so
+   the dark-mode recipe above was rendering as a completely flat, invisible
+   wash here -- confirmed live, not a hypothetical. Tinting the glow with
+   --accent itself (rather than a gray/white wash) gives it real, visible
+   contrast against the light background without darkening it into looking
+   dingy. */
+:root[data-mode="light"] .app-main {
+  background: radial-gradient(
+      ellipse 1400px 900px at 50% 50%,
+      color-mix(in srgb, var(--accent) 16%, transparent) 0%,
+      transparent 55%
+    ),
+    var(--bg-app);
 }
 
 .search-bar-wrap {
@@ -301,14 +321,23 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
-  /* Gap between the card content and the scrollbar track, which otherwise
-     renders flush against it -- the scrollbar's own position doesn't move,
-     but this pushes the content away from it. */
+  /* Gap between the card content and the reserved scrollbar gutter, which
+     otherwise renders flush against it. */
   padding-right: 0.85rem;
   /* Room for the last row's hover popover to open below it without
      growing the scrollable area (also just breathing room at the end of
      the page). */
   padding-bottom: 3rem;
+  /* The scrollbar itself is hidden (not just thinned) on this page -- kept
+     scrollable via wheel/trackpad/keyboard, just without the visible
+     track/thumb. scrollbar-gutter: stable above still reserves the same
+     space either way, so hiding it doesn't reintroduce the layout-shift
+     bug that gutter exists to prevent. */
+  scrollbar-width: none;
+}
+.metrics-pane::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 /* ---------- Company search ---------- */
@@ -871,99 +900,6 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   color: var(--text-tertiary);
 }
 
-.health-snapshot {
-  margin-top: 1rem;
-  padding: 1rem 1.1rem;
-  border-radius: 14px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
-  border-left: 4px solid var(--status-neutral);
-  transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s ease;
-}
-.health-snapshot:hover, .analyst-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-elevated);
-}
-.health-snapshot.good { border-left-color: var(--status-good); }
-.health-snapshot.warning { border-left-color: var(--status-warning); }
-
-/* Inline in the summary row instead of a standalone card -- same content,
-   smaller type and padding, no top margin (the row's own gap handles that). */
-.health-snapshot.compact {
-  margin-top: 0;
-  padding: 0.75rem 0.9rem;
-  border-radius: 12px;
-}
-.health-snapshot.compact .health-snapshot-main .status-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 0.3rem;
-}
-.health-snapshot.compact .health-snapshot-verdict {
-  font-size: 0.95rem;
-}
-.health-snapshot.compact .health-snapshot-explanation {
-  font-size: 0.78rem;
-}
-.health-snapshot.compact .health-snapshot-breakdown {
-  font-size: 0.72rem;
-  gap: 0.7rem;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-}
-.health-snapshot.compact .health-snapshot-disclaimer {
-  font-size: 0.66rem;
-  margin-top: 0.45rem;
-}
-.health-snapshot.full-width {
-  grid-column: 1 / -1;
-}
-.health-snapshot.bad { border-left-color: var(--status-bad); }
-
-.health-snapshot-main {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-}
-
-.health-snapshot-main .status-dot {
-  margin-top: 0.4rem;
-  width: 10px;
-  height: 10px;
-}
-
-.health-snapshot-verdict {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.health-snapshot-explanation {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-top: 0.2rem;
-  line-height: 1.4;
-}
-
-.health-snapshot-breakdown {
-  display: flex;
-  gap: 0.9rem;
-  margin-top: 0.65rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid var(--border-subtle);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-.health-snapshot-breakdown .good { color: var(--status-good); }
-.health-snapshot-breakdown .warning { color: var(--status-warning); }
-.health-snapshot-breakdown .bad { color: var(--status-bad); }
-
-.health-snapshot-disclaimer {
-  margin-top: 0.6rem;
-  font-size: 0.72rem;
-  color: var(--text-tertiary);
-}
-
 /* ---------- Analyst consensus ---------- */
 
 .analyst-card {
@@ -974,14 +910,22 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   background: var(--bg-surface);
   transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s ease;
 }
+.analyst-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-elevated);
+}
 
 /* Inline in the summary row instead of a standalone card -- same content,
-   smaller type and padding, no top margin (mirrors .health-snapshot.compact
-   so the two tiles read as one consistent design side by side). */
+   smaller type and padding, no top margin (the row's own gap handles that). */
 .analyst-card.compact {
   margin-top: 0;
   padding: 0.75rem 0.9rem;
   border-radius: 12px;
+}
+/* Spans the full row -- this card is the row's only occupant now that
+   HealthSnapshot has been removed from the page (2026-09). */
+.analyst-card.full-width {
+  grid-column: 1 / -1;
 }
 .analyst-card.compact .analyst-header {
   margin-bottom: 0.55rem;
@@ -1214,10 +1158,11 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Summary row (compact Financial Health / Analyst Consensus) ----------
-   Both tiles show their full standalone-card content at reduced scale (see
-   .health-snapshot.compact and .analyst-card.compact) -- no "Expand" button
-   or modal, since there's no more truncated content to expand into. */
+/* ---------- Summary row (compact Analyst Consensus) ----------
+   Shows the card's full standalone-card content at reduced scale (see
+   .analyst-card.compact), spanning the full row (see .analyst-card.full-width)
+   now that it's the row's only occupant -- no "Expand" button or modal,
+   since there's no more truncated content to expand into. */
 
 .summary-row {
   display: grid;
@@ -1364,17 +1309,6 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   color: var(--text-secondary);
   font-weight: 500;
 }
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.status-dot.good { background: var(--status-good); }
-.status-dot.warning { background: var(--status-warning); }
-.status-dot.bad { background: var(--status-bad); }
-.status-dot.neutral { background: var(--status-neutral); }
 
 .metric-value {
   font-size: 1.05rem;

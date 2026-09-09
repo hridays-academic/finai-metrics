@@ -11,8 +11,7 @@ older comments/history throughout this file still say "FinAI Metrics" or
 name) — a web app that fetches financial data for Indian public listed
 companies (NSE/BSE) and computes standard financial ratios, with hover
 popovers explaining what each metric means and whether the company's actual
-value is healthy, an aggregate "Financial Health Snapshot" verdict, a
-zoomable/pannable ~5-year weekly price history chart, a **separate** Share
+value is healthy, a zoomable/pannable ~5-year weekly price history chart, a **separate** Share
 Price Forecast chart (analyst-target fan: High/Mean/Low dashed lines from
 today's price to the target date — deliberately its own card, not overlaid
 on the price history chart, where a ~9-month-out fan was an imperceptible
@@ -22,14 +21,15 @@ is just a plain "search a company" prompt -- it briefly showed a
 daily-rotating set of "recommended" companies, removed 2026-08 (see
 "Homepage recommendations" below for why).
 
-**On "analyst consensus" vs. the app's own opinion:** `HealthSnapshot` (our
-verdict) and `AnalystConsensus` (sell-side analysts' verdict, reported
-as-is) look similar in the UI but are fundamentally different things — one
-is FinAI Metrics describing the ratios it computed; the other is
-third-party data we're relaying with attribution. Never blend them into a
-single "FinAI Metrics says" framing, and never let the app generate its
-own buy/sell/hold call — see the "AI assistant" section below for why that
-line is a hard one.
+**On "analyst consensus" vs. the app's own opinion:** the backend's
+`compute_health_snapshot` (our own verdict on the ratios it computed) and
+`AnalystConsensus` (sell-side analysts' verdict, reported as-is) are
+fundamentally different things, even though the health-snapshot verdict is
+no longer surfaced in the UI (see "Financial Health Snapshot" below) --
+FinAI Metrics describing the ratios it computed vs. third-party data we're
+relaying with attribution. Never blend them into a single "FinAI Metrics
+says" framing, and never let the app generate its own buy/sell/hold call —
+see the "AI assistant" section below for why that line is a hard one.
 
 The `AnalystConsensus` model carries both `buy`/`hold`/`sell` (raw analyst
 counts) and `buy_pct`/`hold_pct`/`sell_pct` (percentages) -- the frontend
@@ -222,7 +222,7 @@ proprietary "fundamental score" (Performance/Valuation/Growth/Profitability
 flags), which is Tickertape's *opinion*, not third-party sell-side
 analyst ratings — mapping that to `AnalystConsensus` would be exactly the
 "blend our own view with third-party opinion" mistake this file warns
-against elsewhere (see the `HealthSnapshot` vs `AnalystConsensus`
+against elsewhere (see the "analyst consensus" vs. the app's own opinion
 distinction at the top). Fundamentals themselves are solid where they
 exist — verified live against known Reliance/TCS figures, and this source's
 balance sheet actually breaks out current assets/liabilities separately
@@ -362,7 +362,6 @@ frontend/src/
     MetricsDashboard.tsx     Full-width, grouped color-coded metric cards
     MetricCard.tsx           Single metric card; hover/tap opens a popover with
                               its plain-English definition + value-aware assessment
-    HealthSnapshot.tsx       Aggregate "Strong/Mixed/Weak Fundamentals" verdict box
     PriceChart.tsx           Zoomable/pannable ~5yr weekly price history (lightweight-charts)
     PriceForecastChart.tsx   Separate standalone chart: High/Mean/Low dashed fan from
                               today's price to the analyst target date (own card, own
@@ -507,15 +506,17 @@ variable values), which is exactly why those two components need one
 separately and risking a missed re-render if only one of the two effects'
 dependency arrays gets updated correctly.
 
-**`MetricCard`'s popover and `HealthSnapshot` both carry `definition`/
-`assessment`/`explanation` text computed server-side in `metrics.py`** (not
-generated client-side or via the LLM) — see `_build_assessment` and
-`compute_health_snapshot`. `HealthSnapshot` is deliberately worded as a
-description of the *ratios* ("Strong Fundamentals", "driven by strong
-profitability") and explicitly disclaims itself in the UI ("not a
-recommendation to buy, sell, or hold") — this was a specific compliance
-line drawn after the user asked for a buy/sell/hold verdict box and it was
-scoped down instead; don't casually reintroduce buy/sell/hold wording here.
+**`MetricCard`'s popover carries `definition`/`assessment`/`explanation`
+text computed server-side in `metrics.py`** (not generated client-side or
+via the LLM) — see `_build_assessment`. The backend's `compute_health_snapshot`
+(worded as a description of the *ratios* -- "Strong Fundamentals", "driven
+by strong profitability" -- and explicitly disclaiming itself as "not a
+recommendation to buy, sell, or hold") is the same kind of server-computed
+text, though it's no longer rendered anywhere in the UI (see "Financial
+Health Snapshot" below) -- if it's ever brought back, don't casually
+reintroduce buy/sell/hold wording, since that compliance line was drawn
+deliberately after the user originally asked for a buy/sell/hold verdict
+box and it was scoped down instead.
 
 **`.metric-card`'s status color is a left-edge ribbon (`border-left`), not
 a small dot.** (2026-07) Originally a 6px `.status-dot` next to the label,
@@ -524,8 +525,9 @@ dense 20-30-card grid. `MetricCard.tsx` now puts the status class directly
 on the card itself (`metric-card good/warning/bad/neutral`) rather than on
 a child dot span, matching the same left-border convention already used by
 `.calculator-scenario-tile`/`.calculator-risk-row`. `.status-dot` itself
-still exists in `app.css` and is still used elsewhere (`HealthSnapshot`'s
-compact tile) — only `MetricCard.tsx` dropped it.
+was kept in `app.css` for a while after that for `HealthSnapshot`'s compact
+tile, its last remaining user -- removed entirely once that component was
+(2026-09, see "Financial Health Snapshot" below).
 
 **`PriceForecastChart` is a deliberately separate chart, not a series
 overlaid on `PriceChart`.** An earlier version drew the High/Mean/Low fan
@@ -789,6 +791,33 @@ that cost. The empty state (`App.tsx`) is now just the plain
 "No company loaded yet" prompt with no suggestions below it.
 `bharat_sm_provider.py` (`get_recommendations`' only remaining caller) is
 now fully unwired from `main.py` -- see "Sourcing" above.
+
+## Financial Health Snapshot (removed from UI 2026-09)
+
+The company page used to show a "Strong/Mixed/Weak Fundamentals" verdict
+tile (`HealthSnapshot.tsx`) inline next to Analyst Consensus in
+`.summary-row`, right below the two charts. Removed at the user's request
+because the light-mode visual pass this same round made it clear the tile
+wasn't earning its place next to the (already-kept) Analyst Consensus card
+-- a product/design call, not a bug fix. `AnalystConsensus` now renders
+alone in that row, spanning its full width (`fullWidth` prop on
+`AnalystConsensus.tsx`, `.analyst-card.full-width { grid-column: 1 / -1; }`
+in `app.css`, mirroring the `.health-snapshot.full-width` rule the removed
+component used to fall back to when there was no analyst coverage to show
+beside it). The row itself is now only rendered at all when
+`hasConsensus` is true -- previously HealthSnapshot always rendered
+something even without consensus data, so an empty row is a genuinely new
+possible state, not a regression of an old one.
+
+**The backend side was deliberately left untouched.** `compute_health_snapshot`
+(`metrics.py`) still runs on every search and `CompanyFinancialsResponse`
+still carries `health_snapshot` on the wire -- removing that too would
+have been scope creep on a frontend-only ask, and the computation is cheap
+(pure function over already-fetched data, no extra Tapetide call). Bring
+the frontend tile back by re-adding `HealthSnapshot.tsx` (see git history
+for the last version before removal) and rendering it from
+`MetricsDashboard.tsx`'s already-destructured `health_snapshot` prop,
+rather than touching anything server-side.
 
 ## Accounts & activity tracking
 

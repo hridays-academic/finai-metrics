@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import type { CompanyFinancialsResponse } from "../lib/types";
 import { formatRawValue } from "../lib/format";
 import MetricCard from "./MetricCard";
-import HealthSnapshot from "./HealthSnapshot";
 import PriceChart from "./PriceChart";
 import PriceForecastChart from "./PriceForecastChart";
 import AnalystConsensus from "./AnalystConsensus";
@@ -73,7 +72,7 @@ interface MetricsDashboardProps {
 }
 
 export default function MetricsDashboard({ data, theme, onTapetideResetAtChange }: MetricsDashboardProps) {
-  const { info, raw, metric_groups, health_snapshot, analyst_consensus } = data;
+  const { info, raw, metric_groups, analyst_consensus } = data;
   // Collapsed by default -- the two charts + the summary row below are the
   // whole story most of the time; every grouped ratio card (and the raw
   // revenue/assets/etc. figures) are a deliberate "more detail" step behind
@@ -148,17 +147,17 @@ export default function MetricsDashboard({ data, theme, onTapetideResetAtChange 
           )}
         </div>
 
-        <div className="summary-row">
-          <HealthSnapshot snapshot={health_snapshot} compact fullWidth={!hasConsensus} />
-          {hasConsensus && (
+        {hasConsensus && (
+          <div className="summary-row">
             <AnalystConsensus
               consensus={analyst_consensus!}
               currentPrice={raw.current_price}
               currency={raw.currency}
               compact
+              fullWidth
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <ShowMoreToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
