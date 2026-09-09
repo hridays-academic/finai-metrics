@@ -189,10 +189,26 @@ export default function App() {
                     />
                   ) : (
                     <div className="empty-state">
+                      {/* A real magnifying glass -- the circle IS the lens
+                          (fully containing the trend line inside it, not
+                          overlapping/clipping it), with an actual handle
+                          extending from the rim. Reads unambiguously as
+                          "search," which the previous version (a checkmark
+                          line with an off-center ring randomly behind it,
+                          the line's own end poking outside the circle)
+                          didn't -- that one had no real reason for the
+                          circle to be there at all. */}
                       <div className="empty-state-icon" aria-hidden="true">
                         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M4 17l4.5-5.5L12 15l7-8.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                          <circle cx="11" cy="9.5" r="6.5" stroke="currentColor" strokeWidth="1.5" opacity="0.5" />
+                          <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.8" />
+                          <path
+                            d="M6 12.5L9 9L11.5 10.8L14.5 6.5"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path d="M15.3 15.3L20.5 20.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
                         </svg>
                       </div>
                       <h2>No company loaded yet</h2>
