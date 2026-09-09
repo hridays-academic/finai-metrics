@@ -3,14 +3,20 @@ import type { Metric } from "../lib/types";
 import { formatMetricValue } from "../lib/format";
 
 // Popovers run roughly 150-220px tall depending on how much text a metric
-// has (definition + assessment + formula). This threshold is deliberately
-// larger than that (~one more card-row's worth of height, ~130px, added on
-// top) so that the second-to-last row flips consistently with the actual
-// last row rather than only the very last row doing it -- a page scrolled
-// to the bottom otherwise has just enough space below the second-to-last
-// row to *not* trigger the flip, which reads as inconsistent/broken next
-// to the row right below it that does flip.
-const POPOVER_APPROX_HEIGHT = 360;
+// has (definition + assessment + formula). Was padded all the way to 360
+// (~one more card-row's height on top of the real max) so a second-to-last
+// row would flip consistently alongside the actual last row -- but that
+// padding turned out to cause a worse, more visible inconsistency than the
+// one it was preventing: confirmed live, Profitability's cards (which just
+// sit lower on the page than Liquidity's, nothing to do with being
+// near the actual bottom of the list) were flipping "above" purely because
+// this threshold was so much larger than any real popover ever gets,
+// while Liquidity's own cards -- genuinely no different in popover size --
+// never did. 260 stays a real margin over the true ~150-220px range
+// (enough to still catch a genuinely-last-row, near-the-bottom case)
+// without falsely triggering for every card that merely isn't right at
+// the very top of the page.
+const POPOVER_APPROX_HEIGHT = 260;
 
 export default function MetricCard({ metric }: { metric: Metric }) {
   const [open, setOpen] = useState(false);
