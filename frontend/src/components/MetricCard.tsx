@@ -21,7 +21,16 @@ export default function MetricCard({ metric }: { metric: Metric }) {
   function handleOpen() {
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
-      setOpenAbove(window.innerHeight - rect.bottom < POPOVER_APPROX_HEIGHT);
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      // Only flip above when doing so actually helps -- i.e. there's more
+      // room above than below -- not just whenever below falls short of
+      // POPOVER_APPROX_HEIGHT. A card near the top of the scrolled viewport
+      // has little room in EITHER direction; blindly flipping there just
+      // trades a bottom clip for a top clip (confirmed live: a popover
+      // opening "above" a second-row card ran clean off the top of the
+      // screen instead of the bottom, since above had even less room).
+      setOpenAbove(spaceBelow < POPOVER_APPROX_HEIGHT && spaceAbove > spaceBelow);
     }
     setOpen(true);
   }

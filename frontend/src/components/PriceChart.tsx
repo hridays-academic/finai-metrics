@@ -231,7 +231,16 @@ export default function PriceChart({ symbol, currency, theme, onTapetideResetAtC
 
       <div className="price-chart-canvas-wrap">
         <div className="price-chart-canvas" ref={containerRef} />
-        {loading && <div className="price-chart-overlay">Loading price history...</div>}
+        {loading && (
+          <div className="price-chart-skeleton" aria-label="Loading price history">
+            <svg viewBox="0 0 400 120" preserveAspectRatio="none" className="price-chart-skeleton-line">
+              <path
+                d="M0,90 L30,85 L60,95 L90,70 L120,75 L150,55 L180,60 L210,40 L240,45 L270,25 L300,35 L330,20 L360,30 L400,15"
+                fill="none"
+              />
+            </svg>
+          </div>
+        )}
         {error && <div className="price-chart-overlay error">{error}</div>}
       </div>
 

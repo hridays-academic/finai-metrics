@@ -1,6 +1,42 @@
 /* Layout & component styles. Reads color tokens from theme.css so both
    dark and light mode stay in sync automatically. */
 
+/* ---------- Global interaction primitives ----------
+   A shared easing curve + press/lift/entrance system applied across
+   buttons, cards, and panels app-wide, instead of each surface inventing
+   its own one-off hover treatment. Keeps every interactive element
+   feeling like part of the same system rather than a patchwork. */
+
+:root {
+  /* A slight overshoot ("back out") on entrances/hovers reads as far more
+     alive than plain ease/ease-out -- the standard "snappy UI" curve. */
+  --ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Every real button in the app gets a satisfying press without each
+   component needing its own :active rule -- excludes the small icon-only
+   utility buttons (close/dismiss/arrow) via :not(), since a press-scale
+   on a 20px glyph button reads as jittery rather than tactile. */
+button:not(.icon-button):not(.tapetide-gate-skip):active {
+  transform: scale(0.96);
+}
+
 .app-shell {
   display: flex;
   flex-direction: row;
@@ -40,7 +76,12 @@
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    transform 0.25s var(--ease-snap), box-shadow 0.25s ease;
+}
+
+.sidebar-icon-button svg {
+  transition: transform 0.25s var(--ease-snap);
 }
 
 .sidebar-icon-button:hover {
@@ -48,13 +89,19 @@
   color: var(--text-secondary);
   border-color: var(--border-subtle);
 }
+.sidebar-icon-button:hover svg {
+  transform: scale(1.12);
+}
 
 /* Same solid-accent treatment as .price-chart-period-btn.active -- the
-   app's established "this option is currently selected" style. */
+   app's established "this option is currently selected" style, now with
+   a soft accent-colored glow so the active view reads as "lit up," not
+   just recolored. */
 .sidebar-icon-button.active {
   background: var(--accent);
   color: var(--accent-contrast);
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 /* ---------- Header ---------- */
@@ -316,18 +363,25 @@
 }
 
 .search-button {
-  background: var(--accent);
+  background: linear-gradient(155deg, var(--accent) 0%, var(--accent-strong) 100%);
   color: var(--accent-contrast);
   border: none;
   border-radius: 10px;
   padding: 0.65rem 1.2rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s var(--ease-snap), box-shadow 0.2s ease, filter 0.15s ease;
 }
 
 .search-button:hover:not(:disabled) {
-  background: var(--accent-strong);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  /* Glow uses the accent color itself (not a generic dark shadow) so the
+     lift reads as "this button is lit up," matching the gradient fill --
+     a plain drop shadow on a colored button just looks like it's floating,
+     not glowing. */
+  box-shadow: 0 6px 20px -4px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .search-button:disabled {
@@ -391,6 +445,23 @@
 
 .company-header {
   margin-bottom: 1.25rem;
+  animation: fade-in-up 0.45s var(--ease-smooth) both;
+}
+
+/* Staggered entrance for the two chart cards + the summary row below them --
+   each waits slightly longer than the last so the page reveals itself in a
+   deliberate sequence on every search, instead of the whole dashboard just
+   snapping into existence at once. */
+.charts-row .price-chart-card {
+  animation: fade-in-up 0.5s var(--ease-smooth) both;
+  animation-delay: 0.06s;
+}
+.charts-row .price-chart-card + .price-chart-card {
+  animation-delay: 0.14s;
+}
+.summary-row {
+  animation: fade-in-up 0.5s var(--ease-smooth) both;
+  animation-delay: 0.2s;
 }
 
 /* ---------- Show more / less (collapsed detail) ---------- */
@@ -413,16 +484,19 @@
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease,
+    transform 0.2s var(--ease-snap), box-shadow 0.2s ease;
 }
 
 .show-more-pill:hover {
   border-color: var(--accent);
   color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 .show-more-arrow {
-  transition: transform 0.15s ease;
+  transition: transform 0.25s var(--ease-snap);
 }
 
 .show-more-arrow.open {
@@ -438,7 +512,7 @@
 .expanded-details-wrapper {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.28s ease;
+  transition: grid-template-rows 0.35s var(--ease-smooth);
 }
 
 .expanded-details-wrapper.expanded {
@@ -532,6 +606,17 @@
   border-radius: 14px;
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
+  transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* A primary card (not a metric tile) gets real depth on hover -- lift +
+   shadow, the same "this surface is elevated" language real product UI
+   uses, rather than every card in the app being visually identical flat
+   panels regardless of importance. */
+.price-chart-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-elevated);
 }
 
 .price-chart-header {
@@ -630,6 +715,40 @@
   color: var(--status-bad);
 }
 
+/* Loading skeleton: a faint chart-silhouette line under a shimmering
+   gradient sweep, instead of plain "Loading..." text sitting in an empty
+   box -- gives the loading state the same visual shape as the thing it's
+   about to become, so the page doesn't blank out and then suddenly
+   populate. */
+.price-chart-skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(
+    100deg,
+    var(--bg-surface) 40%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 60%
+  );
+  background-size: 250% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.price-chart-skeleton-line {
+  position: absolute;
+  bottom: 15%;
+  left: 0;
+  width: 100%;
+  height: 55%;
+  opacity: 0.35;
+}
+.price-chart-skeleton-line path {
+  stroke: var(--text-tertiary);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
 .price-chart-period-row {
   display: flex;
   gap: 0.4rem;
@@ -645,16 +764,28 @@
   background: var(--bg-elevated);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease,
+    transform 0.25s var(--ease-snap);
 }
 .price-chart-period-btn:hover {
   border-color: var(--accent);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 .price-chart-period-btn.active {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
+  /* A little overshoot pop when a period is freshly selected -- the curve
+     itself (--ease-snap) is what gives it the satisfying "settle" rather
+     than a linear color swap. animation (not just the transition above)
+     so it re-triggers every time .active is freshly applied, including
+     re-selecting after the chart's data finishes loading. */
+  animation: period-pop 0.3s var(--ease-snap);
+}
+@keyframes period-pop {
+  from { transform: scale(0.92); }
+  to { transform: scale(1); }
 }
 
 .price-chart-forecast-legend {
@@ -727,6 +858,11 @@
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   border-left: 4px solid var(--status-neutral);
+  transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s ease;
+}
+.health-snapshot:hover, .analyst-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-elevated);
 }
 .health-snapshot.good { border-left-color: var(--status-good); }
 .health-snapshot.warning { border-left-color: var(--status-warning); }
@@ -816,6 +952,7 @@
   border-radius: 14px;
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
+  transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s ease;
 }
 
 /* Inline in the summary row instead of a standalone card -- same content,
@@ -1023,6 +1160,13 @@
 .highlight-tile {
   background: var(--bg-surface);
   padding: 0.75rem 0.9rem;
+  position: relative;
+  transition: background-color 0.2s ease, transform 0.25s var(--ease-snap);
+}
+.highlight-tile:hover {
+  background: var(--bg-elevated);
+  transform: translateY(-2px);
+  z-index: 1;
 }
 
 .highlight-tile:first-child {
@@ -1213,12 +1357,13 @@
   z-index: 30;
   text-align: left;
   cursor: default;
-  animation: popover-in 0.12s ease;
+  transform-origin: top center;
+  animation: popover-in 0.18s var(--ease-snap);
 }
 
 @keyframes popover-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Flipped upward when there isn't room below in the viewport (see
@@ -1228,12 +1373,13 @@
 .metric-popover.above {
   top: auto;
   bottom: calc(100% + 8px);
-  animation: popover-in-above 0.12s ease;
+  transform-origin: bottom center;
+  animation: popover-in-above 0.18s var(--ease-snap);
 }
 
 @keyframes popover-in-above {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .metric-popover-title {
