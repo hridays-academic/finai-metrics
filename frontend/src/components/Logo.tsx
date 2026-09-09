@@ -14,7 +14,6 @@ export default function Logo({ onClick }: LogoProps) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <circle cx="19.5" cy="7.5" r="1.6" fill="var(--accent-contrast)" />
       </svg>
       <span className="logo-wordmark">Stackly</span>
     </button>

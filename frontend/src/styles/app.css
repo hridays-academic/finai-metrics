@@ -19,6 +19,12 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes bg-drift {
+  0% { background-position: 20% 30%; }
+  50% { background-position: 75% 55%; }
+  100% { background-position: 40% 80%; }
+}
+
 @keyframes shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
@@ -249,13 +255,19 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  /* A very faint, fixed-position radial wash instead of a flat solid fill
-     -- the whole app previously read as one uniform slab of --bg-app with
-     no depth at all behind the cards sitting on it. Anchored to the
-     viewport (not the scrolling content) so it doesn't visibly move/repeat
-     as .metrics-pane scrolls underneath it. */
-  background: radial-gradient(ellipse 1400px 900px at 15% -10%, var(--bg-hover) 0%, transparent 55%),
+  /* A very faint radial wash instead of a flat solid fill -- the whole app
+     previously read as one uniform slab of --bg-app with no depth at all
+     behind the cards sitting on it. background-size larger than the
+     viewport + a slow animated background-position (not the gradient's own
+     coordinates, which don't reliably animate) gives it a slow, barely-
+     perceptible drift rather than a static glow -- "alive" without
+     anything that competes with real content for attention. Anchored to
+     .app-main itself (not the scrolling .metrics-pane underneath it), so
+     the drift is the only motion, never a jump on scroll. */
+  background: radial-gradient(ellipse 1400px 900px at 50% 50%, var(--bg-hover) 0%, transparent 55%),
     var(--bg-app);
+  background-size: 200% 200%;
+  animation: bg-drift 30s ease-in-out infinite alternate;
   background-attachment: fixed;
 }
 
@@ -2185,6 +2197,24 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   opacity: 1;
 }
 
+/* The actual p*(1+r)^t curve behind the result tiles below -- this is
+   what gives the calculator its own visual identity instead of being a
+   pure form-and-tiles page indistinguishable from the simulator. Real,
+   deterministic data (see GrowthChart.tsx's --accent color choice), not
+   the simulator's synthetic random walk one page over. */
+.growth-chart-card {
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.growth-chart-canvas-wrap {
+  position: relative;
+  height: 220px;
+}
+
 .calculator-results {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -2385,9 +2415,22 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
 }
 
 .simulator-run-button {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   width: 100%;
   margin: 0.9rem 0 1.3rem;
+}
+
+.simulator-run-icon {
+  transition: transform 0.4s var(--ease-snap);
+}
+/* A little roll on press, not on hover -- hovering constantly (which
+   happens just moving toward the button) rolling the die would be
+   distracting; the roll should read as "this click just rolled it." */
+.simulator-run-button:active .simulator-run-icon {
+  transform: rotate(200deg);
 }
 
 .simulator-chart-card {

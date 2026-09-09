@@ -1,8 +1,10 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { fetchCompany, fetchPriceHistory, ApiError } from "../lib/api";
 import { formatINR } from "../lib/format";
 import QuotaCounter from "./QuotaCounter";
+import GrowthChart from "./GrowthChart";
 import type { MetricGroup, MetricStatus, PricePoint, QuotaStatus } from "../lib/types";
+import type { Theme } from "../hooks/useTheme";
 
 type PeriodUnit = "day" | "month" | "year" | "decade";
 
@@ -273,9 +275,10 @@ interface ReturnCalculatorProps {
   // each other or with the real count.
   quota: QuotaStatus | null;
   onQuotaSpent: () => void;
+  theme: Theme;
 }
 
-export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculatorProps) {
+export default function ReturnCalculator({ quota, onQuotaSpent, theme }: ReturnCalculatorProps) {
   const [principal, setPrincipal] = useState("100000");
   const [shares, setShares] = useState("100");
   const [investmentMode, setInvestmentMode] = useState<InvestmentMode>("amount");
@@ -373,6 +376,27 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
   const futureValue = p * Math.pow(1 + r / 100, periodInYears);
   const gain = futureValue - p;
   const returnPct = p > 0 ? (gain / p) * 100 : 0;
+
+  // The actual p*(1+r)^t curve, sampled at real calendar dates from today
+  // to the projected end date -- the same rate/period the tiles above
+  // already compute from, just shown as a curve instead of only the two
+  // endpoints. Capped at 60 samples regardless of how long the period is
+  // (a multi-decade projection doesn't need daily resolution to read as a
+  // smooth curve, and lightweight-charts' time axis only needs enough
+  // points to draw one).
+  const growthPoints = useMemo(() => {
+    if (p <= 0 || periodInYears <= 0) return [];
+    const steps = Math.min(60, Math.max(12, Math.round(periodInYears * 12)));
+    const today = new Date();
+    const points: { time: string; value: number }[] = [];
+    for (let i = 0; i <= steps; i++) {
+      const tYears = (periodInYears * i) / steps;
+      const d = new Date(today);
+      d.setDate(d.getDate() + Math.round(tYears * 365.25));
+      points.push({ time: d.toISOString().slice(0, 10), value: p * Math.pow(1 + r / 100, tYears) });
+    }
+    return points;
+  }, [p, r, periodInYears]);
 
   // Real Low/Mean/High analyst price target, not a synthetic spread around
   // the single historical rate above -- deliberately a separate figure with
@@ -655,6 +679,11 @@ export default function ReturnCalculator({ quota, onQuotaSpent }: ReturnCalculat
                 {PERIOD_UNIT_LABEL[periodUnit]}
               </span>
             </div>
+            {growthPoints.length > 1 && (
+              <div className="growth-chart-card">
+                <GrowthChart points={growthPoints} theme={theme} />
+              </div>
+            )}
             <div className="calculator-results">
               <div className="calculator-result-tile">
                 <div className="label">Future value</div>

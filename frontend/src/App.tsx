@@ -203,7 +203,7 @@ export default function App() {
               </div>
             </>
           ) : view === "calculator" ? (
-            <ReturnCalculator quota={quota} onQuotaSpent={refreshQuota} />
+            <ReturnCalculator quota={quota} onQuotaSpent={refreshQuota} theme={theme} />
           ) : (
             <StockMarketSimulator quota={quota} onQuotaSpent={refreshQuota} theme={theme} />
           )}

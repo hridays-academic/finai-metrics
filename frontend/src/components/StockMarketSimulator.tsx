@@ -308,6 +308,26 @@ export default function StockMarketSimulator({ quota, onQuotaSpent, theme }: Sto
               className="search-button simulator-run-button"
               onClick={() => runSimulation(pickedStock, horizon)}
             >
+              {/* A die, not a generic arrow/refresh glyph -- reinforces this
+                  page's actual identity (chance-driven, a different result
+                  every click) rather than reading as just another "submit"
+                  button that happens to say "Simulation." */}
+              <svg
+                className="simulator-run-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <rect x="3.5" y="3.5" width="17" height="17" rx="4" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="8.2" cy="8.2" r="1.4" fill="currentColor" />
+                <circle cx="15.8" cy="8.2" r="1.4" fill="currentColor" />
+                <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+                <circle cx="8.2" cy="15.8" r="1.4" fill="currentColor" />
+                <circle cx="15.8" cy="15.8" r="1.4" fill="currentColor" />
+              </svg>
               {path ? "Run New Simulation" : "Run Simulation"}
             </button>
 

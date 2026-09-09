@@ -126,7 +126,13 @@ export default function PriceChart({ symbol, currency, theme, onTapetideResetAtC
         horzLines: { color: cssVar("--border-subtle") },
       },
       rightPriceScale: { borderColor: cssVar("--border-subtle") },
-      timeScale: { borderColor: cssVar("--border-subtle") },
+      // fixLeftEdge/fixRightEdge stop the time scale's visible range from
+      // ever extending past the actual data -- without them, scrolling or
+      // pinch-zooming out past "5Y (Max)" doesn't error, it just shows a
+      // mostly-empty chart with the real line squeezed into one corner and
+      // dead space filling the rest, which reads as broken/glitched rather
+      // than "you've reached the edge of the data."
+      timeScale: { borderColor: cssVar("--border-subtle"), fixLeftEdge: true, fixRightEdge: true },
       crosshair: {
         vertLine: { color: cssVar("--border-strong"), labelBackgroundColor: cssVar("--bg-elevated") },
         horzLine: { color: cssVar("--border-strong"), labelBackgroundColor: cssVar("--bg-elevated") },
