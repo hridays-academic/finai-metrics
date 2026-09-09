@@ -350,7 +350,12 @@
 
 /* ---------- Empty state ---------- */
 
+/* A soft off-center radial glow (not a flat void) behind the centered
+   content -- same "money-green identity" glow treatment used on the
+   marketing/gallery imagery, so the empty state reads as a deliberately
+   quiet moment rather than an unfinished page with nothing in it. */
 .empty-state {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -360,6 +365,20 @@
   color: var(--text-tertiary);
   padding: 2rem;
   gap: 0.5rem;
+  background: radial-gradient(ellipse 640px 380px at 50% 42%, var(--bg-hover) 0%, transparent 70%);
+}
+
+.empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  margin-bottom: 0.4rem;
 }
 
 .empty-state h2 {
@@ -449,13 +468,17 @@
 }
 
 .company-title h1 {
-  font-size: 1.4rem;
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   margin: 0;
 }
 
 .company-ticker {
   color: var(--text-tertiary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .company-meta {
@@ -534,14 +557,25 @@
   flex-wrap: wrap;
 }
 
+/* Serif (Lora, already loaded app-wide for exactly this kind of accent --
+   see theme.css's .serif utility) and a much bigger size than the 1.05rem
+   this used to be: the current price is the single most important number
+   on the whole page, and it was previously the same visual weight as a
+   metric-card label. A distinct display face at hero scale is the classic
+   "expensive fintech" treatment (Robinhood, Bloomberg, etc. all reach for
+   a serif/display face on the one number that matters most rather than
+   just making the UI sans bigger), and gives the page an actual focal
+   point instead of every number competing at the same size. */
 .price-chart-price {
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-family: "Lora", Georgia, "Times New Roman", serif;
+  font-size: 2.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
 .price-chart-change {
-  font-size: 0.8rem;
+  font-size: 0.92rem;
   font-weight: 600;
 }
 .price-chart-change.good { color: var(--status-good); }
@@ -1008,10 +1042,12 @@
 }
 
 .highlight-tile .value {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin-top: 0.2rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 0.25rem;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Summary row (compact Financial Health / Analyst Consensus) ----------
@@ -1079,18 +1115,32 @@
 .metric-card {
   background: var(--bg-surface);
   padding: 0.65rem 0.8rem;
-  border-left: 3px solid var(--status-neutral);
+  border-left: 2px solid var(--status-neutral);
   position: relative;
   cursor: pointer;
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
-.metric-card.good { border-left-color: var(--status-good); }
-.metric-card.warning { border-left-color: var(--status-warning); }
-.metric-card.bad { border-left-color: var(--status-bad); }
+/* A faint status-tinted wash across the whole card, not just the edge --
+   the --status-*-bg tokens already existed (used elsewhere for badges/
+   popovers) but went unused here, so every card was the same flat
+   --bg-surface regardless of status and the left edge did all the work
+   alone. This doesn't touch the neutral case (no tint = no signal is
+   itself informative) and stays subtle enough not to fight the hover
+   state below. */
+.metric-card.good { border-left-color: var(--status-good); background: var(--status-good-bg); }
+.metric-card.warning { border-left-color: var(--status-warning); background: var(--status-warning-bg); }
+.metric-card.bad { border-left-color: var(--status-bad); background: var(--status-bad-bg); }
 .metric-card.neutral { border-left-color: var(--status-neutral); }
 
+/* A box-shadow + border-width bump (not a flat --bg-elevated background
+   swap) so a status-tinted card's color identity survives hovering --
+   brightness()-based approaches barely register against this app's
+   near-black dark-mode surfaces or already-white light-mode ones, so an
+   inset ring is the one hover treatment that reads consistently across
+   all 4 theme/mode combinations regardless of a card's base color. */
 .metric-card:hover {
-  background: var(--bg-elevated);
+  border-left-width: 3px;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
   z-index: 1;
 }
 
@@ -1444,25 +1494,26 @@
 /* Same liability disclaimer text as .auth-disclaimer, but shown
    page-level (search home + calculator) rather than gated behind a
    sign-up/sign-in form -- most visitors never open that form, so this is
-   the copy that's actually seen day to day. Plain text in --status-bad
-   (this app's existing red-for-danger token, not a one-off color) rather
-   than a bordered box: needs to read as "important, take note" without
-   looking like an error/failure state, so no background tint or border,
-   just enough size/color to not blend into the surrounding muted-grey
-   hint/subtitle text next to it. */
+   the copy that's actually seen day to day. Matches .auth-disclaimer's
+   quiet boxed treatment now (2026-09) -- an earlier version used bold,
+   saturation-boosted --status-bad red to "not blend into" the hint text
+   next to it, but in practice that made it the single loudest thing on
+   the page, competing with the actual company data for attention (a real
+   "doesn't look professional" complaint, not a hypothetical one). A small
+   bordered notice box reads as "we take this seriously and handled it
+   properly" the way real fintech fine print does, instead of an alarm --
+   still clearly present and legible, just not shouting. */
 .page-disclaimer {
-  margin: 0.35rem 0 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--status-bad);
-  /* Punches up saturation/brightness over the raw --status-bad token --
-     that color is tuned to read as "this metric is unhealthy" next to
-     calm neutral tones elsewhere, not to grab attention on its own, which
-     is what a liability disclaimer actually needs. Applied as a filter
-     (not a new hardcoded hex) so it still tracks each of the 4 theme/mode
-     combinations' own red rather than clashing with one of them. */
-  filter: saturate(1.4) brightness(1.15);
+  margin: 0.5rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: var(--text-secondary);
   line-height: 1.5;
+  max-width: 62ch;
 }
 
 .auth-user-summary {
@@ -1624,7 +1675,12 @@
   overflow-y: auto;
   display: flex;
   justify-content: center;
-  padding: 2.5rem 1.5rem;
+  /* Scales with viewport height (capped) rather than a flat 2.5rem -- the
+     empty-state card is short, and a flat top padding left a large,
+     unbalanced dead zone below it on anything taller than a laptop
+     screen. Capped at 6rem so a real, tall filled-in result view doesn't
+     get pushed awkwardly far down on large monitors. */
+  padding: clamp(2.5rem, 12vh, 6rem) 1.5rem 2.5rem;
 }
 
 .calculator-card {

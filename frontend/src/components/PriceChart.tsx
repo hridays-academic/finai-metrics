@@ -15,6 +15,20 @@ function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+// The line/fill color reflects whether the *currently displayed period*
+// (not just today's daily move) is up or down -- same good/bad split the
+// "+X% over this period" text next to it already uses (see changePct
+// below). Previously always --accent regardless of direction, which made
+// --accent read as "the chart's color" rather than "the primary action
+// color" everywhere else it's used (search button, active nav, etc.) --
+// a real green-means-everything problem, not just a chart-specific one.
+// null (no data yet) falls back to --accent as a neutral default.
+function seriesColorsFor(changePct: number | null): { lineColor: string; topColor: string; bottomColor: string } {
+  const token = changePct === null ? "--accent" : changePct >= 0 ? "--status-good" : "--status-bad";
+  const color = cssVar(token);
+  return { lineColor: color, topColor: `${color}66`, bottomColor: `${color}00` };
+}
+
 type Period = "1D" | "5D" | "1Y" | "3Y" | "5Y";
 const PERIODS: { key: Period; label: string }[] = [
   { key: "1D", label: "1D" },
@@ -120,9 +134,7 @@ export default function PriceChart({ symbol, currency, theme, onTapetideResetAtC
     });
 
     const series = chart.addSeries(AreaSeries, {
-      lineColor: cssVar("--accent"),
-      topColor: `${cssVar("--accent")}66`,
-      bottomColor: `${cssVar("--accent")}00`,
+      ...seriesColorsFor(null),
       lineWidth: 2,
       priceLineVisible: false,
     });
@@ -159,6 +171,17 @@ export default function PriceChart({ symbol, currency, theme, onTapetideResetAtC
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const displayedPoints = useMemo(() => sliceForPeriod(data, period), [data, period]);
+
+  const latest = displayedPoints[displayedPoints.length - 1];
+  const first = displayedPoints[0];
+  const changePct = latest && first && first.close !== 0 ? ((latest.close - first.close) / first.close) * 100 : null;
+  // Effects below need the latest changePct without re-running on every
+  // change of it themselves (the theme effect only cares about [theme]) --
+  // a ref sidesteps that without an eslint-disable-driven stale closure.
+  const changePctRef = useRef<number | null>(null);
+  changePctRef.current = changePct;
+
   // Re-theme the chart in place (no re-create) when dark/light mode toggles.
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current) return;
@@ -172,25 +195,16 @@ export default function PriceChart({ symbol, currency, theme, onTapetideResetAtC
         horzLine: { color: cssVar("--border-strong"), labelBackgroundColor: cssVar("--bg-elevated") },
       },
     });
-    seriesRef.current.applyOptions({
-      lineColor: cssVar("--accent"),
-      topColor: `${cssVar("--accent")}66`,
-      bottomColor: `${cssVar("--accent")}00`,
-    });
+    seriesRef.current.applyOptions(seriesColorsFor(changePctRef.current));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme]);
-
-  const displayedPoints = useMemo(() => sliceForPeriod(data, period), [data, period]);
 
   useEffect(() => {
     if (!seriesRef.current) return;
     seriesRef.current.setData(displayedPoints.map((p) => ({ time: p.date as Time, value: p.close })));
+    seriesRef.current.applyOptions(seriesColorsFor(changePct));
     chartRef.current?.timeScale().fitContent();
-  }, [displayedPoints]);
-
-  const latest = displayedPoints[displayedPoints.length - 1];
-  const first = displayedPoints[0];
-  const changePct = latest && first && first.close !== 0 ? ((latest.close - first.close) / first.close) * 100 : null;
+  }, [displayedPoints, changePct]);
   const displayed = hover ?? (latest ? { date: latest.date, price: latest.close } : null);
   const symbolPrefix = currency === "INR" ? "₹" : "";
 

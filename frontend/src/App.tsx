@@ -189,6 +189,12 @@ export default function App() {
                     />
                   ) : (
                     <div className="empty-state">
+                      <div className="empty-state-icon" aria-hidden="true">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M4 17l4.5-5.5L12 15l7-8.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="11" cy="9.5" r="6.5" stroke="currentColor" strokeWidth="1.5" opacity="0.5" />
+                        </svg>
+                      </div>
                       <h2>No company loaded yet</h2>
                       <p>Search an NSE/BSE-listed company above to see its financial metrics.</p>
                     </div>
