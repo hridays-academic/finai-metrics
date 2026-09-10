@@ -38,15 +38,32 @@ const PERIODS: { key: Period; label: string }[] = [
   { key: "5Y", label: "5Y (Max)" },
 ];
 
+// The weekly "points" series and the daily "recent_points" series are
+// fetched independently (see tapetide_provider.py) and don't always land on
+// the same real-world last date -- confirmed live, not hypothetical: a
+// genuine cached response had "points" ending 4 days before "recent_points"
+// did. Left alone, switching from 1D/5D (daily) to 1Y/3Y/5Y (weekly) made
+// the header's displayed "latest price"/date jump backwards, reading as
+// inaccurate/broken even though both numbers were real. Appending
+// recent_points' own true latest point onto the end of a weekly slice (only
+// when it's genuinely newer) fixes that without fabricating any data --
+// every period now ends on the same real, most-recent point.
+function withLatestDailyPoint(weeklyPoints: PricePoint[], recentPoints: PricePoint[]): PricePoint[] {
+  const lastWeekly = weeklyPoints[weeklyPoints.length - 1];
+  const lastDaily = recentPoints[recentPoints.length - 1];
+  if (!lastWeekly || !lastDaily || lastDaily.date <= lastWeekly.date) return weeklyPoints;
+  return [...weeklyPoints, lastDaily];
+}
+
 // 1D/5D use the daily "recent_points" series (~6-7mo of history); everything
 // else uses the ~5yr weekly "points" series, too sparse for a short zoom.
 function sliceForPeriod(data: PriceHistoryResponse | null, period: Period): PricePoint[] {
   if (!data) return [];
   if (period === "1D") return data.recent_points.slice(-2);
   if (period === "5D") return data.recent_points.slice(-5);
-  if (period === "1Y") return data.points.slice(-52);
-  if (period === "3Y") return data.points.slice(-156);
-  return data.points; // 5Y / Max
+  if (period === "1Y") return withLatestDailyPoint(data.points.slice(-52), data.recent_points);
+  if (period === "3Y") return withLatestDailyPoint(data.points.slice(-156), data.recent_points);
+  return withLatestDailyPoint(data.points, data.recent_points); // 5Y / Max
 }
 
 interface HoverPoint {

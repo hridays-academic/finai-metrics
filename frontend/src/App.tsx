@@ -167,62 +167,76 @@ export default function App() {
           </div>
         )}
 
+        {/* All three top-level views stay mounted at all times now (2026-09),
+            toggled purely via CSS (.view-wrapper/.view-hidden, see app.css) --
+            switching tabs used to unmount whichever branch a ternary wasn't
+            rendering, silently discarding Return Calculator's/Simulator's own
+            picked-stock and form state every time, unlike the search page
+            (which never lost its data on tab-switch only because `company`
+            happens to live in this component, not because the branch itself
+            avoided unmounting). Real user complaint: had to re-search/re-pick
+            a stock every time they came back to a tab. Neither component has
+            a mount-time network effect (both only fetch on explicit user
+            action -- picking a stock), so keeping all three alive in the
+            background costs nothing extra. */}
         <main className="app-main">
-          {view === "search" ? (
-            <>
-              <CompanySearch
-                key={homeKey}
-                onSearch={handleSearch}
-                loading={loading}
-                error={error}
-                quota={quota}
-                tapetideResetAt={tapetideResetAt}
-              />
+          <div className={`view-wrapper ${view === "search" ? "" : "view-hidden"}`}>
+            <CompanySearch
+              key={homeKey}
+              onSearch={handleSearch}
+              loading={loading}
+              error={error}
+              quota={quota}
+              tapetideResetAt={tapetideResetAt}
+            />
 
-              <div className="content-grid">
-                <div className="metrics-pane">
-                  {company ? (
-                    <MetricsDashboard
-                      data={company}
-                      theme={theme}
-                      onTapetideResetAtChange={handleTapetideResetAtChange}
-                    />
-                  ) : (
-                    <div className="empty-state">
-                      {/* A real magnifying glass -- the circle IS the lens
-                          (fully containing the trend line inside it, not
-                          overlapping/clipping it), with an actual handle
-                          extending from the rim. Reads unambiguously as
-                          "search," which the previous version (a checkmark
-                          line with an off-center ring randomly behind it,
-                          the line's own end poking outside the circle)
-                          didn't -- that one had no real reason for the
-                          circle to be there at all. */}
-                      <div className="empty-state-icon" aria-hidden="true">
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.8" />
-                          <path
-                            d="M6 12.5L9 9L11.5 10.8L14.5 6.5"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path d="M15.3 15.3L20.5 20.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                        </svg>
-                      </div>
-                      <h2>No company loaded yet</h2>
-                      <p>Search an NSE/BSE-listed company above to see its financial metrics.</p>
+            <div className="content-grid">
+              <div className="metrics-pane">
+                {company ? (
+                  <MetricsDashboard
+                    data={company}
+                    theme={theme}
+                    onTapetideResetAtChange={handleTapetideResetAtChange}
+                  />
+                ) : (
+                  <div className="empty-state">
+                    {/* A real magnifying glass -- the circle IS the lens
+                        (fully containing the trend line inside it, not
+                        overlapping/clipping it), with an actual handle
+                        extending from the rim. Reads unambiguously as
+                        "search," which the previous version (a checkmark
+                        line with an off-center ring randomly behind it,
+                        the line's own end poking outside the circle)
+                        didn't -- that one had no real reason for the
+                        circle to be there at all. */}
+                    <div className="empty-state-icon" aria-hidden="true">
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.8" />
+                        <path
+                          d="M6 12.5L9 9L11.5 10.8L14.5 6.5"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path d="M15.3 15.3L20.5 20.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                      </svg>
                     </div>
-                  )}
-                </div>
+                    <h2>No company loaded yet</h2>
+                    <p>Search an NSE/BSE-listed company above to see its financial metrics.</p>
+                  </div>
+                )}
               </div>
-            </>
-          ) : view === "calculator" ? (
+            </div>
+          </div>
+
+          <div className={`view-wrapper ${view === "calculator" ? "" : "view-hidden"}`}>
             <ReturnCalculator quota={quota} onQuotaSpent={refreshQuota} theme={theme} />
-          ) : (
+          </div>
+
+          <div className={`view-wrapper ${view === "simulator" ? "" : "view-hidden"}`}>
             <StockMarketSimulator quota={quota} onQuotaSpent={refreshQuota} theme={theme} />
-          )}
+          </div>
         </main>
       </div>
 

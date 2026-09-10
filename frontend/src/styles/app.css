@@ -291,6 +291,21 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
     var(--bg-app);
 }
 
+/* All three top-level views (search, calculator, simulator) are mounted
+   inside .app-main simultaneously now (App.tsx) so switching tabs never
+   unmounts/loses a view's own state -- display:contents makes this wrapper
+   invisible to layout so its real children (.search-bar-wrap +
+   .content-grid, or .calculator-page) become direct flex items of
+   .app-main exactly as if there were no wrapper at all; .view-hidden then
+   fully removes the whole subtree from layout/paint for the views not
+   currently selected. */
+.view-wrapper {
+  display: contents;
+}
+.view-wrapper.view-hidden {
+  display: none;
+}
+
 .search-bar-wrap {
   padding: 1.25rem 1.5rem 0.5rem;
   flex-shrink: 0;

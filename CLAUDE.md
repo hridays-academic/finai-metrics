@@ -298,6 +298,22 @@ to know:
   see the method's comment in `tapetide_provider.py` for the exact numbers.
   Weekly granularity (not daily) throughout is a deliberate choice, not a
   side-effect of the cap — see the same comment.
+- **The weekly `points` series and the daily `recent_points` series don't
+  always land on the same real last date, since they're fetched via
+  separate Tapetide calls** -- confirmed live with a genuine cached
+  response where `points` ended 4 real days before `recent_points` did.
+  Left alone, `PriceChart.tsx` showed a different "latest price"/date in
+  its header depending on which period button was selected (1D/5D use
+  `recent_points`, 1Y/3Y/5Y use `points`), which read as inaccurate/broken
+  even though both numbers were genuinely real. Fixed frontend-only, in
+  `PriceChart.tsx`'s `sliceForPeriod`/`withLatestDailyPoint`: when a weekly
+  slice's own last point is older than `recent_points`' true last point,
+  that daily point is appended onto the end of the weekly slice (never
+  fabricated, never a fetch of anything not already loaded) so every period
+  ends on the same real, most-recent point. Don't "fix" this on the backend
+  by trying to force the two Tapetide calls to agree on a last date --
+  they're independent requests against a live data source and can drift by
+  design; reconciling them for *display* is the right layer for this.
 - **`get_company_profile` is deduped via `_get_profile`'s 60s TTL cache.**
   `get_company_info` and `get_raw_financials` both need a profile fetch for
   the same symbol; without the cache, main.py's `get_company` handler would
@@ -392,6 +408,32 @@ frontend/src/
   styles/
     theme.css                 CSS custom properties for dark/light themes
 ```
+
+**All three top-level views stay mounted simultaneously now (2026-09), not
+just whichever one Sidebar has selected.** `App.tsx` used to pick one of
+the three with a plain ternary (`view === "search" ? <>...</> : view ===
+"calculator" ? <ReturnCalculator/> : <StockMarketSimulator/>`), which
+unmounted whichever branch wasn't active -- so leaving the Calculator tab
+and coming back silently discarded its picked stock, investment amount,
+time period, everything, forcing a full re-pick. The search page never had
+this problem, but only by accident: `company` happens to live in `App.tsx`
+itself, not in `CompanySearch.tsx`, so it survived that component being
+unmounted/remounted -- the ternary was unmounting it too, same as the other
+two, just without anywhere for it to lose data. Real, reported user
+complaint (had to re-search/re-pick every time they switched tabs and
+came back). Fixed by rendering all three views unconditionally, each
+wrapped in a `<div className="view-wrapper">` toggled visible/hidden via a
+`view-hidden` class (`app.css`: the wrapper is `display: contents` when
+visible, so its real children become direct flex items of `.app-main`
+exactly as before, and plain `display: none` when hidden, removing the
+whole subtree from layout) -- CSS visibility, never a remount. Safe because
+neither `ReturnCalculator` nor `StockMarketSimulator` has a mount-time
+network effect; both only fetch on explicit user action (picking a stock),
+so keeping all three alive in the background costs nothing extra. If you
+ever add a view with an effect that fires on mount/prop-change rather than
+on a user action, that effect will now keep running in the background for
+every OTHER view too, the whole time it's mounted -- guard it or lift it,
+don't assume "not currently selected" means "not running."
 
 Theming uses plain CSS custom properties (no Tailwind/styled-components) —
 keep it that way unless there's a concrete reason to add a CSS framework.
