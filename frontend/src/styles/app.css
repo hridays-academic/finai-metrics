@@ -1887,6 +1887,23 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
 
 /* ---------- Return calculator: stock picker ---------- */
 
+/* The disclaimer sat right up against "Pick the stock..." below it (no
+   margin-bottom of its own -- .page-disclaimer's shared rule relies on
+   whatever follows to add space), while a much larger 1.9rem gap
+   (.calculator-subtitle's margin-bottom + .page-disclaimer's margin-top)
+   separated it from the heading above -- visually pinned to the bottom of
+   that span instead of centered in it. Scoped to .calculator-card (not
+   .page-disclaimer generally) since CompanySearch.tsx's own disclaimer
+   sits in a different layout entirely (last element, nothing below it) and
+   was never part of this complaint. */
+.calculator-card .calculator-subtitle {
+  margin-bottom: 0.7rem;
+}
+.calculator-card .page-disclaimer {
+  margin-top: 0.2rem;
+  margin-bottom: 0.9rem;
+}
+
 .calculator-stock-picker {
   margin-bottom: 1.2rem;
   padding-bottom: 1.1rem;
