@@ -20,11 +20,19 @@ cryptography==49.0.0
 google-auth==2.56.2
 
 # yfinance is the automatic fallback provider (see app/main.py) used when
-# Tapetide's daily quota is exhausted -- no longer just a reference
-# implementation, so it's a real runtime dependency now.
-yfinance==0.2.51
-pandas==3.0.3
-curl_cffi==0.15.0
+# Tapetide's daily quota is exhausted, and the sole source for Paper
+# Trading's live quotes/intraday chart (see yfinance_provider.py). Bumped
+# 0.2.51 -> 1.7.0 (2026-09) after the old pin started failing every real
+# call (KeyError on 'currentTradingPeriod' in fast_info, empty history()
+# results) -- Yahoo's API/auth flow had moved on since 0.2.51 was pinned.
+# Verified live against real NSE data before bumping: fast_info, .info,
+# .financials, .balance_sheet, .recommendations, and .history() (both
+# weekly and intraday) all still return the exact fields/shapes this
+# codebase's parsing already expects. pandas/curl_cffi bumped alongside it
+# to the versions yfinance 1.7.0 itself actually resolves to.
+yfinance==1.7.0
+pandas==3.0.5
+curl_cffi==0.16.3
 
 # Bharat-sm-data backs the third, explicit-only "bharat_sm" source option
 # (see app/services/bharat_sm_provider.py) -- fundamentals only, no price
