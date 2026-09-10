@@ -528,6 +528,33 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   animation-delay: 0.2s;
 }
 
+/* Same staggered reveal on Return Calculator/Market Simulator's own
+   results, once a stock is picked -- previously these had no entrance
+   animation at all, reading as flat/lifeless next to the search page. A
+   CSS `animation` only plays when its element is actually inserted into
+   the render tree, so this doesn't replay on every keystroke (React
+   updates these already-mounted nodes' text in place, it doesn't recreate
+   them) -- but it DOES replay every time you switch back into the
+   Calculator/Simulator tab, same as the search page's own entrance
+   animation above, because .view-wrapper's display:none (see "All three
+   top-level views stay mounted" in CLAUDE.md) fully removes the subtree
+   from the render tree while hidden, so re-showing it is a fresh insertion
+   as far as the animation is concerned. .calculator-results is shared by
+   both pages, so one rule covers its stagger position on either. */
+.growth-chart-card,
+.price-chart-card.simulator-chart-card {
+  animation: fade-in-up 0.5s var(--ease-smooth) both;
+  animation-delay: 0.06s;
+}
+.calculator-results {
+  animation: fade-in-up 0.5s var(--ease-smooth) both;
+  animation-delay: 0.14s;
+}
+.calculator-risk-section {
+  animation: fade-in-up 0.5s var(--ease-smooth) both;
+  animation-delay: 0.22s;
+}
+
 /* ---------- Show more / less (collapsed detail) ---------- */
 
 .show-more-row {
