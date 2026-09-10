@@ -398,26 +398,12 @@ export default function ReturnCalculator({ quota, onQuotaSpent, theme }: ReturnC
     return points;
   }, [p, r, periodInYears]);
 
-  // Real Low/Mean/High analyst price target, not a synthetic spread around
-  // the single historical rate above -- deliberately a separate figure with
-  // its own (fixed, analyst-set) horizon rather than the user's adjustable
-  // Time period, same "don't blend two different kinds of projections"
-  // principle as PriceForecastChart being its own card on the main page.
+  // Still read for the projection-rate note's "(FY2027 ...)" aside below
+  // (see computeForecastRate/computeHistoricalRate) even though the
+  // standalone "Analyst price target scenario" section that used to read
+  // low/mean/high off this was removed at the user's request -- it read as
+  // a useless, disconnected estimate sitting below the real projection.
   const targets = pickedStock?.analystTargets;
-  const basePrice = pickedStock?.currentPrice;
-  const scenarios =
-    targets && basePrice
-      ? (
-          [
-            { key: "low", label: "Worst case", tone: "bad", targetPrice: targets.low },
-            { key: "mean", label: "Likely case", tone: "warning", targetPrice: targets.mean },
-            { key: "high", label: "Best case", tone: "good", targetPrice: targets.high },
-          ] as const
-        ).map((s) => {
-          const scenarioFutureValue = p * (s.targetPrice / basePrice);
-          return { ...s, futureValue: scenarioFutureValue, gain: scenarioFutureValue - p };
-        })
-      : null;
 
   // Deliberately 4 independent factors, not one combined "overall risk"
   // score -- each is real, separately-sourced data (3 already-computed
@@ -673,7 +659,7 @@ export default function ReturnCalculator({ quota, onQuotaSpent, theme }: ReturnC
                 horizons visible side by side is what makes the two
                 sections' numbers comparable at a glance, instead of
                 silently using different timeframes. */}
-            <div className="calculator-field-header">
+            <div className="calculator-field-header growth-chart-header">
               <span>
                 Projected over {Math.max(0, toNumber(periodValue)).toLocaleString("en-IN")}{" "}
                 {PERIOD_UNIT_LABEL[periodUnit]}
@@ -701,32 +687,6 @@ export default function ReturnCalculator({ quota, onQuotaSpent, theme }: ReturnC
                 </div>
               </div>
             </div>
-
-            {scenarios && (
-              <div className="calculator-scenario-section">
-                <div className="calculator-field-header">
-                  <span>
-                    Analyst price target scenario{targets!.period ? ` for ${targets!.period}` : ""}
-                  </span>
-                </div>
-                <div className="calculator-scenario-grid">
-                  {scenarios.map((s) => (
-                    <div className={`calculator-scenario-tile ${s.tone}`} key={s.key}>
-                      <div className="calculator-scenario-label">{s.label}</div>
-                      <div className="calculator-scenario-value">{formatINR(s.futureValue)}</div>
-                      <div className="calculator-scenario-gain">
-                        {s.gain >= 0 ? "+" : ""}
-                        {formatINR(s.gain)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="calculator-field-note">
-                  Based on Tapetide's third-party analyst consensus price target for {pickedStock.ticker} -- not
-                  Stackly's own view, and not investment advice.
-                </div>
-              </div>
-            )}
 
             {riskFactors && (
               <div className="calculator-risk-section">

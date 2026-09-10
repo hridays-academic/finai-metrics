@@ -693,19 +693,24 @@ history if you touch this file again:
    historical performance" so it's unambiguous which specific window
    produced the number.
 
-**The "Analyst price target scenario" section is still on a different,
-fixed horizon than the main projection tiles above it — a deliberate,
-disclosed difference, not a bug.** It always projects to Tapetide's
-`target_period` (e.g. "FY2027 (period ending Mar 2027)", ~8-9 months out),
-independent of "Time period," via a straight linear price-ratio scale-up
-(`p * (targetPrice / basePrice)`) with no compounding, showing the real,
-non-extrapolated Low/Mean/High range at the actual target date -- the same
-"don't blend two different kinds of projections" principle as
-`PriceForecastChart` being its own card rather than overlaid on
-`PriceChart` (see above). The main results section is labeled with its own
-horizon too ("Projected over N days/months/years/decades," reusing
-`periodValue`/`periodUnit`) specifically so both sections' timeframes are
-visible side by side rather than implicit.
+**(Removed 2026-09) The "Analyst price target scenario" section (Worst/
+Likely/Best case tiles, from Tapetide's real Low/Mean/High analyst target)
+used to sit right below the main results tiles, on a different, fixed
+horizon than them** -- it always projected to Tapetide's `target_period`
+(e.g. "FY2027 (period ending Mar 2027)", ~8-9 months out), independent of
+"Time period," via a straight linear price-ratio scale-up
+(`p * (targetPrice / basePrice)`) with no compounding. That was a
+deliberate, disclosed difference from the main tiles' compounding
+"Time period" projection, not a bug -- but the user found the section
+itself useless sitting there and asked for it to be dropped, not fixed.
+`ReturnCalculator.tsx` still reads `pickedStock?.analystTargets` (kept as
+`targets`) for the separate `computeForecastRate`/`computeHistoricalRate`
+note text above (`targets?.period`), but the `scenarios` array, the whole
+`calculator-scenario-section` JSX block, and its `.calculator-scenario-*`
+CSS were all deleted rather than kept dead. `AnalystConsensus`'s own
+Price Target block on the main search page (a different card entirely,
+Low/Mean/High plus current price on one axis) is unaffected -- this
+removal was Return Calculator-only.
 
 ## Market Simulator
 

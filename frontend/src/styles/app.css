@@ -781,14 +781,20 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
     var(--bg-surface) 60%
   );
   background-size: 250% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  animation: shimmer 3.2s ease-in-out infinite;
 }
 
+/* Right edge stops well short of the container's own right edge -- the
+   real chart that replaces this reserves that same margin for its
+   right-side price-axis labels (rightPriceScale in PriceChart.tsx), so a
+   skeleton line running edge-to-edge visibly ran past where the real
+   chart's plotted line actually ends, into the axis's own space (confirmed
+   live). */
 .price-chart-skeleton-line {
   position: absolute;
   bottom: 15%;
   left: 0;
-  width: 100%;
+  right: 9%;
   height: 55%;
   opacity: 0.35;
 }
@@ -2131,6 +2137,15 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   opacity: 1;
 }
 
+/* "Projected over N years" -- sits right after the Time period field above
+   it. .calculator-form's flex `gap` alone (0.9rem) read as pressed right up
+   against that field's input box (confirmed live) -- this adds real
+   breathing room on top of that gap, same margin .calculator-results uses
+   above its own top border for a section-start feel. */
+.growth-chart-header {
+  margin-top: 0.6rem;
+}
+
 /* The actual p*(1+r)^t curve behind the result tiles below -- this is
    what gives the calculator its own visual identity instead of being a
    pure form-and-tiles page indistinguishable from the simulator. Real,
@@ -2193,68 +2208,6 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
 .calculator-result-tile .value.bad {
   color: var(--status-bad);
 }
-
-/* ---------- Return calculator: analyst price target scenario ----------
-   Best/likely/worst case, from Tapetide's real Low/Mean/High analyst
-   target -- colored left border (same convention as .health-snapshot's
-   verdict border) makes the three read as a group at a glance, rather than
-   the plain-tile treatment .calculator-result-tile uses above. */
-.calculator-scenario-section {
-  margin-top: 1.4rem;
-  padding-top: 1.2rem;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.calculator-scenario-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-  margin-top: 0.7rem;
-}
-
-.calculator-scenario-tile {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-left: 3px solid var(--status-neutral);
-  border-radius: 10px;
-  padding: 0.7rem 0.7rem;
-  transition: transform 0.25s var(--ease-snap), box-shadow 0.2s ease;
-}
-.calculator-scenario-tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-/* Same faint status-tinted wash as .metric-card elsewhere in the app --
-   consistency across every "here's a good/warning/bad figure" surface,
-   not just the main search page's metric grid. */
-.calculator-scenario-tile.good { border-left-color: var(--status-good); background: var(--status-good-bg); }
-.calculator-scenario-tile.warning { border-left-color: var(--status-warning); background: var(--status-warning-bg); }
-.calculator-scenario-tile.bad { border-left-color: var(--status-bad); background: var(--status-bad-bg); }
-
-.calculator-scenario-label {
-  font-size: 0.68rem;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.calculator-scenario-value {
-  margin-top: 0.3rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.calculator-scenario-gain {
-  margin-top: 0.15rem;
-  font-size: 0.76rem;
-  font-weight: 600;
-}
-
-.calculator-scenario-tile.good .calculator-scenario-gain { color: var(--status-good); }
-.calculator-scenario-tile.warning .calculator-scenario-gain { color: var(--status-warning); }
-.calculator-scenario-tile.bad .calculator-scenario-gain { color: var(--status-bad); }
 
 /* ---------- Return calculator: risk profile ----------
    4 independent factors (leverage, liquidity, profitability, volatility),
@@ -2610,8 +2563,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   }
   /* 3 equal columns leave ~85px per tile at phone width -- too narrow for
      currency/percentage values without wrapping. Full-width stacking. */
-  .calculator-results,
-  .calculator-scenario-grid {
+  .calculator-results {
     grid-template-columns: 1fr;
   }
 

@@ -59,8 +59,7 @@ export default function MetricCard({ metric }: { metric: Metric }) {
       // carry -- a 6px dot was hard to register at a glance across a dense
       // 20-30-card grid; a full-height colored edge on every card reads
       // immediately, and matches the same left-border convention already
-      // used for .calculator-scenario-tile/.calculator-risk-row elsewhere
-      // in the app.
+      // used for .calculator-risk-row elsewhere in the app.
       className={`metric-card ${metric.status}`}
       onMouseEnter={handleOpen}
       onMouseLeave={() => setOpen(false)}
