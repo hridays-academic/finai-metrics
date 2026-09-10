@@ -1,13 +1,14 @@
 """
-Alternate `FinancialDataProvider` implementation, backed by yfinance.
+`FinancialDataProvider` implementation backed by yfinance.
 
-Kept as a reference implementation of the provider abstraction (see
-app/services/data_provider.py) -- `TapetideProvider` is the active default
-(wired in app/main.py) because Yahoo Finance's undocumented crumb/rate-limit
-gate on its quoteSummary endpoint proved too unreliable in practice for this
-app's use case. To reactivate this provider: add `yfinance` (and optionally
-`curl_cffi`, which helps yfinance get past Yahoo's bot detection) back to
-requirements.txt, `pip install` them, and swap the instantiation in main.py.
+Live/active in two roles now (2026-09): the automatic fallback for
+fundamentals/price history/analyst consensus when a user's Tapetide quota
+runs out (see app/main.py's `fallback_provider` and CLAUDE.md's "Sourcing"
+section) -- `TapetideProvider` is the primary for those -- AND the sole
+data source for Paper Trading's live quote polling and intraday chart (see
+`get_live_quote`/`get_intraday_history` below), which have no Tapetide
+equivalent at all. yfinance is pinned in requirements.txt as a genuine
+runtime dependency, not just a reference implementation.
 
 yfinance is free and requires no API key, which makes it a good proof-of-
 concept source, but it scrapes Yahoo Finance rather than using an official
@@ -18,18 +19,37 @@ second sustained, or you risk temporary IP throttling). None of that is
 handled by retry logic here on purpose -- a failed/missing field should
 surface to the user as "unavailable," not be silently retried or guessed.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import pandas as pd
 import yfinance as yf
 
-from app.models import AnalystConsensus, CompanyInfo, PricePoint, RawFinancials
+from app.models import AnalystConsensus, CompanyInfo, LiveQuote, PricePoint, RawFinancials
 from app.services.data_provider import (
     CompanyNotFoundError,
     DataProviderError,
     FinancialDataProvider,
 )
+
+# yfinance's own period/interval vocabulary for each of Paper Trading's
+# selectable ranges. Longer ranges use coarser bars for the same reason
+# TapetideProvider's 5yr chart is weekly, not daily (see its docstring) --
+# a genuinely intraday-resolution 5-year series would be enormous and
+# unreadable at that zoom level anyway. "1D"/"1W" use real intraday bars --
+# the only ranges here that are, since day/week-level detail is the whole
+# point of picking them. Yahoo limits intraday-interval history to the
+# trailing ~60 days regardless of period requested, which is why "1W" asks
+# for "5d" of data rather than "1wk" (a period, not an interval, would
+# return one bar per week instead of many bars covering one week).
+_RANGE_TO_YF_PARAMS: dict[str, tuple[str, str]] = {
+    "1D": ("1d", "5m"),
+    "1W": ("5d", "15m"),
+    "1M": ("1mo", "1d"),
+    "3M": ("3mo", "1d"),
+    "1Y": ("1y", "1wk"),
+    "5Y": ("5y", "1wk"),
+}
 
 # Small best-effort lookup so users can type a common company name instead of
 # a ticker. Not exhaustive by design -- an explicit "TICKER.NS" / "TICKER.BO"
@@ -297,8 +317,80 @@ class YFinanceProvider(FinancialDataProvider):
             target_date=target_date,
         )
 
+    # ---------- Paper Trading: live quote + intraday chart ----------
+    # Neither method is part of FinancialDataProvider's ABC -- Tapetide has
+    # no equivalent capability at all (no live tick data, no intraday bars),
+    # so forcing a shared abstract method here would just mean one
+    # implementation permanently raising NotImplementedError. Paper Trading
+    # calls these two directly on `fallback_provider` (main.py's existing
+    # module-level YFinanceProvider singleton) instead of going through the
+    # ABC. A future real-time provider (Zerodha Kite Connect / Upstox --
+    # both require a paid account + broker API key, a real cost decision to
+    # make explicitly with the user, not default into) should implement the
+    # same two method signatures so main.py's trading endpoints only need
+    # their single instantiation line swapped, same pattern as every other
+    # provider swap in this codebase.
 
-def _history_to_points(hist: pd.DataFrame) -> list[PricePoint]:
+    def get_live_quote(self, symbol: str) -> LiveQuote:
+        """A single current price, as cheaply as yfinance allows -- `fast_info`
+        is a lightweight endpoint (no full `.info` scrape), which matters
+        here specifically because this is the one method in this class meant
+        to be called repeatedly (polling), not once per company view. Yahoo's
+        NSE/BSE quotes are exchange-delayed (commonly ~15 minutes, undocumented
+        exact figure) rather than true real-time ticks -- `is_delayed=True`
+        always, so the frontend can label this honestly rather than implying
+        a live feed that doesn't exist yet."""
+        try:
+            fast_info = yf.Ticker(symbol).fast_info
+            price = fast_info.get("lastPrice")
+            previous_close = fast_info.get("previousClose")
+            currency = fast_info.get("currency") or "INR"
+        except Exception as exc:
+            raise DataProviderError(f"Couldn't fetch a live quote for '{symbol}': {exc}") from exc
+
+        if price is None:
+            raise CompanyNotFoundError(f"No live quote available for '{symbol}'.")
+
+        change = None
+        change_pct = None
+        if previous_close:
+            change = price - previous_close
+            change_pct = (change / previous_close) * 100
+
+        return LiveQuote(
+            symbol=symbol,
+            price=float(price),
+            previous_close=float(previous_close) if previous_close is not None else None,
+            change=change,
+            change_pct=change_pct,
+            currency=currency,
+            is_delayed=True,
+            source="yfinance",
+            as_of=datetime.now(timezone.utc).isoformat(),
+        )
+
+    def get_intraday_history(self, symbol: str, range_key: str) -> list[PricePoint]:
+        """OHLCV bars for Paper Trading's chart, across the six ranges the UI
+        offers -- see _RANGE_TO_YF_PARAMS for the period/interval each maps
+        to. `range_key` is expected to already be validated by the caller
+        (main.py); an unrecognized key is a caller bug, not a user-facing
+        error, so it raises KeyError rather than a DataProviderError."""
+        period, interval = _RANGE_TO_YF_PARAMS[range_key]
+        try:
+            hist = yf.Ticker(symbol).history(period=period, interval=interval)
+        except Exception as exc:
+            raise DataProviderError(
+                f"Couldn't fetch {range_key} price history for '{symbol}': {exc}"
+            ) from exc
+        # Sub-daily bars need the actual time-of-day preserved (multiple bars
+        # share the same calendar date), not just collapsed to "YYYY-MM-DD"
+        # like every other chart in this app -- see _history_to_points.
+        intraday = interval.endswith(("m", "h"))
+        return _history_to_points(hist, intraday=intraday)
+
+
+def _history_to_points(hist: pd.DataFrame, *, intraday: bool = False) -> list[PricePoint]:
+    fmt = "%Y-%m-%dT%H:%M:%S" if intraday else "%Y-%m-%d"
     points: list[PricePoint] = []
     for index, row in hist.iterrows():
         close = row.get("Close")
@@ -306,7 +398,7 @@ def _history_to_points(hist: pd.DataFrame) -> list[PricePoint]:
             continue
         points.append(
             PricePoint(
-                date=index.strftime("%Y-%m-%d"),
+                date=index.strftime(fmt),
                 open=row.get("Open", close),
                 high=row.get("High", close),
                 low=row.get("Low", close),

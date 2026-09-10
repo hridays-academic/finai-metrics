@@ -252,6 +252,54 @@ class GoogleAuthRequest(BaseModel):
     credential: str
 
 
+class LiveQuote(BaseModel):
+    """Powers Paper Trading's polling price ticker. Deliberately its own
+    lightweight shape (not RawFinancials/PriceHistoryResponse) -- a poll
+    target that fires every few seconds should never carry the weight of a
+    full fundamentals/history fetch. `is_delayed`/`source` are surfaced
+    explicitly rather than assumed, so the frontend can label the data
+    honestly (and so a future real-time provider just flips `is_delayed` to
+    False and `source` to whatever it's called, with no frontend change
+    needed elsewhere -- see YFinanceProvider.get_live_quote's docstring)."""
+
+    symbol: str
+    price: float
+    previous_close: Optional[float] = None
+    change: Optional[float] = None
+    change_pct: Optional[float] = None
+    currency: str = "INR"
+    is_delayed: bool = True
+    source: str = "yfinance"
+    as_of: str  # ISO 8601 timestamp, when this quote was fetched (not exchange-reported time)
+
+
+class IntradayHistoryResponse(BaseModel):
+    """Backs Paper Trading's chart -- a distinct shape from
+    PriceHistoryResponse because the range set (1D/1W/1M/3M/1Y/5Y) and
+    underlying granularity (intraday minute/hour bars for the short ranges)
+    are both genuinely different from the main dashboard's weekly/daily
+    split. Reuses the same PricePoint shape either way."""
+
+    symbol: str
+    range: str  # "1D" | "1W" | "1M" | "3M" | "1Y" | "5Y", echoed back
+    currency: str = "INR"
+    points: list[PricePoint]
+    is_delayed: bool = True
+    source: str = "yfinance"
+
+
+class TradingSymbolInfo(BaseModel):
+    """Resolved-symbol result for Paper Trading's own stock picker --
+    intentionally smaller than CompanyInfo (no sector/industry) since this
+    is just enough to identify what was picked and label the UI."""
+
+    ticker: str
+    resolved_symbol: str
+    exchange: str
+    company_name: str
+    currency: str = "INR"
+
+
 class ActivityEntry(BaseModel):
     action: str  # "signed_up" | "logged_in" | "searched" | "calculator_stock_picked"
     detail: Optional[str] = None  # e.g. the ticker, for search/calculator actions

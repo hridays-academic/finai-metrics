@@ -26,6 +26,8 @@ from app.models import (
     CompanyInfo,
     DataSourceName,
     GoogleAuthRequest,
+    IntradayHistoryResponse,
+    LiveQuote,
     LogInRequest,
     PriceHistoryResponse,
     PricePoint,
@@ -33,6 +35,7 @@ from app.models import (
     RawFinancials,
     SignUpRequest,
     TapetideKeyRequest,
+    TradingSymbolInfo,
     UserPublic,
 )
 from app.services.moonshot_service import get_chat_reply
@@ -374,6 +377,100 @@ def get_price_history(
         recent_points=recent_points,
         active_source=active_source,
         tapetide_reset_at=tapetide_reset_at,
+    )
+
+
+_TRADING_RANGES = ("1D", "1W", "1M", "3M", "1Y", "5Y")
+
+
+# ---------- Paper Trading ----------
+# Deliberately entirely yfinance-based, never Tapetide -- Tapetide has no
+# live-quote or intraday-bar capability at all, and even if it did, its
+# 50-calls/day-per-key quota (see TAPETIDE_CALLS_PER_SEARCH above) cannot
+# support the polling this module needs (a single symbol polled every 15s
+# is already ~5,760 calls/day). None of these three endpoints need a
+# Tapetide key/token, and portfolio state itself (cash/holdings/
+# transactions) is intentionally never sent here at all -- it's held
+# entirely client-side (localStorage, see frontend/src/lib/portfolio.ts),
+# so there's nothing for these endpoints to persist. `fallback_provider`
+# (the module-level YFinanceProvider singleton already declared above) is
+# reused rather than a second instance, same as every other yfinance call
+# in this file.
+
+
+@app.get("/api/trading/search/{query}", response_model=TradingSymbolInfo)
+def trading_search(query: str) -> TradingSymbolInfo:
+    """Resolves a company name/ticker for Paper Trading's own stock picker --
+    intentionally lighter than /api/company (no financial statements, no
+    metric computation): just enough to identify what was picked. Reuses
+    resolve_symbol/get_company_info (already on YFinanceProvider) and the
+    same _looks_like_the_query guard /api/company uses, rather than
+    inventing a second symbol-matching path."""
+    try:
+        symbol, _exchange = fallback_provider.resolve_symbol(query)
+        info = fallback_provider.get_company_info(symbol)
+        if not _looks_like_the_query(query, info):
+            raise CompanyNotFoundError(
+                f"Could not find '{query}' on NSE/BSE. Try the exact ticker, e.g. 'RELIANCE' or 'TCS'."
+            )
+    except CompanyNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except DataProviderError as exc:
+        logger.warning("Data provider error resolving trading symbol query=%s: %s", query, exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't look that up right now -- the data provider may be temporarily unavailable.",
+        ) from exc
+
+    return TradingSymbolInfo(
+        ticker=info.ticker,
+        resolved_symbol=info.resolved_symbol,
+        exchange=info.exchange,
+        company_name=info.company_name,
+        currency="INR",
+    )
+
+
+@app.get("/api/trading/quote/{symbol}", response_model=LiveQuote)
+def trading_quote(symbol: str) -> LiveQuote:
+    """The polling endpoint -- see YFinanceProvider.get_live_quote for why
+    this is deliberately the cheapest possible call (fast_info, not a full
+    .info scrape), since this is the one thing in the whole app meant to be
+    hit repeatedly on a timer rather than once per user action."""
+    try:
+        return fallback_provider.get_live_quote(symbol)
+    except CompanyNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except DataProviderError as exc:
+        logger.warning("Data provider error fetching live quote for symbol=%s: %s", symbol, exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't fetch a live quote right now -- please try again shortly.",
+        ) from exc
+
+
+@app.get("/api/trading/history/{symbol}", response_model=IntradayHistoryResponse)
+def trading_history(symbol: str, range: str = "1D") -> IntradayHistoryResponse:  # noqa: A002 -- matches the query param name the frontend sends
+    range_key = range.strip().upper()
+    if range_key not in _TRADING_RANGES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid range '{range}'. Must be one of {', '.join(_TRADING_RANGES)}.",
+        )
+    try:
+        points = fallback_provider.get_intraday_history(symbol, range_key)
+    except DataProviderError as exc:
+        logger.warning(
+            "Data provider error fetching intraday history for symbol=%s range=%s: %s",
+            symbol, range_key, exc,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't load chart data right now -- please try again shortly.",
+        ) from exc
+
+    return IntradayHistoryResponse(
+        symbol=symbol, range=range_key, currency="INR", points=points, is_delayed=True, source="yfinance",
     )
 
 

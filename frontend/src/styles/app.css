@@ -2539,6 +2539,324 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   color: var(--text-secondary);
 }
 
+/* ---------- Paper Trading ---------- */
+/* Reuses .calculator-card/.calculator-field/.calculator-results/
+   .calculator-stock-picker/.page-disclaimer/etc. wholesale (same pattern
+   Market Simulator's CSS comment above describes) -- only what's genuinely
+   unique to this page (the trade panel, holdings table, transaction list,
+   reset confirm) gets its own rules below. */
+
+.trading-card {
+  max-width: 900px;
+}
+
+.trading-summary {
+  margin-bottom: 0.5rem;
+}
+
+.trading-delayed-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.trading-chart-card .price-chart-header {
+  align-items: center;
+}
+
+.trading-chart-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.trading-chart-controls .price-chart-period-row {
+  margin-top: 0;
+}
+
+.trading-series-toggle {
+  display: inline-flex;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 2px;
+}
+.trading-series-toggle button {
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.trading-series-toggle button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* ---------- Trade panel (live price + buy/sell) ---------- */
+
+.trading-trade-panel {
+  margin-top: 1.1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.trading-live-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.trading-live-price-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.trading-held-note {
+  font-size: 0.76rem;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+.trading-trade-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.trading-qty-field {
+  flex: 1;
+  min-width: 140px;
+}
+
+.trading-trade-buttons {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.trading-buy-btn,
+.trading-sell-btn {
+  padding: 0.6rem 1.3rem;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.2s var(--ease-snap);
+}
+.trading-buy-btn {
+  background: var(--status-good);
+  color: var(--bg-app);
+}
+.trading-sell-btn {
+  background: var(--status-bad);
+  color: #fff;
+}
+.trading-buy-btn:hover:not(:disabled),
+.trading-sell-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.trading-buy-btn:disabled,
+.trading-sell-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.trading-trade-success {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--status-good);
+}
+
+/* ---------- Holdings table ---------- */
+
+.trading-section-header {
+  margin-top: 1.6rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.trading-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.7rem;
+}
+
+.trading-holdings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.trading-holdings-table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.trading-holdings-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.trading-holdings-table td.good { color: var(--status-good); }
+.trading-holdings-table td.bad { color: var(--status-bad); }
+
+.trading-table-stock-name {
+  font-weight: 600;
+}
+.trading-table-stock-ticker {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.trading-table-trade-btn {
+  padding: 0.3rem 0.7rem;
+  border-radius: 7px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.trading-table-trade-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* ---------- Transaction history ---------- */
+
+.trading-transactions-list {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.trading-transaction-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 9px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.trading-transaction-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+}
+.trading-transaction-badge.buy {
+  background: var(--status-good-bg);
+  color: var(--status-good);
+}
+.trading-transaction-badge.sell {
+  background: var(--status-bad-bg);
+  color: var(--status-bad);
+}
+
+.trading-transaction-main {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.trading-transaction-total {
+  color: var(--text-secondary);
+}
+
+.trading-transaction-pnl {
+  font-weight: 600;
+}
+.trading-transaction-pnl.good { color: var(--status-good); }
+.trading-transaction-pnl.bad { color: var(--status-bad); }
+
+.trading-transaction-time {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+/* ---------- Reset portfolio ---------- */
+
+.trading-reset-row {
+  margin-top: 1.6rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.trading-reset-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: none;
+  color: var(--status-bad);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.trading-reset-btn:hover {
+  background: var(--status-bad-bg);
+}
+
+.trading-reset-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.trading-reset-confirm-btn {
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--status-bad);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* ---------- Responsive: phone-width screens ----------
    Every other layout in this file is fixed-width/desktop-first (see
    CLAUDE.md) except .charts-row's 900px stack above. 640px is this app's

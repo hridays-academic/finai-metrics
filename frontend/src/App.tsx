@@ -8,6 +8,7 @@ import CompanySearch from "./components/CompanySearch";
 import MetricsDashboard from "./components/MetricsDashboard";
 import ReturnCalculator from "./components/ReturnCalculator";
 import StockMarketSimulator from "./components/StockMarketSimulator";
+import PaperTrading from "./components/PaperTrading";
 import { useTheme } from "./hooks/useTheme";
 import { fetchCompany, fetchQuota, fetchMe, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
@@ -167,7 +168,7 @@ export default function App() {
           </div>
         )}
 
-        {/* All three top-level views stay mounted at all times now (2026-09),
+        {/* All four top-level views stay mounted at all times now (2026-09),
             toggled purely via CSS (.view-wrapper/.view-hidden, see app.css) --
             switching tabs used to unmount whichever branch a ternary wasn't
             rendering, silently discarding Return Calculator's/Simulator's own
@@ -175,10 +176,13 @@ export default function App() {
             (which never lost its data on tab-switch only because `company`
             happens to live in this component, not because the branch itself
             avoided unmounting). Real user complaint: had to re-search/re-pick
-            a stock every time they came back to a tab. Neither component has
-            a mount-time network effect (both only fetch on explicit user
-            action -- picking a stock), so keeping all three alive in the
-            background costs nothing extra. */}
+            a stock every time they came back to a tab. None of the three
+            has a mount-time network effect (all only fetch on explicit user
+            action -- picking a stock), so keeping all four alive in the
+            background costs nothing extra. Paper Trading (added 2026-09,
+            see CLAUDE.md) additionally gates its own live-quote polling on
+            `visible` (this view being the active one) for the same reason --
+            see PaperTrading.tsx/useLiveQuotes.ts. */}
         <main className="app-main">
           <div className={`view-wrapper ${view === "search" ? "" : "view-hidden"}`}>
             <CompanySearch
@@ -236,6 +240,10 @@ export default function App() {
 
           <div className={`view-wrapper ${view === "simulator" ? "" : "view-hidden"}`}>
             <StockMarketSimulator quota={quota} onQuotaSpent={refreshQuota} theme={theme} />
+          </div>
+
+          <div className={`view-wrapper ${view === "trading" ? "" : "view-hidden"}`}>
+            <PaperTrading theme={theme} visible={view === "trading"} />
           </div>
         </main>
       </div>

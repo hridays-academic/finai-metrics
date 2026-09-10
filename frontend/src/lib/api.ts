@@ -2,8 +2,12 @@ import type {
   ActivityResponse,
   AuthResponse,
   CompanyFinancialsResponse,
+  IntradayHistoryResponse,
+  LiveQuote,
   PriceHistoryResponse,
   QuotaStatus,
+  TradingRange,
+  TradingSymbolInfo,
   UserPublic,
 } from "./types";
 import { getAuthToken } from "./auth";
@@ -99,6 +103,47 @@ export async function fetchPriceHistory(symbol: string): Promise<PriceHistoryRes
   } finally {
     _inFlightPriceHistory.delete(symbol);
   }
+}
+
+// ---------- Paper Trading ----------
+// Deliberately no tapetideHeaders()/authHeaders() on any of these -- see
+// CLAUDE.md's "Paper Trading" section: these three endpoints are entirely
+// yfinance-backed and need neither a Tapetide key nor a signed-in session
+// (portfolio state itself never touches the backend at all, see
+// lib/portfolio.ts). The app's TapetideKeyGate still blocks entry to the
+// whole app regardless -- an existing, unrelated constraint this module
+// doesn't change.
+
+export async function searchTradingSymbol(query: string): Promise<TradingSymbolInfo> {
+  const res = await fetch(`${BASE_URL}/trading/search/${encodeURIComponent(query)}`);
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+  return res.json();
+}
+
+export async function fetchLiveQuote(symbol: string): Promise<LiveQuote> {
+  const res = await fetch(`${BASE_URL}/trading/quote/${encodeURIComponent(symbol)}`);
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+  return res.json();
+}
+
+export async function fetchTradingHistory(
+  symbol: string,
+  range: TradingRange
+): Promise<IntradayHistoryResponse> {
+  const res = await fetch(
+    `${BASE_URL}/trading/history/${encodeURIComponent(symbol)}?range=${range}`
+  );
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+  return res.json();
 }
 
 export async function fetchQuota(): Promise<QuotaStatus> {

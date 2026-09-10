@@ -1,4 +1,4 @@
-export type View = "search" | "calculator" | "simulator";
+export type View = "search" | "calculator" | "simulator" | "trading";
 
 interface SidebarProps {
   view: View;
@@ -69,6 +69,25 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
             strokeLinejoin="round"
             strokeDasharray="1 3.2"
           />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        className={`sidebar-icon-button ${view === "trading" ? "active" : ""}`}
+        aria-label="Paper trading"
+        aria-current={view === "trading"}
+        title="Paper trading"
+        onClick={() => onChange("trading")}
+      >
+        {/* A candlestick pair -- the most unambiguous "trading" glyph,
+            distinct from the calculator's grid+dots and the simulator's
+            solid-bars-plus-dashed-line at a glance. */}
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7 3v4M7 15v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <rect x="4.5" y="7" width="5" height="8" rx="1" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M17 3v9M17 19v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <rect x="14.5" y="9" width="5" height="10" rx="1" stroke="currentColor" strokeWidth="1.6" />
         </svg>
       </button>
     </nav>

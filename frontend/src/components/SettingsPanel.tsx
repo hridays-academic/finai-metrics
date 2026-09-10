@@ -4,6 +4,8 @@ import type { UserPublic } from "../lib/types";
 import { logIn, saveTapetideKeyToAccount, validateTapetideKey, ApiError } from "../lib/api";
 import { setAuthToken } from "../lib/auth";
 import { getTapetideKey, setTapetideKey } from "../lib/tapetideKey";
+import { getStartingBalance, setStartingBalance } from "../lib/portfolio";
+import { formatINR } from "../lib/format";
 
 interface SettingsPanelProps {
   themeName: ThemeName;
@@ -67,6 +69,19 @@ export default function SettingsPanel({
 
   const currentKey = getTapetideKey();
   const maskedKey = currentKey ? `Ending in ...${currentKey.slice(-4)}` : "Not set";
+
+  const [editingBalance, setEditingBalance] = useState(false);
+  const [balanceInput, setBalanceInput] = useState(() => String(getStartingBalance()));
+  const [startingBalance, setStartingBalanceState] = useState(getStartingBalance);
+
+  function saveStartingBalance() {
+    const parsed = Number(balanceInput);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      setStartingBalance(parsed);
+      setStartingBalanceState(parsed);
+    }
+    setEditingBalance(false);
+  }
 
   function startConfigure() {
     setError(null);
@@ -236,6 +251,43 @@ export default function SettingsPanel({
               Cancel
             </button>
           </>
+        )}
+
+        <div className="settings-row">
+          <div>
+            <div className="settings-row-label">Paper Trading starting balance</div>
+            <div className="settings-row-sub">
+              {formatINR(startingBalance)} -- applies next time you reset your portfolio, or on first use
+            </div>
+          </div>
+          {!editingBalance && (
+            <button type="button" className="settings-key-configure" onClick={() => setEditingBalance(true)}>
+              Change
+            </button>
+          )}
+        </div>
+        {editingBalance && (
+          <form
+            className="tapetide-gate-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveStartingBalance();
+            }}
+          >
+            <input
+              type="number"
+              min="1"
+              step="1000"
+              placeholder="e.g. 1000000"
+              value={balanceInput}
+              onChange={(e) => setBalanceInput(e.target.value)}
+              aria-label="Paper Trading starting balance in rupees"
+              autoFocus
+            />
+            <button type="submit" disabled={!balanceInput.trim() || Number(balanceInput) <= 0}>
+              Save
+            </button>
+          </form>
         )}
       </div>
     </>

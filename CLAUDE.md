@@ -76,7 +76,11 @@ backend/app/
     tapetide_provider.py   Serves price history + analyst consensus for every search
                             (the two things Bharat-SM-Data structurally can't provide)
     yfinance_provider.py   Automatic fallback for the above, used when Tapetide's
-                            quota is exhausted
+                            quota is exhausted -- ALSO the sole source for Paper
+                            Trading's live quote polling + intraday chart (see
+                            get_live_quote/get_intraday_history and the "Paper
+                            Trading" section below), which has no Tapetide
+                            equivalent at all
     bharat_sm_provider.py  Not wired into main.py anymore (see "Sourcing" below) --
                             kept as a dormant, fully-implemented provider in case
                             Tickertape's IP block on Vercel ever lifts
@@ -397,14 +401,27 @@ frontend/src/
                               PriceForecastChart.tsx, colored --status-warning (not
                               --accent) specifically to visually flag the line as
                               synthetic rather than real observed price data
+    PaperTrading.tsx         Fourth top-level page (via Sidebar): buy/sell real
+                              NSE/BSE stocks with virtual money at their current
+                              (delayed) price -- see "Paper Trading" below
+    TradingChart.tsx         Candlestick/line-toggle chart for Paper Trading, with
+                              its own 1D/1W/1M/3M/1Y/5Y range set -- a new component,
+                              not a PriceChart.tsx extension, see "Paper Trading" below
   hooks/
     useTheme.ts               Reads/writes theme to localStorage
+    usePortfolio.ts           Paper Trading's buy/sell/reset logic + cost-basis and
+                              P&L math, on top of lib/portfolio.ts's pure storage
+    useLiveQuotes.ts          Polls /api/trading/quote for one or many symbols on a
+                              shared interval -- see "Paper Trading" below
   lib/
     auth.ts                   Pure localStorage token storage (get/set/clear) -- no
                               network calls, to avoid a circular import with api.ts
     api.ts                    All backend calls, including auth -- attaches the stored
                               token as `Authorization: Bearer <token>` automatically
                               wherever main.py's optional-auth dependency reads it
+    portfolio.ts               Pure localStorage storage for Paper Trading's virtual
+                              portfolio (cash/holdings/transactions) -- same pattern
+                              as tapetideKey.ts, see "Paper Trading" below
   styles/
     theme.css                 CSS custom properties for dark/light themes
 ```
@@ -815,6 +832,118 @@ every time -- that's the point, not a bug to seed away.
   minimum) can't have a simulation generated for it at all -- shown as a
   plain "Not enough price history for {ticker} to run a simulation" note
   rather than a silently blank chart area.
+
+## Paper Trading
+
+(2026-09) The app's fourth top-level page (`PaperTrading.tsx`, via
+Sidebar) -- buy/sell real NSE/BSE stocks with virtual money at their
+current (delayed) market price, track a portfolio, and watch it move.
+Deliberately a different thing from Market Simulator above: that page
+generates a synthetic random price path for a hypothetical investment;
+this page trades real, currently-quoted prices against a real (if
+delayed) chart, just with fake cash. Sidebar's candlestick-pair icon is
+this page's identity, distinct from the calculator's grid+dots and the
+simulator's bars+dashed-line.
+
+**Entirely yfinance-based, never Tapetide -- deliberately, not as a
+stopgap.** Tapetide has no live-quote or intraday-bar capability at all
+(see `tapetide_provider.py`'s documented tool set), and even if it did,
+its 50-calls/day-per-key quota (see "Bring-your-own Tapetide key" above)
+could not support the polling this page needs -- a single symbol polled
+every 20s is already ~4,300 calls/day, and Paper Trading needs to poll
+every picked/held symbol, not just one. `main.py`'s three
+`/api/trading/*` endpoints (`search`, `quote`, `history`) call
+`fallback_provider` (the same module-level `YFinanceProvider()` singleton
+`/api/company`/`/api/price-history` already fall back to) directly and
+need neither a Tapetide key nor a signed-in session -- see
+`YFinanceProvider.get_live_quote`/`get_intraday_history` for the two
+methods added specifically for this (deliberately NOT part of
+`FinancialDataProvider`'s ABC, since Tapetide has no equivalent
+capability to implement there -- see those methods' comment for the
+reasoning and what a future real-time provider swap would need to match).
+
+**All data here is labeled "Delayed," never "Live," because that's what
+it genuinely is.** Yahoo Finance's NSE/BSE quotes are exchange-delayed
+(commonly ~15 minutes, an undocumented exact figure) rather than a real
+tick feed -- `LiveQuote.is_delayed`/`IntradayHistoryResponse.is_delayed`
+are always `true` today, read by the frontend to render the "Delayed
+data"/"Delayed" badges rather than the frontend assuming a label. A real
+tick feed would need a paid broker API with market-data entitlements
+(Zerodha Kite Connect or Upstox are the common Indian options) -- a real
+recurring-cost decision to make explicitly with the user, not something
+to default into. If one is ever wired in, it should implement the same
+`get_live_quote`/`get_intraday_history` signatures and flip
+`is_delayed`/`source` accordingly; no frontend change would be needed
+beyond that, since the badges already read those fields rather than
+hardcoding "Delayed".
+
+**Polling, not websockets -- yfinance has no push/streaming capability at
+all.** `useLiveQuotes.ts` polls every 20s (`POLL_INTERVAL_MS`), not "every
+few seconds," specifically because yfinance's own undocumented guidance
+(see `YFinanceProvider`'s module docstring) is to keep sustained request
+volume comfortably under ~1-2 requests/second or risk temporary IP
+throttling for every user of this app, not just whoever's polling. One
+hook covers both the actively-picked/charted symbol (an array of one) and
+a whole holdings table's worth of symbols at once, and is gated on a
+`visible` prop (`view === "trading"` in `App.tsx`) so it stops polling
+entirely while this tab isn't the active one -- see App.tsx's view-wrapper
+comment for why every view stays mounted now and what that means for any
+future view with its own polling/timers.
+
+**The chart (`TradingChart.tsx`) is a new, separate component from
+`PriceChart.tsx`, not a reuse/extension of it** -- a deliberate choice,
+not an oversight: the range set (1D/1W/1M/3M/1Y/5Y, vs. PriceChart's
+1D/5D/1Y/3Y/5Y), the need for a candlestick/line toggle (lightweight-
+charts' `CandlestickSeries`, same library/version already used elsewhere
+in this app -- no new dependency), and genuine intraday bars (vs.
+PriceChart's weekly/daily-only granularity) are all real differences, not
+things worth forcing into PriceChart's existing shape. `PricePoint.date`
+carries a full "YYYY-MM-DDTHH:MM:SS" for intraday ranges (1D/1W) and
+stays plain "YYYY-MM-DD" for the rest (see `get_intraday_history`'s
+`intraday` flag) -- `TradingChart.tsx`'s `toChartTime` converts either
+form to a UNIX-timestamp `Time` value for lightweight-charts, sidestepping
+that library's stricter date-only "BusinessDay" string format entirely
+rather than trying to make one string format serve both cases. The 1D
+range additionally re-fetches every 60s (`ONE_DAY_REFRESH_MS`) to pick up
+new bars through the trading day; every other range is a fixed historical
+window that doesn't meaningfully change minute to minute, so re-fetching
+it on the same cadence would just be wasted requests.
+
+**Whole shares only -- no fractional-share trading**, matching how
+NSE/BSE actually trade (unlike some US brokers). Enforced in
+`usePortfolio.ts`'s `buy`/`sell` (`Number.isInteger` check), not just via
+the quantity input's `step="1"`, since a pasted/scripted value could still
+arrive non-integer otherwise.
+
+**Portfolio state (cash, holdings, transactions) lives entirely in
+localStorage (`lib/portfolio.ts`), never sent to the backend at all** --
+same reasoning as the Tapetide key's default storage (see "Bring-your-own
+Tapetide key" above): this app has no per-user backend store that doesn't
+require being signed in, and every feature, Paper Trading included, works
+fully signed-out. **Known, accepted limitation, not silently glossed
+over**: a portfolio doesn't sync across devices/browsers, and clearing
+site data erases it permanently -- stated plainly in the page's own footer
+disclaimer, not just in this file. A signed-in-only backend store (a new
+Postgres table, mirroring how a saved Tapetide key already works via
+`auth_service.py`) would fix that, but was left as a deliberate follow-up
+rather than built now, since it would make this one feature behave
+differently signed-in vs. not, unlike everything else in the app.
+`usePortfolio.ts` owns the actual trade math (weighted-average cost basis
+on buys, realized P&L = `(sellPrice - avgBuyPrice) * qty` on sells,
+insufficient-funds/oversell rejection) on top of `lib/portfolio.ts`'s pure
+storage functions -- same separation of concerns as every other
+storage-vs-logic split in this codebase.
+
+**Starting balance is user-configurable from `SettingsPanel.tsx`**
+(`lib/portfolio.ts`'s `getStartingBalance`/`setStartingBalance`, default
+₹10,00,000), but changing it deliberately does NOT touch an
+already-initialized portfolio's current cash balance -- it only changes
+what a *future* first-use or "Reset portfolio" click seeds with. There's
+no non-arbitrary way to apply a changed starting balance to an
+in-progress portfolio that already has trades in it (add the difference
+to cash? to holdings? neither is well-defined), so this sidesteps the
+question entirely rather than picking an arbitrary answer -- worded
+explicitly in the Settings row's own copy so it's never a surprise.
 
 ## Homepage recommendations (removed 2026-08)
 

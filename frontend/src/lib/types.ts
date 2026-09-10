@@ -145,6 +145,46 @@ export interface AuthResponse {
   user: UserPublic;
 }
 
+// ---------- Paper Trading ----------
+// All three of these are served by yfinance only, never Tapetide -- see
+// CLAUDE.md's "Paper Trading" section for why (no live-quote/intraday
+// capability on Tapetide at all, and its 50-calls/day-per-key quota
+// couldn't support polling regardless). `is_delayed`/`source` are read by
+// the UI to render the "Delayed" badge -- always true/"yfinance" today,
+// but a future real-time provider swap on the backend would flip these
+// with no frontend change needed.
+
+export interface LiveQuote {
+  symbol: string;
+  price: number;
+  previous_close: number | null;
+  change: number | null;
+  change_pct: number | null;
+  currency: string;
+  is_delayed: boolean;
+  source: string;
+  as_of: string; // ISO 8601
+}
+
+export type TradingRange = "1D" | "1W" | "1M" | "3M" | "1Y" | "5Y";
+
+export interface IntradayHistoryResponse {
+  symbol: string;
+  range: TradingRange;
+  currency: string;
+  points: PricePoint[];
+  is_delayed: boolean;
+  source: string;
+}
+
+export interface TradingSymbolInfo {
+  ticker: string;
+  resolved_symbol: string;
+  exchange: string;
+  company_name: string;
+  currency: string;
+}
+
 export interface ActivityEntry {
   action: string; // "signed_up" | "logged_in" | "searched"
   detail: string | null; // e.g. the company name, for "searched"
