@@ -2584,6 +2584,16 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
+  /* An inline-flex box's reported baseline (used to align it against
+     sibling plain text, e.g. the trailing "(+12.3%)" after this in the
+     Total P&L tile) doesn't line up with a normal text baseline the way
+     align-items: center might suggest -- confirmed live via getBoundingClientRect:
+     the sibling text sat 2px lower than the digits in here, at this
+     component's actual result-tile font-size. Nudging up by the
+     equivalent fraction of the font size (rather than a fixed px value)
+     keeps the two visually level regardless of which font-size context
+     this ends up in (a table cell, the live-price line, a result tile). */
+  vertical-align: -0.13em;
 }
 .coin-icon {
   flex-shrink: 0;
