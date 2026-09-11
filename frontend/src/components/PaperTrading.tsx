@@ -5,7 +5,18 @@ import { getStartingBalance } from "../lib/portfolio";
 import { usePortfolio } from "../hooks/usePortfolio";
 import { useLiveQuotes } from "../hooks/useLiveQuotes";
 import TradingChart from "./TradingChart";
+import TradingTutorial from "./TradingTutorial";
 import type { Theme } from "../hooks/useTheme";
+
+// Yahoo (yfinance's source) doesn't publish an exact delay figure for NSE/
+// BSE quotes -- ~15 minutes is the industry-typical figure for free retail
+// feeds generally, not a number yfinance itself guarantees. Shown as an
+// approximation (badges say "~15 min", never a bare unqualified "Delayed")
+// with that caveat spelled out in the page's own disclaimer text below,
+// rather than implying a precision this data source doesn't commit to.
+const APPROX_DELAY_LABEL = "~15 min";
+
+const TUTORIAL_SEEN_KEY = "finai_paper_trading_tutorial_seen";
 
 function formatPrice(value: number): string {
   return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -46,6 +57,10 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
   const [tradeError, setTradeError] = useState<string | null>(null);
   const [tradeMessage, setTradeMessage] = useState<string | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
+  // Shown once per browser -- reachable again anytime via the "?" button
+  // next to the page heading, since a one-time-only modal would otherwise
+  // be unrecoverable if someone closes it before reading it properly.
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem(TUTORIAL_SEEN_KEY));
 
   // Every symbol worth polling right now: whatever's picked (for the chart
   // + buy/sell panel) plus every symbol actually held (for the holdings
@@ -94,6 +109,15 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
     }
   }
 
+  function adjustQty(delta: number) {
+    setQty((prev) => String(Math.max(1, Math.round((Number(prev) || 0) + delta))));
+  }
+
+  function dismissTutorial() {
+    localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
+    setShowTutorial(false);
+  }
+
   function clearStock() {
     setPickedSymbol(null);
     setPickedName("");
@@ -137,16 +161,30 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
 
   return (
     <div className="calculator-page">
+      {showTutorial && <TradingTutorial onClose={dismissTutorial} />}
       <div className="calculator-card trading-card">
-        <h2>Paper Trading</h2>
+        <div className="trading-page-header">
+          <h2>Paper Trading</h2>
+          <button
+            type="button"
+            className="icon-button trading-help-btn"
+            onClick={() => setShowTutorial(true)}
+            aria-label="How Paper Trading works"
+            title="How Paper Trading works"
+          >
+            ?
+          </button>
+        </div>
         <p className="calculator-subtitle">
           Practice buying and selling real NSE/BSE stocks with virtual money -- track a portfolio,
-          watch it move with (delayed) live prices, with zero real financial risk.
+          watch it move with delayed live prices, with zero real financial risk.
         </p>
         <p className="page-disclaimer">
-          This is a simulation using fake money and delayed market data (see the "Delayed data" badge
-          on the chart) -- not real trading, not investment advice, and not a live/real-time feed. Stackly
-          holds no liability for any financial decisions made using this simulation.
+          This is a simulation using fake money and delayed market data (prices/charts lag the real
+          market by roughly {APPROX_DELAY_LABEL} -- an industry-typical figure for free data, not one
+          yfinance itself guarantees) -- not real trading, not investment advice, and not a live/
+          real-time feed. Stackly holds no liability for any financial decisions made using this
+          simulation.
         </p>
 
         <div className="calculator-results trading-summary">
@@ -169,37 +207,49 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
 
         <div className="calculator-stock-picker">
           <div className="calculator-field-header">
-            <span>Pick a stock to trade</span>
+            <span>Trade a stock</span>
           </div>
-          {pickedSymbol ? (
+          {pickedSymbol && (
             <div className="calculator-stock-chip">
               <span>
                 {pickedName} <span className="calculator-stock-chip-ticker">{pickedSymbol}</span>
               </span>
-              <button type="button" onClick={clearStock} aria-label="Remove stock" title="Remove stock">
+              <button type="button" onClick={clearStock} aria-label="Stop viewing this stock" title="Stop viewing this stock">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
-          ) : (
-            <form className="calculator-stock-form" onSubmit={handlePickStock}>
-              <input
-                type="text"
-                placeholder="e.g. Reliance, TCS, or RELIANCE"
-                value={stockQuery}
-                onChange={(e) => setStockQuery(e.target.value)}
-                aria-label="Search a stock to trade"
-              />
-              <button type="submit" disabled={stockLoading || !stockQuery.trim()}>
-                {stockLoading ? "Loading..." : "Use"}
-              </button>
-            </form>
           )}
+          {/* Always visible, even with a stock already picked -- searching
+              here just switches which stock the chart/trade panel below
+              shows. Previously the search form hid itself behind the
+              picked-stock chip until you removed it first, which made
+              adding a second stock to the portfolio feel like it required
+              "clearing" the first one (it didn't -- holdings are unaffected
+              either way -- it just wasn't obvious). */}
+          <form className="calculator-stock-form" onSubmit={handlePickStock}>
+            <input
+              type="text"
+              placeholder={pickedSymbol ? "Search another stock to trade..." : "e.g. Reliance, TCS, or RELIANCE"}
+              value={stockQuery}
+              onChange={(e) => setStockQuery(e.target.value)}
+              aria-label="Search a stock to trade"
+            />
+            <button type="submit" disabled={stockLoading || !stockQuery.trim()}>
+              {stockLoading ? "Loading..." : pickedSymbol ? "Switch" : "Use"}
+            </button>
+          </form>
           {stockError && <div className="calculator-stock-error">{stockError}</div>}
+          {pickedSymbol && (
+            <div className="calculator-field-note">
+              Your other holdings stay in your portfolio -- this only switches which stock you're
+              viewing/trading above.
+            </div>
+          )}
         </div>
 
-        {!pickedSymbol && <div className="calculator-empty-hint">Pick a stock above to start trading.</div>}
+        {!pickedSymbol && <div className="calculator-empty-hint">Search a stock above to start trading.</div>}
 
         {pickedSymbol && (
           <>
@@ -217,7 +267,9 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
                         {liveQuote.change_pct.toFixed(2)}%)
                       </span>
                     )}
-                    <span className="trading-delayed-badge">Delayed</span>
+                    <span className="trading-delayed-badge" title="Sourced via yfinance -- not a real-time tick feed">
+                      Delayed {APPROX_DELAY_LABEL}
+                    </span>
                   </>
                 ) : (
                   <span className="calculator-field-note">Fetching a live price...</span>
@@ -228,14 +280,34 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
               <div className="trading-trade-controls">
                 <label className="calculator-field trading-qty-field">
                   <span>Quantity (whole shares)</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min="1"
-                    step="1"
-                    value={qty}
-                    onChange={(e) => setQty(e.target.value)}
-                  />
+                  <div className="calculator-input-wrap trading-qty-stepper">
+                    <button
+                      type="button"
+                      className="trading-qty-step-btn"
+                      onClick={() => adjustQty(-1)}
+                      disabled={qtyNum <= 1}
+                      aria-label="Decrease quantity"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      step="1"
+                      value={qty}
+                      onChange={(e) => setQty(e.target.value)}
+                      aria-label="Quantity"
+                    />
+                    <button
+                      type="button"
+                      className="trading-qty-step-btn"
+                      onClick={() => adjustQty(1)}
+                      aria-label="Increase quantity"
+                    >
+                      +
+                    </button>
+                  </div>
                 </label>
                 <div className="trading-trade-buttons">
                   <button type="button" className="trading-buy-btn" onClick={handleBuy} disabled={!liveQuote}>

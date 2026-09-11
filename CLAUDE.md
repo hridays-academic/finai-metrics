@@ -407,6 +407,8 @@ frontend/src/
     TradingChart.tsx         Candlestick/line-toggle chart for Paper Trading, with
                               its own 1D/1W/1M/3M/1Y/5Y range set -- a new component,
                               not a PriceChart.tsx extension, see "Paper Trading" below
+    TradingTutorial.tsx      First-visit-only modal explaining Paper Trading, reopenable
+                              via the "?" button next to the page heading -- see below
   hooks/
     useTheme.ts               Reads/writes theme to localStorage
     usePortfolio.ts           Paper Trading's buy/sell/reset logic + cost-basis and
@@ -944,6 +946,52 @@ in-progress portfolio that already has trades in it (add the difference
 to cash? to holdings? neither is well-defined), so this sidesteps the
 question entirely rather than picking an arbitrary answer -- worded
 explicitly in the Settings row's own copy so it's never a surprise.
+
+**(2026-09) The quantity input is wrapped in `.calculator-input-wrap` with
+explicit +/- stepper buttons (`.trading-qty-step-btn`), not a bare
+`<input type="number">`.** The original version lived outside that
+wrapper entirely -- a real bug, not a style choice -- so it never
+inherited the spinner-hiding rules every other numeric field in the app
+already has (`.calculator-input-wrap input::-webkit-outer-spin-button`
+etc.), and rendered with the browser's default, unstyled number spinner
+next to properly-boxed fields elsewhere on the same page. Explicit +/-
+buttons replace that spinner rather than just hiding it and leaving
+scroll-wheel/arrow-key as the only way to adjust the value, which isn't
+discoverable.
+
+**(2026-09) Searching for a stock no longer hides itself behind the
+picked-stock chip.** Originally, once a stock was picked, the search
+form disappeared and only the chip (with an X to remove it) showed --
+technically nothing stopped you from clearing it and searching a second
+stock (holdings were never tied to "what's currently picked"), but the UI
+made it read as if you had to. The chip and the search form now render
+together whenever a stock is picked (`.calculator-stock-chip +
+.calculator-stock-form { margin-top: ... }` in `app.css` adds the gap
+between them only when both are present, so Calculator/Simulator's
+chip-OR-form pages are unaffected), with a `.calculator-field-note` right
+below spelling out that searching again doesn't touch existing holdings.
+The submit button's label switches from "Use" to "Switch" once something
+is already picked, and the placeholder changes too, so it's clear this
+is "trade something else," not "start over."
+
+**(2026-09) `TradingTutorial.tsx` -- a first-visit modal**, shown once
+per browser (`finai_paper_trading_tutorial_seen` in localStorage) and
+reachable again anytime via the "?" button next to the page heading
+(`.trading-help-btn`). Reuses `TapetideKeyGate.tsx`'s overlay/card/steps
+styling wholesale (`.tapetide-gate-*`) rather than inventing a second
+modal pattern, including its optional-video approach: the `<video>`
+points at `/videos/paper-trading-guide.mp4`, which does not exist yet as
+of this writing -- an `onError` handler hides the element and falls back
+to the text-only steps rather than showing a broken player. If a
+walkthrough recording is made later, dropping the file at that exact path
+is the only change needed; nothing else references it.
+
+**(2026-09) "Delayed" badges now say `~15 min`, not a bare "Delayed."**
+Yahoo (yfinance's source) doesn't publish an exact delay figure for NSE/
+BSE quotes -- `PaperTrading.tsx`'s `APPROX_DELAY_LABEL` constant and the
+page's own disclaimer both frame ~15 minutes explicitly as an
+industry-typical figure for free retail data, not a number yfinance
+itself guarantees, rather than stating it as if it were a documented fact.
 
 ## Homepage recommendations (removed 2026-08)
 

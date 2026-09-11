@@ -2874,6 +2874,87 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   cursor: pointer;
 }
 
+/* ---------- Paper Trading: header help button ---------- */
+
+.trading-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.trading-help-btn {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Chip + search form now render together (see PaperTrading.tsx) rather
+   than the form hiding itself behind the chip -- this only adds space
+   between them when both are actually present, so Calculator/Simulator's
+   chip-OR-form pages (which never show both at once) are unaffected. */
+.calculator-stock-chip + .calculator-stock-form {
+  margin-top: 0.6rem;
+}
+
+/* ---------- Paper Trading: quantity stepper ----------
+   Previously a bare native <input type="number"> outside
+   .calculator-input-wrap -- it never got that wrapper's spinner-hiding
+   rules, so Chrome/Firefox's own default up/down spinner rendered
+   unstyled next to the app's other, properly-boxed numeric fields. Now
+   wrapped like every other numeric input, with explicit +/- buttons
+   replacing the native spinner (clearer than relying on scroll-wheel/
+   arrow-key increment, which isn't obvious it exists at all). */
+.trading-qty-stepper {
+  padding: 0.15rem;
+  gap: 0.15rem;
+}
+
+.trading-qty-stepper input {
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.trading-qty-step-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.trading-qty-step-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.trading-qty-step-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ---------- Paper Trading: first-use tutorial ----------
+   Reuses .tapetide-gate-* wholesale (overlay/card/video/steps) -- same
+   modal pattern as the Tapetide key guide, not a new one invented for
+   this. */
+
+.trading-tutorial-card {
+  max-width: 560px;
+}
+
+.trading-tutorial-close {
+  width: 100%;
+  text-align: center;
+}
+
 /* ---------- Responsive: phone-width screens ----------
    Every other layout in this file is fixed-width/desktop-first (see
    CLAUDE.md) except .charts-row's 900px stack above. 640px is this app's

@@ -225,8 +225,11 @@ export default function TradingChart({ symbol, theme }: TradingChartProps) {
     <div className="price-chart-card trading-chart-card">
       <div className="price-chart-header">
         <h3>{symbol.replace(/\.(NS|BO)$/, "")}</h3>
-        <span className="trading-delayed-badge" title="Sourced via yfinance -- not a real-time tick feed">
-          Delayed data
+        <span
+          className="trading-delayed-badge"
+          title="Sourced via yfinance -- not a real-time tick feed. ~15 min is an industry-typical figure for free data, not one yfinance itself guarantees."
+        >
+          Delayed ~15 min
         </span>
       </div>
 
