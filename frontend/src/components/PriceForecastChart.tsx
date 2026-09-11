@@ -93,10 +93,21 @@ export default function PriceForecastChart({ currentPrice, currency, forecast, t
     // Tracks both dimensions, not just width -- this card stretches to match
     // Price History's height in .charts-row (see app.css), so the fan
     // should actually redraw taller to fill that space rather than sitting
-    // at a fixed 220px with dead space around it.
+    // at a fixed 220px with dead space around it. Also re-fits the visible
+    // range on every resize (not just when the data itself changes) --
+    // this chart only has 3 short two-point legs, so there's no real cost
+    // to always re-fitting, and it guards against the container's first
+    // real layout size landing after the initial fitContent() call already
+    // ran against a transient/smaller width (e.g. before .charts-row's
+    // flex layout has settled), which could otherwise leave the fan's
+    // visible range stuck looking collapsed toward one edge until
+    // something else happens to trigger a redraw.
     const resizeObserver = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect;
-      if (rect) chart.applyOptions({ width: rect.width, height: rect.height });
+      if (rect) {
+        chart.applyOptions({ width: rect.width, height: rect.height });
+        chart.timeScale().fitContent();
+      }
     });
     resizeObserver.observe(containerRef.current);
 
