@@ -1043,6 +1043,19 @@ icon inside a string, so they still use `lib/coins.ts`'s formatters
 directly with a hand-appended `" coins"` suffix -- the only place in this
 feature that spells the unit out as a word rather than showing the icon.
 
+**(2026-09) The page's own subtitle states the 1-coin-equals-₹1 parity
+explicitly, with the actual `CoinIcon` inline (not the word "coins")** --
+"virtual coins (1 [icon] = ₹1 in the real Indian stock market, so a stock
+worth ₹500 costs 500 [icon] here)" in `PaperTrading.tsx`. This is the one
+spot in the whole feature where the coin icon is dropped directly into a
+sentence rather than paired with a number via `CoinAmount.tsx` -- `.coin-
+icon`'s `vertical-align: -0.1em` in `app.css` exists specifically for this
+bare-in-running-text case (inside `.coin-amount`'s flex container
+elsewhere, `align-items: center` overrides it, so this rule is a no-op
+there). Written out explicitly, rather than leaving the 1:1 parity as
+something only `lib/coins.ts`'s code comments state, per direct user
+request to make the exchange rate visible on the page itself.
+
 ## Homepage recommendations (removed 2026-08)
 
 Before any search, the empty state used to show 3-5 companies via

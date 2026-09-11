@@ -7,6 +7,7 @@ import { useLiveQuotes } from "../hooks/useLiveQuotes";
 import TradingChart from "./TradingChart";
 import TradingTutorial from "./TradingTutorial";
 import CoinAmount from "./CoinAmount";
+import CoinIcon from "./CoinIcon";
 import type { Theme } from "../hooks/useTheme";
 
 // Yahoo (yfinance's source) doesn't publish an exact delay figure for NSE/
@@ -169,8 +170,9 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
           </button>
         </div>
         <p className="calculator-subtitle">
-          Practice buying and selling real NSE/BSE stocks with virtual coins -- track a portfolio,
-          watch it move with delayed live prices, with zero real financial risk.
+          Practice buying and selling real NSE/BSE stocks with virtual coins (1 <CoinIcon /> = ₹1 in the
+          real Indian stock market, so a stock worth ₹500 costs 500 <CoinIcon /> here) -- track a
+          portfolio, watch it move with delayed live prices, with zero real financial risk.
         </p>
         <p className="page-disclaimer">
           This is a simulation using fake coins, not real money, and delayed market data (prices/charts

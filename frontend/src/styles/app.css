@@ -2588,6 +2588,12 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
 .coin-icon {
   flex-shrink: 0;
   color: inherit;
+  /* Only takes effect when used bare in running text (e.g. the Paper
+     Trading subtitle's "1 [icon] = ₹1" aside) -- inside .coin-amount's
+     flex container, align-items: center overrides this anyway. Nudges the
+     circle up slightly from the text baseline default, which otherwise
+     sits a hair low next to a line of body text. */
+  vertical-align: -0.1em;
 }
 
 .trading-delayed-badge {
