@@ -20,7 +20,7 @@ export default function TradingTutorial({ onClose }: TradingTutorialProps) {
       <div className="tapetide-gate-card trading-tutorial-card">
         <h2>Welcome to Paper Trading</h2>
         <p className="tapetide-gate-intro">
-          Practice buying and selling real NSE/BSE stocks with virtual coins (🪙) -- here's how it works.
+          Practice buying and selling real NSE/BSE stocks with virtual coins -- here's how it works.
         </p>
 
         {!videoFailed && (

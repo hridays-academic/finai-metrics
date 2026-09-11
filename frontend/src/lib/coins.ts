@@ -3,12 +3,19 @@
 // companies' actual reported financials elsewhere in the app (Calculator,
 // the main dashboard, etc.). Paper Trading is a game played with fake
 // money, so its cash/portfolio-value/P&L/share-price figures are labeled
-// "coins" (🪙) instead of ₹ -- a pure relabeling for now, at parity with
-// real rupees (1 coin == 1 rupee's worth of buying power), NOT a currency
+// "coins" instead of ₹ -- a pure relabeling for now, at parity with real
+// rupees (1 coin == 1 rupee's worth of buying power), NOT a currency
 // conversion. If a coins-per-rupee exchange rate is ever introduced (e.g.
 // for a "top up your balance" feature), convert the underlying number
 // before it reaches these formatters -- they should keep just displaying
 // whatever number they're given, unconverted.
+//
+// These return bare numbers (no symbol) -- the coin symbol is a separate
+// SVG icon (see CoinIcon.tsx/CoinAmount.tsx), not a character glued onto
+// the string, per explicit user feedback that a text-embedded symbol read
+// as cluttered/not minimalist enough. Only use these directly (rather than
+// <CoinAmount>) in plain-text contexts that can't render JSX, e.g. a toast
+// message string -- append " coins" by hand there.
 
 // Whole-number amounts: cash balance, portfolio value, P&L, market value,
 // transaction totals. Indian digit grouping (en-IN) is a grouping-style
@@ -16,7 +23,7 @@
 // rest of the app's numeric formatting.
 export function formatCoins(value: number): string {
   const sign = value < 0 ? "-" : "";
-  return `${sign}🪙${Math.round(Math.abs(value)).toLocaleString("en-IN")}`;
+  return `${sign}${Math.round(Math.abs(value)).toLocaleString("en-IN")}`;
 }
 
 export function formatSignedCoins(value: number): string {
@@ -24,9 +31,12 @@ export function formatSignedCoins(value: number): string {
 }
 
 // Per-share prices keep up to 2 decimal places (a real market price like
-// ₹1,349.20 shouldn't get rounded away) -- same precision formatINR's
-// sibling, formatPrice-style helpers elsewhere in the app already use.
+// 1,349.20 shouldn't get rounded away).
 export function formatCoinPrice(value: number): string {
   const sign = value < 0 ? "-" : "";
-  return `${sign}🪙${Math.abs(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  return `${sign}${Math.abs(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+export function formatSignedCoinPrice(value: number): string {
+  return `${value >= 0 ? "+" : ""}${formatCoinPrice(value)}`;
 }

@@ -1,11 +1,12 @@
 import { FormEvent, useMemo, useState } from "react";
 import { ApiError, searchTradingSymbol } from "../lib/api";
-import { formatCoinPrice, formatCoins, formatSignedCoins } from "../lib/coins";
+import { formatCoinPrice } from "../lib/coins";
 import { getStartingBalance } from "../lib/portfolio";
 import { usePortfolio } from "../hooks/usePortfolio";
 import { useLiveQuotes } from "../hooks/useLiveQuotes";
 import TradingChart from "./TradingChart";
 import TradingTutorial from "./TradingTutorial";
+import CoinAmount from "./CoinAmount";
 import type { Theme } from "../hooks/useTheme";
 
 // Yahoo (yfinance's source) doesn't publish an exact delay figure for NSE/
@@ -126,7 +127,7 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
       setTradeMessage(null);
     } else {
       setTradeError(null);
-      setTradeMessage(`Bought ${qtyNum.toLocaleString("en-IN")} share${qtyNum === 1 ? "" : "s"} of ${pickedName} at ${formatCoinPrice(liveQuote.price)}.`);
+      setTradeMessage(`Bought ${qtyNum.toLocaleString("en-IN")} share${qtyNum === 1 ? "" : "s"} of ${pickedName} at ${formatCoinPrice(liveQuote.price)} coins.`);
     }
   }
 
@@ -138,7 +139,7 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
       setTradeMessage(null);
     } else {
       setTradeError(null);
-      setTradeMessage(`Sold ${qtyNum.toLocaleString("en-IN")} share${qtyNum === 1 ? "" : "s"} of ${pickedName} at ${formatCoinPrice(liveQuote.price)}.`);
+      setTradeMessage(`Sold ${qtyNum.toLocaleString("en-IN")} share${qtyNum === 1 ? "" : "s"} of ${pickedName} at ${formatCoinPrice(liveQuote.price)} coins.`);
     }
   }
 
@@ -168,7 +169,7 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
           </button>
         </div>
         <p className="calculator-subtitle">
-          Practice buying and selling real NSE/BSE stocks with virtual coins (🪙) -- track a portfolio,
+          Practice buying and selling real NSE/BSE stocks with virtual coins -- track a portfolio,
           watch it move with delayed live prices, with zero real financial risk.
         </p>
         <p className="page-disclaimer">
@@ -182,16 +183,20 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
         <div className="calculator-results trading-summary">
           <div className="calculator-result-tile">
             <div className="label">Cash balance</div>
-            <div className="value">{formatCoins(portfolio.cash)}</div>
+            <div className="value">
+              <CoinAmount value={portfolio.cash} />
+            </div>
           </div>
           <div className="calculator-result-tile">
             <div className="label">Portfolio value</div>
-            <div className="value">{formatCoins(totalValue)}</div>
+            <div className="value">
+              <CoinAmount value={totalValue} />
+            </div>
           </div>
           <div className="calculator-result-tile">
             <div className="label">Total P&amp;L</div>
             <div className={`value ${totalPnl >= 0 ? "good" : "bad"}`}>
-              {formatSignedCoins(totalPnl)} ({totalPnlPct >= 0 ? "+" : ""}
+              <CoinAmount value={totalPnl} signed /> ({totalPnlPct >= 0 ? "+" : ""}
               {totalPnlPct.toFixed(1)}%)
             </div>
           </div>
@@ -251,11 +256,12 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
               <div className="trading-live-price">
                 {liveQuote ? (
                   <>
-                    <span className="trading-live-price-value">{formatCoinPrice(liveQuote.price)}</span>
+                    <span className="trading-live-price-value">
+                      <CoinAmount value={liveQuote.price} price />
+                    </span>
                     {liveQuote.change !== null && liveQuote.change_pct !== null && (
                       <span className={`price-chart-change ${liveQuote.change >= 0 ? "good" : "bad"}`}>
-                        {liveQuote.change >= 0 ? "+" : ""}
-                        {formatCoinPrice(liveQuote.change)} ({liveQuote.change_pct >= 0 ? "+" : ""}
+                        <CoinAmount value={liveQuote.change} price signed /> ({liveQuote.change_pct >= 0 ? "+" : ""}
                         {liveQuote.change_pct.toFixed(2)}%)
                       </span>
                     )}
@@ -313,7 +319,8 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
 
               {liveQuote && qtyNum > 0 && (
                 <div className="calculator-field-note">
-                  Estimated {estimatedTotal <= portfolio.cash ? "cost" : "cost (exceeds cash)"}: {formatCoins(estimatedTotal)}
+                  Estimated {estimatedTotal <= portfolio.cash ? "cost" : "cost (exceeds cash)"}:{" "}
+                  <CoinAmount value={estimatedTotal} />
                   {" -- "}
                   max affordable: {maxAffordable.toLocaleString("en-IN")} share{maxAffordable === 1 ? "" : "s"}
                 </div>
@@ -356,13 +363,18 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
                         <div className="trading-table-stock-ticker">{h.symbol}</div>
                       </td>
                       <td>{h.qty.toLocaleString("en-IN")}</td>
-                      <td>{formatCoinPrice(h.avgBuyPrice)}</td>
-                      <td>{price !== undefined ? formatCoinPrice(price) : "..."}</td>
-                      <td>{marketValue !== null ? formatCoins(marketValue) : "..."}</td>
+                      <td><CoinAmount value={h.avgBuyPrice} price /></td>
+                      <td>{price !== undefined ? <CoinAmount value={price} price /> : "..."}</td>
+                      <td>{marketValue !== null ? <CoinAmount value={marketValue} /> : "..."}</td>
                       <td className={unrealizedPnl !== null ? (unrealizedPnl >= 0 ? "good" : "bad") : ""}>
-                        {unrealizedPnl !== null && unrealizedPnlPct !== null
-                          ? `${formatSignedCoins(unrealizedPnl)} (${unrealizedPnlPct >= 0 ? "+" : ""}${unrealizedPnlPct.toFixed(1)}%)`
-                          : "..."}
+                        {unrealizedPnl !== null && unrealizedPnlPct !== null ? (
+                          <>
+                            <CoinAmount value={unrealizedPnl} signed /> ({unrealizedPnlPct >= 0 ? "+" : ""}
+                            {unrealizedPnlPct.toFixed(1)}%)
+                          </>
+                        ) : (
+                          "..."
+                        )}
                       </td>
                       <td>
                         <button
@@ -397,12 +409,14 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
               <div className={`trading-transaction-row ${t.type}`} key={t.id}>
                 <span className={`trading-transaction-badge ${t.type}`}>{t.type === "buy" ? "BUY" : "SELL"}</span>
                 <span className="trading-transaction-main">
-                  {t.qty.toLocaleString("en-IN")} {t.symbol} @ {formatCoinPrice(t.price)}
+                  {t.qty.toLocaleString("en-IN")} {t.symbol} @ <CoinAmount value={t.price} price />
                 </span>
-                <span className="trading-transaction-total">{formatCoins(t.total)}</span>
+                <span className="trading-transaction-total">
+                  <CoinAmount value={t.total} />
+                </span>
                 {t.realizedPnl !== null && (
                   <span className={`trading-transaction-pnl ${t.realizedPnl >= 0 ? "good" : "bad"}`}>
-                    {formatSignedCoins(t.realizedPnl)}
+                    <CoinAmount value={t.realizedPnl} signed />
                   </span>
                 )}
                 <span className="trading-transaction-time">{formatTimestamp(t.timestamp)}</span>
@@ -418,7 +432,9 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
             </button>
           ) : (
             <div className="trading-reset-confirm">
-              <span>Erase your portfolio and start over with {formatCoins(getStartingBalance())}?</span>
+              <span>
+                Erase your portfolio and start over with <CoinAmount value={getStartingBalance()} />?
+              </span>
               <button type="button" className="trading-reset-confirm-btn" onClick={handleReset}>
                 Confirm reset
               </button>

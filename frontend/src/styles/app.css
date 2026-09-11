@@ -2571,6 +2571,25 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   margin-bottom: 0.5rem;
 }
 
+/* Coin icon + number, rendered as one inline unit with real breathing room
+   between them (0.35em, not glued together) -- replaces an earlier 🪙
+   emoji prefix that read as cluttered directly against the digits. `em`
+   sizing on both the gap and the icon itself (see CoinIcon.tsx) means this
+   scales correctly whether it's sitting in a 1.4rem live-price line or a
+   0.82rem table cell, without a size prop threaded through every call
+   site. color: inherit on the icon so it always matches its surrounding
+   text color (including the good/bad green/red P&L tints) automatically,
+   the same way a currency symbol glyph would. */
+.coin-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+.coin-icon {
+  flex-shrink: 0;
+  color: inherit;
+}
+
 .trading-delayed-badge {
   display: inline-flex;
   align-items: center;

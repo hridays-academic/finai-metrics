@@ -5,7 +5,7 @@ import { logIn, saveTapetideKeyToAccount, validateTapetideKey, ApiError } from "
 import { setAuthToken } from "../lib/auth";
 import { getTapetideKey, setTapetideKey } from "../lib/tapetideKey";
 import { getStartingBalance, setStartingBalance } from "../lib/portfolio";
-import { formatCoins } from "../lib/coins";
+import CoinAmount from "./CoinAmount";
 
 interface SettingsPanelProps {
   themeName: ThemeName;
@@ -257,7 +257,8 @@ export default function SettingsPanel({
           <div>
             <div className="settings-row-label">Paper Trading starting balance</div>
             <div className="settings-row-sub">
-              {formatCoins(startingBalance)} -- applies next time you reset your portfolio, or on first use
+              <CoinAmount value={startingBalance} /> -- applies next time you reset your portfolio, or on
+              first use
             </div>
           </div>
           {!editingBalance && (

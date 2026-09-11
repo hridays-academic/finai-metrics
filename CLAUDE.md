@@ -409,6 +409,10 @@ frontend/src/
                               not a PriceChart.tsx extension, see "Paper Trading" below
     TradingTutorial.tsx      First-visit-only modal explaining Paper Trading, reopenable
                               via the "?" button next to the page heading -- see below
+    CoinIcon.tsx              Minimalist outline coin glyph (no fill, currentColor) for
+                              Paper Trading's currency -- see "Paper Trading" below
+    CoinAmount.tsx            Pairs CoinIcon with a formatted coin number as one inline
+                              unit with real spacing between them -- see below
   hooks/
     useTheme.ts               Reads/writes theme to localStorage
     usePortfolio.ts           Paper Trading's buy/sell/reset logic + cost-basis and
@@ -996,24 +1000,48 @@ page's own disclaimer both frame ~15 minutes explicitly as an
 industry-typical figure for free retail data, not a number yfinance
 itself guarantees, rather than stating it as if it were a documented fact.
 
-**(2026-09) The currency is "coins" (🪙), not rupees -- a relabel, NOT an
+**(2026-09) The currency is "coins," not rupees -- a relabel, NOT an
 exchange-rate conversion.** Every cash/portfolio-value/P&L/share-price
 figure in Paper Trading is formatted by `lib/coins.ts`
-(`formatCoins`/`formatSignedCoins`/`formatCoinPrice`) instead of
-`lib/format.ts`'s `formatINR` -- same numbers as before, just prefixed
-with 🪙 instead of ₹ (1 coin == 1 rupee's worth of buying power, still).
-Deliberately scoped to Paper Trading only: the rest of the app (main
-dashboard, Return Calculator, Market Simulator) shows REAL companies'
-REAL reported financials and REAL prices, which must stay in real rupees
--- relabeling those as a fictional currency would misrepresent real data,
-not just reskin a game. `lib/coins.ts`'s module comment spells this
-scoping out explicitly, and its own docstring flags where a *real*
-exchange rate would need to be applied (before the value reaches the
-formatter, not inside it) if a coins-per-rupee conversion is ever added --
-e.g. for a possible future "top up your balance" feature, discussed but
-explicitly NOT built as part of this rename (see the user's own framing:
+(`formatCoins`/`formatSignedCoins`/`formatCoinPrice`/`formatSignedCoinPrice`)
+instead of `lib/format.ts`'s `formatINR` -- same numbers as before, no
+symbol baked into the string at all now (1 coin == 1 rupee's worth of
+buying power, still). Deliberately scoped to Paper Trading only: the rest
+of the app (main dashboard, Return Calculator, Market Simulator) shows
+REAL companies' REAL reported financials and REAL prices, which must stay
+in real rupees -- relabeling those as a fictional currency would
+misrepresent real data, not just reskin a game. `lib/coins.ts`'s module
+comment spells this scoping out explicitly, and its own docstring flags
+where a *real* exchange rate would need to be applied (before the value
+reaches the formatter, not inside it) if a coins-per-rupee conversion is
+ever added -- e.g. for a possible future "top up your balance" feature,
+discussed but explicitly NOT built as part of this rename (see the user's
+own framing:
 "maybe in the future"). Don't conflate the two -- the rename shipped, the
 conversion mechanic did not.
+
+**(2026-09) The coin symbol is an SVG icon (`CoinIcon.tsx`), not an emoji
+character baked into the formatted string.** A first pass used a 🪙 emoji
+prefix directly in `lib/coins.ts`'s output (e.g. `"🪙1,000,000"`) --
+replaced after direct user feedback that gluing it straight onto the
+digits read as cluttered, not minimalist. `CoinIcon.tsx` is a plain
+circle-in-circle outline (`stroke="currentColor"`, no fill), matching
+every other icon in this app's family (Sidebar/Header/ExpandToggle all
+use the same 1.6-1.8 stroke width, currentColor, no-fill convention) --
+"white outline" in dark mode is just `currentColor` inheriting the
+surrounding (light) text color, not a hardcoded white value, so it stays
+correctly readable in light mode too. `lib/coins.ts`'s formatters now
+return bare numbers with no symbol at all; `CoinAmount.tsx` is what
+actually pairs the icon with a formatted number as one inline unit,
+with a real `gap` between them (`.coin-amount` in `app.css`) instead of
+zero spacing. Both the icon and the gap are sized in `em` so they scale
+with whatever font-size context they're dropped into (a 1.4rem live price
+vs. a 0.82rem table cell) without a size prop threaded through every call
+site. The two plain-text trade-confirmation toast messages
+(`handleBuy`/`handleSell` in `PaperTrading.tsx`) can't render a React
+icon inside a string, so they still use `lib/coins.ts`'s formatters
+directly with a hand-appended `" coins"` suffix -- the only place in this
+feature that spells the unit out as a word rather than showing the icon.
 
 ## Homepage recommendations (removed 2026-08)
 
