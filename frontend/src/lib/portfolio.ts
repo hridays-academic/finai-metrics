@@ -41,8 +41,10 @@ export interface Portfolio {
 const PORTFOLIO_KEY = "finai_paper_trading_portfolio";
 const STARTING_BALANCE_KEY = "finai_paper_trading_starting_balance";
 
-// ₹10,00,000 -- the spec's own example starting balance, and a round,
-// recognizable number for a paper-trading demo.
+// 1,000,000 coins (see lib/coins.ts) -- a round, recognizable number for a
+// paper-trading demo. Originally introduced as ₹10,00,000; the currency
+// was relabeled to "coins" (2026-09) at parity with that same number --
+// see lib/coins.ts's module comment for why this isn't a conversion.
 const DEFAULT_STARTING_BALANCE = 1_000_000;
 
 export function getStartingBalance(): number {

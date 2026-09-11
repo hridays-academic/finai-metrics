@@ -20,7 +20,7 @@ export default function TradingTutorial({ onClose }: TradingTutorialProps) {
       <div className="tapetide-gate-card trading-tutorial-card">
         <h2>Welcome to Paper Trading</h2>
         <p className="tapetide-gate-intro">
-          Practice buying and selling real NSE/BSE stocks with virtual money -- here's how it works.
+          Practice buying and selling real NSE/BSE stocks with virtual coins (🪙) -- here's how it works.
         </p>
 
         {!videoFailed && (
@@ -40,16 +40,16 @@ export default function TradingTutorial({ onClose }: TradingTutorialProps) {
             Prices and the chart refresh automatically every ~20 seconds, and are delayed roughly
             15 minutes (see the "Delayed" badge) -- not a live/real-time feed.
           </li>
-          <li>Buy or sell whole shares (no fractional shares) at the current price, using your virtual cash balance.</li>
+          <li>Buy or sell whole shares (no fractional shares) at the current price, using your virtual coin balance.</li>
           <li>
             Search again anytime to trade a different stock -- your existing holdings stay exactly as
             they are; searching doesn't remove anything from your portfolio.
           </li>
           <li>
-            Your cash balance, total portfolio value, and overall P&amp;L are always shown at the top;
+            Your coin balance, total portfolio value, and overall P&amp;L are always shown at the top;
             every buy/sell is logged in the transaction history below.
           </li>
-          <li>"Reset portfolio" wipes your holdings and transactions and restores your starting cash, anytime.</li>
+          <li>"Reset portfolio" wipes your holdings and transactions and restores your starting coins, anytime.</li>
         </ol>
 
         <button type="button" className="search-button trading-tutorial-close" onClick={onClose}>

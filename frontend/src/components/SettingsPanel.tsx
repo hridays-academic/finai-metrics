@@ -5,7 +5,7 @@ import { logIn, saveTapetideKeyToAccount, validateTapetideKey, ApiError } from "
 import { setAuthToken } from "../lib/auth";
 import { getTapetideKey, setTapetideKey } from "../lib/tapetideKey";
 import { getStartingBalance, setStartingBalance } from "../lib/portfolio";
-import { formatINR } from "../lib/format";
+import { formatCoins } from "../lib/coins";
 
 interface SettingsPanelProps {
   themeName: ThemeName;
@@ -257,7 +257,7 @@ export default function SettingsPanel({
           <div>
             <div className="settings-row-label">Paper Trading starting balance</div>
             <div className="settings-row-sub">
-              {formatINR(startingBalance)} -- applies next time you reset your portfolio, or on first use
+              {formatCoins(startingBalance)} -- applies next time you reset your portfolio, or on first use
             </div>
           </div>
           {!editingBalance && (
@@ -281,7 +281,7 @@ export default function SettingsPanel({
               placeholder="e.g. 1000000"
               value={balanceInput}
               onChange={(e) => setBalanceInput(e.target.value)}
-              aria-label="Paper Trading starting balance in rupees"
+              aria-label="Paper Trading starting balance in coins"
               autoFocus
             />
             <button type="submit" disabled={!balanceInput.trim() || Number(balanceInput) <= 0}>

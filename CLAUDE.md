@@ -424,6 +424,9 @@ frontend/src/
     portfolio.ts               Pure localStorage storage for Paper Trading's virtual
                               portfolio (cash/holdings/transactions) -- same pattern
                               as tapetideKey.ts, see "Paper Trading" below
+    coins.ts                   Paper Trading's own currency formatters (🪙, not ₹) --
+                              deliberately separate from format.ts's real-rupee
+                              formatINR, see "Paper Trading" below
   styles/
     theme.css                 CSS custom properties for dark/light themes
 ```
@@ -992,6 +995,25 @@ BSE quotes -- `PaperTrading.tsx`'s `APPROX_DELAY_LABEL` constant and the
 page's own disclaimer both frame ~15 minutes explicitly as an
 industry-typical figure for free retail data, not a number yfinance
 itself guarantees, rather than stating it as if it were a documented fact.
+
+**(2026-09) The currency is "coins" (🪙), not rupees -- a relabel, NOT an
+exchange-rate conversion.** Every cash/portfolio-value/P&L/share-price
+figure in Paper Trading is formatted by `lib/coins.ts`
+(`formatCoins`/`formatSignedCoins`/`formatCoinPrice`) instead of
+`lib/format.ts`'s `formatINR` -- same numbers as before, just prefixed
+with 🪙 instead of ₹ (1 coin == 1 rupee's worth of buying power, still).
+Deliberately scoped to Paper Trading only: the rest of the app (main
+dashboard, Return Calculator, Market Simulator) shows REAL companies'
+REAL reported financials and REAL prices, which must stay in real rupees
+-- relabeling those as a fictional currency would misrepresent real data,
+not just reskin a game. `lib/coins.ts`'s module comment spells this
+scoping out explicitly, and its own docstring flags where a *real*
+exchange rate would need to be applied (before the value reaches the
+formatter, not inside it) if a coins-per-rupee conversion is ever added --
+e.g. for a possible future "top up your balance" feature, discussed but
+explicitly NOT built as part of this rename (see the user's own framing:
+"maybe in the future"). Don't conflate the two -- the rename shipped, the
+conversion mechanic did not.
 
 ## Homepage recommendations (removed 2026-08)
 
