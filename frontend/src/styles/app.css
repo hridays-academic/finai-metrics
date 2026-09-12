@@ -2790,20 +2790,34 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   color: var(--text-tertiary);
 }
 
-.trading-table-trade-btn {
-  padding: 0.3rem 0.7rem;
-  border-radius: 7px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: 0.72rem;
-  font-weight: 600;
+/* The whole row is clickable (selects that holding into the trade panel
+   above, same as the old dedicated "Trade" button used to) -- replaced the
+   button with a plain chevron hint since a clickable <tr> containing a
+   nested interactive <button> is a real accessibility anti-pattern
+   (overlapping click targets, ambiguous focus order), not just visual
+   clutter. The bounce-up hover (translateY + --ease-snap, the same
+   overshoot curve Sidebar's icon-scale hover and .calculator-scenario-tile
+   already use) is what signals "this row is a button" now that there's no
+   literal button in it. */
+.trading-holdings-row {
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: transform 0.25s var(--ease-snap), background-color 0.15s ease;
 }
-.trading-table-trade-btn:hover {
-  border-color: var(--accent);
-  color: var(--text-primary);
+.trading-holdings-row:hover {
+  transform: translateY(-2px);
+  background: var(--bg-hover);
+}
+.trading-holdings-row:active {
+  transform: translateY(0);
+}
+
+.trading-holdings-row-arrow {
+  color: var(--text-tertiary);
+  transition: transform 0.25s var(--ease-snap), color 0.15s ease;
+}
+.trading-holdings-row:hover .trading-holdings-row-arrow {
+  color: var(--accent);
+  transform: translateX(3px);
 }
 
 /* ---------- Transaction history ---------- */

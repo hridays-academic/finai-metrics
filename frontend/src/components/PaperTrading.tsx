@@ -112,6 +112,13 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
     setShowTutorial(false);
   }
 
+  function selectHolding(symbol: string, name: string) {
+    setPickedSymbol(symbol);
+    setPickedName(name);
+    setTradeError(null);
+    setTradeMessage(null);
+  }
+
   function clearStock() {
     setPickedSymbol(null);
     setPickedName("");
@@ -359,7 +366,12 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
                   const unrealizedPnl = price !== undefined ? (price - h.avgBuyPrice) * h.qty : null;
                   const unrealizedPnlPct = price !== undefined && h.avgBuyPrice > 0 ? ((price - h.avgBuyPrice) / h.avgBuyPrice) * 100 : null;
                   return (
-                    <tr key={h.symbol}>
+                    <tr
+                      key={h.symbol}
+                      className="trading-holdings-row"
+                      onClick={() => selectHolding(h.symbol, h.name)}
+                      title={`Trade ${h.name}`}
+                    >
                       <td>
                         <div className="trading-table-stock-name">{h.name}</div>
                         <div className="trading-table-stock-ticker">{h.symbol}</div>
@@ -379,18 +391,17 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
                         )}
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="trading-table-trade-btn"
-                          onClick={() => {
-                            setPickedSymbol(h.symbol);
-                            setPickedName(h.name);
-                            setTradeError(null);
-                            setTradeMessage(null);
-                          }}
+                        <svg
+                          className="trading-holdings-row-arrow"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden="true"
                         >
-                          Trade
-                        </button>
+                          <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                       </td>
                     </tr>
                   );

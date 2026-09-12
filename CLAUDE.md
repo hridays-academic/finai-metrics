@@ -1056,6 +1056,32 @@ there). Written out explicitly, rather than leaving the 1:1 parity as
 something only `lib/coins.ts`'s code comments state, per direct user
 request to make the exchange rate visible on the page itself.
 
+**(2026-09) A frozen/unchanged live price during weekend/after-hours
+testing is expected, not a bug -- verified live, not assumed.** NSE/BSE
+only trade Mon-Fri during market hours; `get_live_quote` still fetches a
+genuinely fresh response every poll (confirmed by calling it twice a few
+seconds apart: `as_of` advanced both times, `price` was identical both
+times) -- the *value* is correctly the real last-traded price, which
+simply hasn't moved since the market's last close. Don't "fix" a report
+of "the price never changes" by assuming the poll is broken without first
+checking whether markets were even open in the window being tested.
+
+**(2026-09) Holdings table rows are directly clickable (`.trading-
+holdings-row`), not just the old separate "Trade" button.** Clicking a
+row calls the same `selectHolding(symbol, name)` that used to live only
+in that button's `onClick` -- switches the chart/trade panel above to
+that holding, identical to what "Trade" did. The button itself was
+removed rather than kept alongside the clickable row: a `<button>` nested
+inside a clickable `<tr>` is a real accessibility anti-pattern (ambiguous
+focus order, overlapping click targets), not just visual redundancy. A
+plain chevron (`.trading-holdings-row-arrow`) replaces it as a hint that
+the row is interactive, and the hover state itself does the rest of that
+job -- a small lift (`translateY(-2px)`) using `--ease-snap` (the same
+springy overshoot curve Sidebar's icon-scale hover and
+`.calculator-scenario-tile` already use for "this is clickable" bounce
+feedback elsewhere in the app), with the arrow sliding right and picking
+up `--accent` color on the same hover.
+
 ## Homepage recommendations (removed 2026-08)
 
 Before any search, the empty state used to show 3-5 companies via
