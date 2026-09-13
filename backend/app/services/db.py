@@ -88,6 +88,26 @@ _SCHEMA_STATEMENTS = [
     # ADD COLUMN IF NOT EXISTS statements above.
     "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL",
     "ALTER TABLE users ALTER COLUMN password_salt DROP NOT NULL",
+    # Added 2026-09 -- "forgot password" (see auth_service.py's
+    # request_password_reset/reset_password). token_hash stores SHA-256 of
+    # the raw token, never the raw value itself: unlike sessions.token
+    # above, a reset token travels over email (a channel more likely to be
+    # logged/forwarded along the way than a session cookie) and is a
+    # higher-stakes secret (whoever has one can take over the account
+    # outright), so it gets the same "don't store the literal secret"
+    # treatment tapetide_quota's token_hash already uses. One row per user
+    # at most in practice (request_password_reset deletes any existing row
+    # for that user before inserting a new one) -- not enforced by a UNIQUE
+    # constraint here since a stale leftover row for a deleted-in-the-
+    # meantime scenario should never hard-fail the next request.
+    """
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        token_hash TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (NOW()::text),
+        expires_at TEXT NOT NULL
+    )
+    """,
 ]
 
 

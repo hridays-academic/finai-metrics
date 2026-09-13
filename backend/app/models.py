@@ -215,6 +215,15 @@ class LogInRequest(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=200)
+
+
 class UserPublic(BaseModel):
     """Never includes password_hash/password_salt -- those never leave
     auth_service.py's DB layer. `tapetide_key` is the account's saved

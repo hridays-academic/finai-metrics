@@ -1613,6 +1613,29 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   color: var(--text-tertiary);
 }
 
+/* Right-aligned, directly under the password field it's next to (not down
+   with the submit button) -- the conventional placement for this link,
+   and keeps it visually attached to the field it's about "I can't get
+   into this." Plain background/border-free so it doesn't compete with the
+   real submit button for attention. */
+.auth-forgot-link {
+  align-self: flex-end;
+  margin-top: -0.55rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+.auth-forgot-link:hover {
+  color: var(--accent);
+}
+
 .auth-submit {
   width: 100%;
   text-align: center;

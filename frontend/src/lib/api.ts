@@ -210,6 +210,35 @@ export async function logIn(email: string, password: string): Promise<AuthRespon
   return res.json();
 }
 
+// Always resolves (never throws for "no such account") -- the backend
+// deliberately returns the same generic response regardless of whether the
+// email has an account, to avoid leaking which addresses are registered.
+export async function forgotPassword(email: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+}
+
+// Called from ResetPasswordPanel.tsx with the token from the
+// "?reset_token=" URL param a reset email links to.
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+}
+
 // Called with the raw ID token JWT from Google Identity Services'
 // credential callback (see lib/googleAuth.ts) -- main.py's /api/auth/google
 // verifies it server-side before ever trusting it. Same response shape as

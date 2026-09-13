@@ -33,6 +33,16 @@ existing password account rather than creating a duplicate -- safe since
 Google already vouched for that email). A Google-created account has no
 password at all (`password_hash`/`password_salt` are nullable now, see
 db.py) -- it never sets one, so there's nothing to guess or leak.
+
+(2026-09) **"Forgot password"** (`request_password_reset`/`reset_password`)
+issues a single-use, 30-minute reset token (hashed before storage in
+`password_reset_tokens`, unlike `sessions.token` -- see db.py's schema
+comment for why a reset token gets that extra treatment) and emails a
+reset link via Resend (`resend_service.py`). `request_password_reset`
+returns `None` for both "no such email" and "Google-only account, nothing
+to reset" -- `main.py`'s `/api/auth/forgot-password` must always return
+the identical generic response regardless, or the endpoint becomes an
+email-enumeration oracle.
 """
 import hashlib
 import re
@@ -47,6 +57,7 @@ from app.services.db import get_conn
 
 PBKDF2_ITERATIONS = 200_000
 SESSION_TTL_DAYS = 30
+RESET_TOKEN_TTL_MINUTES = 30
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -56,6 +67,15 @@ class AuthError(Exception):
 
 def _hash_password(password: str, salt: bytes) -> str:
     return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS).hex()
+
+
+def _hash_reset_token(token: str) -> str:
+    """Plain SHA-256, no per-token salt -- unlike a password, a reset token
+    is already a full 32-byte random value from secrets.token_urlsafe, so
+    it has nowhere near the guessability a salt would need to defend
+    against. This only needs to stop "someone read this value out of a DB
+    dump" from being equivalent to having the real token."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def _fernet() -> Fernet:
@@ -179,6 +199,62 @@ def login_with_google(email: str, name: str, google_id: str) -> tuple[int, str]:
     token = _create_session(user_id)
     _log_activity(user_id, "signed_up" if is_new else "logged_in", "via Google")
     return user_id, token
+
+
+def request_password_reset(email: str) -> Optional[tuple[str, str]]:
+    """Returns (name, raw_token) if `email` belongs to a resettable
+    (password-based) account, else None -- callers (main.py's
+    /api/auth/forgot-password) must return the exact same generic response
+    either way, never branching client-visibly on this, or the endpoint
+    becomes an email-enumeration oracle (a classic, well-known auth bug
+    class, not a hypothetical one here). A Google-only account (no
+    password_hash at all) also returns None -- there's nothing to reset;
+    that account's recovery path is signing in with Google again, not
+    email. Deletes any previous unused token for this user first, so an
+    old email's link can't be replayed after a newer request superseded
+    it -- at most one live reset link per user at any time."""
+    email = email.strip().lower()
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, name, password_hash FROM users WHERE email = %s", (email,)
+        ).fetchone()
+        if not row or row["password_hash"] is None:
+            return None
+        token = secrets.token_urlsafe(32)
+        token_hash = _hash_reset_token(token)
+        expires_at = (datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)).isoformat()
+        conn.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (row["id"],))
+        conn.execute(
+            "INSERT INTO password_reset_tokens (token_hash, user_id, expires_at) VALUES (%s, %s, %s)",
+            (token_hash, row["id"], expires_at),
+        )
+    return row["name"], token
+
+
+def reset_password(token: str, new_password: str) -> None:
+    """Verifies a reset token (see request_password_reset) and sets a new
+    password. Single-use: the token row is deleted the moment it's
+    consumed, whether or not anything goes wrong after -- a raised
+    AuthError here always means nothing was changed, so there's no
+    partial-failure state where the token's gone but the password wasn't
+    actually updated (both happen in the same committed transaction)."""
+    if len(new_password) < 8:
+        raise AuthError("Password must be at least 8 characters.")
+    token_hash = _hash_reset_token(token)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT user_id, expires_at FROM password_reset_tokens WHERE token_hash = %s", (token_hash,)
+        ).fetchone()
+        if not row or datetime.fromisoformat(row["expires_at"]) < datetime.now(timezone.utc):
+            raise AuthError("This reset link is invalid or has expired -- please request a new one.")
+        salt = secrets.token_bytes(16)
+        password_hash = _hash_password(new_password, salt)
+        conn.execute(
+            "UPDATE users SET password_hash = %s, password_salt = %s WHERE id = %s",
+            (password_hash, salt.hex(), row["user_id"]),
+        )
+        conn.execute("DELETE FROM password_reset_tokens WHERE token_hash = %s", (token_hash,))
+    _log_activity(row["user_id"], "password_reset", None)
 
 
 def _create_session(user_id: int) -> str:

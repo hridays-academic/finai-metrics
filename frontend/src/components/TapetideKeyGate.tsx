@@ -11,10 +11,11 @@ import { setTapetideKey } from "../lib/tapetideKey";
 import { setAuthToken } from "../lib/auth";
 import type { UserPublic } from "../lib/types";
 import GoogleSignInButton from "./GoogleSignInButton";
+import ForgotPasswordForm from "./ForgotPasswordForm";
 
 const TAPETIDE_TOKENS_URL = "https://tapetide.com/settings/tokens";
 
-type Step = "welcome" | "signin" | "signup" | "key";
+type Step = "welcome" | "signin" | "signup" | "forgot" | "key";
 
 interface TapetideKeyGateProps {
   user: UserPublic | null;
@@ -187,6 +188,17 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
     );
   }
 
+  if (step === "forgot") {
+    return (
+      <div className="tapetide-gate-overlay" role="dialog" aria-modal="true" aria-label="Reset password">
+        <div className="tapetide-gate-card">
+          <h2>Reset Password</h2>
+          <ForgotPasswordForm initialEmail={email} onBack={() => setStep("signin")} />
+        </div>
+      </div>
+    );
+  }
+
   if (step === "signin" || step === "signup") {
     return (
       <div
@@ -228,6 +240,12 @@ export default function TapetideKeyGate({ user, sessionChecked, onAuthChange, on
               />
               {mode === "signup" && <span className="auth-field-hint">At least 8 characters</span>}
             </label>
+
+            {mode === "signin" && (
+              <button type="button" className="auth-forgot-link" onClick={() => setStep("forgot")}>
+                Forgot password?
+              </button>
+            )}
 
             {authError && <div className="search-error">{authError}</div>}
 

@@ -11,7 +11,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from google.auth.transport import requests as google_auth_requests
 from google.oauth2 import id_token as google_id_token
@@ -25,6 +25,7 @@ from app.models import (
     CompanyFinancialsResponse,
     CompanyInfo,
     DataSourceName,
+    ForgotPasswordRequest,
     GoogleAuthRequest,
     IntradayHistoryResponse,
     LiveQuote,
@@ -33,6 +34,7 @@ from app.models import (
     PricePoint,
     QuotaStatus,
     RawFinancials,
+    ResetPasswordRequest,
     SignUpRequest,
     TapetideKeyRequest,
     TradingSymbolInfo,
@@ -46,6 +48,7 @@ from app.services.data_provider import (
     ProviderQuotaExceededError,
 )
 from app.services.metrics import compute_health_snapshot, compute_metric_groups
+from app.services import resend_service
 from app.services.tapetide_provider import InvalidTapetideKeyError, TapetideProvider
 from app.services.yfinance_provider import YFinanceProvider
 from app.services import auth_service
@@ -569,6 +572,39 @@ def log_in(request: LogInRequest) -> AuthResponse:
     user = auth_service.get_user_from_token(token)
     assert user is not None
     return AuthResponse(token=token, user=UserPublic(**user))
+
+
+# Deliberately always returns the exact same body regardless of whether the
+# email has an account, is Google-only, or the reset email genuinely failed
+# to send -- see auth_service.request_password_reset's docstring for why
+# branching on any of that client-visibly turns this into an
+# email-enumeration oracle. A send failure is logged server-side
+# (resend_service.py) and swallowed here, not surfaced to the caller.
+@app.post("/api/auth/forgot-password")
+def forgot_password(request: ForgotPasswordRequest, http_request: Request) -> dict:
+    result = auth_service.request_password_reset(request.email)
+    if result:
+        name, token = result
+        # Same-origin deployment (see CLAUDE.md's "Deployment" section) --
+        # the request's own Origin header is always this app's real
+        # frontend URL, in both local dev and production, so there's no
+        # separate FRONTEND_BASE_URL to configure/keep in sync.
+        origin = http_request.headers.get("origin") or str(http_request.base_url).rstrip("/")
+        reset_link = f"{origin}/?reset_token={token}"
+        try:
+            resend_service.send_password_reset_email(request.email, name, reset_link)
+        except resend_service.EmailSendError:
+            pass  # already logged server-side in resend_service.py
+    return {"status": "ok", "message": "If an account exists for that email, a reset link has been sent."}
+
+
+@app.post("/api/auth/reset-password")
+def reset_password_endpoint(request: ResetPasswordRequest) -> dict:
+    try:
+        auth_service.reset_password(request.token, request.new_password)
+    except AuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "ok"}
 
 
 @app.post("/api/auth/google", response_model=AuthResponse)

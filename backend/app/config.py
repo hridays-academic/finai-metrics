@@ -52,6 +52,19 @@ class Settings(BaseSettings):
     # Identity Services' `credential` callback) never needs one.
     google_client_id: Optional[str] = None
 
+    # Resend (https://resend.com) -- free tier, no credit card, 3,000
+    # emails/month -- used only for "forgot password" reset links (see
+    # app/services/resend_service.py). Without this set, forgot-password
+    # requests still succeed from the client's point of view (never leaks
+    # whether sending failed -- see main.py's /api/auth/forgot-password),
+    # but no email actually goes out; the failure is logged server-side.
+    resend_api_key: Optional[str] = None
+    # e.g. "Stackly <noreply@yourdomain.com>" once a sending domain is
+    # verified in the Resend dashboard. Falls back to Resend's own shared
+    # onboarding@resend.dev address (works with zero setup, at the cost of
+    # showing "via resend.dev" in some inboxes) if unset.
+    resend_from_email: Optional[str] = None
+
     # NOT a server-side secret anymore (2026-07) -- Tapetide (NSE/BSE quotes,
     # financials, ratios) is now bring-your-own-key: every user enters their
     # own Tapetide API key client-side, sent per-request as the

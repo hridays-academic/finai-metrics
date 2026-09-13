@@ -3,6 +3,7 @@ import { signUp, logIn, logOut, loginWithGoogle, fetchActivity, ApiError } from 
 import { setAuthToken, clearAuthToken } from "../lib/auth";
 import type { ActivityEntry, UserPublic } from "../lib/types";
 import GoogleSignInButton from "./GoogleSignInButton";
+import ForgotPasswordForm from "./ForgotPasswordForm";
 
 interface AuthPanelProps {
   user: UserPublic | null;
@@ -10,7 +11,7 @@ interface AuthPanelProps {
   onClose: () => void;
 }
 
-type Mode = "signin" | "signup";
+type Mode = "signin" | "signup" | "forgot";
 
 const ACTION_LABEL: Record<string, string> = {
   signed_up: "Created account",
@@ -93,7 +94,9 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
       <div className="settings-backdrop" onClick={onClose} />
       <div className="settings-panel" role="dialog" aria-label="Account">
         <div className="settings-panel-header">
-          <h2>{user ? "Your Account" : mode === "signup" ? "Create Account" : "Sign In"}</h2>
+          <h2>
+            {user ? "Your Account" : mode === "signup" ? "Create Account" : mode === "forgot" ? "Reset Password" : "Sign In"}
+          </h2>
           <button className="icon-button" aria-label="Close" onClick={onClose}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -134,6 +137,8 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               Sign Out
             </button>
           </>
+        ) : mode === "forgot" ? (
+          <ForgotPasswordForm initialEmail={email} onBack={() => setMode("signin")} />
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="auth-mode-toggle" role="group" aria-label="Sign in or create an account">
@@ -166,6 +171,12 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               />
               {mode === "signup" && <span className="auth-field-hint">At least 8 characters</span>}
             </label>
+
+            {mode === "signin" && (
+              <button type="button" className="auth-forgot-link" onClick={() => setMode("forgot")}>
+                Forgot password?
+              </button>
+            )}
 
             {error && <div className="search-error">{error}</div>}
 

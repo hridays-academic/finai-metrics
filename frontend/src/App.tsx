@@ -9,6 +9,7 @@ import MetricsDashboard from "./components/MetricsDashboard";
 import ReturnCalculator from "./components/ReturnCalculator";
 import StockMarketSimulator from "./components/StockMarketSimulator";
 import PaperTrading from "./components/PaperTrading";
+import ResetPasswordPanel from "./components/ResetPasswordPanel";
 import { useTheme } from "./hooks/useTheme";
 import { fetchCompany, fetchQuota, fetchMe, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
@@ -34,6 +35,15 @@ export default function App() {
   // for a split second before a returning user's session (and possibly
   // their saved key) has actually loaded.
   const [sessionChecked, setSessionChecked] = useState<boolean>(() => !getAuthToken());
+  // Set once, synchronously, from the URL a password-reset email links to
+  // (main.py's /api/auth/forgot-password builds "<origin>/?reset_token=...").
+  // Read directly from location.search rather than a router -- this app has
+  // no client-side routing at all (see App.tsx's plain view-state pattern
+  // elsewhere), so a query param is the simplest way to support one single
+  // deep-linkable case without adding a router just for this.
+  const [resetToken, setResetToken] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get("reset_token")
+  );
   const [view, setView] = useState<View>("search");
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -272,12 +282,33 @@ export default function App() {
         <AuthPanel user={user} onAuthChange={setUser} onClose={() => setAuthOpen(false)} />
       )}
 
+      {/* Takes priority over TapetideKeyGate below when both would
+          otherwise apply (a fresh browser, no key yet, arriving via a
+          password-reset email link) -- completing a time-sensitive,
+          one-shot reset (the token expires in 30 minutes) matters more
+          right now than the key gate, and doesn't need a Tapetide key at
+          all. Falls through to the normal gate afterward if one's still
+          missing. */}
+      {resetToken && (
+        <ResetPasswordPanel
+          token={resetToken}
+          onDone={() => {
+            setResetToken(null);
+            // Strips the token out of the URL so it doesn't linger in
+            // browser history / survive a reload and re-trigger this.
+            const url = new URL(window.location.href);
+            url.searchParams.delete("reset_token");
+            window.history.replaceState({}, "", url.toString());
+          }}
+        />
+      )}
+
       {/* Blocking overlay, not conditionally rendered instead of the app --
           the app tree stays fully mounted underneath so there's something
           real (blurred) behind the gate rather than a blank page. Every
           Tapetide-touching request behind it will 400 until this clears --
           the gate still blocks all interaction regardless. */}
-      {!tapetideKey && (
+      {!resetToken && !tapetideKey && (
         <TapetideKeyGate
           user={user}
           sessionChecked={sessionChecked}

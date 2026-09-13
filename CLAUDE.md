@@ -93,6 +93,8 @@ backend/app/
                               activity_log, tapetide_quota)
     auth_service.py          Signup/login/sessions/activity logging -- see
                               "Accounts & activity tracking" below
+    resend_service.py        Sends password-reset emails via Resend's HTTP API --
+                              see "Forgot password" below
 ```
 
 **Data source abstraction is intentional.** `data_provider.py` defines
@@ -371,6 +373,10 @@ frontend/src/
     AuthPanel.tsx            Slide-over: sign in/up form, or (once signed in) account
                               summary + recent activity feed + sign out -- see "Accounts
                               & activity tracking" below
+    ForgotPasswordForm.tsx   Shared by AuthPanel.tsx and TapetideKeyGate.tsx's "signin"
+                              step -- see "Forgot password" below
+    ResetPasswordPanel.tsx   Shown via "?reset_token=" in the URL -- see "Forgot
+                              password" below
     Sidebar.tsx              Left icon rail: switches between the search page,
                               ReturnCalculator, and StockMarketSimulator (the app's
                               three top-level views)
@@ -1339,6 +1345,75 @@ tell me before doing anything" elsewhere in this project's history).
   visitors and Google-signed-in users is a deliberate equivalence: in both
   cases, there's no password to re-check, and the already-authenticated
   session itself stands in for that verification for the Google case.
+- **(2026-09) `GoogleSignInButton.tsx` polls briefly for `window.google`
+  instead of checking once on mount.** Confirmed live as a real bug, not
+  theoretical: the GSI `<script>` in `index.html` loads `async defer`, and
+  the original code only ever checked `window.google` a single time, right
+  when the component mounted. If that script hadn't finished loading yet
+  at that exact moment (an entirely realistic race — the panel can open
+  well before a network-fetched script resolves), `renderGoogleButton`'s
+  own no-op guard silently gave up forever: the button never appeared for
+  the rest of that mount, not even after the script finished loading
+  moments later. Reproduced deterministically by delaying the script's
+  response in a test and confirming the container stayed empty indefinitely
+  post-fix-vs-pre-fix. Now polls every 100ms for up to 10s and renders the
+  moment `window.google` becomes available, whichever check succeeds first.
+  This was very likely the actual substance of "Google sign-in doesn't
+  work" reports — no error shown anywhere, just a button that sometimes
+  silently never rendered depending on load timing.
+
+## Forgot password
+
+(2026-09) `request_password_reset`/`reset_password` in `auth_service.py`,
+wired to `POST /api/auth/forgot-password` / `POST /api/auth/reset-password`
+in `main.py`. A single-use, 30-minute token
+(`secrets.token_urlsafe(32)`, hashed with plain SHA-256 before storage in
+the new `password_reset_tokens` table — unlike `sessions.token`, which
+stores the raw value, a reset token travels over email, a channel more
+likely to be logged/forwarded along the way, and is a higher-stakes secret
+since holding one is a full account takeover, so it gets the "don't store
+the literal secret" treatment `tapetide_quota.token_hash` already uses
+elsewhere) is emailed via Resend (`resend_service.py`, see "Environment
+variables" below for `RESEND_API_KEY`/`RESEND_FROM_EMAIL`).
+
+**`request_password_reset` always returns the same thing to the HTTP
+layer regardless of whether the email has an account, is Google-only (no
+password to reset), or the reset email genuinely failed to send** — a
+different response for any of those cases would make this endpoint an
+email-enumeration oracle, a well-known real auth vulnerability class, not
+a hypothetical one. `main.py`'s `forgot_password` handler swallows a
+`resend_service.EmailSendError` and still returns the generic "if an
+account exists..." message either way; the actual failure is only ever
+visible in server logs.
+
+**The reset link's base URL comes from the request's own `Origin` header**
+(falling back to `request.base_url` if absent), not a hardcoded/configured
+frontend URL — this app is single-origin in both local dev and production
+(see "Deployment" below), so the request that asks for a reset link is
+always already coming from exactly the right origin to build one against.
+No `FRONTEND_BASE_URL`-style env var needed.
+
+**No client-side routing exists in this app at all** (see `App.tsx`'s
+plain view-state pattern for search/calculator/simulator/trading) — the
+reset link is a query param (`?reset_token=...`) that `App.tsx` reads
+once, synchronously, on mount (`new URLSearchParams(window.location.search)`),
+rather than adding a router just to support this one deep-linkable case.
+`ResetPasswordPanel.tsx` takes priority over `TapetideKeyGate.tsx` when a
+visitor arrives at this link in a fresh browser with no Tapetide key
+saved yet — completing a 30-minute-expiring, one-shot reset matters more
+right now than the key gate, and doesn't need a Tapetide key at all;
+`App.tsx` falls through to the normal gate afterward if one's still
+missing. The token is stripped back out of the URL via
+`history.replaceState` once handled (success or cancel), so it doesn't
+linger in browser history or get resubmitted on a reload.
+
+**`ForgotPasswordForm.tsx` is shared** by `AuthPanel.tsx` and
+`TapetideKeyGate.tsx`'s `"signin"` step (a new `"forgot"` step there) --
+unlike the sign-in/sign-up forms themselves, which stay deliberately
+separate copies (different surrounding chrome, see `TapetideKeyGate.tsx`'s
+own comment on why), "forgot password" is simple and self-contained
+enough that sharing it was worth the small coupling, rather than writing
+the same email-submit-and-confirm logic a third time.
 
 ## Environment variables
 
@@ -1356,6 +1431,21 @@ from Vercel project environment variables in production:
   `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 - `MOONSHOT_API_KEY` — required for the chat assistant to function. Get one
   at https://platform.kimi.ai
+- `GOOGLE_CLIENT_ID` — required for Google Sign-In to work (see "Google
+  Sign-In" below). Must be the exact same value as the frontend's
+  `VITE_GOOGLE_CLIENT_ID` (a public OAuth Client ID, safe in frontend
+  bundle code — this is the ID-token flow, no client secret anywhere).
+  Without it, `/api/auth/google` returns a clean 503 rather than crashing.
+- `RESEND_API_KEY` — optional, powers "forgot password" reset emails (see
+  `resend_service.py`). Free tier at https://resend.com, no credit card,
+  3,000 emails/month. Without it, forgot-password requests still return
+  the same generic success response (never leaks whether an email has an
+  account) — the send failure is just logged server-side instead of an
+  email actually going out.
+- `RESEND_FROM_EMAIL` — optional, e.g. `"Stackly <noreply@yourdomain.com>"`
+  once a sending domain is verified in the Resend dashboard. Falls back to
+  Resend's own shared `onboarding@resend.dev` address if unset (works with
+  zero domain setup, at the cost of showing "via resend.dev" in some inboxes).
 - **No Tapetide key here** — see "Bring-your-own Tapetide key" above.
   Every user supplies their own via the website, sent per-request as the
   `X-Tapetide-Token` header, never a `.env` secret.
