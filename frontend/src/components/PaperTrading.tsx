@@ -6,9 +6,12 @@ import { usePortfolio } from "../hooks/usePortfolio";
 import { useLiveQuotes } from "../hooks/useLiveQuotes";
 import TradingChart from "./TradingChart";
 import TradingTutorial from "./TradingTutorial";
+import PortfolioAnalysis from "./PortfolioAnalysis";
 import CoinAmount from "./CoinAmount";
 import CoinIcon from "./CoinIcon";
 import type { Theme } from "../hooks/useTheme";
+
+type PageTab = "trade" | "analysis";
 
 // Yahoo (yfinance's source) doesn't publish an exact delay figure for NSE/
 // BSE quotes -- ~15 minutes is the industry-typical figure for free retail
@@ -41,6 +44,7 @@ interface PaperTradingProps {
 export default function PaperTrading({ theme, visible }: PaperTradingProps) {
   const { portfolio, buy, sell, reset } = usePortfolio();
 
+  const [activeTab, setActiveTab] = useState<PageTab>("trade");
   const [stockQuery, setStockQuery] = useState("");
   const [stockLoading, setStockLoading] = useState(false);
   const [stockError, setStockError] = useState<string | null>(null);
@@ -117,6 +121,11 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
     setPickedName(name);
     setTradeError(null);
     setTradeMessage(null);
+    // Also used from the Analysis tab's allocation legend (see
+    // PortfolioAnalysis.tsx's onSelectHolding) -- clicking a holding there
+    // should actually show it, which means switching back to the Trade
+    // tab, not just updating state a hidden tab can't display.
+    setActiveTab("trade");
   }
 
   function clearStock() {
@@ -211,6 +220,42 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
           </div>
         </div>
 
+        <div className="calculator-mode-toggle trading-tab-toggle" role="tablist" aria-label="Paper Trading view">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "trade"}
+            className={activeTab === "trade" ? "active" : ""}
+            onClick={() => setActiveTab("trade")}
+          >
+            Trade
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "analysis"}
+            className={activeTab === "analysis" ? "active" : ""}
+            onClick={() => setActiveTab("analysis")}
+          >
+            Analysis
+          </button>
+        </div>
+
+        {activeTab === "analysis" && (
+          <PortfolioAnalysis
+            portfolio={portfolio}
+            liveQuotes={liveQuotes}
+            theme={theme}
+            totalValue={totalValue}
+            holdingsValue={holdingsValue}
+            totalPnl={totalPnl}
+            totalPnlPct={totalPnlPct}
+            onSelectHolding={selectHolding}
+          />
+        )}
+
+        {activeTab === "trade" && (
+        <>
         <div className="calculator-stock-picker">
           <div className="calculator-field-header">
             <span>Trade a stock</span>
@@ -436,6 +481,8 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
               </div>
             ))}
           </div>
+        )}
+        </>
         )}
 
         <div className="trading-reset-row">

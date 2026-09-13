@@ -415,6 +415,12 @@ frontend/src/
                               not a PriceChart.tsx extension, see "Paper Trading" below
     TradingTutorial.tsx      First-visit-only modal explaining Paper Trading, reopenable
                               via the "?" button next to the page heading -- see below
+    PortfolioAnalysis.tsx    Paper Trading's second tab ("Analysis" alongside "Trade") --
+                              stat grid, best/worst trade, allocation breakdown, and the
+                              value-over-time chart below -- see "Paper Trading" below
+    PortfolioValueChart.tsx  Reconstructs + charts portfolio value over time from the
+                              real transaction log + real historical prices -- see
+                              "Paper Trading" below
     CoinIcon.tsx              Minimalist outline coin glyph (no fill, currentColor) for
                               Paper Trading's currency -- see "Paper Trading" below
     CoinAmount.tsx            Pairs CoinIcon with a formatted coin number as one inline
@@ -437,6 +443,9 @@ frontend/src/
     coins.ts                   Paper Trading's own currency formatters (🪙, not ₹) --
                               deliberately separate from format.ts's real-rupee
                               formatINR, see "Paper Trading" below
+    portfolioHistory.ts        Pure functions reconstructing portfolio value over time
+                              from the transaction log + fetched price history -- see
+                              "Paper Trading" below
   styles/
     theme.css                 CSS custom properties for dark/light themes
 ```
@@ -1087,6 +1096,101 @@ springy overshoot curve Sidebar's icon-scale hover and
 `.calculator-scenario-tile` already use for "this is clickable" bounce
 feedback elsewhere in the app), with the arrow sliding right and picking
 up `--accent` color on the same hover.
+
+**(2026-09) "Analysis" tab -- a second, interactive view on the Paper
+Trading page, alongside "Trade".** `PaperTrading.tsx` now has a
+`.calculator-mode-toggle` (the same segmented control Return
+Calculator/Market Simulator already use) switching between the original
+buy/sell/chart/holdings/transactions view ("Trade") and a new
+`PortfolioAnalysis.tsx` ("Analysis") that shows the portfolio's
+performance as a whole rather than one stock at a time. Cash
+balance/portfolio value/total P&L stay visible above the toggle
+regardless of which tab is active; Reset portfolio and the storage
+disclaimer stay below both, for the same reason.
+
+- **Everything except the value-over-time chart is synchronous, computed
+  straight from `portfolio`/`liveQuotes` already in memory** -- no new
+  network calls needed for the stat grid or allocation breakdown.
+  Realized P&L sums every sell transaction's own `realizedPnl` (already
+  computed by `usePortfolio.ts` at trade time); unrealized P&L is current
+  holdings value minus their cost basis (`qty * avgBuyPrice` summed);
+  win rate is (sells with positive `realizedPnl`) / (all sells with a
+  non-null `realizedPnl`) -- `null` (shown as "--", with an explanatory
+  note) rather than 0% before any stock has ever been sold, since "0% win
+  rate" and "no sells yet" are different facts a bare percentage can't
+  tell apart. Best/worst closed trade pick the single sell transaction
+  with the highest/lowest `realizedPnl` -- both omitted if nothing's ever
+  been sold, and "worst" is hidden (not just deduplicated visually) when
+  there's only one sell, since best and worst would otherwise be the
+  identical transaction shown twice.
+- **The allocation breakdown is a hand-rolled proportional bar
+  (`.portfolio-allocation-bar`), not a pie/donut chart** --
+  lightweight-charts (this app's only charting dependency, see Price
+  History/Forecast/Simulator/Trading charts above) has no chart type for
+  "static proportions of a whole" at all, being built entirely around a
+  time axis; pulling in a second charting library for one static breakdown
+  wasn't worth a new dependency. Each holding (plus a "Cash" segment) gets
+  a `hsl()` color spaced by the golden angle (`137.508deg * index`) rather
+  than a fixed named palette, so it stays visually distinct regardless of
+  how many stocks a portfolio ends up holding, with Cash always pinned to
+  a neutral `--text-tertiary` grey rather than competing for a "real"
+  holding's hue. **Interactive**: hovering either the bar segment or its
+  matching legend row highlights both together (`hoveredSymbol` state
+  drives a `.highlighted` class on each), and clicking a non-cash legend
+  row calls the same `selectHolding` the Trade tab's holdings table
+  already uses, plus switches `activeTab` back to `"trade"` -- clicking a
+  holding here is a shortcut to "go look at this stock," identical in
+  spirit to the holdings-table row bounce/click above.
+- **The portfolio-value-over-time chart (`PortfolioValueChart.tsx`) is the
+  one part of this feature that costs real work, because this app has
+  genuinely never stored a portfolio value history anywhere.**
+  `lib/portfolio.ts` only ever tracks *current* cash + holdings -- there
+  was never a "what was it worth last Tuesday" number sitting in
+  localStorage to read. `lib/portfolioHistory.ts`'s
+  `buildPortfolioValueSeries` reconstructs one instead, purely from data
+  that already exists: it replays every real transaction chronologically
+  against every ever-traded symbol's own real historical closing prices
+  (fetched via the existing `/api/trading/history` endpoint, one call per
+  distinct symbol ever bought/sold -- not per current holding, since a
+  fully-sold-off position still needs its price history to correctly
+  compute the portfolio's value on the days it *was* held). `pickHistoryRange`
+  maps the span since the first-ever transaction to one of
+  `/api/trading/history`'s fixed ranges (1D/1W/1M/3M/1Y/5Y -- that
+  endpoint has no arbitrary-custom-window option), erring wide (e.g. a
+  40-day-old portfolio gets "3M," not a precise 41 days). The chart is
+  colored `--accent`, like every other *real*-data chart in this app
+  (PriceChart, TradingChart) -- deliberately not `--status-warning`, which
+  is reserved for Market Simulator's synthetic random walk (see "Market
+  Simulator" above); this chart's every point comes from a real,
+  independently-verifiable past price and the real transaction log, so it
+  earns the "trustworthy" color.
+  - **A real bug, caught before shipping, not left in speculatively:**
+    the reconstruction's first version filtered candidate x-axis
+    timestamps to `>= firstTradeMs` (the exact millisecond of the first
+    transaction). Daily/weekly `PricePoint`s are always stamped at that
+    day's UTC midnight -- which is *always* earlier than whatever time of
+    day a real trade actually happened -- so that filter silently dropped
+    the entire first trading day's point on every single portfolio, every
+    time, shifting every later point's apparent position by one. Caught
+    by writing an isolated unit test with hand-computed expected values
+    (buy 10 @ ₹100 day 1, sell 5 @ ₹120 day 3, checked against the
+    expected value at each of 4 days) before this ever reached the UI --
+    the test failed exactly as predicted, confirming this wasn't
+    theoretical. Fixed by flooring the comparison to the first trade's own
+    calendar day (`Date.UTC(year, month, date)` of that instant) instead
+    of the instant itself; re-ran the same test to confirm all 4 points
+    then matched exactly. A symbol whose price-history fetch fails
+    entirely falls back to using that holding's own weighted-average buy
+    price as a flat stand-in for every timestamp -- a disclosed
+    approximation (surfaced via a `.calculator-field-note` under the
+    chart), not silently dropping that holding's value from the whole
+    series.
+  - The series' very last point is always overwritten with the
+    live-computed `totalValue` already shown in the summary tiles above
+    (not just whatever the reconstruction's own last real data point
+    says), so the chart's right edge can never visibly disagree with the
+    numbers directly above it -- the reconstructed series' true last point
+    can be up to a full trading day stale for daily-granularity ranges.
 
 ## Homepage recommendations (removed 2026-08)
 

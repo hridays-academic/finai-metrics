@@ -3027,6 +3027,116 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   text-align: center;
 }
 
+/* ---------- Paper Trading: Portfolio Analysis tab ----------
+   Reuses .calculator-mode-toggle (the same segmented-control pattern as
+   Return Calculator/Market Simulator's own toggles) for Trade/Analysis,
+   .calculator-results/.calculator-result-tile for the stat grid, and
+   .calculator-risk-row for the best/worst-trade callouts -- only the
+   allocation bar below is genuinely new, since nothing else in the app
+   needed a proportional breakdown like this before. */
+
+.trading-tab-toggle {
+  margin-bottom: 1.1rem;
+}
+
+.portfolio-analysis-trade-rows {
+  margin-top: 1.3rem;
+}
+
+.portfolio-allocation {
+  margin-top: 0.8rem;
+}
+
+.portfolio-allocation-bar {
+  display: flex;
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.portfolio-allocation-segment {
+  height: 100%;
+  min-width: 2px;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+/* Hovering a legend row (below) dims every other segment and brightens
+   the matching one, so it's obvious at a glance which slice of the bar a
+   given holding actually is -- the bar alone has no room for labels once
+   a portfolio holds more than 2-3 things. */
+.portfolio-allocation-bar.has-hover .portfolio-allocation-segment {
+  opacity: 0.35;
+}
+.portfolio-allocation-bar.has-hover .portfolio-allocation-segment.highlighted {
+  opacity: 1;
+  filter: brightness(1.15);
+}
+
+.portfolio-allocation-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.7rem;
+}
+
+.portfolio-allocation-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.portfolio-allocation-row[role="button"] {
+  cursor: pointer;
+}
+
+.portfolio-allocation-row:hover,
+.portfolio-allocation-row.highlighted {
+  background: var(--bg-hover);
+}
+
+.portfolio-allocation-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.portfolio-allocation-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portfolio-allocation-pct {
+  font-size: 0.76rem;
+  color: var(--text-tertiary);
+  width: 3.2rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.portfolio-allocation-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.portfolio-value-chart-card {
+  margin-top: 0.6rem;
+}
+
 /* ---------- Responsive: phone-width screens ----------
    Every other layout in this file is fixed-width/desktop-first (see
    CLAUDE.md) except .charts-row's 900px stack above. 640px is this app's
