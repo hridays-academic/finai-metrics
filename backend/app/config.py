@@ -52,18 +52,19 @@ class Settings(BaseSettings):
     # Identity Services' `credential` callback) never needs one.
     google_client_id: Optional[str] = None
 
-    # Resend (https://resend.com) -- free tier, no credit card, 3,000
-    # emails/month -- used only for "forgot password" reset links (see
-    # app/services/resend_service.py). Without this set, forgot-password
-    # requests still succeed from the client's point of view (never leaks
-    # whether sending failed -- see main.py's /api/auth/forgot-password),
-    # but no email actually goes out; the failure is logged server-side.
-    resend_api_key: Optional[str] = None
-    # e.g. "Stackly <noreply@yourdomain.com>" once a sending domain is
-    # verified in the Resend dashboard. Falls back to Resend's own shared
-    # onboarding@resend.dev address (works with zero setup, at the cost of
-    # showing "via resend.dev" in some inboxes) if unset.
-    resend_from_email: Optional[str] = None
+    # Sends "forgot password" reset emails via Gmail's own SMTP (see
+    # app/services/gmail_service.py) rather than a new third-party email
+    # provider -- deliberately chosen so no new external account is needed,
+    # at the cost of mail coming from a personal-looking Gmail address and
+    # Gmail's own ~500-recipients/day sending cap. gmail_app_password is a
+    # Gmail *App Password* (https://myaccount.google.com/apppasswords),
+    # never the account's real password -- Google blocks plain-password
+    # SMTP auth by default. Without both set, forgot-password requests
+    # still succeed from the client's point of view (never leaks whether
+    # sending failed -- see main.py's /api/auth/forgot-password), but no
+    # email actually goes out; the failure is logged server-side.
+    gmail_address: Optional[str] = None
+    gmail_app_password: Optional[str] = None
 
     # NOT a server-side secret anymore (2026-07) -- Tapetide (NSE/BSE quotes,
     # financials, ratios) is now bring-your-own-key: every user enters their

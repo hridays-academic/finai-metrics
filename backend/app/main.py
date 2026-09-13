@@ -48,7 +48,7 @@ from app.services.data_provider import (
     ProviderQuotaExceededError,
 )
 from app.services.metrics import compute_health_snapshot, compute_metric_groups
-from app.services import resend_service
+from app.services import gmail_service
 from app.services.tapetide_provider import InvalidTapetideKeyError, TapetideProvider
 from app.services.yfinance_provider import YFinanceProvider
 from app.services import auth_service
@@ -579,7 +579,7 @@ def log_in(request: LogInRequest) -> AuthResponse:
 # to send -- see auth_service.request_password_reset's docstring for why
 # branching on any of that client-visibly turns this into an
 # email-enumeration oracle. A send failure is logged server-side
-# (resend_service.py) and swallowed here, not surfaced to the caller.
+# (gmail_service.py) and swallowed here, not surfaced to the caller.
 @app.post("/api/auth/forgot-password")
 def forgot_password(request: ForgotPasswordRequest, http_request: Request) -> dict:
     result = auth_service.request_password_reset(request.email)
@@ -592,9 +592,9 @@ def forgot_password(request: ForgotPasswordRequest, http_request: Request) -> di
         origin = http_request.headers.get("origin") or str(http_request.base_url).rstrip("/")
         reset_link = f"{origin}/?reset_token={token}"
         try:
-            resend_service.send_password_reset_email(request.email, name, reset_link)
-        except resend_service.EmailSendError:
-            pass  # already logged server-side in resend_service.py
+            gmail_service.send_password_reset_email(request.email, name, reset_link)
+        except gmail_service.EmailSendError:
+            pass  # already logged server-side in gmail_service.py
     return {"status": "ok", "message": "If an account exists for that email, a reset link has been sent."}
 
 

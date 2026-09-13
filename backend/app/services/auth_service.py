@@ -38,7 +38,7 @@ db.py) -- it never sets one, so there's nothing to guess or leak.
 issues a single-use, 30-minute reset token (hashed before storage in
 `password_reset_tokens`, unlike `sessions.token` -- see db.py's schema
 comment for why a reset token gets that extra treatment) and emails a
-reset link via Resend (`resend_service.py`). `request_password_reset`
+reset link via Gmail's own SMTP (`gmail_service.py`). `request_password_reset`
 returns `None` for both "no such email" and "Google-only account, nothing
 to reset" -- `main.py`'s `/api/auth/forgot-password` must always return
 the identical generic response regardless, or the endpoint becomes an

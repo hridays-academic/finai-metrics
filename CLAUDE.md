@@ -93,7 +93,7 @@ backend/app/
                               activity_log, tapetide_quota)
     auth_service.py          Signup/login/sessions/activity logging -- see
                               "Accounts & activity tracking" below
-    resend_service.py        Sends password-reset emails via Resend's HTTP API --
+    gmail_service.py          Sends password-reset emails via Gmail's own SMTP --
                               see "Forgot password" below
 ```
 
@@ -1373,8 +1373,28 @@ stores the raw value, a reset token travels over email, a channel more
 likely to be logged/forwarded along the way, and is a higher-stakes secret
 since holding one is a full account takeover, so it gets the "don't store
 the literal secret" treatment `tapetide_quota.token_hash` already uses
-elsewhere) is emailed via Resend (`resend_service.py`, see "Environment
-variables" below for `RESEND_API_KEY`/`RESEND_FROM_EMAIL`).
+elsewhere) is emailed via Gmail's own SMTP (`gmail_service.py`, see
+"Environment variables" below for `GMAIL_ADDRESS`/`GMAIL_APP_PASSWORD`).
+
+**Gmail SMTP, not a third-party transactional email provider (2026-09,
+replacing an initial Resend-based version) — a deliberate choice to avoid
+signing up for a new external service, at the user's explicit request
+("make it so the thing comes to your email directly instead of a third
+party thing").** No email delivery is ever truly "direct" (some relay is
+always involved), so this was interpreted as: use an email account the
+user already has, rather than create a new account with any provider.
+`gmail_service.py` sends via `smtplib.SMTP_SSL` to `smtp.gmail.com:465` --
+stdlib only, no new pip dependency. Requires a Gmail **App Password**
+(https://myaccount.google.com/apppasswords), never the account's real
+password -- Google blocks plain-password SMTP auth by default, and
+generating an App Password requires 2-Step Verification to already be
+turned on for that account (Google's own requirement, not one this app
+adds). The real tradeoff versus a dedicated provider like Resend: mail
+comes from a personal-looking Gmail address (whatever `GMAIL_ADDRESS` is
+set to becomes the visible "From" on every reset email), is capped around
+Gmail's own ~500-recipients/day sending limit, and a compromised App
+Password can send mail as that account -- accepted deliberately in
+exchange for not creating a new external account at all.
 
 **`request_password_reset` always returns the same thing to the HTTP
 layer regardless of whether the email has an account, is Google-only (no
@@ -1382,7 +1402,7 @@ password to reset), or the reset email genuinely failed to send** — a
 different response for any of those cases would make this endpoint an
 email-enumeration oracle, a well-known real auth vulnerability class, not
 a hypothetical one. `main.py`'s `forgot_password` handler swallows a
-`resend_service.EmailSendError` and still returns the generic "if an
+`gmail_service.EmailSendError` and still returns the generic "if an
 account exists..." message either way; the actual failure is only ever
 visible in server logs.
 
@@ -1436,16 +1456,18 @@ from Vercel project environment variables in production:
   `VITE_GOOGLE_CLIENT_ID` (a public OAuth Client ID, safe in frontend
   bundle code — this is the ID-token flow, no client secret anywhere).
   Without it, `/api/auth/google` returns a clean 503 rather than crashing.
-- `RESEND_API_KEY` — optional, powers "forgot password" reset emails (see
-  `resend_service.py`). Free tier at https://resend.com, no credit card,
-  3,000 emails/month. Without it, forgot-password requests still return
-  the same generic success response (never leaks whether an email has an
-  account) — the send failure is just logged server-side instead of an
-  email actually going out.
-- `RESEND_FROM_EMAIL` — optional, e.g. `"Stackly <noreply@yourdomain.com>"`
-  once a sending domain is verified in the Resend dashboard. Falls back to
-  Resend's own shared `onboarding@resend.dev` address if unset (works with
-  zero domain setup, at the cost of showing "via resend.dev" in some inboxes).
+- `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` — optional, together power "forgot
+  password" reset emails via Gmail's own SMTP (see `gmail_service.py` and
+  "Forgot password" above) rather than a third-party email provider.
+  `GMAIL_APP_PASSWORD` must be an App Password
+  (https://myaccount.google.com/apppasswords), never the account's real
+  password -- Google blocks plain-password SMTP auth by default, and
+  requires 2-Step Verification to be turned on first before it'll issue
+  one. `GMAIL_ADDRESS` becomes the visible "From" on every reset email.
+  Without both set, forgot-password requests still return the same
+  generic success response (never leaks whether an email has an account)
+  — the send failure is just logged server-side instead of an email
+  actually going out.
 - **No Tapetide key here** — see "Bring-your-own Tapetide key" above.
   Every user supplies their own via the website, sent per-request as the
   `X-Tapetide-Token` header, never a `.env` secret.
