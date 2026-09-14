@@ -3027,6 +3027,31 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   text-align: center;
 }
 
+/* ---------- Paper Trading: market closed notice ----------
+   Reuses .tapetide-gate-* wholesale, same as the tutorial above -- only
+   the "don't show again" checkbox row is genuinely new. */
+
+.market-status-card {
+  max-width: 480px;
+}
+
+.market-status-dont-show {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: -0.4rem 0 1.1rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.market-status-dont-show input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 /* ---------- Paper Trading: Portfolio Analysis tab ----------
    Reuses .calculator-mode-toggle (the same segmented-control pattern as
    Return Calculator/Market Simulator's own toggles) for Trade/Analysis,

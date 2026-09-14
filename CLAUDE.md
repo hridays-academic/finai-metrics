@@ -415,6 +415,8 @@ frontend/src/
                               not a PriceChart.tsx extension, see "Paper Trading" below
     TradingTutorial.tsx      First-visit-only modal explaining Paper Trading, reopenable
                               via the "?" button next to the page heading -- see below
+    MarketStatusNotice.tsx   Modal explaining a closed market (holiday/weekend) on Paper
+                              Trading -- see below
     PortfolioAnalysis.tsx    Paper Trading's second tab ("Analysis" alongside "Trade") --
                               stat grid, best/worst trade, allocation breakdown, and the
                               value-over-time chart below -- see "Paper Trading" below
@@ -446,6 +448,8 @@ frontend/src/
     portfolioHistory.ts        Pure functions reconstructing portfolio value over time
                               from the transaction log + fetched price history -- see
                               "Paper Trading" below
+    marketHolidays.ts           Hand-maintained NSE/BSE 2026 holiday calendar + IST-aware
+                              today/weekend helpers -- see "Paper Trading" below
   styles/
     theme.css                 CSS custom properties for dark/light themes
 ```
@@ -1191,6 +1195,60 @@ disclaimer stay below both, for the same reason.
     says), so the chart's right edge can never visibly disagree with the
     numbers directly above it -- the reconstructed series' true last point
     can be up to a full trading day stale for daily-granularity ranges.
+
+**(2026-09) `MarketStatusNotice.tsx` -- a modal explaining a closed market
+on Paper Trading, so a frozen live price reads as expected, not broken.**
+Built directly off a real user report: on an ordinary-looking Monday,
+Paper Trading's prices genuinely hadn't moved since Friday -- confirmed
+live (see the `get_live_quote` weekend investigation above) to be a real
+NSE/BSE holiday (Ganesh Chaturthi), not a polling bug, but nothing in the
+UI said so; a user has no reason to know India's holiday calendar off the
+top of their head. Rendered in `PaperTrading.tsx` alongside
+`TradingTutorial`, gated on `visible && !showTutorial` so a first-time
+visitor sees the onboarding tutorial first, never both overlays stacked.
+
+- **`lib/marketHolidays.ts` is a hand-maintained static list
+  (`NSE_HOLIDAYS_2026`), not a live lookup** -- neither Tapetide nor
+  yfinance expose an "is the market open, and why not" endpoint, and
+  there's no free, reliable holiday-calendar API worth a new dependency
+  for one list that changes once a year. Cross-verified against two
+  independent published 2026 calendars (Zerodha's and Groww's own holiday
+  pages, which agreed on every date) before shipping, rather than trusting
+  a single source -- a wrong date here would either falsely claim a real
+  trading day is a holiday, or silently miss a real one. **Needs a manual
+  refresh every December** for the coming year; a date simply absent from
+  the list is treated as an ordinary trading day, so an unrefreshed list
+  doesn't break anything, it just silently stops flagging holidays once
+  the year rolls over -- there's no runtime check that this list still
+  covers "today." Deliberately excludes holidays that land on a weekend
+  already (e.g. 2026-11-08, Diwali Laxmi Pujan, a Sunday with a special
+  short evening "Muhurat Trading" session) -- weekends are covered
+  separately, and that symbolic ~1hr session isn't something this app's
+  regular-hours polling reflects anyway.
+- **"Today" is computed in India Standard Time, not the visitor's own
+  browser timezone** (`todayInIndia()`, via
+  `Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" })`) --
+  otherwise a visitor checking from a very different timezone could see
+  the wrong weekday/holiday near a midnight-IST boundary, exactly the kind
+  of subtle bug this app's other date-handling code has been bitten by
+  before (see Return Calculator's calendar-year iteration above). Verified
+  with a mocked-clock test before shipping: 19:00 UTC (which is already
+  past midnight in India, i.e. the next calendar day there) correctly
+  resolved to the *next* day's weekday/holiday status, not the previous
+  day's -- confirming this isn't just "correct by accident" for whatever
+  moment it happened to be tested at.
+- **Holiday and weekend notices are dismissible the same way (a "Got it"
+  button, no explicit modal-close ✕), but only the weekend one offers a
+  persistent "don't show this again"** (`finai_weekend_market_notice_
+  dismissed` in localStorage) -- a deliberate, direct product distinction
+  from the user, not an oversight: weekends recur every single week, so a
+  one-time acknowledgment makes sense, while holidays are comparatively
+  rare and each one states a different fact ("closed today for X"), worth
+  surfacing again each time one actually occurs. Both are naturally
+  session-scoped even without the persistent flag -- `dismissed` is
+  component-local state that survives for as long as `PaperTrading` stays
+  mounted, which per the view-wrapper pattern above is the entire time the
+  app is open, not just while this tab is active.
 
 ## Homepage recommendations (removed 2026-08)
 

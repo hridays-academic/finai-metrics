@@ -6,6 +6,7 @@ import { usePortfolio } from "../hooks/usePortfolio";
 import { useLiveQuotes } from "../hooks/useLiveQuotes";
 import TradingChart from "./TradingChart";
 import TradingTutorial from "./TradingTutorial";
+import MarketStatusNotice from "./MarketStatusNotice";
 import PortfolioAnalysis from "./PortfolioAnalysis";
 import CoinAmount from "./CoinAmount";
 import CoinIcon from "./CoinIcon";
@@ -172,6 +173,10 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
   return (
     <div className="calculator-page">
       {showTutorial && <TradingTutorial onClose={dismissTutorial} />}
+      {/* Gated on !showTutorial so a first-time visitor sees the tutorial
+          first, never both overlays stacked -- see MarketStatusNotice.tsx's
+          own comment for why holiday/weekend get different dismiss rules. */}
+      <MarketStatusNotice visible={visible && !showTutorial} />
       <div className="calculator-card trading-card">
         <div className="trading-page-header">
           <h2>Paper Trading</h2>
