@@ -108,6 +108,67 @@ _SCHEMA_STATEMENTS = [
         expires_at TEXT NOT NULL
     )
     """,
+    # Added 2026-09 -- shared, cross-user cache of company fundamentals, so
+    # yfinance can be the PRIMARY fundamentals source without one real
+    # upstream call per visitor (see fundamentals_cache.py and CLAUDE.md's
+    # "Sourcing" section). Keyed by resolved symbol, NOT by user: this data
+    # is identical for everyone, unlike tapetide_quota above, which is
+    # deliberately per-key.
+    #
+    # Two independent freshness clocks in one row, on purpose -- RawFinancials
+    # mixes data with very different lifetimes:
+    #   fetched_at       -> statements/info/consensus (change quarterly; 7d TTL)
+    #   price_fetched_at -> price_json overlay (changes every trading day;
+    #                       15min TTL, refreshed via yfinance fast_info)
+    # A single TTL would either serve a week-old share price (making P/E, P/B
+    # and dividend yield silently wrong) or throw away the expensive
+    # statement fetch every 15 minutes. The two columns are written by
+    # separate statements that touch disjoint columns, so neither clobbers
+    # the other's timestamp.
+    """
+    CREATE TABLE IF NOT EXISTS company_fundamentals_cache (
+        symbol TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        info_json TEXT NOT NULL,
+        raw_json TEXT NOT NULL,
+        consensus_json TEXT,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        price_json TEXT,
+        price_fetched_at TIMESTAMPTZ
+    )
+    """,
+    # Added 2026-09 -- caches "what the user typed" -> resolved symbol.
+    # Measured live: YFinanceProvider.resolve_symbol costs TWO sequential
+    # network probes (~2.5-3.5s) for a bare ticker it has to try as .NS then
+    # .BO, on every single search. The mapping is stable, so caching it
+    # removes that from the hot path entirely. Keyed by the normalized query
+    # string, not the symbol -- many different queries ("tcs", "TCS",
+    # "Tata Consultancy") legitimately resolve to the same symbol.
+    """
+    CREATE TABLE IF NOT EXISTS symbol_resolution_cache (
+        query TEXT PRIMARY KEY,
+        symbol TEXT NOT NULL,
+        exchange TEXT NOT NULL,
+        resolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    # Added 2026-09 -- per-IP rate limiting for the now-keyless data
+    # endpoints (see rate_limit.py). MUST live in Postgres, not an
+    # in-process dict: Vercel's serverless functions don't share memory
+    # between invocations, so an in-memory counter would reset constantly
+    # and enforce nothing (the same cold-start trap that made the old
+    # on-disk quota file and SQLite database unusable -- see this file's
+    # module docstring).
+    """
+    CREATE TABLE IF NOT EXISTS rate_limit_buckets (
+        bucket_key TEXT PRIMARY KEY,
+        hits INTEGER NOT NULL DEFAULT 0,
+        expires_at TIMESTAMPTZ NOT NULL
+    )
+    """,
+    # Supports the opportunistic sweep of expired buckets in rate_limit.py --
+    # without it that DELETE would sequential-scan the whole table.
+    "CREATE INDEX IF NOT EXISTS idx_rate_limit_expires ON rate_limit_buckets(expires_at)",
 ]
 
 

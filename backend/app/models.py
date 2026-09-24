@@ -157,6 +157,18 @@ class CompanyFinancialsResponse(BaseModel):
     # reset cadence (not dependent on having actually seen a quota-exceeded
     # message first).
     tapetide_reset_at: Optional[str] = None
+    # (2026-09) When the fundamentals in this response were actually fetched
+    # upstream, ISO 8601. Set only when they came from the shared Postgres
+    # cache (see fundamentals_cache.py) -- None means they were fetched live
+    # during this request, i.e. "just now". Additive with a default, so any
+    # client that doesn't know about it is unaffected.
+    fundamentals_as_of: Optional[str] = None
+    # True when the upstream provider couldn't be reached and this response
+    # is being served from cached data that is past its freshness window
+    # (see fundamentals_cache.STATEMENTS_TTL). Serving something real and
+    # labelled beats erroring out, but the staleness is reported rather than
+    # hidden -- the same honesty rule LiveQuote.is_delayed follows.
+    is_stale: bool = False
 
 
 class PricePoint(BaseModel):

@@ -369,6 +369,36 @@ class YFinanceProvider(FinancialDataProvider):
             as_of=datetime.now(timezone.utc).isoformat(),
         )
 
+    def get_quick_price(self, symbol: str) -> tuple[Optional[float], Optional[float]]:
+        """(current_price, market_cap) from the cheap `fast_info` endpoint.
+
+        Backs fundamentals_cache.py's 15-minute price overlay: cached
+        statements stay valid for a week, but `current_price`/`market_cap`
+        drive P/E, P/B and dividend yield in metrics.py, so they're refreshed
+        on their own much shorter clock. Verified live that `fast_info`
+        carries both fields for NSE/BSE tickers and agrees with the full
+        `.info` scrape (market cap differs only in float rounding), at a
+        fraction of the cost -- which is the whole point, since this runs far
+        more often than a statement fetch.
+
+        Returns (None, None) rather than raising when the fields are absent:
+        the caller already has cached values to fall back on, and a failed
+        overlay refresh must never fail the request (see main.py's ladder).
+        Deliberately NOT part of FinancialDataProvider's ABC, same reasoning
+        as get_live_quote/get_intraday_history above.
+        """
+        try:
+            fast_info = yf.Ticker(symbol).fast_info
+            price = fast_info.get("lastPrice")
+            market_cap = fast_info.get("marketCap")
+        except Exception as exc:
+            raise DataProviderError(f"Couldn't refresh the price for '{symbol}': {exc}") from exc
+
+        return (
+            float(price) if price is not None else None,
+            float(market_cap) if market_cap is not None else None,
+        )
+
     def get_intraday_history(self, symbol: str, range_key: str) -> list[PricePoint]:
         """OHLCV bars for Paper Trading's chart, across the six ranges the UI
         offers -- see _RANGE_TO_YF_PARAMS for the period/interval each maps

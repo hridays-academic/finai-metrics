@@ -8,6 +8,7 @@ app/services/*. Run with:
 """
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -19,6 +20,7 @@ from google.oauth2 import id_token as google_id_token
 from app.config import get_settings
 from app.models import (
     ActivityResponse,
+    AnalystConsensus,
     AuthResponse,
     ChatRequest,
     ChatResponse,
@@ -51,9 +53,9 @@ from app.services.metrics import compute_health_snapshot, compute_metric_groups
 from app.services import gmail_service
 from app.services.tapetide_provider import InvalidTapetideKeyError, TapetideProvider
 from app.services.yfinance_provider import YFinanceProvider
-from app.services import auth_service
+from app.services import auth_service, fundamentals_cache
 from app.services.auth_service import AuthError
-from app.services.db import init_db
+from app.services.db import get_conn, init_db
 
 _IST = timezone(timedelta(hours=5, minutes=30))
 # Tapetide's quota-exceeded message embeds the reset time as e.g.
@@ -202,42 +204,261 @@ def _fetch_company_core(
     return symbol, info, raw
 
 
+def _not_found(query: str) -> CompanyNotFoundError:
+    return CompanyNotFoundError(
+        f"Could not find '{query}' on NSE/BSE. Try the exact ticker, e.g. 'RELIANCE' or 'TCS'."
+    )
+
+
+@dataclass
+class _Fundamentals:
+    """One company's fundamentals plus the provenance the response needs.
+
+    `as_of` is None when this was fetched live during this request (i.e.
+    "just now"); it carries the cache's own timestamp otherwise. `is_stale`
+    is True only in the degraded case where upstream was unreachable and we
+    fell back to data past its freshness window.
+    """
+
+    symbol: str
+    info: CompanyInfo
+    raw: RawFinancials
+    consensus: Optional[AnalystConsensus]
+    source: DataSourceName
+    as_of: Optional[str] = None
+    is_stale: bool = False
+
+
+def _resolve_via_cache(query: str, conn) -> tuple[str, bool]:
+    """(symbol, came_from_cache) for a user-typed query.
+
+    Measured live: YFinanceProvider.resolve_symbol costs two sequential
+    network probes (~2.5-3.5s) whenever it has to try `.NS` then `.BO`, so
+    caching this removes a large, entirely repeatable cost from the hot path.
+    """
+    cached = fundamentals_cache.get_resolution(query, conn=conn)
+    if cached:
+        return cached[0], True
+    symbol, exchange = fallback_provider.resolve_symbol(query)
+    fundamentals_cache.put_resolution(query, symbol, exchange, conn=conn)
+    return symbol, False
+
+
+def _refresh_price_overlay(symbol: str, raw: RawFinancials, conn) -> RawFinancials:
+    """Re-reads just the price-derived fields via the cheap fast_info call and
+    writes them back as the cache's 15-minute overlay.
+
+    Never raises: the caller already holds a usable (if older) price, and a
+    failed overlay refresh must degrade to "slightly stale price," not to a
+    failed request. Only fields fast_info actually returned are overridden,
+    so a partial response can't blank out a good cached value.
+    """
+    try:
+        price, market_cap = fallback_provider.get_quick_price(symbol)
+    except Exception:  # noqa: BLE001 -- keep whatever price we already have
+        logger.warning("Price overlay refresh failed for symbol=%s", symbol, exc_info=True)
+        return raw
+
+    update = {}
+    if price is not None:
+        update["current_price"] = price
+    if market_cap is not None:
+        update["market_cap"] = market_cap
+    if not update:
+        return raw
+
+    fundamentals_cache.put_price_overlay(symbol, price, market_cap, conn=conn)
+    return raw.model_copy(update=update)
+
+
+def _yfinance_consensus(symbol: str) -> Optional[AnalystConsensus]:
+    """Best-effort -- analyst coverage is a bonus, never core. Cached
+    alongside the statements on the same 7-day clock; consensus can change
+    somewhat more often than quarterly financials, so this is a deliberate
+    (and disclosed) freshness compromise rather than an exact figure."""
+    try:
+        return fallback_provider.get_analyst_consensus(symbol)
+    except Exception:  # noqa: BLE001
+        logger.warning("yfinance analyst consensus failed for symbol=%s", symbol, exc_info=True)
+        return None
+
+
+def _serve_cached(query: str, cached, *, is_stale: bool) -> _Fundamentals:
+    """Wraps a cache row as a response bundle, re-running the same
+    `_looks_like_the_query` guard a live fetch gets. The guard is deterministic
+    over (query, info), so a row that passed when written passes again for
+    the same query -- but a DIFFERENT query that happens to resolve to this
+    symbol is checked on its own merits rather than inheriting a previous
+    caller's approval."""
+    if not _looks_like_the_query(query, cached.info):
+        raise _not_found(query)
+    return _Fundamentals(
+        symbol=cached.symbol,
+        info=cached.info,
+        raw=cached.raw,
+        consensus=cached.consensus,
+        source=DataSourceName.YFINANCE,
+        # Deliberately the STATEMENTS timestamp, not CachedFundamentals.as_of
+        # (which is the newer of the two clocks). This field answers "how old
+        # are these financials?", and the price half is separately guaranteed
+        # fresh by its own 15-minute TTL -- reporting the price time here
+        # would make week-old statements look like they were fetched minutes
+        # ago, which is precisely the kind of quietly-wrong number the rest
+        # of this codebase refuses to ship.
+        as_of=cached.fetched_at.isoformat(),
+        is_stale=is_stale,
+    )
+
+
+def _fetch_company_yfinance_cached(query: str, conn) -> _Fundamentals:
+    """Cache-first fundamentals via yfinance -- the keyless default path.
+
+    Failure ladder (see CLAUDE.md's "Sourcing" section):
+      1. fresh cache hit            -> serve it, refresh only the price overlay
+      2. stale hit, refetch works   -> serve fresh, rewrite cache
+      3. stale hit, refetch fails   -> serve the stale row, flagged is_stale
+      4. miss, fetch works          -> guard, then cache, then serve
+      5. miss, fetch fails          -> raise (404/502 upstream)
+
+    The `_looks_like_the_query` guard always runs BEFORE anything is written,
+    so a bad fuzzy match can never be persisted for the next visitor.
+    """
+    symbol, from_cache = _resolve_via_cache(query, conn)
+    cached = fundamentals_cache.get_fundamentals(symbol, conn=conn)
+
+    if cached is not None and cached.statements_fresh:
+        result = _serve_cached(query, cached, is_stale=False)
+        if not cached.price_fresh:
+            # Refreshes only current_price/market_cap. `as_of` deliberately
+            # still reports when the STATEMENTS were fetched -- they really
+            # are up to 7 days old, and blanking it here would claim the
+            # whole payload was fetched just now.
+            result.raw = _refresh_price_overlay(symbol, result.raw, conn)
+        return result
+
+    try:
+        info = fallback_provider.get_company_info(symbol)
+        if not _looks_like_the_query(query, info):
+            raise _not_found(query)
+        raw = fallback_provider.get_raw_financials(symbol)
+        consensus = _yfinance_consensus(symbol)
+        fundamentals_cache.put_fundamentals(symbol, "yfinance", info, raw, consensus, conn=conn)
+        return _Fundamentals(
+            symbol=symbol, info=info, raw=raw, consensus=consensus,
+            source=DataSourceName.YFINANCE,
+        )
+    except CompanyNotFoundError:
+        # A symbol resolved from cache can go dead (a delisting or rename --
+        # e.g. ZOMATO -> ETERNAL), which would otherwise poison this query for
+        # the whole RESOLUTION_TTL. Drop the mapping and re-resolve live, once.
+        if from_cache:
+            logger.warning("Cached resolution for query=%s -> %s went dead; re-resolving", query, symbol)
+            # Deliberately does NOT invalidate the fundamentals row for
+            # `symbol`: that row is the stale-serve fallback two branches
+            # down, and deleting it here would destroy our own safety net
+            # every time this fires for a merely transient failure. Fixing
+            # the resolution mapping is enough -- if the symbol really is
+            # dead, nothing points at its row anymore and it ages out on its
+            # own TTL.
+            fresh_symbol, _exchange = fallback_provider.resolve_symbol(query)
+            fundamentals_cache.put_resolution(query, fresh_symbol, _exchange, conn=conn)
+            if fresh_symbol != symbol:
+                return _fetch_company_yfinance_cached(query, conn)
+        if cached is not None:
+            # We successfully fetched this symbol before, so it did exist --
+            # a sudden "no data" is more often a transient upstream hiccup
+            # than a real delisting. Serve what we have, clearly flagged,
+            # rather than a 404 for a company the user can see we know about.
+            logger.warning("yfinance reported no data for symbol=%s -- serving stale cache", symbol)
+            return _serve_cached(query, cached, is_stale=True)
+        raise
+    except DataProviderError:
+        if cached is not None:
+            logger.warning("yfinance unavailable for symbol=%s -- serving stale cache", symbol)
+            return _serve_cached(query, cached, is_stale=True)
+        raise
+
+
 @app.get("/api/company/{query}", response_model=CompanyFinancialsResponse)
 def get_company(
     query: str,
     current_user: Optional[dict] = Depends(_current_user),
     tapetide_token: Optional[str] = Depends(_tapetide_token),
 ) -> CompanyFinancialsResponse:
-    # Fundamentals come from Tapetide now (2026-07), not Bharat-SM-Data --
-    # Tickertape (which bharat_sm_provider.py wraps) 403-blocks Vercel's
-    # cloud IP range for its search/profile endpoints, confirmed live after
-    # deploying there (the same class of anti-bot block bharat_sm_provider.py
-    # already documents for NSE's price-history API, just hitting the
-    # fundamentals path too this time). Tapetide is a real metered API, not
-    # a scraper -- confirmed reachable from Vercel. This costs more of the user's
-    # quota per search (~10 Tapetide calls instead of ~5 -- recount from the
-    # real call sites below if this changes, see CLAUDE.md) and loses the
-    # current/quick ratio liquidity figures Bharat-SM-Data's fuller balance
-    # sheet uniquely provided (back to N/A, same as the pre-hybrid design).
-    # Unlike the old Bharat-only path, this now requires a Tapetide key up
-    # front -- consistent with price-history below, and with the frontend's
-    # TapetideKeyGate already blocking the whole app until one exists.
-    if not tapetide_token:
-        raise HTTPException(status_code=400, detail="A Tapetide API key is required.")
-
+    # (2026-09) No Tapetide key required anymore. yfinance is the PRIMARY
+    # fundamentals source, backed by the shared Postgres cache
+    # (fundamentals_cache.py) so one real upstream fetch serves every visitor
+    # looking at that company until it goes stale -- which is what makes a
+    # free, keyless source viable at all without the sustained request volume
+    # yfinance_provider.py warns gets an IP throttled. Measured live before
+    # switching: yfinance supplies all 21 metrics for ordinary non-financial
+    # companies (BETTER than Tapetide, whose condensed balance sheet can
+    # never produce the four liquidity ratios), and 12 of 21 for banks/NBFCs,
+    # where most of the gaps are genuinely inapplicable rather than missing.
+    #
+    # A Tapetide key is now purely an optional upgrade: when one is present
+    # we try it first for its richer analyst-target periods, falling back to
+    # yfinance+cache on quota exhaustion. Tapetide results are NEVER written
+    # to the shared cache -- that data is metered against one user's own
+    # 50-calls/day key, so redistributing it to everyone else would both
+    # spend their quota on strangers and almost certainly breach Tapetide's
+    # terms.
     tapetide_reset_at: Optional[str] = None
-    quota_exhausted = False
-    tapetide = TapetideProvider(tapetide_token)
+    bundle: Optional[_Fundamentals] = None
+
+    # One connection for this request's whole cache path. Opening a
+    # connection costs far more than running a query on an open one (measured
+    # against Neon), so the read, the price-overlay write and the statement
+    # write all share this rather than opening three.
     try:
-        try:
-            symbol, info, raw = _fetch_company_core(tapetide, query)
-        except ProviderQuotaExceededError as exc:
-            logger.warning(
-                "Tapetide quota exhausted for query=%s -- falling back to yfinance for fundamentals", query
-            )
-            tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
-            quota_exhausted = True
-            symbol, info, raw = _fetch_company_core(fallback_provider, query)
+        with get_conn() as conn:
+            if tapetide_token:
+                tapetide = TapetideProvider(tapetide_token)
+                try:
+                    # One instance for both calls -- its _profile_cache means
+                    # the consensus fetch below reuses the profile already
+                    # pulled here instead of paying for a second one.
+                    symbol, info, raw = _fetch_company_core(tapetide, query)
+                    consensus = None
+                    try:
+                        consensus = tapetide.get_analyst_consensus(info.resolved_symbol)
+                    except ProviderQuotaExceededError as exc:
+                        tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
+                    except Exception:  # noqa: BLE001 -- analyst data is a bonus, not core
+                        logger.warning(
+                            "Tapetide analyst consensus failed for symbol=%s",
+                            info.resolved_symbol, exc_info=True,
+                        )
+                    bundle = _Fundamentals(
+                        symbol=symbol, info=info, raw=raw, consensus=consensus,
+                        source=DataSourceName.TAPETIDE,
+                    )
+                except ProviderQuotaExceededError as exc:
+                    logger.warning(
+                        "Tapetide quota exhausted for query=%s -- falling back to yfinance+cache", query
+                    )
+                    tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
+                except InvalidTapetideKeyError:
+                    # Deliberately NOT swallowed: the user explicitly
+                    # configured this key, so a dead one should say so (401)
+                    # rather than silently degrading to the free path and
+                    # leaving them to wonder why their key seems to do
+                    # nothing. They can fix it from the Settings panel.
+                    raise
+                except (CompanyNotFoundError, DataProviderError):
+                    # Any other Tapetide failure -- including its own fuzzy
+                    # search not finding the company -- now falls through to
+                    # yfinance+cache rather than failing the request.
+                    # yfinance is the primary source and measurably has
+                    # BROADER coverage, so a user who supplied a key must
+                    # never end up worse off than one who didn't.
+                    logger.warning(
+                        "Tapetide failed for query=%s -- falling back to yfinance+cache",
+                        query, exc_info=True,
+                    )
+
+            if bundle is None:
+                bundle = _fetch_company_yfinance_cached(query, conn)
     except CompanyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvalidTapetideKeyError as exc:
@@ -256,39 +477,11 @@ def get_company(
             detail="Something went wrong fetching that company's data. Please try again.",
         ) from exc
 
-    # Analyst consensus stays best-effort, reusing the SAME TapetideProvider
-    # instance from fundamentals above (its _profile_cache means this costs
-    # only one more call, get_forecasts, not a second profile fetch) --
-    # skipped entirely if we already know this key is out of quota today
-    # (quota_exhausted above). Retrying it would both fail again AND falsely
-    # inflate our own local call count, since tapetide_provider.py's counter
-    # increments before the network request, even for a call that
-    # immediately 429s.
-    analyst_consensus = None
-    consensus_source: Optional[DataSourceName] = None
-    if not quota_exhausted:
-        try:
-            analyst_consensus = tapetide.get_analyst_consensus(info.resolved_symbol)
-            consensus_source = DataSourceName.TAPETIDE
-        except ProviderQuotaExceededError as exc:
-            logger.warning(
-                "Tapetide quota exhausted for analyst consensus symbol=%s -- falling back to yfinance",
-                info.resolved_symbol,
-            )
-            tapetide_reset_at = tapetide_reset_at or _parse_tapetide_reset_at(str(exc))
-            quota_exhausted = True
-        except Exception:  # noqa: BLE001 -- third-party analyst data is a bonus, not core
-            logger.warning("Couldn't fetch analyst consensus for symbol=%s", info.resolved_symbol, exc_info=True)
-    if quota_exhausted and analyst_consensus is None:
-        try:
-            fallback_symbol, _exchange = fallback_provider.resolve_symbol(info.resolved_symbol)
-            analyst_consensus = fallback_provider.get_analyst_consensus(fallback_symbol)
-            consensus_source = DataSourceName.YFINANCE
-        except Exception:  # noqa: BLE001 -- still a bonus, not core
-            logger.warning(
-                "Fallback analyst consensus also failed for symbol=%s", info.resolved_symbol, exc_info=True
-            )
-
+    info, raw = bundle.info, bundle.raw
+    # Unchanged: metrics.py stays a pure function over already-fetched
+    # numbers and still returns None (rendered "N/A") for anything missing,
+    # whether that came from a live fetch or the cache -- the cache
+    # round-trips nulls as nulls precisely so this behaviour is identical.
     metric_groups = compute_metric_groups(raw, info.company_name)
     health_snapshot = compute_health_snapshot(metric_groups)
     response = CompanyFinancialsResponse(
@@ -296,9 +489,11 @@ def get_company(
         raw=raw,
         metric_groups=metric_groups,
         health_snapshot=health_snapshot,
-        analyst_consensus=analyst_consensus,
-        consensus_source=consensus_source,
+        analyst_consensus=bundle.consensus,
+        consensus_source=bundle.source if bundle.consensus is not None else None,
         tapetide_reset_at=tapetide_reset_at,
+        fundamentals_as_of=bundle.as_of,
+        is_stale=bundle.is_stale,
     )
     _last_company_by_ticker[info.resolved_symbol] = response
     # No-op if current_user is None (anonymous search) -- see
@@ -327,35 +522,91 @@ def _fetch_price_points(
     return points, recent_points
 
 
+def _yfinance_price_symbol(symbol: str) -> str:
+    """The yfinance-shaped symbol for a price-history request.
+
+    `symbol` arrives as whatever /api/company put in `info.resolved_symbol`,
+    and that format now depends on which provider served it: yfinance
+    returns a suffixed "RELIANCE.NS", Tapetide a bare "RELIANCE". A suffixed
+    symbol needs no lookup at all -- it returns immediately, touching neither
+    the database nor the network, which matters because that is now the
+    common case. A bare one would otherwise cost the two-probe .NS/.BO walk
+    measured in Step 1, so it goes through the shared resolution cache.
+
+    Connections are opened only around the database work and deliberately
+    NOT held across `resolve_symbol`'s network call -- holding a Neon
+    connection idle-in-transaction for seconds is exactly the pattern flagged
+    as a scaling concern on /api/company.
+    """
+    if symbol.endswith((".NS", ".BO")):
+        return symbol
+
+    with get_conn() as conn:
+        cached = fundamentals_cache.get_resolution(symbol, conn=conn)
+    if cached:
+        return cached[0]
+
+    resolved, exchange = fallback_provider.resolve_symbol(symbol)
+    with get_conn() as conn:
+        fundamentals_cache.put_resolution(symbol, resolved, exchange, conn=conn)
+    return resolved
+
+
 @app.get("/api/price-history/{symbol}", response_model=PriceHistoryResponse)
 def get_price_history(
     symbol: str, tapetide_token: Optional[str] = Depends(_tapetide_token)
 ) -> PriceHistoryResponse:
-    # Price history is Bharat-SM-Data's permanent gap (see
-    # bharat_sm_provider.py) -- always Tapetide, falling back to yfinance on
-    # quota exhaustion. `symbol` is expected to be the plain ticker Bharat
-    # already resolved (info.resolved_symbol from /api/company), which
-    # Tapetide's tools accept directly -- no resolve step needed there.
-    # Unlike analyst consensus on /api/company, this IS core to what this
-    # endpoint does, so no key means a real error, not a silent empty result.
-    if not tapetide_token:
-        raise HTTPException(status_code=400, detail="A Tapetide API key is required for price history.")
-
+    # (2026-09) No Tapetide key required anymore -- yfinance is primary here
+    # too, matching /api/company. Measured live before switching: a single
+    # yfinance call returns a clean, complete ~5-year weekly series (262
+    # points, ending on the previous trading day) for every symbol tested,
+    # which is strictly better than Tapetide's two-call merge working around
+    # its oldest-rows-first truncation (see tapetide_provider.py).
+    #
+    # A Tapetide key remains an optional path when one is present, and its
+    # results are never written to any shared cache -- same reasoning as
+    # /api/company: that data is metered against one user's own key.
     resolved = symbol.strip().upper()
     tapetide_reset_at: Optional[str] = None
+    active_source = DataSourceName.YFINANCE
+    points: Optional[list[PricePoint]] = None
+    recent_points: list[PricePoint] = []
+
     try:
-        active_source = DataSourceName.TAPETIDE
-        tapetide = TapetideProvider(tapetide_token)
-        try:
-            points, recent_points = _fetch_price_points(tapetide, resolved, needs_resolve=False)
-        except ProviderQuotaExceededError as exc:
-            logger.warning(
-                "Tapetide quota exhausted for price history symbol=%s -- falling back to yfinance",
-                resolved,
+        if tapetide_token:
+            try:
+                points, recent_points = _fetch_price_points(
+                    TapetideProvider(tapetide_token), resolved, needs_resolve=False
+                )
+                active_source = DataSourceName.TAPETIDE
+            except ProviderQuotaExceededError as exc:
+                logger.warning(
+                    "Tapetide quota exhausted for price history symbol=%s -- falling back to yfinance",
+                    resolved,
+                )
+                tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
+            except InvalidTapetideKeyError:
+                # Same call as /api/company: a key the user deliberately
+                # configured should fail loudly rather than silently
+                # degrading to the free path.
+                raise
+            except (CompanyNotFoundError, DataProviderError):
+                logger.warning(
+                    "Tapetide price history failed for symbol=%s -- falling back to yfinance",
+                    resolved, exc_info=True,
+                )
+
+        # `not points` rather than `points is None` on purpose: Tapetide can
+        # return an empty series without raising (e.g. a symbol its own tools
+        # don't recognise), and an empty chart is a failure from the user's
+        # point of view, not a result. Falling through to yfinance is always
+        # better than rendering a blank chart.
+        if not points:
+            active_symbol = _yfinance_price_symbol(resolved)
+            points, recent_points = _fetch_price_points(
+                fallback_provider, active_symbol, needs_resolve=False
             )
             active_source = DataSourceName.YFINANCE
-            tapetide_reset_at = _parse_tapetide_reset_at(str(exc))
-            points, recent_points = _fetch_price_points(fallback_provider, resolved, needs_resolve=True)
     except CompanyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvalidTapetideKeyError as exc:
