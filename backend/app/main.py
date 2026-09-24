@@ -53,7 +53,7 @@ from app.services.metrics import compute_health_snapshot, compute_metric_groups
 from app.services import gmail_service
 from app.services.tapetide_provider import InvalidTapetideKeyError, TapetideProvider
 from app.services.yfinance_provider import YFinanceProvider
-from app.services import auth_service, fundamentals_cache
+from app.services import auth_service, fundamentals_cache, rate_limit
 from app.services.auth_service import AuthError
 from app.services.db import get_conn, init_db
 
@@ -108,6 +108,25 @@ def _current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]
     if not authorization or not authorization.startswith("Bearer "):
         return None
     return auth_service.get_user_from_token(authorization.removeprefix("Bearer ").strip())
+
+
+def _rate_limited(request: Request) -> None:
+    """Per-IP rate limiting for the keyless data endpoints (see
+    rate_limit.py). Applied as a dependency so it runs before any provider or
+    cache work happens -- a rejected request should cost a single Postgres
+    UPSERT, not a yfinance fetch.
+
+    Raises 429 with a Retry-After header; never raises anything else, since
+    rate_limit.check fails open on database trouble rather than taking the
+    endpoint down with it.
+    """
+    result = rate_limit.check(rate_limit.client_ip(request.headers, request.client.host if request.client else None))
+    if not result.allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=rate_limit.friendly_message(result),
+            headers={"Retry-After": str(result.retry_after)},
+        )
 
 
 def _tapetide_token(x_tapetide_token: Optional[str] = Header(None)) -> Optional[str]:
@@ -389,6 +408,7 @@ def _fetch_company_yfinance_cached(query: str) -> _Fundamentals:
 @app.get("/api/company/{query}", response_model=CompanyFinancialsResponse)
 def get_company(
     query: str,
+    _rl: None = Depends(_rate_limited),
     current_user: Optional[dict] = Depends(_current_user),
     tapetide_token: Optional[str] = Depends(_tapetide_token),
 ) -> CompanyFinancialsResponse:
@@ -556,7 +576,9 @@ def _yfinance_price_symbol(symbol: str) -> str:
 
 @app.get("/api/price-history/{symbol}", response_model=PriceHistoryResponse)
 def get_price_history(
-    symbol: str, tapetide_token: Optional[str] = Depends(_tapetide_token)
+    symbol: str,
+    _rl: None = Depends(_rate_limited),
+    tapetide_token: Optional[str] = Depends(_tapetide_token),
 ) -> PriceHistoryResponse:
     # (2026-09) No Tapetide key required anymore -- yfinance is primary here
     # too, matching /api/company. Measured live before switching: a single
