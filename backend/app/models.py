@@ -187,6 +187,12 @@ class PriceHistoryResponse(BaseModel):
     recent_points: list[PricePoint] = []  # oldest first, ~6-7mo daily -- powers the 1D/5D views
     active_source: DataSourceName = DataSourceName.TAPETIDE  # which source served this price data
     tapetide_reset_at: Optional[str] = None  # see CompanyFinancialsResponse.tapetide_reset_at
+    # (2026-09) Same meaning as CompanyFinancialsResponse's pair: when this
+    # series was actually fetched upstream (None = fetched live during this
+    # request), and whether it's being served past its freshness window
+    # because upstream was unreachable. Additive with defaults.
+    history_as_of: Optional[str] = None
+    is_stale: bool = False
 
 
 class QuotaStatus(BaseModel):

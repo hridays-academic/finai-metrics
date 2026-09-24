@@ -43,7 +43,7 @@ from typing import Iterator, Optional
 
 import psycopg
 
-from app.models import AnalystConsensus, CompanyInfo, RawFinancials
+from app.models import AnalystConsensus, CompanyInfo, PricePoint, RawFinancials
 from app.services.db import get_conn
 
 logger = logging.getLogger("finai")
@@ -51,6 +51,16 @@ logger = logging.getLogger("finai")
 # See module docstring for why these two differ by so much.
 STATEMENTS_TTL = timedelta(days=7)
 PRICE_TTL = timedelta(minutes=15)
+
+# OHLC series behind the price chart. Much shorter than STATEMENTS_TTL
+# because the current week's weekly bar (and the last daily bar) keep moving
+# while the market is open -- a 7-day TTL would freeze the right-hand edge of
+# the chart for days. Much longer than PRICE_TTL because this is a 5-year
+# view where a few hours on the final bar is immaterial, and refreshing a
+# ~40KB series every 15 minutes would waste most of what the cache is for.
+# The headline "latest price" the rest of the app shows comes from the
+# 15-minute overlay and Paper Trading's own quote endpoint, not from here.
+PRICE_HISTORY_TTL = timedelta(hours=6)
 
 # Resolutions ("what the user typed" -> symbol) effectively never change --
 # a ticker stops resolving only when a company delists or renames (e.g.
@@ -333,6 +343,98 @@ def put_resolution(
             )
     except Exception:  # noqa: BLE001
         logger.warning("Resolution cache write failed for query=%s", key, exc_info=True)
+
+
+@dataclass
+class CachedPriceHistory:
+    """One cached OHLC series pair, already deserialized."""
+
+    symbol: str
+    points: list[PricePoint]
+    recent_points: list[PricePoint]
+    fetched_at: datetime
+
+    @property
+    def is_fresh(self) -> bool:
+        return _now() - self.fetched_at < PRICE_HISTORY_TTL
+
+
+def get_price_history(
+    symbol: str, *, conn: Optional[psycopg.Connection] = None
+) -> Optional[CachedPriceHistory]:
+    """Cached price history for `symbol`, fresh or stale, or None on a miss.
+
+    Like get_fundamentals, staleness is reported rather than hidden: serving
+    a stale series beats a broken chart when upstream is unreachable, but the
+    caller decides and the response says so.
+    """
+    try:
+        with _using(conn) as c:
+            row = c.execute(
+                """
+                SELECT symbol, points_json, recent_points_json, fetched_at
+                FROM price_history_cache WHERE symbol = %s
+                """,
+                (symbol,),
+            ).fetchone()
+    except Exception:  # noqa: BLE001
+        logger.warning("Price history cache read failed for symbol=%s", symbol, exc_info=True)
+        return None
+
+    if not row:
+        return None
+
+    try:
+        points = [PricePoint.model_validate(p) for p in json.loads(row["points_json"])]
+        recent = [PricePoint.model_validate(p) for p in json.loads(row["recent_points_json"])]
+    except Exception:  # noqa: BLE001 -- a corrupt row is a miss, not a 500
+        logger.warning("Price history cache row failed to parse for symbol=%s", symbol, exc_info=True)
+        return None
+
+    return CachedPriceHistory(
+        symbol=row["symbol"],
+        points=points,
+        recent_points=recent,
+        fetched_at=_aware(row["fetched_at"]),
+    )
+
+
+def put_price_history(
+    symbol: str,
+    points: list[PricePoint],
+    recent_points: list[PricePoint],
+    *,
+    conn: Optional[psycopg.Connection] = None,
+) -> None:
+    """Caches a freshly-fetched series pair.
+
+    An empty `points` list is never written: an empty chart is a failure, not
+    a result, and caching one would keep serving it for the whole TTL instead
+    of retrying upstream. `recent_points` MAY legitimately be empty (the
+    1D/5D views are a documented bonus that can fail on its own).
+    """
+    if not points:
+        return
+    try:
+        with _using(conn) as c:
+            c.execute(
+                """
+                INSERT INTO price_history_cache
+                    (symbol, points_json, recent_points_json, fetched_at)
+                VALUES (%s, %s, %s, NOW())
+                ON CONFLICT (symbol) DO UPDATE SET
+                    points_json = EXCLUDED.points_json,
+                    recent_points_json = EXCLUDED.recent_points_json,
+                    fetched_at = EXCLUDED.fetched_at
+                """,
+                (
+                    symbol,
+                    json.dumps([p.model_dump() for p in points]),
+                    json.dumps([p.model_dump() for p in recent_points]),
+                ),
+            )
+    except Exception:  # noqa: BLE001 -- failing to cache must never fail the request
+        logger.warning("Price history cache write failed for symbol=%s", symbol, exc_info=True)
 
 
 def invalidate(symbol: str, *, conn: Optional[psycopg.Connection] = None) -> None:

@@ -137,6 +137,27 @@ _SCHEMA_STATEMENTS = [
         price_fetched_at TIMESTAMPTZ
     )
     """,
+    # Added 2026-09 -- shared cache of the ~5yr weekly + ~6mo daily OHLC
+    # series behind the price chart, so /api/price-history doesn't spend two
+    # real yfinance calls on every single chart view (see
+    # fundamentals_cache.py's PRICE_HISTORY_TTL). Also what makes
+    # stale-serving possible there at all: without stored points, an upstream
+    # outage can only produce a 502, whereas /api/company can fall back to
+    # its own cached row.
+    #
+    # Deliberately a separate table from company_fundamentals_cache rather
+    # than more columns on it: the two have different lifetimes (6 hours vs
+    # 7 days), different sizes (tens of KB of OHLC vs a few KB of
+    # statements), and price history is keyed by the yfinance-shaped symbol
+    # regardless of which provider served the fundamentals.
+    """
+    CREATE TABLE IF NOT EXISTS price_history_cache (
+        symbol TEXT PRIMARY KEY,
+        points_json TEXT NOT NULL,
+        recent_points_json TEXT NOT NULL,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
     # Added 2026-09 -- caches "what the user typed" -> resolved symbol.
     # Measured live: YFinanceProvider.resolve_symbol costs TWO sequential
     # network probes (~2.5-3.5s) for a bare ticker it has to try as .NS then
