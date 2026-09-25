@@ -105,6 +105,12 @@ for price history/analyst consensus. Do not let provider-specific types/
 objects leak past this layer — always return the shared `CompanyInfo`/
 `RawFinancials` models.
 
+> **SUPERSEDED (2026-09): read "Keyless, cache-first sourcing" below
+> first.** yfinance is the primary source now and no key is required. The
+> Tapetide-primary account that follows is kept because it explains *why*
+> sourcing moved around (Tickertape's IP block, the quota arithmetic) --
+> not because it still describes today's behaviour.
+
 **Sourcing (revised 2026-07): Tapetide serves fundamentals, price history,
 AND analyst consensus for `/api/company` and `/api/price-history` — not
 Bharat-SM-Data.** This reverses the "hybrid sourcing" design described
@@ -129,7 +135,10 @@ in case Tickertape's block ever lifts. Don't route `/api/company`/
 Tickertape's block is gone (the same discipline this file already asks for
 NSE's block on price history).
 
-- `GET /api/company/{query}` now requires a Tapetide key (400 if missing —
+- `GET /api/company/{query}` **no longer requires a key at all (2026-09)**
+  -- the 400 below was removed; see "Keyless, cache-first sourcing". The
+  account that follows describes the 2026-07..09 Tapetide-primary design:
+  it required a Tapetide key (400 if missing —
   this is new; the old Bharat-only fundamentals path never needed one).
   Fetches `info`/`raw` via `TapetideProvider(tapetide_token)`, falling back
   to `fallback_provider` (yfinance) on `ProviderQuotaExceededError` — same
@@ -141,7 +150,8 @@ NSE's block on price history).
   constructing a fresh instance that would just fail again while also
   falsely inflating the local call counter (see `_call_tool`'s counter,
   which increments before the network request even fires).
-- `GET /api/price-history/{symbol}` unchanged: requires a Tapetide key (400
+- `GET /api/price-history/{symbol}` **also keyless as of 2026-09** (same
+  removal). Historically it required a Tapetide key (400
   if missing), always tries Tapetide first, falling back to
   `fallback_provider` (yfinance) on `ProviderQuotaExceededError`
   (`DataProviderError`'s quota-specific subclass; `tapetide_provider.py`
@@ -178,8 +188,10 @@ gate is still real (see `yfinance_provider.py`'s docstring) — the fallback
 can itself fail, in which case both endpoints return a 502 rather than
 fabricating data.
 
-**`GET /api/quota`** requires a Tapetide key (400 if missing -- see
-"Bring-your-own Tapetide key" below) and returns `QuotaStatus`: a *local
+**`GET /api/quota`** still requires a Tapetide key (400 if missing) --
+correctly so, since there is no quota to report without one, and the
+frontend simply doesn't call it when no key is stored. See
+"Optional bring-your-own Tapetide key" below) and returns `QuotaStatus`: a *local
 estimate* of THAT key's calls used/remaining today, since Tapetide exposes
 no server-side "calls remaining" API of its own. `TapetideProvider` counts
 every real `_call_tool` invocation (`get_quota_status()`; dev-cache hits
@@ -373,16 +385,17 @@ frontend/src/
     AuthPanel.tsx            Slide-over: sign in/up form, or (once signed in) account
                               summary + recent activity feed + sign out -- see "Accounts
                               & activity tracking" below
-    ForgotPasswordForm.tsx   Shared by AuthPanel.tsx and TapetideKeyGate.tsx's "signin"
-                              step -- see "Forgot password" below
+    ForgotPasswordForm.tsx   Used by AuthPanel.tsx's sign-in form -- see "Forgot
+                              password" below
     ResetPasswordPanel.tsx   Shown via "?reset_token=" in the URL -- see "Forgot
                               password" below
     Sidebar.tsx              Left icon rail: switches between the search page,
                               ReturnCalculator, and StockMarketSimulator (the app's
                               three top-level views)
-    CompanySearch.tsx        Ticker/company name input + "~N searches left today" quota
-                              counter + Tapetide-reset countdown (no source dropdown --
-                              sourcing is now fixed/hybrid, see "Hybrid sourcing" above)
+    CompanySearch.tsx        Ticker/company name input + (only when a Tapetide key is
+                              stored) the "~N searches left today" quota counter and
+                              Tapetide-reset countdown. No source dropdown -- sourcing
+                              is fixed, see "Keyless, cache-first sourcing" below
     QuotaCounter.tsx          The "~N searches left today" pill -- shared by
                               CompanySearch.tsx and ReturnCalculator.tsx so both stay in sync
     MetricsDashboard.tsx     Full-width, grouped color-coded metric cards
@@ -876,7 +889,7 @@ simulator's bars+dashed-line.
 **Entirely yfinance-based, never Tapetide -- deliberately, not as a
 stopgap.** Tapetide has no live-quote or intraday-bar capability at all
 (see `tapetide_provider.py`'s documented tool set), and even if it did,
-its 50-calls/day-per-key quota (see "Bring-your-own Tapetide key" above)
+its 50-calls/day-per-key quota (see "Optional bring-your-own Tapetide key" above)
 could not support the polling this page needs -- a single symbol polled
 every 20s is already ~4,300 calls/day, and Paper Trading needs to poll
 every picked/held symbol, not just one. `main.py`'s three
@@ -1003,7 +1016,7 @@ is "trade something else," not "start over."
 **(2026-09) `TradingTutorial.tsx` -- a first-visit modal**, shown once
 per browser (`finai_paper_trading_tutorial_seen` in localStorage) and
 reachable again anytime via the "?" button next to the page heading
-(`.trading-help-btn`). Reuses `TapetideKeyGate.tsx`'s overlay/card/steps
+(`.trading-help-btn`). Reuses the shared `.tapetide-gate-*` overlay/card/steps
 styling wholesale (`.tapetide-gate-*`) rather than inventing a second
 modal pattern, including its optional-video approach: the `<video>`
 points at `/videos/paper-trading-guide.mp4`, which does not exist yet as
@@ -1176,11 +1189,12 @@ disclaimer stay below both, for the same reason.
     day a real trade actually happened -- so that filter silently dropped
     the entire first trading day's point on every single portfolio, every
     time, shifting every later point's apparent position by one. Caught
-    by writing an isolated unit test with hand-computed expected values
+    by writing a throwaway script with hand-computed expected values
     (buy 10 @ ₹100 day 1, sell 5 @ ₹120 day 3, checked against the
     expected value at each of 4 days) before this ever reached the UI --
-    the test failed exactly as predicted, confirming this wasn't
-    theoretical. Fixed by flooring the comparison to the first trade's own
+    it failed exactly as predicted, confirming this wasn't theoretical.
+    **That script was never committed** -- see "Testing" below. Fixed by
+    flooring the comparison to the first trade's own
     calendar day (`Date.UTC(year, month, date)` of that instant) instead
     of the instant itself; re-ran the same test to confirm all 4 points
     then matched exactly. A symbol whose price-history fetch fails
@@ -1232,7 +1246,8 @@ visitor sees the onboarding tutorial first, never both overlays stacked.
   the wrong weekday/holiday near a midnight-IST boundary, exactly the kind
   of subtle bug this app's other date-handling code has been bitten by
   before (see Return Calculator's calendar-year iteration above). Verified
-  with a mocked-clock test before shipping: 19:00 UTC (which is already
+  with a throwaway mocked-clock script before shipping (not committed --
+  see "Testing" below): 19:00 UTC (which is already
   past midnight in India, i.e. the next calendar day there) correctly
   resolved to the *next* day's weekday/holiday status, not the previous
   day's -- confirming this isn't just "correct by accident" for whatever
@@ -1366,12 +1381,183 @@ logging for another action (e.g. a calculator stock pick), call
 no-op when `current_user` is `None`, so every call site can call it
 unconditionally rather than wrapping every log call in `if current_user:`.
 
-## Bring-your-own Tapetide key
+## Keyless, cache-first sourcing (2026-09)
 
-(2026-07) This app is a public, multi-user website now, not a single-owner
-local tool -- so Tapetide's free tier (50 calls/day) had to stop being one
-shared server-side secret. **Every visitor supplies their own Tapetide API
-key**, entered client-side and never persisted server-side.
+**yfinance is the PRIMARY source for fundamentals and price history, and it
+needs no API key.** This supersedes the Tapetide-primary design described in
+the "Sourcing" subsection above, which is kept for the history of *why*
+things moved around. Neither `/api/company` nor `/api/price-history`
+requires a key anymore; both 400s are gone.
+
+**Why this was safe to do -- measured, not assumed.** Before switching,
+`YFinanceProvider.get_raw_financials` + `compute_metric_groups` were run
+against 15 real tickers. Ordinary non-financial companies (Reliance, TCS,
+Asian Paints, DMart, Dixon, KPIT, RailTel) populate **all 21 metrics** --
+strictly better than Tapetide, whose condensed balance sheet can never
+produce the four liquidity ratios. Banks/NBFCs (HDFC Bank, SBI, Bajaj
+Finance) populate 12 of 21, and most of those gaps are genuinely
+inapplicable rather than missing (a bank has no inventory or gross profit).
+Price history is a straight win: one call returns a clean 262-point weekly
+5-year series, versus Tapetide's two-call merge working around its
+oldest-rows-first truncation.
+
+**The caches are what make a free, unofficial source viable.** Without them,
+keyless would mean one yfinance call per visitor per search, which is the
+sustained volume `yfinance_provider.py`'s docstring warns gets an IP
+throttled -- breaking the app for everyone, not just the heavy user. Four
+tables, all created idempotently in `db.py`, all **additive** (no existing
+table was ever altered):
+
+- `company_fundamentals_cache` -- statements/info/consensus, keyed by
+  resolved symbol, shared across all users.
+- `symbol_resolution_cache` -- "what the user typed" -> symbol. Exists
+  because `resolve_symbol` costs two sequential network probes (~2.5-3.5s)
+  for a bare ticker it must try as `.NS` then `.BO`.
+- `price_history_cache` -- the OHLC series pair.
+- `rate_limit_buckets` -- see "Rate limiting" below.
+
+**Three freshness clocks, deliberately different** (`fundamentals_cache.py`):
+
+| Data | TTL | Why |
+| --- | --- | --- |
+| Statements / info / consensus | 7 days | Financials change quarterly |
+| `current_price` + `market_cap` overlay | 15 min | Move daily; feed P/E, P/B, dividend yield |
+| Price history | 6 hours | The current week's bar moves while the market is open |
+| Symbol resolution | 30 days | Only changes on a rename/delisting |
+
+The price overlay is the subtle one: `RawFinancials` mixes data with very
+different lifetimes, so a single 7-day TTL would serve a week-old share
+price and make three valuation ratios silently wrong. The overlay refreshes
+only `current_price`/`market_cap` via the cheap `fast_info` call
+(`get_quick_price`), and only overrides fields that actually came back
+non-None -- applying them unconditionally would blank out a good cached
+value whenever `fast_info` returned one field but not the other.
+
+**Graceful degradation ladder** (both endpoints, never a crash): fresh cache
+hit -> serve; stale hit + refetch succeeds -> serve fresh; stale hit +
+upstream unreachable -> **serve the stale row**, flagged via
+`is_stale`/`fundamentals_as_of`/`history_as_of` on the response; cache miss
++ upstream fails -> clean 502. A genuine "no such company" is still a 404.
+
+**Tapetide results are NEVER written to the shared cache.** That data is
+metered against one user's own 50-calls/day key, so redistributing it to
+every other visitor would both spend their quota on strangers and almost
+certainly breach Tapetide's terms. Only `source = "yfinance"` rows exist in
+`company_fundamentals_cache` -- there's a test asserting exactly that.
+
+**Tapetide failures fall through to yfinance**, including its own fuzzy
+search not finding a company. yfinance measurably has broader coverage, so a
+user who supplied a key must never end up worse off than one who didn't.
+The one exception is `InvalidTapetideKeyError`, which still 401s: a key the
+user deliberately configured should fail loudly rather than silently
+degrading.
+
+**Connection discipline:** a Postgres connection is opened around database
+work only and **never held across a yfinance call**. Holding one
+idle-in-transaction for the seconds an upstream fetch takes is harmless with
+one user and real pressure on Neon's pooler with many. The fully-cached path
+costs one short connection; a miss costs two, with the network work between
+them.
+
+### Renamed / delisted companies
+
+`yfinance_provider.py`'s `_NAME_TO_SYMBOL` is a hand-maintained
+company-name -> ticker map, and a hardcoded map is a guess about the world
+that goes stale. A live audit of all 48 entries (2026-09) found **two dead
+symbols**: `ZOMATO.NS` (the company renamed to Eternal Limited) and
+`TATAMOTORS.NS` (Tata Motors demerged -- the commercial-vehicles entity kept
+the legal name under `TMCV`, passenger vehicles listed separately as
+`TMPV`). The other 31 symbols verified alive.
+
+Three things to preserve here:
+
+- **`resolve_symbol` validates a mapped symbol** with the same cheap
+  `_symbol_has_data` probe the bare-ticker path uses, and falls through when
+  the mapping is stale, so the map self-heals instead of silently rotting.
+  It previously returned mapped symbols unvalidated, which is why one stale
+  entry sent every request for that name to a dead ticker indefinitely. The
+  cost (one `fast_info` call per *uncached* resolve) is affordable precisely
+  because `symbol_resolution_cache` reduces that to at most once per query
+  string per 30 days on the `/api/company` path.
+- **If both the mapping and the probe fail, the mapping is returned
+  anyway**, not a 404 -- from here a transient Yahoo failure is
+  indistinguishable from a delisting, and a blip shouldn't turn a working
+  lookup into "no such company".
+- **`data_provider.FORMER_TICKERS`** records known renames in one shared,
+  provider-agnostic place, because two unrelated things need it: the name
+  map (to resolve the old name at all) and `main.py`'s
+  `_looks_like_the_query` (to avoid rejecting its own correct answer --
+  searching "zomato" resolves to ETERNAL.NS, whose company name shares no
+  text with the query, so the textual-relationship guard would otherwise
+  404 a correct match). Only add an entry once the old ticker is genuinely
+  dead AND the new one is verified live; a wrong entry silently sends users
+  to the wrong company, which is exactly what that guard exists to prevent.
+
+Note `TMCV.NS` only listed at the demerger, so it legitimately has under a
+year of price history. A short series for a recently-listed or recently-
+demerged company is correct data, not a bug.
+
+### Rate limiting
+
+`rate_limit.py`, applied to `/api/company` and `/api/price-history` via a
+FastAPI dependency so a rejected request costs one Postgres UPSERT rather
+than an upstream fetch. Requiring a Tapetide key was never a security
+control, but it did incidentally cap per-visitor traffic; without it nothing
+stopped one client walking all ~8,200 NSE/BSE symbols.
+
+Fixed windows, **40 requests/minute and 600/hour per IP**. Note these count
+HTTP requests, not user actions -- one company view fires two rate-limited
+requests, so the real allowance is ~20 lookups/minute. Deliberately more
+generous than a one-user-per-IP model implies: this app's audience skews
+student, and a campus, office or Indian mobile CGNAT puts dozens of genuine
+users behind one address. Limits tight enough to be "correct" for one person
+would block a classroom.
+
+Two things not to "simplify":
+- **Client IP prefers `x-vercel-forwarded-for`/`x-real-ip` over
+  `x-forwarded-for`.** Proxies typically *append* to XFF, so trusting its
+  first entry blindly lets a client supply its own header and rotate its
+  apparent IP per request.
+- **It fails OPEN.** If Postgres is unreachable the request is allowed. A
+  limiter that turns a transient DB hiccup into a site-wide outage is worse
+  than the abuse it prevents. That's an availability-over-enforcement
+  trade-off, not an oversight.
+
+**Known gap:** this is per-IP, not global. Ten IPs each staying just under
+the limit could still generate real upstream volume. The cache absorbs most
+of it, but there's no global ceiling. The principled refinement would be to
+exempt *cache hits* from counting -- the thing worth limiting is misses, and
+a scraper is all misses by definition -- but that needs the counter to run
+after the cache lookup, so it's a restructure rather than a tweak.
+
+## Optional bring-your-own Tapetide key
+
+**(2026-09) A Tapetide key is OPTIONAL. There is no key gate.** Visitors
+land directly on a fully working app and never have to see the word
+"Tapetide" -- yfinance is the primary source for fundamentals and price
+history, backed by a shared Postgres cache (see "Keyless, cache-first
+sourcing" below). Everything in this section describes an opt-in upgrade
+path, not a requirement.
+
+What changed, and why the rest of this section still reads the way it does:
+from 2026-07 to 2026-09 this app *required* every visitor to obtain their
+own Tapetide key before it would render anything at all --
+`TapetideKeyGate.tsx` was a full-screen blocking overlay walking them
+through signing up at tapetide.com. That was defensible while Tapetide was
+the only viable source (its free tier is 50 calls/day per key, which one
+shared key could never spread across many visitors), but for an app aimed
+at students and first-time investors it was close to a total conversion
+wall. `TapetideKeyGate.tsx` is **deleted**; `SettingsPanel.tsx` is now the
+only place a key is ever entered. The historical detail below is kept
+because the *mechanics* of how a key is validated, stored and encrypted are
+unchanged -- only the "you must have one" part is gone.
+
+**The `.tapetide-gate-*` CSS classes deliberately survive the gate's
+deletion** and are now this app's generic modal look, used by
+`TradingTutorial`, `MarketStatusNotice`, `ResetPasswordPanel`,
+`ForgotPasswordForm`, `PaperTrading` and `SettingsPanel`. Don't delete them
+as dead styles, and don't be confused by the name -- see TradingTutorial.tsx's
+comment.
 
 **There is no `TAPETIDE_TOKEN` env var anymore.** `TapetideProvider.__init__`
 takes `token: str` as a required constructor argument and is instantiated
@@ -1396,43 +1582,29 @@ every time. This is still opt-in, not the only path: anyone can choose
 "Continue without an account" in the gate below and get the original
 client-only behavior with nothing ever touching the backend's database.
 
-**`TapetideKeyGate.tsx` is a hard, blocking gate, not a dismissible
-nudge** (unlike the sign-in banner above) -- rendered as an always-mounted
-overlay in `App.tsx` whenever `getTapetideKey()` returns nothing,
-`backdrop-filter: blur()`'d over the still-fully-rendered app behind it
-(not blurred via a class toggle on the app root -- the gate doesn't need to
-reach into anything else's DOM). It's now a small multi-step flow rather
-than a single form (2026-07):
-- **`"welcome"`** (the default first step, unless `App.tsx` already
-  resolved a signed-in `user` by mount time -- see below): offers Sign In,
-  Sign Up, or "Continue without an account."
-- **`"signin"` / `"signup"`**: inline forms (a separate copy from
-  `AuthPanel.tsx`'s, not shared -- different surrounding chrome, full-
-  screen step vs. slide-over). On successful sign-in, `main.py`'s
-  `/api/auth/login` response already includes the account's saved key
-  (`UserPublic.tapetide_key`, decrypted) if one exists -- if so, the gate
-  adopts it immediately and closes with no further step; if not (or after
-  a fresh sign-up, which never has one yet), it proceeds to `"key"`.
-- **`"key"`**: the original single pill-shaped input+button, walking
-  through getting a free key at
-  [tapetide.com](https://tapetide.com/settings/tokens). Submitting calls
-  `POST /api/tapetide/validate` (anonymous) or `POST /api/auth/tapetide-key`
-  (signed in -- validates the same way, then also persists it to the
-  account) *before* storing anything locally -- a genuinely wrong key must
-  never sit in `localStorage` looking valid either way.
+**Entering a key** now happens only in `SettingsPanel.tsx`. Submitting
+calls `POST /api/tapetide/validate` (anonymous) or `POST
+/api/auth/tapetide-key` (signed in -- validates the same way, then also
+persists it to the account) *before* storing anything locally, so a
+genuinely wrong key never sits in `localStorage` looking valid.
 
-`App.tsx` also restores a saved key automatically on a plain page load, not
-just via the gate's own sign-in step: if a stored auth token resolves (via
-`fetchMe`) to a user with a saved key, and this browser doesn't already
-have one in `localStorage`, it's adopted immediately and the gate never
-even renders. The `!getTapetideKey()` check there matters -- it deliberately
-never overwrites a key someone's actively using locally just because
-they're also signed into an account with a *different* saved key. A new
-`sessionChecked` boolean in `App.tsx` (true immediately if there's no
-stored token to check, otherwise flips true once `fetchMe` resolves) exists
-purely so the gate shows a neutral "Checking your session..." loading state
-instead of flashing the welcome step for a returning signed-in visitor
-right before it would auto-dismiss.
+`App.tsx` still restores a saved key automatically on page load: if a
+stored auth token resolves (via `fetchMe`) to a user with a saved key, and
+this browser doesn't already have one in `localStorage`, it's adopted
+immediately. The `!getTapetideKey()` check matters -- it deliberately never
+overwrites a key someone's actively using locally just because they're also
+signed into an account with a *different* saved key. Adopting a key also
+triggers a `refreshQuota()`, since the mount-time one already ran and bailed
+out before the key existed.
+
+**The quota counter only exists when a key does.** `refreshQuota()` returns
+early (setting `quota` to null) when `getTapetideKey()` is empty, rather
+than letting `/api/quota` 400 on every page load for the now-common keyless
+visitor. That null is also what hides `QuotaCounter` at all three of its
+call sites (`CompanySearch`, `ReturnCalculator`, `StockMarketSimulator`),
+which each guard on `quota` being non-null. The rule is: **no key -> no
+counter, anywhere.** Note `quota` is in-memory React state and is never
+persisted, so there's no stale-localStorage path that could resurrect it.
 
 **`TapetideProvider.validate_key()` deliberately bypasses `DEV_CACHE_DIR`
 (`use_cache=False`)** -- every other method on this class is fine being
@@ -1580,7 +1752,7 @@ plain view-state pattern for search/calculator/simulator/trading) — the
 reset link is a query param (`?reset_token=...`) that `App.tsx` reads
 once, synchronously, on mount (`new URLSearchParams(window.location.search)`),
 rather than adding a router just to support this one deep-linkable case.
-`ResetPasswordPanel.tsx` takes priority over `TapetideKeyGate.tsx` when a
+`ResetPasswordPanel.tsx` used to take priority over the (now deleted) key gate when a
 visitor arrives at this link in a fresh browser with no Tapetide key
 saved yet — completing a 30-minute-expiring, one-shot reset matters more
 right now than the key gate, and doesn't need a Tapetide key at all;
@@ -1607,7 +1779,7 @@ from Vercel project environment variables in production:
   quota tracking — see "Deployment" and "Accounts & activity tracking"
   above. Use the **pooled** connection string, not the direct one.
 - `ENCRYPTION_KEY` — required for a signed-in user to save a Tapetide key to
-  their account (see "Bring-your-own Tapetide key" below); without it, that
+  their account (see "Optional bring-your-own Tapetide key" below); without it, that
   specific feature just fails gracefully rather than ever storing a key in
   plaintext. Generate one with
   `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
@@ -1630,7 +1802,7 @@ from Vercel project environment variables in production:
   generic success response (never leaks whether an email has an account)
   — the send failure is just logged server-side instead of an email
   actually going out.
-- **No Tapetide key here** — see "Bring-your-own Tapetide key" above.
+- **No Tapetide key here** — see "Optional bring-your-own Tapetide key" above.
   Every user supplies their own via the website, sent per-request as the
   `X-Tapetide-Token` header, never a `.env` secret.
 - `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` — optional, only needed if you swap
@@ -1665,31 +1837,34 @@ vars containing secrets — it only needs the backend's base URL.
 
 - **Fundamentals, price history, and analyst consensus all come from
   Tapetide deliberately now** (see "Sourcing" above and both providers'
-  docstrings) — this is a live production workaround for Tickertape
-  blocking Vercel's IPs, not a preference, and it costs real quota (10
-  calls/search instead of the ~5 a brief Bharat-fundamentals window had).
-  Don't "simplify" this back to Bharat-SM-Data for fundamentals, or make
-  sourcing user-selectable again, without first re-verifying live from an
+  docstrings) — **outdated as of 2026-09: yfinance is primary and Tapetide
+  is optional, see "Keyless, cache-first sourcing".** Liquidity ratios are
+  no longer permanently `None`; yfinance supplies the current-asset split
+  that Tapetide's condensed balance sheet cannot. The rest of this bullet
+  still holds as history: don't "simplify" sourcing back to Bharat-SM-Data
+  for fundamentals, or make sourcing user-selectable again, without first
+  re-verifying live from an
   actual Vercel deployment (not local dev, where Tickertape may work fine)
-  that the block is gone. Tapetide's free tier is rate-limited (50
-  calls/day at time of writing); all three fall back to `YFinanceProvider`
-  automatically when that quota is hit. Some fields can still be genuinely
+  that the block is gone. Some fields can still be genuinely
   unavailable depending on which provider answered a given piece (e.g.
   analyst consensus is `None` if both Tapetide and yfinance fail for it,
-  and liquidity ratios are `None` regardless of provider now that
+  and liquidity ratios were `None` regardless of provider back when
   fundamentals aren't Bharat's fuller balance sheet -- see "Tapetide is
   consumed as plain JSON-RPC" above) — this is expected and documented, not
   a bug to silently patch around with fabricated data. Missing fields
   should surface as "data unavailable for this metric," never a guessed
   value.
-- **Every user brings their own Tapetide key (see "Bring-your-own Tapetide
-  key" above) — don't reintroduce a shared server-side `TAPETIDE_TOKEN`.**
-  A single shared key's 50-calls/day free tier cannot support more than one
-  concurrent user, which is the entire reason this changed from the
-  earlier single-owner-tool design. If Tapetide ever adds a hosted paid
+- **A Tapetide key is optional and per-user (see "Optional bring-your-own
+  Tapetide key" above) — don't reintroduce a shared server-side
+  `TAPETIDE_TOKEN`.** A single shared key's 50-calls/day free tier cannot
+  support more than one concurrent user, which is the entire reason this
+  changed from the earlier single-owner-tool design. Since 2026-09 the app
+  needs no key at all to function; a user's own key only changes which
+  provider is tried first. If Tapetide ever adds a hosted paid
   tier suitable for backing the whole site, that's a real product decision
   to make with the user, not something to default back to quietly.
-- **The yfinance fallback trades reliability of source for availability.**
+- **yfinance is now the PRIMARY source, not just a fallback, and it trades
+  reliability of source for availability.**
   It scrapes Yahoo Finance's undocumented endpoints rather than using a
   licensed API — treat a yfinance-served `consensus_source`/`active_source`
   as lower-confidence than a Tapetide-served one, not equivalent, even
@@ -1726,8 +1901,9 @@ vars containing secrets — it only needs the backend's base URL.
   resolved symbol/company name (exact match, a real prefix, or a substring
   either direction). Deliberately lenient, not exact-only, so abbreviation-
   style searches keep working ("TCS", "L&T", "ITC", a partial company
-  name) — unit-tested against exactly those cases plus the AAPL scenario
-  before deploying.
+  name) — checked against exactly those cases plus the AAPL scenario
+  before deploying, via a throwaway script that was not committed (see
+  "Testing" below).
 
 ## Deployment
 
@@ -1814,7 +1990,30 @@ Two things worth knowing if this ever needs touching again:
   request (see `db.py`), which is exactly the "many short-lived serverless
   connections" pattern the pooler exists for.
 - No Tapetide key is ever a Vercel env var, same as it never was a
-  `backend/.env` var -- see "Bring-your-own Tapetide key" below.
+  `backend/.env` var -- see "Optional bring-your-own Tapetide key" below.
+
+## Testing
+
+**There is no committed test suite in this repository.** No pytest, no
+vitest, no test files, no test script in `package.json`.
+
+This matters because several sections above describe tests as though they
+were permanent artifacts ("unit-tested", "verified with a mocked-clock
+test"). Those were real, and they really did catch real bugs before they
+shipped -- but every one was a throwaway script run once against the live
+API/database and then discarded. Don't go looking for them, and don't
+assume a change is covered by an existing test.
+
+If you add one, the highest-value targets are the pure functions, which
+need no mocking at all: `metrics.py` (the ratio math), `main.py`'s
+`_looks_like_the_query` (the wrong-company guard), `lib/portfolioHistory.ts`
+(the reconstruction that already had one off-by-one-day bug) and
+`lib/marketHolidays.ts` (IST date handling). The cache and rate-limit
+services are also testable but need a real `DATABASE_URL`.
+
+Note the frontend build is a genuine check worth running -- `npm run build`
+runs `tsc -b` with `strict`, `noUnusedLocals` and `noUnusedParameters`, so
+it catches dead state and type drift even without tests.
 
 ## Running locally
 
@@ -1830,3 +2029,20 @@ backend and frontend).
 - Frontend: TypeScript, functional components + hooks, no class components.
 - Keep comments minimal and focused on *why*, not *what* — code should be
   self-explanatory via naming.
+  
+## Second brain (codebase map + logs)
+
+A maintained knowledge map of this codebase lives at:
+/Users/hriday/Documents/Second Brain - Obsidian/Second Brain/Projects/finai-metrics/
+
+- 02_wiki/00_Codebase_Root.md is the index. At the start of a session,
+  READ IT FIRST to orient before grepping or reading many source files —
+  it summarizes the architecture, data flow, and where things live, which
+  is cheaper than re-scanning the tree.
+- 03_logs/ holds dated session logs. After making meaningful changes in a
+  session, append a dated log entry there describing what changed and why,
+  following the existing log format, so the next session has continuity.
+- The map is only accurate if 01_raw/ is refreshed. If the map seems to
+  contradict the actual code, the code wins — flag the discrepancy in the
+  log and tell me to re-run the rsync refresh (command is in the brain's
+  PROJECT.md).
