@@ -78,11 +78,12 @@ class MetricStatus(str, Enum):
 
 
 class DataSourceName(str, Enum):
-    """Which provider served a given piece of data -- Tapetide (primary) or
-    yfinance (its fallback on Tapetide quota exhaustion). See CLAUDE.md's
-    "Sourcing" section: fundamentals moved back to Tapetide (2026-07) after
-    Tickertape/Bharat-SM-Data turned out to be IP-blocked from the app's
-    Vercel deployment."""
+    """Which provider served a given piece of data -- yfinance (the primary
+    source since 2026-09, free and key-less) or Tapetide (an optional
+    per-user bring-your-own-key upgrade, tried first only when a visitor
+    supplied a key). See CLAUDE.md's "Keyless, cache-first sourcing"
+    section. Bharat-SM-Data is deliberately not a member: it's been unwired
+    since Tickertape IP-blocked the app's Vercel deployment."""
 
     TAPETIDE = "tapetide"
     YFINANCE = "yfinance"

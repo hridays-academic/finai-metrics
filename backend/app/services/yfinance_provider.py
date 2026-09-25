@@ -1,17 +1,24 @@
 """
 `FinancialDataProvider` implementation backed by yfinance.
 
-Live/active in two roles now (2026-09): the automatic fallback for
-fundamentals/price history/analyst consensus when a user's Tapetide quota
-runs out (see app/main.py's `fallback_provider` and CLAUDE.md's "Sourcing"
-section) -- `TapetideProvider` is the primary for those -- AND the sole
-data source for Paper Trading's live quote polling and intraday chart (see
-`get_live_quote`/`get_intraday_history` below), which have no Tapetide
-equivalent at all. yfinance is pinned in requirements.txt as a genuine
-runtime dependency, not just a reference implementation.
+**This is the PRIMARY data source (2026-09).** It serves fundamentals,
+price history and analyst consensus for `/api/company` and
+`/api/price-history`, plus Paper Trading's live quote polling and intraday
+chart (`get_live_quote`/`get_intraday_history`, which have no Tapetide
+equivalent at all). `TapetideProvider` is now an optional, per-user
+bring-your-own-key upgrade tried first only when a visitor supplied a key
+-- see CLAUDE.md's "Keyless, cache-first sourcing" section. It's still
+referred to as `fallback_provider` in main.py for historical reasons;
+that name predates the switch.
 
-yfinance is free and requires no API key, which makes it a good proof-of-
-concept source, but it scrapes Yahoo Finance rather than using an official
+Being free and key-less is precisely why this can be primary: it's what
+lets a visitor use the app without signing up for anything. The trade-off
+is that responses MUST be cached (see `fundamentals_cache.py`) -- one
+uncached yfinance call per visitor per search is the sustained request
+volume described below that risks throttling this app's server IP for
+everyone.
+
+It scrapes Yahoo Finance rather than using an official
 API: expect occasional missing fields for Indian tickers, stale data, or
 transient failures (Yahoo has no documented, guaranteed rate limit -- in
 practice, keep request volume modest, e.g. comfortably under ~1-2 requests/
