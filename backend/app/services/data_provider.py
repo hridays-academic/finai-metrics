@@ -13,6 +13,43 @@ from typing import Optional
 from app.models import AnalystConsensus, CompanyInfo, PricePoint, RawFinancials
 
 
+# Companies that renamed or re-listed under a different ticker, as
+# {former name-or-ticker: current NSE base ticker}. Both keys and values are
+# uppercase alphanumerics only, matching how main.py normalizes before
+# comparing.
+#
+# Deliberately lives here rather than in a single provider: a rename is a
+# fact about the market, not about yfinance or Tapetide, and two unrelated
+# places need it. A provider's name->ticker map needs it to resolve the old
+# name at all, and main.py's `_looks_like_the_query` guard needs it to avoid
+# rejecting its own correct answer -- searching "zomato" legitimately
+# resolves to ETERNAL.NS, whose company name ("Eternal Limited") shares no
+# text with the query, so without this the guard would 404 a correct match.
+#
+# Only add an entry once the old ticker is genuinely dead AND the new one is
+# verified live (see the audit script in this project's history) -- a wrong
+# entry here silently sends users to the wrong company, which is exactly the
+# failure `_looks_like_the_query` exists to prevent.
+FORMER_TICKERS: dict[str, str] = {
+    # Zomato renamed to Eternal Limited (2025); ZOMATO.NS/.BO are both dead.
+    "ZOMATO": "ETERNAL",
+    # Tata Motors demerged: the commercial-vehicles entity kept the "Tata
+    # Motors Limited" name under TMCV, and passenger vehicles became TMPV.
+    # TATAMOTORS.NS/.BO are both dead.
+    "TATAMOTORS": "TMCV",
+}
+
+
+def resolves_via_former_name(query_normalized: str, *symbols_normalized: str) -> bool:
+    """True when `query_normalized` is a known former name/ticker for one of
+    the given (already-normalized) symbols. Lets a curated rename satisfy
+    main.py's textual-relationship guard without loosening it for everyone."""
+    current = FORMER_TICKERS.get(query_normalized)
+    if not current:
+        return False
+    return any(s.startswith(current) for s in symbols_normalized if s)
+
+
 class CompanyNotFoundError(Exception):
     """Raised when the ticker/company cannot be resolved to any data."""
 

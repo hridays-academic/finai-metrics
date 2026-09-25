@@ -81,7 +81,15 @@ _NAME_TO_SYMBOL: dict[str, str] = {
     "asian paints": "ASIANPAINT.NS",
     "wipro": "WIPRO.NS",
     "adani enterprises": "ADANIENT.NS",
-    "tata motors": "TATAMOTORS.NS",
+    # Tata Motors demerged (2025) -- TATAMOTORS.NS is delisted. The
+    # commercial-vehicles entity kept the legal name "Tata Motors Limited"
+    # under TMCV, so the bare "tata motors" points there (and matches that
+    # returned name exactly); passenger vehicles is a separate listing.
+    "tata motors": "TMCV.NS",
+    "tata motors commercial vehicles": "TMCV.NS",
+    "tmcv": "TMCV.NS",
+    "tata motors passenger vehicles": "TMPV.NS",
+    "tmpv": "TMPV.NS",
     "tata steel": "TATASTEEL.NS",
     "sun pharma": "SUNPHARMA.NS",
     "sun pharmaceutical": "SUNPHARMA.NS",
@@ -95,7 +103,12 @@ _NAME_TO_SYMBOL: dict[str, str] = {
     "nestle": "NESTLEIND.NS",
     "hcl technologies": "HCLTECH.NS",
     "hcl tech": "HCLTECH.NS",
-    "zomato": "ZOMATO.NS",
+    # Zomato renamed to Eternal Limited (2025) -- ZOMATO.NS is delisted. The
+    # old brand name is kept as a key on purpose: people still search it, and
+    # data_provider.FORMER_TICKERS is what stops main.py's
+    # `_looks_like_the_query` guard from rejecting the (correct) Eternal match.
+    "zomato": "ETERNAL.NS",
+    "eternal": "ETERNAL.NS",
     "paytm": "PAYTM.NS",
     "adani ports": "ADANIPORTS.NS",
     "jsw steel": "JSWSTEEL.NS",
@@ -140,15 +153,39 @@ class YFinanceProvider(FinancialDataProvider):
         if upper.endswith(".BO"):
             return upper, "BSE"
 
+        # A hardcoded mapping is a guess about the world that can go stale --
+        # companies rename, demerge and delist (ZOMATO -> ETERNAL,
+        # TATAMOTORS -> TMCV/TMPV, both confirmed dead in a live audit). This
+        # used to return the mapped symbol unvalidated, so a stale entry sent
+        # every request for that name to a dead ticker forever, with a
+        # confusing downstream failure rather than an honest "not found".
+        #
+        # Validating costs one cheap fast_info call, and is affordable
+        # because callers resolve a given query string rarely: main.py's
+        # symbol_resolution_cache means /api/company resolves each distinct
+        # query at most once per 30 days. (/api/trading/search doesn't use
+        # that cache and does pay it per stock pick -- acceptable for an
+        # explicit user action.)
         mapped = _NAME_TO_SYMBOL.get(q.lower())
-        if mapped:
+        if mapped and self._symbol_has_data(mapped):
             return mapped, "NSE" if mapped.endswith(".NS") else "BSE"
 
-        # Fall back to treating the input as a bare ticker on NSE, then BSE.
+        # Either nothing was mapped, or the mapping has gone stale -- fall
+        # back to treating the input as a bare ticker on NSE, then BSE.
         for suffix, exchange in ((".NS", "NSE"), (".BO", "BSE")):
             candidate = f"{upper}{suffix}"
             if self._symbol_has_data(candidate):
                 return candidate, exchange
+
+        if mapped:
+            # The mapped symbol didn't validate and the bare ticker didn't
+            # either. Rather than a confident 404, hand back the mapping as a
+            # last resort: a transient Yahoo failure looks identical to a
+            # delisting from here, and this keeps a blip from turning a
+            # working lookup into "no such company". A genuinely dead symbol
+            # still surfaces as an error downstream, just from the fetch
+            # rather than from here.
+            return mapped, "NSE" if mapped.endswith(".NS") else "BSE"
 
         raise CompanyNotFoundError(
             f"Could not find '{query}' on NSE or BSE. Try the exact ticker "

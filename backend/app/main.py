@@ -48,6 +48,7 @@ from app.services.data_provider import (
     DataProviderError,
     FinancialDataProvider,
     ProviderQuotaExceededError,
+    resolves_via_former_name,
 )
 from app.services.metrics import compute_health_snapshot, compute_metric_groups
 from app.services import gmail_service
@@ -206,6 +207,13 @@ def _looks_like_the_query(query: str, info: CompanyInfo) -> bool:
     if len(q) >= 2 and (ticker.startswith(q) or resolved.startswith(q)):
         return True
     if len(q) >= 3 and (q in name or (len(name) >= 3 and name in q)):
+        return True
+    # A curated rename is not a fuzzy-search accident, so it's allowed
+    # through: searching "zomato" correctly resolves to ETERNAL.NS, whose
+    # name shares no text with the query, and the checks above would
+    # otherwise 404 a match we deliberately configured. See
+    # data_provider.FORMER_TICKERS.
+    if resolves_via_former_name(q, ticker, resolved):
         return True
     return False
 
