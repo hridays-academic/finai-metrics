@@ -1,260 +1,240 @@
-# FinAI Metrics
+# Stackly
 
-A web app for exploring financial metrics and ratios of Indian public listed
-companies (NSE/BSE): a full-width dashboard of color-coded ratios, each with
-a hover popover explaining what it means and whether the company's actual
-number is healthy, an aggregate Financial Health Snapshot at the top, a
-zoomable/pannable ~5-year weekly price history chart, a separate Share
-Price Forecast chart (analyst High/Mean/Low target fan, its own card so the
-~9-month fan isn't lost against 5 years of history), and a third-party
-analyst consensus widget (rating breakdown + price target range) -- clearly
-attributed as external opinion, not the app's own. Before any search, the
-empty state suggests a handful of companies, each badged with its real
-Health Snapshot verdict (computed via Bharat-SM-Data so it costs no
-Tapetide quota) -- see `CLAUDE.md`'s "Homepage recommendations" section.
+A web app for learning to read the financials of Indian public listed
+companies (NSE/BSE). Search a company and you get a full-width dashboard of
+21 colour-coded financial ratios, each with a hover popover explaining in
+plain English what the metric measures and whether this company's actual
+number sits in a healthy range; a zoomable ~5-year weekly price history
+chart; a separate Share Price Forecast chart (an analyst High/Mean/Low
+target fan, given its own card so a ~9-month fan isn't an invisible sliver
+against 5 years of history); and a third-party analyst consensus card,
+clearly attributed as sell-side opinion rather than the app's own view.
 
-> The backend also includes a working AI chat assistant (`POST /api/chat`,
-> three swappable LLM backends) that isn't currently rendered in the
-> frontend -- it was removed from the UI to keep the site to a single
-> full-width metrics view. See `CLAUDE.md` if you want to bring it back.
+**No signup and no API key are required.** Open the site and search.
 
-## Stack & why
+> **On investment advice:** this app is educational. It describes the ratios
+> it computes and relays third-party analyst opinion with attribution. It
+> never generates its own buy/sell/hold call or price target, and that line
+> is deliberate — see `CLAUDE.md`.
 
-- **Backend: Python + FastAPI.** FastAPI gives typed request/response models
-  (Pydantic) and automatic docs at `/docs`, which pairs well with a strict
-  data layer.
-- **Frontend: React + Vite + TypeScript.** Fast dev server, no-frills
-  component model for the dashboard, and TypeScript keeps the frontend's
-  data shapes in sync with the backend's Pydantic models. The price chart
-  uses `lightweight-charts` (TradingView's open-source charting library) for
-  native zoom/pan/crosshair behavior without hand-rolling chart interaction.
-- **Data source: Tapetide** (https://tapetide.com), an MCP server purpose-built
-  for NSE/BSE data (quotes, financials, ratios) for ~8,200 Indian stocks. It's
-  consumed here as plain JSON-RPC over HTTP (no MCP client library needed) --
-  see "Data source notes" below for its coverage limitations and free-tier
-  rate limit.
-- **A source-switcher in the UI** lets you pick Tapetide, yfinance, or
-  Bharat-SM-Data explicitly, or leave it on the default ("auto"), which tries
-  Tapetide and falls back to yfinance automatically if its daily quota is
-  exhausted -- see "Data source notes" below for what each one does and
-  doesn't cover.
+## The four modules
 
-The data source is abstracted behind `FinancialDataProvider`
-(`backend/app/services/data_provider.py`). `TapetideProvider` is primary;
-`YFinanceProvider` is a live automatic-or-selectable fallback; and
-`BharatSMProvider` (wrapping the open-source `Bharat-sm-data` package) is a
-third, selectable-only source with fundamentals but no price history (see
-below). Adding another provider (Alpha Vantage, Financial Modeling Prep,
-etc.) means implementing the same interface and wiring it into `main.py`'s
-`source` query-param handling, without touching the metrics engine or API
-route shapes.
+Switchable from the left icon rail; all four stay mounted, so moving between
+them never discards what you'd picked.
+
+1. **Metrics analyser** — search a company, get its ratios grouped into
+   Liquidity, Profitability, Leverage, Efficiency and Valuation, each with a
+   definition, the formula, a conventional healthy range, and a value-aware
+   assessment of this specific company's number.
+2. **Return Calculator** — a compound-growth projection personalised to a
+   real picked stock, driven by its most recently completed calendar year's
+   performance (falling back to the analyst consensus target for a stock too
+   new to have one). The rate's basis is always labelled so it's never
+   ambiguous whether a figure is backward- or forward-looking.
+3. **Market Simulator** — a Monte Carlo "what if": generates a *random*
+   future price path via geometric Brownian motion, seeded from the stock's
+   own historical drift and volatility. Explicitly not a forecast, disclosed
+   twice on the page, and drawn in a different colour from every real-data
+   chart in the app so it never reads as observed data.
+4. **Paper Trading** — buy and sell real NSE/BSE stocks with virtual
+   "coins" at their current (delayed) price, with a candlestick chart, a
+   portfolio, and an Analysis tab showing realised/unrealised P&L, win rate,
+   allocation, and portfolio value reconstructed over time from your real
+   transaction log against real historical prices.
+
+## Stack
+
+- **Backend: Python + FastAPI + Pydantic v2.** Typed request/response
+  models and automatic docs at `/docs`. Deployment pins 3.12
+  (`.python-version`); local development has been on 3.13.
+- **Database: Neon Postgres**, accessed with `psycopg` v3 directly — no ORM.
+  Backs user accounts, sessions, activity logs, the data caches and rate
+  limiting.
+- **Frontend: React 18 + Vite 6 + TypeScript**, with exactly three runtime
+  dependencies (`react`, `react-dom`, `lightweight-charts`). No router, no
+  state library, no CSS framework — theming is plain CSS custom properties.
+- **Charts: `lightweight-charts`** (TradingView's open-source library) for
+  native zoom/pan/crosshair behaviour.
+- **Deployment: a single Vercel project** serving both the built frontend and
+  the FastAPI backend as Python functions, so there's one origin and no CORS
+  in production.
+
+## Where the data comes from
+
+**yfinance is the primary source, and it needs no API key.** That's what
+makes the app usable without signup. Because Yahoo's endpoints are
+unofficial and rate-sensitive, responses are cached in Postgres and shared
+across all visitors — one real upstream fetch serves everyone looking at
+that company until it goes stale.
+
+Two freshness clocks, deliberately:
+
+| Data | TTL | Why |
+| --- | --- | --- |
+| Statements, company info, analyst consensus | 7 days | Financials change quarterly |
+| `current_price` / `market_cap` | 15 minutes | They move daily and feed P/E, P/B and dividend yield |
+| Price history (OHLC series) | 6 hours | The current week's bar keeps moving while the market is open |
+
+A single TTL would either serve a week-old share price — making three
+valuation ratios quietly wrong — or throw away the expensive statement fetch
+every 15 minutes.
+
+**Tapetide is an optional upgrade.** Add your own free key in Settings and
+the backend will try Tapetide first, mainly for its more precise
+analyst-target periods, falling back to yfinance automatically when its
+50-calls/day free tier is exhausted. Tapetide results are deliberately
+**never written to the shared cache**: that data is metered against your
+personal key, so redistributing it to other visitors would spend your quota
+on strangers. Everything works identically without a key.
+
+Sources are abstracted behind `FinancialDataProvider`
+(`backend/app/services/data_provider.py`). A third implementation,
+`BharatSMProvider`, is fully written but **not wired into the app** —
+Tickertape (which it wraps) blocks Vercel's IP range. It's kept dormant in
+case that ever lifts.
+
+### Honest limitations
+
+- **All market data here is delayed**, commonly by around 15 minutes for
+  free Indian retail data. Paper Trading labels this explicitly rather than
+  implying a live tick feed. A real-time feed would require a paid broker
+  API with market-data entitlements.
+- **Banks and NBFCs show more "N/A" metrics** — roughly 12 of 21 populate.
+  Financial-sector filings genuinely lack inventory, gross profit and a
+  current/non-current split, so those ratios aren't merely missing, they're
+  inapplicable. Ordinary non-financial companies populate all 21.
+- **A missing figure always renders "N/A", never a guess.** `metrics.py`
+  returns `None` for any metric whose inputs are unavailable, and the cache
+  round-trips nulls as nulls specifically so this behaves identically whether
+  data was fetched live or served from cache.
+- **Requests are rate-limited per IP** (40/minute, 600/hour — roughly 20 and
+  300 company lookups respectively, since one view makes two requests). This
+  protects the shared yfinance access for everyone.
 
 ## Project structure
 
 ```
-backend/
-  app/
-    main.py                   FastAPI app, routes
-    config.py                 Env var loading
-    models.py                 Pydantic schemas
-    services/
-      data_provider.py        Abstract data provider interface
-      tapetide_provider.py     Tapetide MCP implementation (primary)
-      yfinance_provider.py    yfinance implementation (automatic/selectable fallback)
-      bharat_sm_provider.py   Bharat-SM-Data implementation (selectable only, no price history)
-      metrics.py               Ratio calculations (pure functions)
-      ai_prompt.py              Shared system prompt + context formatting
-      moonshot_service.py       Moonshot (Kimi) API wrapper (default AI backend)
-      deepseek_service.py       DeepSeek API wrapper (alternate, not wired in)
-      claude_service.py        Anthropic API wrapper (alternate, not wired in)
-  requirements.txt
-  .env.example
-frontend/
-  src/
-    App.tsx
-    components/               Header, SettingsPanel, CompanySearch,
-                               MetricsDashboard, MetricCard, HealthSnapshot,
-                               PriceChart, AnalystConsensus
-    hooks/useTheme.ts          Dark/light mode, persisted to localStorage
-    lib/                       API client, TS types, formatters
-    styles/                    theme.css (tokens) + app.css (layout)
-  package.json
-  vite.config.ts
-CLAUDE.md                     Notes for future development in this repo
+backend/app/
+  main.py                   FastAPI app, routes, the symbol-match guard
+  config.py                 Env var loading
+  models.py                 Pydantic schemas
+  services/
+    data_provider.py        Provider interface, errors, known-rename table
+    yfinance_provider.py    PRIMARY source (no key needed)
+    tapetide_provider.py    Optional bring-your-own-key source
+    bharat_sm_provider.py   Dormant — not wired in (IP-blocked on Vercel)
+    fundamentals_cache.py   Postgres cache: statements, price overlay, OHLC
+    rate_limit.py           Per-IP fixed-window limiting (Postgres-backed)
+    metrics.py              Ratio calculations — pure functions
+    db.py                   Postgres connection + idempotent schema
+    auth_service.py         Signup/login/sessions/activity, Google Sign-In
+    gmail_service.py        Password-reset email via Gmail SMTP
+    ai_prompt.py            Shared system prompt (see "AI assistant" below)
+    moonshot_service.py     Active AI backend; deepseek/claude are alternates
+frontend/src/
+  App.tsx                   Root: theme, auth, selected company, active view
+  components/               27 components across the four modules
+  hooks/                    useTheme, usePortfolio, useLiveQuotes
+  lib/                      API client, types, formatters, portfolio storage
+  styles/                   theme.css (tokens) + app.css (layout)
+api/index.py                Vercel entry point — re-exports the ASGI app
+CLAUDE.md                   Detailed design notes and rationale
 ```
 
-## Prerequisites
+### AI assistant — backend only
 
-- Python 3.10+
+`POST /api/chat` works and is wired to Moonshot (Kimi), with DeepSeek and
+Anthropic implementations kept as swappable alternates. **It is not rendered
+anywhere in the frontend** — the chat UI was removed to keep the site to a
+single full-width metrics view. The metric explanations you see in the app
+are *not* AI-generated; they're computed server-side in `metrics.py`, which
+makes them reproducible, instant, free, and incapable of inventing a number.
+See `CLAUDE.md` to bring the chat UI back.
+
+## Running locally
+
+### Prerequisites
+
+- Python 3.12 or 3.13 (deployment pins 3.12 via `.python-version`)
 - Node.js 18+ and npm
-- A Tapetide personal token (free): https://tapetide.com/settings/tokens
-- A Moonshot AI (Kimi) API key -- optional, only needed if you re-add the
-  chat UI or call `/api/chat` directly: https://platform.kimi.ai
+- A Postgres connection string. [Neon](https://neon.tech)'s free tier is
+  permanent and needs no credit card. **This is the only required
+  credential.**
 
-## 1. Install dependencies
-
-**Backend:**
+### 1. Install
 
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-```
 
-**Frontend:**
-
-```bash
-cd frontend
+cd ../frontend
 npm install
 ```
 
-## 2. Add your API keys
+### 2. Configure
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-There's no Tapetide key to set here -- **every user brings their own**.
-The site itself asks for it: on first load it shows a full-screen guide to
-generating a free key at [tapetide.com](https://tapetide.com/settings/tokens)
-and a box to paste it into, and stores it in your browser (not on the
-server). This is what makes the site usable by more than one person at once
--- Tapetide's free tier is 50 calls/day per key, which one shared key could
-never support for multiple visitors.
+Set `DATABASE_URL` to your Neon **pooled** connection string (the `-pooler`
+hostname). The app opens a fresh connection per request, which is exactly
+what the pooler exists for. Tables are created idempotently on first start.
 
-`backend/.env` still has a few *optional* keys: `MOONSHOT_API_KEY` powers
-the `/api/chat` endpoint, which the frontend no longer calls (see the note
-at the top of this file) -- set it only if you're re-adding the chat UI or
-calling that endpoint directly. `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` are
-only used if you swap the AI backend to `deepseek_service.py` /
-`claude_service.py`; `ALPHA_VANTAGE_API_KEY` and `FMP_API_KEY` are
-placeholders for future data-provider swaps. None of them are required just
-to run the site and search a company.
+Everything else is optional: `ENCRYPTION_KEY` (lets a signed-in user save a
+Tapetide key to their account), `GOOGLE_CLIENT_ID` (Google Sign-In),
+`GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` (password-reset emails),
+`MOONSHOT_API_KEY` (the unrendered chat endpoint). **There is no
+`TAPETIDE_TOKEN`** — Tapetide is per-user and never a server-side secret.
 
-The `.env` file is git-ignored -- never commit it, and never hardcode a key
-anywhere in source.
+`.env` is git-ignored. Never commit it or hardcode a key in source.
 
-## 3. Run locally
+### 3. Run
 
-Run each in its own terminal.
-
-**Backend** (from `backend/`, with the virtualenv active):
+Two terminals:
 
 ```bash
+# backend/ with the virtualenv active
 uvicorn app.main:app --reload --port 8000
-```
 
-Health check: http://localhost:8000/api/health
-Interactive API docs: http://localhost:8000/docs
-
-**Frontend** (from `frontend/`):
-
-```bash
+# frontend/
 npm run dev
 ```
 
-Open http://localhost:5173. The Vite dev server proxies `/api/*` requests to
-the backend on port 8000 (see `frontend/vite.config.ts`), so the frontend
-never needs to know the backend's address directly.
+Open http://localhost:5173. Vite proxies `/api/*` to port 8000, so the
+frontend never needs the backend's address. Health check:
+http://localhost:8000/api/health · API docs: http://localhost:8000/docs
 
-## Using the app
+## Tests
 
-1. Enter a company name (e.g. "Reliance", "TCS", "Infosys") or an explicit
-   ticker (e.g. `RELIANCE`, `TCS`) in the search bar and press Search -- or
-   click one of the suggested companies on the empty state.
-2. A price history chart appears first, covering roughly the last 5 years at
-   weekly resolution -- scroll/pinch to zoom, drag to pan, hover for a
-   date/price readout, and use "Reset zoom" to fit the whole loaded range
-   back into view. If the company has analyst coverage, a separate Share
-   Price Forecast chart follows it: a dashed High/Mean/Low fan from today's
-   price out to the analysts' target date, color-coded green/gray/red, with
-   the expected-return percentages in the legend below the chart.
-3. A Financial Health Snapshot verdict ("Strong/Mixed/Weak Fundamentals" plus
-   a one-line reason) follows -- a summary of the ratio colors below it, not
-   a recommendation to buy, sell, or hold.
-4. An Analyst Consensus card follows, if the company has analyst coverage:
-   a Buy/Hold/Sell rating breakdown (shown as percentages) and a price
-   target range (low/mean/high vs. the current price), sourced from
-   third-party sell-side analysts via Tapetide -- this is *their* opinion,
-   reported with attribution, not FinAI Metrics' own view.
-5. Financial statement highlights and grouped ratios (liquidity,
-   profitability, leverage, efficiency, valuation) fill the rest of the page,
-   each color-coded against a conventional healthy range where one exists.
-   Hover or tap a card to see a plain-English definition of the metric and
-   whether the company's actual value is healthy, and why. Liquidity ratios
-   (current/quick/cash ratio, working capital) show as "N/A" -- Tapetide's
-   condensed balance sheet format doesn't break out current assets/
-   liabilities separately (see "Data source notes" below).
-6. Use the gear icon (top right) to switch between dark and light mode; the
-   choice is remembered on this device.
+**There is no committed test suite.** Testing throughout development has
+been ad-hoc: throwaway scripts run against the real API and database to
+verify a change, then discarded. Several are described in `CLAUDE.md`'s
+history as though they were permanent; they were not committed.
 
-## Data source notes
-
-Tapetide is free (no card required) and purpose-built for NSE/BSE data, but:
-
-- **Free tier is rate-limited to 50 MCP tool calls/day.** Each company view
-  costs ~7-8 calls (profile+ratings, P&L, balance sheet, ratios, ownership,
-  analyst forecasts, 2 price-history calls, plus the initial search), so the
-  free tier supports roughly 6-7 company lookups per day. If you hit the
-  limit, Tapetide's own message tells you exactly when it resets (or you
-  can upgrade at https://tapetide.com/pricing).
-- **The price chart is weekly, not daily, resolution.** Tapetide caps each
-  response at ~25,000 characters and truncates arrays that don't fit, so a
-  ~5-year *daily* series isn't retrievable at all. Weekly keeps each request
-  small enough to succeed, and reads more cleanly at a multi-year zoom level
-  anyway. To get the full ~5 years without losing the most recent data (a
-  single big request truncates by silently dropping the newest rows, not
-  the oldest), the backend makes two requests and merges them -- see
-  `CLAUDE.md` for the exact mechanism if you're curious.
-- **The Analyst Consensus card only appears when a company has coverage.**
-  Small/micro-caps often have zero sell-side analyst coverage, in which case
-  the card is simply omitted rather than shown with fabricated/zeroed data.
-- **Liquidity ratios are structurally unavailable.** Tapetide's condensed,
-  Screener.in-style balance sheet doesn't break out current assets/current
-  liabilities/cash separately, so current ratio, quick ratio, cash ratio, and
-  working capital always show "N/A" for every company -- this isn't a bug,
-  see `backend/app/services/tapetide_provider.py`'s docstring for the full
-  explanation of what is and isn't derivable from this data source.
-- **Banks/NBFCs report a structurally different P&L** (e.g. "Revenue" instead
-  of "Sales", no distinct "Operating Profit" line), so some metrics may show
-  "N/A" for financial-sector companies specifically.
-- **`YFinanceProvider`** (free, no signup) is wired in as both the automatic
-  fallback for "auto" mode and a selectable option -- but it's historically
-  unreliable for Indian tickers due to Yahoo Finance's undocumented
-  crumb/rate-limit gate, which is exactly why the source-switcher labels it
-  "Least Reliable" rather than hiding the tradeoff.
-- **`BharatSMProvider`** (free, no signup, wraps the open-source
-  `Bharat-sm-data` package) gives solid fundamentals -- verified live against
-  known Reliance/TCS figures, and its balance sheet actually breaks out
-  current assets/liabilities separately, unlike Tapetide's condensed format.
-  But it has **no price history and no analyst consensus, ever** -- a
-  permanent gap, not a bug: the underlying library needs `www.nseindia.com`
-  for OHLC data, and that site outright blocks automated/cloud traffic. The
-  UI flags this with a "Missing Content" badge next to the source dropdown
-  and an explanation in place of the (otherwise empty) price chart. Because
-  of this gap it's selectable-only, never part of the "auto" fallback chain.
+The highest-value place to start, if adding one, is the pure functions —
+`metrics.py`, `lib/portfolioHistory.ts`, `lib/marketHolidays.ts` and
+`main.py`'s `_looks_like_the_query` — all of which are dependency-free and
+directly testable.
 
 ## Troubleshooting
 
-- **"Could not find '<company>' on NSE or BSE via Tapetide"** -- try the
-  exact ticker instead of the company name, e.g. `RELIANCE` or `TCS`.
-- **"You've reached the Tapetide free tier limit for today"** -- wait for the
-  reset time given in the message, or upgrade your Tapetide plan.
-- **"Tapetide rejected this API key"** -- the key you entered on the
-  sign-in gate is wrong or was revoked; regenerate one at
-  https://tapetide.com/settings/tokens and enter it again (there's no
-  `.env` file involved anymore -- see "Add your API keys" above).
-- **"MOONSHOT_API_KEY is not configured" / 503 from `/api/chat`** -- only
-  relevant if you're calling the chat endpoint directly or have re-added the
-  chat UI (the website itself doesn't use it). Check that `MOONSHOT_API_KEY`
-  is set correctly in `backend/.env` and that the backend was restarted
-  after editing it (settings are cached at startup).
-- **"Your Moonshot account has insufficient balance"** -- add credits at
-  https://platform.kimi.ai. Moonshot's API is pay-as-you-go and isn't covered
-  by any other subscription; note it reports billing suspension as an HTTP
-  429, which looks like a rate limit but isn't one.
-- **CORS errors in the browser console** -- make sure the frontend is running
-  on the origin listed in `backend/.env`'s `CORS_ORIGINS` (default:
-  `http://localhost:5173`).
+- **"Could not find '\<company\>' on NSE/BSE"** — try the exact ticker
+  (`RELIANCE`, `TCS`). Company-name lookup uses a curated map plus a
+  ticker probe, not a general search engine.
+- **"That's a lot of requests in a short time"** — the per-IP rate limit.
+  Wait for the period given in the message. Note a shared network (campus,
+  office, mobile CGNAT) counts as one IP.
+- **A company's data looks a few days old** — expected. Statements are
+  cached for 7 days; the response carries `fundamentals_as_of`, and
+  `is_stale` is set when data is served past its window because the upstream
+  source was unreachable.
+- **Paper Trading's price never changes** — NSE/BSE are closed. The app
+  shows a notice for weekends and for holidays in its hand-maintained 2026
+  calendar (`lib/marketHolidays.ts`, needs a manual refresh each December).
+- **CORS errors in local dev** — check the frontend's origin matches
+  `CORS_ORIGINS` in `backend/.env` (default `http://localhost:5173`).
+  Production is single-origin, so this only affects local development.
