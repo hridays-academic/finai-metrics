@@ -6,9 +6,13 @@ interface TradingTutorialProps {
 
 // Shown once per browser on first visit to Paper Trading (see
 // PaperTrading.tsx's TUTORIAL_SEEN_KEY), reachable again anytime via the
-// "?" button next to the page heading. Same overlay/card styling as
-// TapetideKeyGate.tsx (.tapetide-gate-*) rather than inventing a new
-// modal pattern, and the same optional-video approach: the <video> element
+// "?" button next to the page heading. Uses the app's shared overlay/card
+// styles rather than inventing a second modal pattern. Those classes are
+// still named `.tapetide-gate-*` for historical reasons -- they originated
+// in a blocking Tapetide key gate that was removed in 2026-09 once the app
+// went keyless; the styles outlived it and are now the app's generic modal
+// look (also used by MarketStatusNotice, ResetPasswordPanel, SettingsPanel
+// and others). Same optional-video approach too: the <video> element
 // points at a file that may not exist yet (no walkthrough recorded as of
 // this writing) -- onError hides it and falls back to the text-only steps
 // below rather than showing a broken player.

@@ -27,10 +27,12 @@ function authHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// The user's own Tapetide API key (see CLAUDE.md's "Bring-your-own Tapetide
-// key" section) -- every endpoint that touches Tapetide reads this header.
-// TapetideKeyGate.tsx blocks the whole app until one is stored, so in
-// practice this is never missing by the time these calls fire.
+// The user's own Tapetide API key, if they've added one in Settings --
+// every endpoint that can use Tapetide reads this header. Usually absent:
+// yfinance is the primary source and needs no key (see CLAUDE.md's
+// "Sourcing" section), so the backend treats this as an optional upgrade
+// and falls back to its own cached yfinance data when it's missing. Safe to
+// send unconditionally either way, same as authHeaders() above.
 function tapetideHeaders(): HeadersInit {
   const key = getTapetideKey();
   return key ? { "X-Tapetide-Token": key } : {};
@@ -110,9 +112,10 @@ export async function fetchPriceHistory(symbol: string): Promise<PriceHistoryRes
 // CLAUDE.md's "Paper Trading" section: these three endpoints are entirely
 // yfinance-backed and need neither a Tapetide key nor a signed-in session
 // (portfolio state itself never touches the backend at all, see
-// lib/portfolio.ts). The app's TapetideKeyGate still blocks entry to the
-// whole app regardless -- an existing, unrelated constraint this module
-// doesn't change.
+// lib/portfolio.ts). As of 2026-09 that's no longer the exception it once
+// was: /api/company and /api/price-history are keyless too, so these three
+// are simply consistent with the rest of the app rather than a carve-out
+// from a key gate that no longer exists.
 
 export async function searchTradingSymbol(query: string): Promise<TradingSymbolInfo> {
   const res = await fetch(`${BASE_URL}/trading/search/${encodeURIComponent(query)}`);
@@ -155,7 +158,7 @@ export async function fetchQuota(): Promise<QuotaStatus> {
   return res.json();
 }
 
-// Called from TapetideKeyGate.tsx with a NOT-yet-stored key (the user just
+// Called from SettingsPanel.tsx with a NOT-yet-stored key (the user just
 // typed it in) -- explicit param rather than reading localStorage, since
 // the whole point is verifying it before it's saved anywhere.
 export async function validateTapetideKey(key: string): Promise<void> {
@@ -166,7 +169,7 @@ export async function validateTapetideKey(key: string): Promise<void> {
   }
 }
 
-// Called from TapetideKeyGate.tsx's key-entry step when the visitor is
+// Called from SettingsPanel.tsx's key-entry step when the visitor is
 // signed in -- validates the key (same check as validateTapetideKey above)
 // AND persists it to their account so a future sign-in skips this step.
 // Requires auth; the anonymous ("continue without an account") path uses
@@ -242,8 +245,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 // Called with the raw ID token JWT from Google Identity Services'
 // credential callback (see lib/googleAuth.ts) -- main.py's /api/auth/google
 // verifies it server-side before ever trusting it. Same response shape as
-// signUp/logIn, so callers (AuthPanel.tsx, TapetideKeyGate.tsx) treat all
-// three interchangeably.
+// signUp/logIn, so callers treat all three interchangeably.
 export async function loginWithGoogle(credential: string): Promise<AuthResponse> {
   const res = await fetch(`${BASE_URL}/auth/google`, {
     method: "POST",

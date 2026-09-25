@@ -14,9 +14,8 @@ interface SettingsPanelProps {
   onSetMode: (mode: ThemeMode) => void;
   onClose: () => void;
   user: UserPublic | null;
-  // Called after the active Tapetide key changes, so App.tsx can re-read
-  // it from localStorage and refresh the quota counter -- same pattern
-  // TapetideKeyGate.tsx's onKeySet already uses.
+  // Called after the active Tapetide key changes, so App.tsx can refresh
+  // the quota counter (which only renders once a key exists at all).
   onTapetideKeyChange: () => void;
 }
 
@@ -43,10 +42,13 @@ const MODE_OPTIONS: { value: ThemeMode; label: string; bg: string }[] = [
 
 type KeyStep = "closed" | "verify" | "edit";
 
-// Reveals/changes the Tapetide key actually being used right now, since
-// TapetideKeyGate.tsx only ever runs once (whenever no key is stored yet)
-// -- there was previously no way to swap a key afterward short of clearing
-// localStorage by hand. Signed-in users must re-enter their password
+// Adds, reveals or replaces the Tapetide key in use. (2026-09) This is now
+// the ONLY place a key is ever entered -- the blocking TapetideKeyGate that
+// used to demand one before the app would render at all is gone, since
+// yfinance covers everything keylessly (see CLAUDE.md's "Sourcing"
+// section). A key here is purely an optional upgrade, so this flow has to
+// handle "no key has ever been set" as a normal state, not just "swap an
+// existing one". Signed-in users must re-enter their password
 // first (reuses the existing /api/auth/login check purely as a "prove
 // it's still you" gate -- a deliberate extra step before overwriting a
 // saved credential, not because the session token itself is untrusted);

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import Header from "./components/Header";
 import SettingsPanel from "./components/SettingsPanel";
 import AuthPanel from "./components/AuthPanel";
-import TapetideKeyGate from "./components/TapetideKeyGate";
 import Sidebar, { type View } from "./components/Sidebar";
 import CompanySearch from "./components/CompanySearch";
 import MetricsDashboard from "./components/MetricsDashboard";
@@ -20,21 +19,9 @@ export default function App() {
   const { theme, themeName, mode, setThemeName, setMode } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  // Read synchronously (localStorage, not a fetch) so there's no flash of
-  // ungated content before the gate can render -- see TapetideKeyGate.tsx.
-  const [tapetideKey, setTapetideKeyState] = useState<string | null>(() => getTapetideKey());
   // Sign-in is purely for activity tracking, not a gate on using the app --
-  // every existing feature works fully signed-out, this is additive. It
-  // does now feed into the Tapetide gate too, though (see the effect below
-  // and TapetideKeyGate.tsx): a returning signed-in user's saved key can
-  // fill in `tapetideKey` above without ever showing the gate.
+  // every existing feature works fully signed-out, this is additive.
   const [user, setUser] = useState<UserPublic | null>(null);
-  // True once the stored-auth-token check below has resolved (or there was
-  // never a token to check, in which case this starts true) -- lets
-  // TapetideKeyGate.tsx avoid flashing its "sign in / sign up" welcome step
-  // for a split second before a returning user's session (and possibly
-  // their saved key) has actually loaded.
-  const [sessionChecked, setSessionChecked] = useState<boolean>(() => !getAuthToken());
   // Set once, synchronously, from the URL a password-reset email links to
   // (main.py's /api/auth/forgot-password builds "<origin>/?reset_token=...").
   // Read directly from location.search rather than a router -- this app has
@@ -76,6 +63,18 @@ export default function App() {
   const quotaRequestId = useRef(0);
 
   function refreshQuota() {
+    // Quota is a Tapetide concept, and Tapetide is optional now (see
+    // CLAUDE.md's "Sourcing" section) -- /api/quota deliberately still 400s
+    // without a key, since there's no meaningful quota to report. Bailing
+    // out here rather than letting that 400 happen keeps a keyless visitor
+    // (the common case now) from firing a pointless failing request on
+    // mount and after every single search. `quota` staying null is also
+    // exactly what makes QuotaCounter not render at its three call sites,
+    // which all guard on it.
+    if (!getTapetideKey()) {
+      setQuota(null);
+      return;
+    }
     const requestId = ++quotaRequestId.current;
     fetchQuota()
       .then((data) => {
@@ -93,19 +92,24 @@ export default function App() {
     // this is safe to call unconditionally rather than checking the token
     // exists first.
     if (getAuthToken()) {
-      fetchMe()
-        .then((u) => {
-          setUser(u);
-          // Only adopt the account's saved key if this browser doesn't
-          // already have one -- never clobber a key someone's actively
-          // using locally just because they happen to also be signed into
-          // an account with a different saved key.
-          if (u?.tapetide_key && !getTapetideKey()) {
-            setTapetideKey(u.tapetide_key);
-            setTapetideKeyState(u.tapetide_key);
-          }
-        })
-        .finally(() => setSessionChecked(true));
+      fetchMe().then((u) => {
+        setUser(u);
+        // Only adopt the account's saved key if this browser doesn't
+        // already have one -- never clobber a key someone's actively
+        // using locally just because they happen to also be signed into
+        // an account with a different saved key. Optional now that the
+        // app works keylessly, but still worth doing: an account that
+        // saved a key should keep getting Tapetide's richer data without
+        // re-entering it on every device.
+        if (u?.tapetide_key && !getTapetideKey()) {
+          setTapetideKey(u.tapetide_key);
+          // The mount-time refreshQuota() above ran before this resolved
+          // and bailed out (no key yet), so ask again now that there is
+          // one -- otherwise the counter wouldn't appear until the next
+          // search.
+          refreshQuota();
+        }
+      });
     }
   }, []);
 
@@ -266,10 +270,7 @@ export default function App() {
           onSetMode={setMode}
           onClose={() => setSettingsOpen(false)}
           user={user}
-          onTapetideKeyChange={() => {
-            setTapetideKeyState(getTapetideKey());
-            refreshQuota();
-          }}
+          onTapetideKeyChange={refreshQuota}
         />
       )}
 
@@ -282,13 +283,9 @@ export default function App() {
         <AuthPanel user={user} onAuthChange={setUser} onClose={() => setAuthOpen(false)} />
       )}
 
-      {/* Takes priority over TapetideKeyGate below when both would
-          otherwise apply (a fresh browser, no key yet, arriving via a
-          password-reset email link) -- completing a time-sensitive,
-          one-shot reset (the token expires in 30 minutes) matters more
-          right now than the key gate, and doesn't need a Tapetide key at
-          all. Falls through to the normal gate afterward if one's still
-          missing. */}
+      {/* Shown when a visitor arrives from a password-reset email link
+          ("?reset_token=..."), read once on mount -- see the state
+          declaration above for why a query param rather than a router. */}
       {resetToken && (
         <ResetPasswordPanel
           token={resetToken}
@@ -303,22 +300,17 @@ export default function App() {
         />
       )}
 
-      {/* Blocking overlay, not conditionally rendered instead of the app --
-          the app tree stays fully mounted underneath so there's something
-          real (blurred) behind the gate rather than a blank page. Every
-          Tapetide-touching request behind it will 400 until this clears --
-          the gate still blocks all interaction regardless. */}
-      {!resetToken && !tapetideKey && (
-        <TapetideKeyGate
-          user={user}
-          sessionChecked={sessionChecked}
-          onAuthChange={setUser}
-          onKeySet={() => {
-            setTapetideKeyState(getTapetideKey());
-            refreshQuota();
-          }}
-        />
-      )}
+      {/* (2026-09) TapetideKeyGate used to render here -- a full-screen,
+          blocking overlay that made every visitor sign up at tapetide.com
+          and paste an API key before they could see anything at all. It's
+          gone, along with the component: yfinance is the primary data
+          source now and needs no key (see CLAUDE.md's "Sourcing" section),
+          so visitors land straight on a working app. A Tapetide key is
+          still fully supported as an optional upgrade -- SettingsPanel.tsx
+          owns that flow now. Its `.tapetide-gate-*` CSS is deliberately
+          KEPT in app.css: six other components reuse those overlay/card
+          styles (TradingTutorial, MarketStatusNotice, ResetPasswordPanel,
+          ForgotPasswordForm, PaperTrading, SettingsPanel). */}
     </div>
   );
 }

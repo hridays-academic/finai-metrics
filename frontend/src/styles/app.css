@@ -1671,8 +1671,8 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   justify-content: center;
 }
 
-/* Liability disclaimer shown on the sign-up/sign-in form itself (both
-   AuthPanel.tsx and TapetideKeyGate.tsx's copy of the same form), directly
+/* Liability disclaimer shown on the sign-up/sign-in form itself
+   (AuthPanel.tsx), directly
    above the submit button -- not a blocking checkbox/consent gate, but
    deliberately a notch more visible than this app's other small-muted-text
    disclaimers (.calculator-disclaimer/.tapetide-gate-note): text-secondary

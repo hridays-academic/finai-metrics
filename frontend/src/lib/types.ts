@@ -136,7 +136,8 @@ export interface UserPublic {
   // otherwise always fail for an account with no password to verify.
   has_password: boolean;
   // The account's saved Tapetide key, decrypted and ready to use -- null if
-  // this account never saved one. See TapetideKeyGate.tsx.
+  // this account never saved one, which is the common case now that a key
+  // is optional. App.tsx adopts it on sign-in; SettingsPanel.tsx sets it.
   tapetide_key: string | null;
 }
 

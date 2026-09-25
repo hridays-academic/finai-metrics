@@ -8,11 +8,9 @@ interface ForgotPasswordFormProps {
   onBack: () => void;
 }
 
-// Shared by AuthPanel.tsx and TapetideKeyGate.tsx's "signin" step -- those
-// two forms are deliberately separate copies of each other (different
-// surrounding chrome, see TapetideKeyGate.tsx's own comment on why), but
-// "forgot password" is simple/self-contained enough to actually share
-// rather than duplicate a third time.
+// Used by AuthPanel.tsx's sign-in form. Written as a shared component
+// because a second sign-in form (the removed TapetideKeyGate's) used it
+// too; kept that way since it's self-contained and costs nothing.
 export default function ForgotPasswordForm({ initialEmail, onBack }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);

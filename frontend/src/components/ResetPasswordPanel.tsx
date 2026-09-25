@@ -9,8 +9,9 @@ interface ResetPasswordPanelProps {
 // Shown by App.tsx whenever the page loads with a "?reset_token=" query
 // param -- the link a password-reset email points at (see main.py's
 // /api/auth/forgot-password, which builds that link from this same
-// origin). A blocking overlay like TapetideKeyGate.tsx, not a slide-over
-// like AuthPanel.tsx, since arriving here IS the whole reason for this
+// origin). A blocking overlay (the shared `.tapetide-gate-*` modal styles,
+// see TradingTutorial.tsx on that name), not a slide-over like
+// AuthPanel.tsx, since arriving here IS the whole reason for this
 // page load -- there's nothing else useful to show behind it yet anyway
 // (the visitor isn't signed in at this point).
 export default function ResetPasswordPanel({ token, onDone }: ResetPasswordPanelProps) {

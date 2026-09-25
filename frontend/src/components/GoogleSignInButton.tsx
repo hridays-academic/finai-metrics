@@ -5,9 +5,8 @@ interface GoogleSignInButtonProps {
   onCredential: (credential: string) => void;
 }
 
-// Renders nothing if VITE_GOOGLE_CLIENT_ID isn't set -- lets AuthPanel.tsx/
-// TapetideKeyGate.tsx include this unconditionally without an extra check
-// at each call site.
+// Renders nothing if VITE_GOOGLE_CLIENT_ID isn't set -- lets AuthPanel.tsx
+// include this unconditionally without an extra check at each call site.
 //
 // Polls briefly for `window.google` to become available rather than
 // checking once on mount -- confirmed live (2026-09) that a single
