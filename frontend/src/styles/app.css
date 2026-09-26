@@ -71,31 +71,33 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
    --bg-hover wash in dark mode, an accent tint in light mode, where
    --bg-hover is too close to --bg-app to show). */
 :root:not([data-mode="light"]) {
-  --glow: var(--bg-hover);
+  /* A touch of accent lifts it past plain --bg-hover so it reads. */
+  --glow: color-mix(in srgb, var(--bg-hover) 82%, var(--accent));
 }
 :root[data-mode="light"] {
-  --glow: color-mix(in srgb, var(--accent) 16%, transparent);
+  --glow: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 /* `closest-side` makes the ellipse match this box, so it's transparent at
-   every edge. Mid stop softens the falloff so there's no visible ring. */
+   every edge. Extra stops ease the tail so there's no visible rim. */
 .app-backdrop-glow {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 150vmax;
-  height: 100vmax;
-  margin: -50vmax 0 0 -75vmax;
+  width: 110vmax;
+  height: 75vmax;
+  margin: -37.5vmax 0 0 -55vmax;
   background: radial-gradient(closest-side, var(--glow) 0%,
-    color-mix(in srgb, var(--glow) 45%, transparent) 40%, transparent 75%);
+    color-mix(in srgb, var(--glow) 60%, transparent) 35%,
+    color-mix(in srgb, var(--glow) 22%, transparent) 60%, transparent 88%);
   will-change: transform;
   animation: glow-drift 24s ease-in-out infinite;
 }
 
 @keyframes glow-drift {
   0%   { transform: translate3d(0, 0, 0) scale(1); }
-  33%  { transform: translate3d(6vmax, -3vmax, 0) scale(1.08); }
-  66%  { transform: translate3d(-5vmax, 3vmax, 0) scale(0.94); }
+  33%  { transform: translate3d(8vmax, -4vmax, 0) scale(1.1); }
+  66%  { transform: translate3d(-7vmax, 4vmax, 0) scale(0.92); }
   100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 
