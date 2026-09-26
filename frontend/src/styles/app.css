@@ -52,10 +52,10 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
    .empty-state was hard-clipped into a visible rectangle on narrow screens.
 
    Two rules keep this edge-free and cheap:
-   - Each glow's gradient is `circle closest-side`, so it reaches fully
-     transparent exactly at its own box's edge -- no box edge can ever
-     carry color, at any viewport size. Sized in vmax so it scales with
-     the screen.
+   - The glow's gradient is `closest-side`, so it reaches fully
+     transparent before its own box's edge -- no box edge can ever carry
+     color, at any viewport size. Sized in vmax so it scales with the
+     screen.
    - Only `transform` animates (compositor-only, no repaint per frame).
      No filter: blur(), and nothing above it uses backdrop-filter, which
      would force a re-blur every frame. */
@@ -67,71 +67,36 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   pointer-events: none;
 }
 
+/* One glow from the center of the screen -- the original look (a
+   --bg-hover wash in dark mode, an accent tint in light mode, where
+   --bg-hover is too close to --bg-app to show). */
 :root:not([data-mode="light"]) {
-  --glow-a: color-mix(in srgb, var(--accent) 15%, transparent);
-  --glow-b: color-mix(in srgb, var(--accent) 11%, transparent);
-  --glow-c: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  --glow: var(--bg-hover);
 }
 :root[data-mode="light"] {
-  --glow-a: color-mix(in srgb, var(--accent) 10%, transparent);
-  --glow-b: color-mix(in srgb, var(--accent) 7%, transparent);
-  --glow-c: color-mix(in srgb, var(--accent-strong) 5%, transparent);
+  --glow: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
+/* `closest-side` makes the ellipse match this box, so it's transparent at
+   every edge. Mid stop softens the falloff so there's no visible ring. */
 .app-backdrop-glow {
   position: absolute;
-  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  width: 150vmax;
+  height: 100vmax;
+  margin: -50vmax 0 0 -75vmax;
+  background: radial-gradient(closest-side, var(--glow) 0%,
+    color-mix(in srgb, var(--glow) 45%, transparent) 40%, transparent 75%);
   will-change: transform;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
+  animation: glow-drift 24s ease-in-out infinite;
 }
 
-/* Mid stop eases the falloff so the glow has no visible cone/ring. */
-.glow-a {
-  width: 80vmax;
-  height: 80vmax;
-  top: -30vmax;
-  left: -25vmax;
-  background: radial-gradient(circle closest-side, var(--glow-a) 0%,
-    color-mix(in srgb, var(--glow-a) 45%, transparent) 50%, transparent 100%);
-  animation-name: glow-drift-a;
-  animation-duration: 45s;
-}
-.glow-b {
-  width: 75vmax;
-  height: 75vmax;
-  bottom: -35vmax;
-  right: -25vmax;
-  background: radial-gradient(circle closest-side, var(--glow-b) 0%,
-    color-mix(in srgb, var(--glow-b) 45%, transparent) 50%, transparent 100%);
-  animation-name: glow-drift-b;
-  animation-duration: 60s;
-  animation-delay: -20s;
-}
-.glow-c {
-  width: 60vmax;
-  height: 60vmax;
-  top: 20%;
-  left: 25%;
-  background: radial-gradient(circle closest-side, var(--glow-c) 0%,
-    color-mix(in srgb, var(--glow-c) 45%, transparent) 50%, transparent 100%);
-  animation-name: glow-drift-c;
-  animation-duration: 75s;
-  animation-delay: -40s;
-}
-
-@keyframes glow-drift-a {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(14vmax, 10vmax, 0) scale(1.12); }
-}
-@keyframes glow-drift-b {
-  from { transform: translate3d(0, 0, 0) scale(1.08); }
-  to { transform: translate3d(-16vmax, -9vmax, 0) scale(0.95); }
-}
-@keyframes glow-drift-c {
-  from { transform: translate3d(-8vmax, 6vmax, 0) scale(0.95); }
-  to { transform: translate3d(10vmax, -8vmax, 0) scale(1.1); }
+@keyframes glow-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  33%  { transform: translate3d(6vmax, -3vmax, 0) scale(1.08); }
+  66%  { transform: translate3d(-5vmax, 3vmax, 0) scale(0.94); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {

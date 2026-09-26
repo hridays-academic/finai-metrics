@@ -147,9 +147,7 @@ export default function App() {
     <div className="app-shell">
       {/* Full-viewport ambient background -- see .app-backdrop in app.css. */}
       <div className="app-backdrop" aria-hidden="true">
-        <div className="app-backdrop-glow glow-a" />
-        <div className="app-backdrop-glow glow-b" />
-        <div className="app-backdrop-glow glow-c" />
+        <div className="app-backdrop-glow" />
       </div>
 
       <Sidebar view={view} onChange={setView} />
