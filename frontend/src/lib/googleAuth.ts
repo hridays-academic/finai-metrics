@@ -41,7 +41,9 @@ export function renderGoogleButton(container: HTMLElement, onCredential: (creden
     type: "standard",
     theme: "outline",
     size: "large",
-    width: 280,
+    // Match the form's own full width (GSI only accepts a fixed pixel
+    // width, capped at 400) so it lines up with the inputs above it.
+    width: Math.min(400, Math.max(200, Math.floor(container.clientWidth) || 280)),
     text: "continue_with",
   });
 }

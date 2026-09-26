@@ -46,9 +46,6 @@ export default function App() {
   // Bumped on "go home" to force CompanySearch to remount, clearing its
   // internal (uncontrolled) search-box text along with everything else.
   const [homeKey, setHomeKey] = useState(0);
-  // Session-only (not persisted) -- dismissing the sign-in nudge just hides
-  // it until the next full page load, doesn't set a "never show again" flag.
-  const [signInBannerDismissed, setSignInBannerDismissed] = useState(false);
 
   // A search fires TWO quota refreshes -- one right after /api/company
   // resolves (handleSearch's finally, below), and a second, more-accurate
@@ -157,30 +154,6 @@ export default function App() {
           onGoHome={handleGoHome}
           user={user}
         />
-
-        {/* Additive nudge, not a gate -- see "Accounts & activity tracking"
-            in CLAUDE.md. Every feature below still works with this dismissed
-            (or never signed in at all). */}
-        {!user && !signInBannerDismissed && (
-          <div className="signin-banner" role="status">
-            <span>You're not signed in -- sign in to keep track of your search activity.</span>
-            <div className="signin-banner-actions">
-              <button type="button" className="signin-banner-link" onClick={() => setAuthOpen(true)}>
-                Sign In
-              </button>
-              <button
-                type="button"
-                className="signin-banner-dismiss"
-                aria-label="Dismiss"
-                onClick={() => setSignInBannerDismissed(true)}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* All four top-level views stay mounted at all times now (2026-09),
             toggled purely via CSS (.view-wrapper/.view-hidden, see app.css) --

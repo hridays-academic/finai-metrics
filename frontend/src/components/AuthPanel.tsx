@@ -95,7 +95,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
       <div className="settings-panel" role="dialog" aria-label="Account">
         <div className="settings-panel-header">
           <h2>
-            {user ? "Your Account" : mode === "signup" ? "Create Account" : mode === "forgot" ? "Reset Password" : "Sign In"}
+            {user ? "Your account" : mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset password" : "Welcome back"}
           </h2>
           <button className="icon-button" aria-label="Close" onClick={onClose}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -133,8 +133,8 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               )}
             </div>
 
-            <button type="button" className="search-button" onClick={handleLogOut}>
-              Sign Out
+            <button type="button" className="auth-signout" onClick={handleLogOut}>
+              Sign out
             </button>
           </>
         ) : mode === "forgot" ? (
@@ -143,10 +143,10 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="auth-mode-toggle" role="group" aria-label="Sign in or create an account">
               <button type="button" className={mode === "signin" ? "active" : ""} onClick={() => setMode("signin")}>
-                Sign In
+                Sign in
               </button>
               <button type="button" className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>
-                Sign Up
+                Sign up
               </button>
             </div>
 
@@ -193,7 +193,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
             </p>
 
             <button type="submit" className="search-button auth-submit" disabled={loading}>
-              {loading ? "..." : mode === "signup" ? "Create Account" : "Sign In"}
+              {loading ? "..." : mode === "signup" ? "Create account" : "Sign in"}
             </button>
 
             {/* Renders nothing if VITE_GOOGLE_CLIENT_ID isn't configured --

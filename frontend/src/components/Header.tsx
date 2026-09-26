@@ -13,20 +13,24 @@ export default function Header({ onOpenSettings, onOpenAuth, onGoHome, user }: H
     <header className="app-header">
       <Logo onClick={onGoHome} />
       <div className="app-header-actions">
-        <button
-          className="icon-button"
-          aria-label={user ? `Account -- signed in as ${user.name}` : "Sign in"}
-          title={user ? `Signed in as ${user.name}` : "Sign in"}
-          onClick={onOpenAuth}
-        >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M4.5 19.5c1.5-3.5 5-5 7.5-5s6 1.5 7.5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-          {/* Small dot when signed in -- same badge convention as the sidebar's
-              active-view highlight, just a corner indicator instead of a fill. */}
-          {user && <span className="icon-button-badge" aria-hidden="true" />}
-        </button>
+        {/* Signing in is optional (every feature works signed-out), so this
+            is a quiet labeled button rather than a banner -- an unlabeled
+            person glyph wasn't recognizable as "sign in". */}
+        {user ? (
+          <button
+            type="button"
+            className="header-avatar"
+            aria-label={`Account, signed in as ${user.name}`}
+            title={`Signed in as ${user.name}`}
+            onClick={onOpenAuth}
+          >
+            {(user.name.trim()[0] ?? user.email[0] ?? "?").toUpperCase()}
+          </button>
+        ) : (
+          <button type="button" className="header-signin" onClick={onOpenAuth}>
+            Sign in
+          </button>
+        )}
         <button
           className="icon-button"
           aria-label="Settings"
