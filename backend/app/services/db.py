@@ -10,7 +10,9 @@ specifically because its free tier needs no credit card and is permanent
 (not a trial) -- see CLAUDE.md.
 
 Uses psycopg (v3) directly (no ORM) -- same reasoning as the old SQLite
-setup: four small tables don't need one. `row_factory=dict_row` keeps the
+setup: nine small tables don't need one (four originally, plus the four
+data-cache/rate-limit tables the 2026-09 keyless migration added and
+`password_reset_tokens`). `row_factory=dict_row` keeps the
 `row["colname"]` access pattern every call site already used with
 sqlite3.Row, so only the `?` -> `%s` placeholder syntax and a couple of
 INSERT...RETURNING swaps (Postgres has no `cursor.lastrowid`) needed to
