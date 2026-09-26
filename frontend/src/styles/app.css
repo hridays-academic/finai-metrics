@@ -19,12 +19,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes bg-drift {
-  0% { background-position: 20% 30%; }
-  50% { background-position: 75% 55%; }
-  100% { background-position: 40% 80%; }
-}
-
 @keyframes shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
@@ -49,6 +43,110 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   height: 100vh;
 }
 
+/* ---------- Ambient background ----------
+   One fixed, full-viewport layer behind the whole app (header and sidebar
+   included -- they're translucent so it reads as one surface). Replaces a
+   background on .app-main that never moved: a later `background:`
+   shorthand reset its background-size to auto, so animating
+   background-position shifted it by 0px, and a second gradient on
+   .empty-state was hard-clipped into a visible rectangle on narrow screens.
+
+   Two rules keep this edge-free and cheap:
+   - Each glow's gradient is `circle closest-side`, so it reaches fully
+     transparent exactly at its own box's edge -- no box edge can ever
+     carry color, at any viewport size. Sized in vmax so it scales with
+     the screen.
+   - Only `transform` animates (compositor-only, no repaint per frame).
+     No filter: blur(), and nothing above it uses backdrop-filter, which
+     would force a re-blur every frame. */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+:root:not([data-mode="light"]) {
+  --glow-a: color-mix(in srgb, var(--accent) 15%, transparent);
+  --glow-b: color-mix(in srgb, var(--accent) 11%, transparent);
+  --glow-c: color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+:root[data-mode="light"] {
+  --glow-a: color-mix(in srgb, var(--accent) 10%, transparent);
+  --glow-b: color-mix(in srgb, var(--accent) 7%, transparent);
+  --glow-c: color-mix(in srgb, var(--accent-strong) 5%, transparent);
+}
+
+.app-backdrop-glow {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+/* Mid stop eases the falloff so the glow has no visible cone/ring. */
+.glow-a {
+  width: 80vmax;
+  height: 80vmax;
+  top: -30vmax;
+  left: -25vmax;
+  background: radial-gradient(circle closest-side, var(--glow-a) 0%,
+    color-mix(in srgb, var(--glow-a) 45%, transparent) 50%, transparent 100%);
+  animation-name: glow-drift-a;
+  animation-duration: 45s;
+}
+.glow-b {
+  width: 75vmax;
+  height: 75vmax;
+  bottom: -35vmax;
+  right: -25vmax;
+  background: radial-gradient(circle closest-side, var(--glow-b) 0%,
+    color-mix(in srgb, var(--glow-b) 45%, transparent) 50%, transparent 100%);
+  animation-name: glow-drift-b;
+  animation-duration: 60s;
+  animation-delay: -20s;
+}
+.glow-c {
+  width: 60vmax;
+  height: 60vmax;
+  top: 20%;
+  left: 25%;
+  background: radial-gradient(circle closest-side, var(--glow-c) 0%,
+    color-mix(in srgb, var(--glow-c) 45%, transparent) 50%, transparent 100%);
+  animation-name: glow-drift-c;
+  animation-duration: 75s;
+  animation-delay: -40s;
+}
+
+@keyframes glow-drift-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(14vmax, 10vmax, 0) scale(1.12); }
+}
+@keyframes glow-drift-b {
+  from { transform: translate3d(0, 0, 0) scale(1.08); }
+  to { transform: translate3d(-16vmax, -9vmax, 0) scale(0.95); }
+}
+@keyframes glow-drift-c {
+  from { transform: translate3d(-8vmax, 6vmax, 0) scale(0.95); }
+  to { transform: translate3d(10vmax, -8vmax, 0) scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-backdrop-glow {
+    animation: none;
+  }
+}
+
+/* Everything else paints above the backdrop. */
+.sidebar,
+.app-shell-content {
+  position: relative;
+  z-index: 1;
+}
+
 .app-shell-content {
   flex: 1;
   min-width: 0;
@@ -68,7 +166,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   gap: 0.5rem;
   padding: 0.85rem 0;
   border-right: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  background: color-mix(in srgb, var(--bg-surface) 85%, transparent);
 }
 
 .sidebar-icon-button {
@@ -118,7 +216,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   justify-content: space-between;
   padding: 0.75rem 1.5rem;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  background: color-mix(in srgb, var(--bg-surface) 85%, transparent);
   flex-shrink: 0;
 }
 
@@ -224,40 +322,6 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  background-size: 200% 200%;
-  animation: bg-drift 30s ease-in-out infinite alternate;
-  background-attachment: fixed;
-}
-
-/* A very faint radial wash instead of a flat solid fill -- the whole app
-   previously read as one uniform slab of --bg-app with no depth at all
-   behind the cards sitting on it. background-size larger than the
-   viewport + a slow animated background-position (not the gradient's own
-   coordinates, which don't reliably animate) gives it a slow, barely-
-   perceptible drift rather than a static glow -- "alive" without
-   anything that competes with real content for attention. Anchored to
-   .app-main itself (not the scrolling .metrics-pane underneath it), so
-   the drift is the only motion, never a jump on scroll.
-   Dark mode: --bg-hover is already dramatically lighter than --bg-app, so
-   a plain wash of it reads as a clear glow with no extra tinting needed. */
-:root:not([data-mode="light"]) .app-main {
-  background: radial-gradient(ellipse 1400px 900px at 50% 50%, var(--bg-hover) 0%, transparent 55%),
-    var(--bg-app);
-}
-
-/* Light mode: --bg-hover is only a hair off --bg-app (both near-white), so
-   the dark-mode recipe above was rendering as a completely flat, invisible
-   wash here -- confirmed live, not a hypothetical. Tinting the glow with
-   --accent itself (rather than a gray/white wash) gives it real, visible
-   contrast against the light background without darkening it into looking
-   dingy. */
-:root[data-mode="light"] .app-main {
-  background: radial-gradient(
-      ellipse 1400px 900px at 50% 50%,
-      color-mix(in srgb, var(--accent) 16%, transparent) 0%,
-      transparent 55%
-    ),
-    var(--bg-app);
 }
 
 /* All three top-level views (search, calculator, simulator) are mounted
@@ -437,10 +501,6 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
 
 /* ---------- Empty state ---------- */
 
-/* A soft off-center radial glow (not a flat void) behind the centered
-   content -- same "money-green identity" glow treatment used on the
-   marketing/gallery imagery, so the empty state reads as a deliberately
-   quiet moment rather than an unfinished page with nothing in it. */
 .empty-state {
   position: relative;
   display: flex;
@@ -452,7 +512,6 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   color: var(--text-tertiary);
   padding: 2rem;
   gap: 0.5rem;
-  background: radial-gradient(ellipse 640px 380px at 50% 42%, var(--bg-hover) 0%, transparent 70%);
 }
 
 .empty-state-icon {
