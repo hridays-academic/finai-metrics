@@ -33,7 +33,7 @@
    component needing its own :active rule -- excludes the small icon-only
    utility buttons (close/dismiss/arrow) via :not(), since a press-scale
    on a 20px glyph button reads as jittery rather than tactile. */
-button:not(.icon-button):not(.tapetide-gate-skip):active {
+button:not(.icon-button):not(.modal-skip):active {
   transform: scale(0.96);
 }
 
@@ -368,40 +368,6 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   max-width: 640px;
   flex: 1;
   min-width: 280px;
-}
-
-.search-source-reset {
-  font-size: 0.82rem;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
-/* Local estimate of Tapetide searches left today (see QuotaStatus) --
-   good/warning/bad reuse the same status palette as everywhere else in the
-   app, tightening as the estimate runs low. */
-.search-quota-counter {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 6px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.search-quota-counter.good {
-  color: var(--status-good);
-  background: var(--status-good-bg);
-}
-
-.search-quota-counter.warning {
-  color: var(--status-warning);
-  background: var(--status-warning-bg);
-}
-
-.search-quota-counter.bad {
-  color: var(--status-bad);
-  background: var(--status-bad-bg);
 }
 
 .search-input {
@@ -1510,11 +1476,11 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   margin-top: 0.15rem;
 }
 
-/* "Configure" button on the Tapetide API Key settings row -- small pill,
+/* Small action pill on a settings row (e.g. "Change") -- small pill,
    same outline style as .show-more-pill (this app's established "small
    secondary action" look) rather than the bold, full-width .search-button
    used for primary form submits elsewhere in this panel. */
-.settings-key-configure {
+.settings-row-action {
   flex-shrink: 0;
   padding: 0.4rem 0.85rem;
   border-radius: 8px;
@@ -1526,18 +1492,9 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
-.settings-key-configure:hover {
+.settings-row-action:hover {
   border-color: var(--accent);
   color: var(--text-primary);
-}
-
-.settings-key-form-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.settings-key-form-actions .auth-submit {
-  flex: 1;
 }
 
 /* ---------- Auth panel (sign in/up + activity, reuses .settings-panel/.settings-backdrop) ---------- */
@@ -1689,7 +1646,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
    (AuthPanel.tsx), directly
    above the submit button -- not a blocking checkbox/consent gate, but
    deliberately a notch more visible than this app's other small-muted-text
-   disclaimers (.calculator-disclaimer/.tapetide-gate-note): text-secondary
+   disclaimers (.calculator-disclaimer/.modal-note): text-secondary
    rather than text-tertiary, a touch larger, and a subtle background tint
    + padding so it reads as its own noticeable block rather than blending
    into the surrounding form chrome (confirmed live that the original
@@ -2420,9 +2377,9 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   margin-bottom: 1.3rem;
 }
 
-/* ---------- Tapetide bring-your-own-key gate ---------- */
+/* ---------- Shared modal (overlay + card) ---------- */
 
-.tapetide-gate-overlay {
+.modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -2437,7 +2394,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   animation: fade-in 0.2s ease;
 }
 
-.tapetide-gate-card {
+.modal-card {
   width: 100%;
   max-width: 520px;
   background: var(--bg-surface);
@@ -2447,27 +2404,27 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   padding: 2rem;
 }
 
-.tapetide-gate-card h2 {
+.modal-card h2 {
   margin: 0 0 0.75rem;
   font-size: 1.3rem;
   color: var(--text-primary);
 }
 
-.tapetide-gate-intro {
+.modal-intro {
   margin: 0 0 1.25rem;
   font-size: 0.92rem;
   color: var(--text-secondary);
   line-height: 1.55;
 }
 
-.tapetide-gate-card a {
+.modal-card a {
   color: var(--accent);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.tapetide-gate-video {
+.modal-video {
   display: block;
   width: 100%;
   margin: 0 0 1.25rem;
@@ -2476,7 +2433,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   background: #000;
 }
 
-.tapetide-gate-steps {
+.modal-steps {
   margin: 0 0 1.5rem;
   padding-left: 1.3rem;
   display: flex;
@@ -2490,7 +2447,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
 /* The "oval roundish box" -- input + submit button fused into one pill
    rather than two separate controls, so it reads as a single, obvious
    final step at the bottom of the guide. */
-.tapetide-gate-form {
+.modal-form {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -2501,11 +2458,11 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   transition: border-color 0.15s ease;
 }
 
-.tapetide-gate-form:focus-within {
+.modal-form:focus-within {
   border-color: var(--accent);
 }
 
-.tapetide-gate-form input {
+.modal-form input {
   flex: 1;
   min-width: 0;
   background: none;
@@ -2516,11 +2473,11 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   padding: 0.5rem 0;
 }
 
-.tapetide-gate-form input::placeholder {
+.modal-form input::placeholder {
   color: var(--text-tertiary);
 }
 
-.tapetide-gate-form button {
+.modal-form button {
   flex-shrink: 0;
   background: var(--accent);
   color: var(--accent-contrast);
@@ -2534,26 +2491,13 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   transition: background-color 0.15s ease;
 }
 
-.tapetide-gate-form button:hover:not(:disabled) {
+.modal-form button:hover:not(:disabled) {
   background: var(--accent-strong);
 }
 
-.tapetide-gate-form button:disabled {
+.modal-form button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.tapetide-gate-error {
-  margin-top: 0.75rem;
-  color: var(--status-bad);
-  font-size: 0.85rem;
-}
-
-.tapetide-gate-note {
-  margin: 1.25rem 0 0;
-  font-size: 0.74rem;
-  color: var(--text-tertiary);
-  line-height: 1.5;
 }
 
 /* Gate's "welcome" step -- Sign In / Sign Up side by side, same
@@ -2561,18 +2505,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
    actions, with "Continue without an account" below as a clearly
    secondary, de-emphasized escape hatch back to the original single-form
    flow. */
-.tapetide-gate-welcome-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin: 1.35rem 0 0.5rem;
-}
-
-.tapetide-gate-welcome-actions .search-button {
-  flex: 1;
-  text-align: center;
-}
-
-.tapetide-gate-skip {
+.modal-skip {
   display: block;
   width: 100%;
   margin-top: 0.9rem;
@@ -2589,7 +2522,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   transition: color 0.15s ease;
 }
 
-.tapetide-gate-skip:hover {
+.modal-skip:hover {
   color: var(--text-secondary);
 }
 
@@ -3028,9 +2961,8 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
 }
 
 /* ---------- Paper Trading: first-use tutorial ----------
-   Reuses .tapetide-gate-* wholesale (overlay/card/video/steps) -- same
-   modal pattern as the Tapetide key guide, not a new one invented for
-   this. */
+   Reuses the shared .modal-* overlay/card/video/steps styles rather than
+   inventing a second modal pattern. */
 
 .trading-tutorial-card {
   max-width: 560px;
@@ -3042,7 +2974,7 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
 }
 
 /* ---------- Paper Trading: market closed notice ----------
-   Reuses .tapetide-gate-* wholesale, same as the tutorial above -- only
+   Reuses .modal-* wholesale, same as the tutorial above -- only
    the "don't show again" checkbox row is genuinely new. */
 
 .market-status-card {
@@ -3228,9 +3160,8 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
   .content-grid {
     padding: 0.65rem 0.9rem 1rem;
   }
-  /* Lets the source-reset/quota-counter wrap onto their own line below the
-     input+button instead of squeezing next to a 280px-min-width form that
-     barely fits phone width on its own. */
+  /* A 280px-min-width form barely fits phone width on its own, so let it
+     take the full row. */
   .search-form {
     min-width: 100%;
   }
@@ -3258,10 +3189,10 @@ button:not(.icon-button):not(.tapetide-gate-skip):active {
     grid-template-columns: 1fr;
   }
 
-  .tapetide-gate-overlay {
+  .modal-overlay {
     padding: 1rem;
   }
-  .tapetide-gate-card {
+  .modal-card {
     padding: 1.35rem;
   }
 }

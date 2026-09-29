@@ -19,7 +19,7 @@ from app.models import AnalystConsensus, CompanyInfo, PricePoint, RawFinancials
 # comparing.
 #
 # Deliberately lives here rather than in a single provider: a rename is a
-# fact about the market, not about yfinance or Tapetide, and two unrelated
+# fact about the market, not about any one data provider, and two unrelated
 # places need it. A provider's name->ticker map needs it to resolve the old
 # name at all, and main.py's `_looks_like_the_query` guard needs it to avoid
 # rejecting its own correct answer -- searching "zomato" legitimately

@@ -10,8 +10,8 @@ python-dotenv==1.0.1
 # deployment (serverless functions have no persistent filesystem).
 psycopg[binary]==3.3.4
 
-# Encrypts a signed-in user's saved Tapetide key at rest (see
-# auth_service.py) -- Fernet symmetric encryption, stdlib has no equivalent.
+# Required by google-auth (Google Sign-In token verification below); pinned
+# here so deploys resolve the same version as local development.
 cryptography==49.0.0
 
 # Verifies Google Sign-In ID tokens server-side (see app/main.py's
@@ -19,9 +19,8 @@ cryptography==49.0.0
 # none of the prebuilt-wheel-availability risk pydantic-core/psycopg do.
 google-auth==2.56.2
 
-# yfinance is the automatic fallback provider (see app/main.py) used when
-# Tapetide's daily quota is exhausted, and the sole source for Paper
-# Trading's live quotes/intraday chart (see yfinance_provider.py). Bumped
+# yfinance is the app's only data provider (see app/main.py and
+# yfinance_provider.py), including Paper Trading's live quotes. Bumped
 # 0.2.51 -> 1.7.0 (2026-09) after the old pin started failing every real
 # call (KeyError on 'currentTradingPeriod' in fast_info, empty history()
 # results) -- Yahoo's API/auth flow had moved on since 0.2.51 was pinned.

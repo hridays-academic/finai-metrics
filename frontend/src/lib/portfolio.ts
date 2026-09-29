@@ -1,13 +1,12 @@
-// Pure localStorage storage for Paper Trading's virtual portfolio -- same
-// pattern as lib/tapetideKey.ts, and for the same underlying reason: this
+// Pure localStorage storage for Paper Trading's virtual portfolio -- because this
 // app has no per-user backend store that doesn't require being signed in
 // (see CLAUDE.md's "Accounts & activity tracking" -- sign-in is additive,
 // never a gate), and Paper Trading works fully signed-out like every other
 // feature. LIMITATION (explicitly not solved here, see CLAUDE.md's "Paper
 // Trading" section): this means the portfolio lives only in this browser --
 // it does not sync across devices/browsers, and clearing site data erases
-// it permanently. A signed-in-only backend store (a new Postgres table,
-// mirroring how a saved Tapetide key works) would fix that, but was left
+// it permanently. A signed-in-only backend store (a new Postgres table)
+// would fix that, but was left
 // as a deliberate follow-up rather than built now, since it would make
 // Paper Trading behave differently signed-in vs. not, unlike every other
 // feature in this app.

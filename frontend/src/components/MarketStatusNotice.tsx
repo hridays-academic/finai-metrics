@@ -20,7 +20,7 @@ function formatDisplayDate(dateStr: string): string {
 // moves -- not a bug (see CLAUDE.md's "Paper Trading" section, and the
 // real user report this answers: "it's Monday, why hasn't my price
 // changed?", which turned out to be a genuine holiday, not broken
-// polling). Reuses TradingTutorial.tsx's `.tapetide-gate-*` overlay/card
+// polling). Reuses TradingTutorial.tsx's `.modal-*` overlay/card
 // styling wholesale, same page, same modal pattern, not a new one.
 //
 // Both the holiday and weekend notices are dismissible for the current
@@ -50,17 +50,17 @@ export default function MarketStatusNotice({ visible }: { visible: boolean }) {
   }
 
   return (
-    <div className="tapetide-gate-overlay" role="dialog" aria-modal="true" aria-label="Market status">
-      <div className="tapetide-gate-card market-status-card">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Market status">
+      <div className="modal-card market-status-card">
         <h2>Markets are closed {holiday ? "today" : "for the weekend"}</h2>
         {holiday ? (
-          <p className="tapetide-gate-intro">
+          <p className="modal-intro">
             NSE and BSE are closed on {formatDisplayDate(dateStr)} for <strong>{holiday.name}</strong>. Prices
             won't move again until trading resumes -- that's expected, not a problem with the live-price
             polling here.
           </p>
         ) : (
-          <p className="tapetide-gate-intro">
+          <p className="modal-intro">
             NSE and BSE only trade Monday through Friday. Prices won't move again until markets reopen --
             that's expected, not a problem with the live-price polling here.
           </p>

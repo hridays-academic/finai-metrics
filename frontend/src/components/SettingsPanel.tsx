@@ -1,9 +1,5 @@
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import type { ThemeMode, ThemeName } from "../hooks/useTheme";
-import type { UserPublic } from "../lib/types";
-import { logIn, saveTapetideKeyToAccount, validateTapetideKey, ApiError } from "../lib/api";
-import { setAuthToken } from "../lib/auth";
-import { getTapetideKey, setTapetideKey } from "../lib/tapetideKey";
 import { getStartingBalance, setStartingBalance } from "../lib/portfolio";
 import CoinAmount from "./CoinAmount";
 
@@ -13,10 +9,6 @@ interface SettingsPanelProps {
   onSetThemeName: (theme: ThemeName) => void;
   onSetMode: (mode: ThemeMode) => void;
   onClose: () => void;
-  user: UserPublic | null;
-  // Called after the active Tapetide key changes, so App.tsx can refresh
-  // the quota counter (which only renders once a key exists at all).
-  onTapetideKeyChange: () => void;
 }
 
 // Preview swatch colors for the pickers below -- hand-kept, approximate
@@ -40,38 +32,13 @@ const MODE_OPTIONS: { value: ThemeMode; label: string; bg: string }[] = [
   { value: "light", label: "Light", bg: "#f5f5f5" },
 ];
 
-type KeyStep = "closed" | "verify" | "edit";
-
-// Adds, reveals or replaces the Tapetide key in use. (2026-09) This is now
-// the ONLY place a key is ever entered -- the blocking TapetideKeyGate that
-// used to demand one before the app would render at all is gone, since
-// yfinance covers everything keylessly (see CLAUDE.md's "Sourcing"
-// section). A key here is purely an optional upgrade, so this flow has to
-// handle "no key has ever been set" as a normal state, not just "swap an
-// existing one". Signed-in users must re-enter their password
-// first (reuses the existing /api/auth/login check purely as a "prove
-// it's still you" gate -- a deliberate extra step before overwriting a
-// saved credential, not because the session token itself is untrusted);
-// anonymous users skip straight to the key field, matching how the key
-// was never protected by anything beyond localStorage in the first place.
 export default function SettingsPanel({
   themeName,
   mode,
   onSetThemeName,
   onSetMode,
   onClose,
-  user,
-  onTapetideKeyChange,
 }: SettingsPanelProps) {
-  const [keyStep, setKeyStep] = useState<KeyStep>("closed");
-  const [password, setPassword] = useState("");
-  const [newKey, setNewKey] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const currentKey = getTapetideKey();
-  const maskedKey = currentKey ? `Ending in ...${currentKey.slice(-4)}` : "Not set";
-
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState(() => String(getStartingBalance()));
   const [startingBalance, setStartingBalanceState] = useState(getStartingBalance);
@@ -83,64 +50,6 @@ export default function SettingsPanel({
       setStartingBalanceState(parsed);
     }
     setEditingBalance(false);
-  }
-
-  function startConfigure() {
-    setError(null);
-    setPassword("");
-    setNewKey("");
-    // Google-only accounts (user.has_password === false) have nothing to
-    // verify a password against -- /api/auth/login would always fail for
-    // them, permanently locking them out of this flow if they landed on
-    // "verify" anyway. Skip straight to the key field, same as anonymous
-    // visitors get: the already-authenticated session stands in for that
-    // check in the Google case.
-    setKeyStep(user && user.has_password ? "verify" : "edit");
-  }
-
-  function cancelConfigure() {
-    setError(null);
-    setKeyStep("closed");
-  }
-
-  async function handleVerify(e: FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      // Re-checking the password via the normal login call -- a fresh,
-      // still-valid token comes back either way, so just keep using it.
-      const res = await logIn(user.email, password);
-      setAuthToken(res.token);
-      setKeyStep("edit");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Incorrect password.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleSaveKey(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = newKey.trim();
-    if (!trimmed) return;
-    setLoading(true);
-    setError(null);
-    try {
-      if (user) {
-        await saveTapetideKeyToAccount(trimmed);
-      } else {
-        await validateTapetideKey(trimmed);
-      }
-      setTapetideKey(trimmed);
-      onTapetideKeyChange();
-      setKeyStep("closed");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't verify that key. Please try again.");
-    } finally {
-      setLoading(false);
-    }
   }
 
   return (
@@ -197,66 +106,6 @@ export default function SettingsPanel({
 
         <div className="settings-row">
           <div>
-            <div className="settings-row-label">Tapetide API Key</div>
-            <div className="settings-row-sub">{maskedKey}</div>
-          </div>
-          {keyStep === "closed" && (
-            <button type="button" className="settings-key-configure" onClick={startConfigure}>
-              Configure
-            </button>
-          )}
-        </div>
-
-        {keyStep === "verify" && (
-          <form className="auth-form" onSubmit={handleVerify}>
-            <label className="auth-field">
-              <span>Confirm your password to continue</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoFocus
-              />
-            </label>
-            {error && <div className="search-error">{error}</div>}
-            <div className="settings-key-form-actions">
-              <button type="submit" className="search-button auth-submit" disabled={loading}>
-                {loading ? "..." : "Verify"}
-              </button>
-              <button type="button" className="tapetide-gate-skip" onClick={cancelConfigure}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-
-        {keyStep === "edit" && (
-          <form className="tapetide-gate-form" onSubmit={handleSaveKey}>
-            <input
-              type="text"
-              placeholder="Paste new API key"
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value)}
-              aria-label="New Tapetide API key"
-              autoFocus
-            />
-            <button type="submit" disabled={loading || !newKey.trim()}>
-              {loading ? "Checking..." : "Save"}
-            </button>
-          </form>
-        )}
-        {keyStep === "edit" && (
-          <>
-            {error && <div className="tapetide-gate-error">{error}</div>}
-            <button type="button" className="tapetide-gate-skip" onClick={cancelConfigure}>
-              Cancel
-            </button>
-          </>
-        )}
-
-        <div className="settings-row">
-          <div>
             <div className="settings-row-label">Paper Trading starting balance</div>
             <div className="settings-row-sub">
               <CoinAmount value={startingBalance} /> -- applies next time you reset your portfolio, or on
@@ -264,14 +113,14 @@ export default function SettingsPanel({
             </div>
           </div>
           {!editingBalance && (
-            <button type="button" className="settings-key-configure" onClick={() => setEditingBalance(true)}>
+            <button type="button" className="settings-row-action" onClick={() => setEditingBalance(true)}>
               Change
             </button>
           )}
         </div>
         {editingBalance && (
           <form
-            className="tapetide-gate-form"
+            className="modal-form"
             onSubmit={(e) => {
               e.preventDefault();
               saveStartingBalance();

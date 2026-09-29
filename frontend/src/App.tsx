@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Header from "./components/Header";
 import SettingsPanel from "./components/SettingsPanel";
 import AuthPanel from "./components/AuthPanel";
@@ -10,10 +10,9 @@ import StockMarketSimulator from "./components/StockMarketSimulator";
 import PaperTrading from "./components/PaperTrading";
 import ResetPasswordPanel from "./components/ResetPasswordPanel";
 import { useTheme } from "./hooks/useTheme";
-import { fetchCompany, fetchQuota, fetchMe, ApiError } from "./lib/api";
+import { fetchCompany, fetchMe, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
-import { getTapetideKey, setTapetideKey } from "./lib/tapetideKey";
-import type { CompanyFinancialsResponse, QuotaStatus, UserPublic } from "./lib/types";
+import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
 
 export default function App() {
   const { theme, themeName, mode, setThemeName, setMode } = useTheme();
@@ -35,101 +34,39 @@ export default function App() {
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Local estimate of Tapetide's daily quota (see backend's QuotaStatus) --
-  // fetched on mount and refreshed after every search/price-history load, so
-  // the "~N searches left today" counter next to the search box stays current.
-  const [quota, setQuota] = useState<QuotaStatus | null>(null);
-  // ISO timestamp for when Tapetide's daily quota resets, learned from
-  // whichever request last saw its quota-exceeded message (analyst consensus
-  // or price history silently falling back to yfinance).
-  const [tapetideResetAt, setTapetideResetAt] = useState<string | null>(null);
   // Bumped on "go home" to force CompanySearch to remount, clearing its
   // internal (uncontrolled) search-box text along with everything else.
   const [homeKey, setHomeKey] = useState(0);
 
-  // A search fires TWO quota refreshes -- one right after /api/company
-  // resolves (handleSearch's finally, below), and a second, more-accurate
-  // one once /api/price-history finishes (handleTapetideResetAtChange,
-  // via PriceChart -- price history is 3 of the search's 5 Tapetide
-  // calls, so the first refresh reflects an incomplete count). Nothing
-  // guarantees the second call's response arrives after the first's, so
-  // without this guard the *earlier*, less-accurate response could land
-  // second and silently overwrite the correct one -- a real, intermittently
-  // reproducing bug caught via live testing, not a hypothetical. Only ever
-  // apply the response from the most recently *initiated* call.
-  const quotaRequestId = useRef(0);
-
-  function refreshQuota() {
-    // Quota is a Tapetide concept, and Tapetide is optional now (see
-    // CLAUDE.md's "Sourcing" section) -- /api/quota deliberately still 400s
-    // without a key, since there's no meaningful quota to report. Bailing
-    // out here rather than letting that 400 happen keeps a keyless visitor
-    // (the common case now) from firing a pointless failing request on
-    // mount and after every single search. `quota` staying null is also
-    // exactly what makes QuotaCounter not render at its three call sites,
-    // which all guard on it.
-    if (!getTapetideKey()) {
-      setQuota(null);
-      return;
-    }
-    const requestId = ++quotaRequestId.current;
-    fetchQuota()
-      .then((data) => {
-        if (requestId === quotaRequestId.current) setQuota(data);
-      })
-      .catch(() => {
-        // Best-effort -- the counter just doesn't render if this fails.
-      });
-  }
-
   useEffect(() => {
-    refreshQuota();
+    // The app used to keep a user's own Tapetide API key here. That
+    // integration is gone; delete any key a previous version left behind.
+    try {
+      localStorage.removeItem("finai_tapetide_key");
+    } catch {
+      // storage unavailable (e.g. private mode) -- nothing to clean up
+    }
     // Restore a signed-in session from localStorage's token on page load --
     // fetchMe() returns null (not an error) for a missing/expired token, so
     // this is safe to call unconditionally rather than checking the token
     // exists first.
     if (getAuthToken()) {
-      fetchMe().then((u) => {
-        setUser(u);
-        // Only adopt the account's saved key if this browser doesn't
-        // already have one -- never clobber a key someone's actively
-        // using locally just because they happen to also be signed into
-        // an account with a different saved key. Optional now that the
-        // app works keylessly, but still worth doing: an account that
-        // saved a key should keep getting Tapetide's richer data without
-        // re-entering it on every device.
-        if (u?.tapetide_key && !getTapetideKey()) {
-          setTapetideKey(u.tapetide_key);
-          // The mount-time refreshQuota() above ran before this resolved
-          // and bailed out (no key yet), so ask again now that there is
-          // one -- otherwise the counter wouldn't appear until the next
-          // search.
-          refreshQuota();
-        }
-      });
+      fetchMe().then(setUser);
     }
   }, []);
 
   async function handleSearch(query: string) {
     setLoading(true);
     setError(null);
-    setTapetideResetAt(null);
     try {
       const data = await fetchCompany(query);
       setCompany(data);
-      if (data.tapetide_reset_at) setTapetideResetAt(data.tapetide_reset_at);
     } catch (err) {
       setCompany(null);
       setError(err instanceof ApiError ? err.message : "Failed to fetch company data.");
     } finally {
       setLoading(false);
-      refreshQuota();
     }
-  }
-
-  function handleTapetideResetAtChange(resetAt: string | null) {
-    if (resetAt) setTapetideResetAt(resetAt);
-    refreshQuota();
   }
 
   // Clicking the logo goes back to the empty state, same as a fresh page
@@ -139,7 +76,6 @@ export default function App() {
     setCompany(null);
     setLoading(false);
     setError(null);
-    setTapetideResetAt(null);
     setHomeKey((k) => k + 1);
   }
 
@@ -182,18 +118,12 @@ export default function App() {
               onSearch={handleSearch}
               loading={loading}
               error={error}
-              quota={quota}
-              tapetideResetAt={tapetideResetAt}
             />
 
             <div className="content-grid">
               <div className="metrics-pane">
                 {company ? (
-                  <MetricsDashboard
-                    data={company}
-                    theme={theme}
-                    onTapetideResetAtChange={handleTapetideResetAtChange}
-                  />
+                  <MetricsDashboard data={company} theme={theme} />
                 ) : (
                   <div className="empty-state">
                     {/* A real magnifying glass -- the circle IS the lens
@@ -227,11 +157,11 @@ export default function App() {
           </div>
 
           <div className={`view-wrapper ${view === "calculator" ? "" : "view-hidden"}`}>
-            <ReturnCalculator quota={quota} onQuotaSpent={refreshQuota} theme={theme} />
+            <ReturnCalculator theme={theme} />
           </div>
 
           <div className={`view-wrapper ${view === "simulator" ? "" : "view-hidden"}`}>
-            <StockMarketSimulator quota={quota} onQuotaSpent={refreshQuota} theme={theme} />
+            <StockMarketSimulator theme={theme} />
           </div>
 
           <div className={`view-wrapper ${view === "trading" ? "" : "view-hidden"}`}>
@@ -247,8 +177,6 @@ export default function App() {
           onSetThemeName={setThemeName}
           onSetMode={setMode}
           onClose={() => setSettingsOpen(false)}
-          user={user}
-          onTapetideKeyChange={refreshQuota}
         />
       )}
 
@@ -278,17 +206,6 @@ export default function App() {
         />
       )}
 
-      {/* (2026-09) TapetideKeyGate used to render here -- a full-screen,
-          blocking overlay that made every visitor sign up at tapetide.com
-          and paste an API key before they could see anything at all. It's
-          gone, along with the component: yfinance is the primary data
-          source now and needs no key (see CLAUDE.md's "Sourcing" section),
-          so visitors land straight on a working app. A Tapetide key is
-          still fully supported as an optional upgrade -- SettingsPanel.tsx
-          owns that flow now. Its `.tapetide-gate-*` CSS is deliberately
-          KEPT in app.css: six other components reuse those overlay/card
-          styles (TradingTutorial, MarketStatusNotice, ResetPasswordPanel,
-          ForgotPasswordForm, PaperTrading, SettingsPanel). */}
     </div>
   );
 }

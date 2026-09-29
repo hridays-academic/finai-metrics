@@ -2,12 +2,8 @@
 
 export type MetricStatus = "good" | "warning" | "bad" | "neutral";
 
-// Which provider served the price/analyst-consensus portion of a response.
-// Fundamentals always come from Bharat-SM-Data now (see CLAUDE.md's "Hybrid
-// sourcing" section) -- not a per-response variable worth reporting, so this
-// only covers the two providers with a fallback relationship: Tapetide
-// (primary) and yfinance (fallback on Tapetide quota exhaustion).
-export type DataSourceName = "tapetide" | "yfinance";
+// Which provider served a response. yfinance is the only data provider.
+export type DataSourceName = "yfinance";
 
 export interface Metric {
   key: string;
@@ -92,11 +88,8 @@ export interface CompanyFinancialsResponse {
   metric_groups: MetricGroup[];
   health_snapshot: HealthSnapshot;
   analyst_consensus: AnalystConsensus | null;
-  // Which source served analyst_consensus -- null if it was never
-  // attempted/unavailable. info/raw are NOT reported here since they always
-  // come from Bharat-SM-Data now.
+  // Which source served analyst_consensus -- null if unavailable.
   consensus_source: DataSourceName | null;
-  tapetide_reset_at: string | null; // ISO 8601, set only when we just saw Tapetide's quota message
 }
 
 export interface PricePoint {
@@ -114,15 +107,6 @@ export interface PriceHistoryResponse {
   points: PricePoint[]; // ~5yr weekly
   recent_points: PricePoint[]; // ~6-7mo daily
   active_source: DataSourceName;
-  tapetide_reset_at: string | null;
-}
-
-export interface QuotaStatus {
-  tapetide_calls_used_today: number;
-  tapetide_calls_remaining_estimate: number;
-  tapetide_calls_per_search: number;
-  tapetide_searches_remaining_estimate: number;
-  tapetide_reset_at: string; // next local midnight IST
 }
 
 export interface UserPublic {
@@ -130,15 +114,8 @@ export interface UserPublic {
   email: string;
   name: string;
   created_at: string;
-  // False for a Google-only account (see api.ts's loginWithGoogle) --
-  // SettingsPanel.tsx uses this to skip the password-verification step
-  // before reconfiguring a saved Tapetide key, since that check would
-  // otherwise always fail for an account with no password to verify.
+  // False for a Google-only account (see api.ts's loginWithGoogle).
   has_password: boolean;
-  // The account's saved Tapetide key, decrypted and ready to use -- null if
-  // this account never saved one, which is the common case now that a key
-  // is optional. App.tsx adopts it on sign-in; SettingsPanel.tsx sets it.
-  tapetide_key: string | null;
 }
 
 export interface AuthResponse {
@@ -147,10 +124,7 @@ export interface AuthResponse {
 }
 
 // ---------- Paper Trading ----------
-// All three of these are served by yfinance only, never Tapetide -- see
-// CLAUDE.md's "Paper Trading" section for why (no live-quote/intraday
-// capability on Tapetide at all, and its 50-calls/day-per-key quota
-// couldn't support polling regardless). `is_delayed`/`source` are read by
+// All three of these are served by yfinance. `is_delayed`/`source` are read by
 // the UI to render the "Delayed" badge -- always true/"yfinance" today,
 // but a future real-time provider swap on the backend would flip these
 // with no frontend change needed.

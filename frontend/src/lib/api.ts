@@ -5,13 +5,11 @@ import type {
   IntradayHistoryResponse,
   LiveQuote,
   PriceHistoryResponse,
-  QuotaStatus,
   TradingRange,
   TradingSymbolInfo,
   UserPublic,
 } from "./types";
 import { getAuthToken } from "./auth";
-import { getTapetideKey } from "./tapetideKey";
 
 // Vite's dev server proxies /api to the FastAPI backend (see vite.config.ts),
 // and in production this should be served behind the same origin/reverse
@@ -27,43 +25,30 @@ function authHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// The user's own Tapetide API key, if they've added one in Settings --
-// every endpoint that can use Tapetide reads this header. Usually absent:
-// yfinance is the primary source and needs no key (see CLAUDE.md's
-// "Sourcing" section), so the backend treats this as an optional upgrade
-// and falls back to its own cached yfinance data when it's missing. Safe to
-// send unconditionally either way, same as authHeaders() above.
-function tapetideHeaders(): HeadersInit {
-  const key = getTapetideKey();
-  return key ? { "X-Tapetide-Token": key } : {};
-}
-
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public tapetideResetAt: string | null = null) {
+  constructor(message: string, public status: number) {
     super(message);
   }
 }
 
-async function parseErrorDetail(res: Response): Promise<{ message: string; resetAt: string | null }> {
+async function parseErrorDetail(res: Response): Promise<{ message: string }> {
   try {
     const body = await res.json();
-    if (typeof body.detail === "string") return { message: body.detail, resetAt: null };
-    if (body.detail && typeof body.detail.message === "string") {
-      return { message: body.detail.message, resetAt: body.detail.reset_at ?? null };
-    }
+    if (typeof body.detail === "string") return { message: body.detail };
+    if (body.detail && typeof body.detail.message === "string") return { message: body.detail.message };
   } catch {
     // response wasn't JSON -- fall through to generic message
   }
-  return { message: "Something went wrong. Please try again.", resetAt: null };
+  return { message: "Something went wrong. Please try again." };
 }
 
 export async function fetchCompany(query: string): Promise<CompanyFinancialsResponse> {
   const res = await fetch(`${BASE_URL}/company/${encodeURIComponent(query)}`, {
-    headers: { ...authHeaders(), ...tapetideHeaders() },
+    headers: authHeaders(),
   });
   if (!res.ok) {
-    const { message, resetAt } = await parseErrorDetail(res);
-    throw new ApiError(message, res.status, resetAt);
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
   }
   return res.json();
 }
@@ -76,9 +61,9 @@ export async function fetchCompany(query: string): Promise<CompanyFinancialsResp
 // be-discarded) request can already be fully sent to -- and started
 // processing on -- the server before the abort signal has any chance to
 // stop it, since the two invocations happen synchronously, back-to-back,
-// while a real network round-trip takes at least a few ms. For an endpoint
-// that spends real, metered, per-user Tapetide quota per call, that raciness
-// isn't good enough -- deduping by symbol is deterministic instead: the
+// while a real network round-trip takes at least a few ms, and each request
+// that does get through costs an upstream fetch on a cache miss. Deduping by
+// symbol is deterministic instead: the
 // second caller just awaits the first's already-in-flight promise, so
 // exactly one real request goes out no matter how many times this fires
 // for the same symbol in quick succession.
@@ -89,12 +74,10 @@ export async function fetchPriceHistory(symbol: string): Promise<PriceHistoryRes
   if (existing) return existing;
 
   const promise = (async () => {
-    const res = await fetch(`${BASE_URL}/price-history/${encodeURIComponent(symbol)}`, {
-      headers: tapetideHeaders(),
-    });
+    const res = await fetch(`${BASE_URL}/price-history/${encodeURIComponent(symbol)}`);
     if (!res.ok) {
-      const { message, resetAt } = await parseErrorDetail(res);
-      throw new ApiError(message, res.status, resetAt);
+      const { message } = await parseErrorDetail(res);
+      throw new ApiError(message, res.status);
     }
     return res.json();
   })();
@@ -108,14 +91,10 @@ export async function fetchPriceHistory(symbol: string): Promise<PriceHistoryRes
 }
 
 // ---------- Paper Trading ----------
-// Deliberately no tapetideHeaders()/authHeaders() on any of these -- see
-// CLAUDE.md's "Paper Trading" section: these three endpoints are entirely
-// yfinance-backed and need neither a Tapetide key nor a signed-in session
-// (portfolio state itself never touches the backend at all, see
-// lib/portfolio.ts). As of 2026-09 that's no longer the exception it once
-// was: /api/company and /api/price-history are keyless too, so these three
-// are simply consistent with the rest of the app rather than a carve-out
-// from a key gate that no longer exists.
+// No authHeaders() on any of these -- see CLAUDE.md's "Paper Trading"
+// section: these three endpoints are entirely yfinance-backed and don't need
+// a signed-in session (portfolio state itself never touches the backend at
+// all, see lib/portfolio.ts).
 
 export async function searchTradingSymbol(query: string): Promise<TradingSymbolInfo> {
   const res = await fetch(`${BASE_URL}/trading/search/${encodeURIComponent(query)}`);
@@ -142,44 +121,6 @@ export async function fetchTradingHistory(
   const res = await fetch(
     `${BASE_URL}/trading/history/${encodeURIComponent(symbol)}?range=${range}`
   );
-  if (!res.ok) {
-    const { message } = await parseErrorDetail(res);
-    throw new ApiError(message, res.status);
-  }
-  return res.json();
-}
-
-export async function fetchQuota(): Promise<QuotaStatus> {
-  const res = await fetch(`${BASE_URL}/quota`, { headers: tapetideHeaders() });
-  if (!res.ok) {
-    const { message, resetAt } = await parseErrorDetail(res);
-    throw new ApiError(message, res.status, resetAt);
-  }
-  return res.json();
-}
-
-// Called from SettingsPanel.tsx with a NOT-yet-stored key (the user just
-// typed it in) -- explicit param rather than reading localStorage, since
-// the whole point is verifying it before it's saved anywhere.
-export async function validateTapetideKey(key: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/tapetide/validate`, { headers: { "X-Tapetide-Token": key } });
-  if (!res.ok) {
-    const { message } = await parseErrorDetail(res);
-    throw new ApiError(message, res.status);
-  }
-}
-
-// Called from SettingsPanel.tsx's key-entry step when the visitor is
-// signed in -- validates the key (same check as validateTapetideKey above)
-// AND persists it to their account so a future sign-in skips this step.
-// Requires auth; the anonymous ("continue without an account") path uses
-// validateTapetideKey instead, which never saves anything.
-export async function saveTapetideKeyToAccount(key: string): Promise<UserPublic> {
-  const res = await fetch(`${BASE_URL}/auth/tapetide-key`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ key }),
-  });
   if (!res.ok) {
     const { message } = await parseErrorDetail(res);
     throw new ApiError(message, res.status);

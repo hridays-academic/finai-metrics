@@ -2,7 +2,7 @@
 Wraps the Moonshot AI (Kimi) API for the in-app chat assistant. Active by
 default (see app/main.py) -- app/services/deepseek_service.py and
 app/services/claude_service.py are kept as alternate implementations (same
-swap pattern as the data providers, TapetideProvider/YFinanceProvider).
+swap pattern as FinancialDataProvider).
 
 Moonshot's Chat Completions API is OpenAI-compatible plain JSON over HTTPS
 (https://platform.kimi.ai/docs/api/chat) -- no SDK required, just `requests`.

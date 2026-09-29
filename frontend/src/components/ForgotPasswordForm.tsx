@@ -8,9 +8,8 @@ interface ForgotPasswordFormProps {
   onBack: () => void;
 }
 
-// Used by AuthPanel.tsx's sign-in form. Written as a shared component
-// because a second sign-in form (the removed TapetideKeyGate's) used it
-// too; kept that way since it's self-contained and costs nothing.
+// Used by AuthPanel.tsx's sign-in form. Self-contained, so it stays its own
+// component.
 export default function ForgotPasswordForm({ initialEmail, onBack }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
@@ -40,7 +39,7 @@ export default function ForgotPasswordForm({ initialEmail, onBack }: ForgotPassw
           If an account exists for <strong>{email}</strong>, a password reset link has been sent --
           it's valid for 30 minutes. Check your inbox (and spam folder).
         </p>
-        <button type="button" className="tapetide-gate-skip" onClick={onBack}>
+        <button type="button" className="modal-skip" onClick={onBack}>
           Back to sign in
         </button>
       </div>
@@ -62,7 +61,7 @@ export default function ForgotPasswordForm({ initialEmail, onBack }: ForgotPassw
       <button type="submit" className="search-button auth-submit" disabled={loading || !email.trim()}>
         {loading ? "..." : "Send reset link"}
       </button>
-      <button type="button" className="tapetide-gate-skip" onClick={onBack}>
+      <button type="button" className="modal-skip" onClick={onBack}>
         Back to sign in
       </button>
     </form>

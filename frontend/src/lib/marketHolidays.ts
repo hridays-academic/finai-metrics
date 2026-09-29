@@ -1,5 +1,5 @@
 // NSE/BSE's published trading-holiday calendar, hand-maintained rather
-// than looked up live -- neither Tapetide nor yfinance expose an "is the
+// than looked up live -- yfinance doesn't expose an "is the
 // market open today, and why not" endpoint, and there's no free, reliable
 // holiday-calendar API worth adding a dependency for one static list that
 // only changes once a year. This exists because a closed market makes

@@ -1,15 +1,12 @@
 """
 `FinancialDataProvider` implementation backed by yfinance.
 
-**This is the PRIMARY data source (2026-09).** It serves fundamentals,
-price history and analyst consensus for `/api/company` and
-`/api/price-history`, plus Paper Trading's live quote polling and intraday
-chart (`get_live_quote`/`get_intraday_history`, which have no Tapetide
-equivalent at all). `TapetideProvider` is now an optional, per-user
-bring-your-own-key upgrade tried first only when a visitor supplied a key
--- see CLAUDE.md's "Keyless, cache-first sourcing" section. It's still
-referred to as `fallback_provider` in main.py for historical reasons;
-that name predates the switch.
+**This is the app's only data source** (Tapetide was removed 2026-09). It
+serves fundamentals, price history and analyst consensus for `/api/company`
+and `/api/price-history`, plus Paper Trading's live quote polling and
+intraday chart (`get_live_quote`/`get_intraday_history`). main.py holds one
+module-level instance as `provider` -- see CLAUDE.md's "Keyless,
+cache-first sourcing" section.
 
 Being free and key-less is precisely why this can be primary: it's what
 lets a visitor use the app without signing up for anything. The trade-off
@@ -40,10 +37,9 @@ from app.services.data_provider import (
 )
 
 # yfinance's own period/interval vocabulary for each of Paper Trading's
-# selectable ranges. Longer ranges use coarser bars for the same reason
-# TapetideProvider's 5yr chart is weekly, not daily (see its docstring) --
-# a genuinely intraday-resolution 5-year series would be enormous and
-# unreadable at that zoom level anyway. "1D"/"1W" use real intraday bars --
+# selectable ranges. Longer ranges use coarser bars -- a genuinely
+# intraday-resolution 5-year series would be enormous and unreadable at
+# that zoom level anyway. "1D"/"1W" use real intraday bars --
 # the only ranges here that are, since day/week-level detail is the whole
 # point of picking them. Yahoo limits intraday-interval history to the
 # trailing ~60 days regardless of period requested, which is why "1W" asks
@@ -294,10 +290,8 @@ class YFinanceProvider(FinancialDataProvider):
         )
 
     def get_price_history(self, symbol: str) -> list[PricePoint]:
-        # Weekly (not daily) to match TapetideProvider's granularity -- see
-        # its get_price_history docstring for why weekly is the deliberate
-        # choice for a 5-year chart, not just a workaround for a size cap
-        # yfinance doesn't even have.
+        # Weekly (not daily) on purpose: ~260 points reads cleanly on a
+        # 5-year chart, where daily bars would be ~1,250 points of noise.
         try:
             hist = yf.Ticker(symbol).history(period="5y", interval="1wk")
         except Exception as exc:
@@ -305,9 +299,8 @@ class YFinanceProvider(FinancialDataProvider):
         return _history_to_points(hist)
 
     def get_recent_price_history(self, symbol: str) -> list[PricePoint]:
-        # Daily resolution, for the chart's 1D/5D views -- see
-        # TapetideProvider.get_recent_price_history for why this is a
-        # separate fetch rather than just slicing the weekly series.
+        # Daily resolution, for the chart's 1D/5D views -- a separate fetch
+        # because weekly bars are too sparse to slice a few days out of.
         try:
             hist = yf.Ticker(symbol).history(period="6mo", interval="1d")
         except Exception as exc:
@@ -362,13 +355,11 @@ class YFinanceProvider(FinancialDataProvider):
         )
 
     # ---------- Paper Trading: live quote + intraday chart ----------
-    # Neither method is part of FinancialDataProvider's ABC -- Tapetide has
-    # no equivalent capability at all (no live tick data, no intraday bars),
-    # so forcing a shared abstract method here would just mean one
-    # implementation permanently raising NotImplementedError. Paper Trading
-    # calls these two directly on `fallback_provider` (main.py's existing
-    # module-level YFinanceProvider singleton) instead of going through the
-    # ABC. A future real-time provider (Zerodha Kite Connect / Upstox --
+    # Neither method is part of FinancialDataProvider's ABC -- most data
+    # providers have no live tick data or intraday bars, so a shared
+    # abstract method would mean implementations permanently raising
+    # NotImplementedError. Paper Trading calls these two directly on
+    # main.py's module-level `provider` instead of going through the ABC. A future real-time provider (Zerodha Kite Connect / Upstox --
     # both require a paid account + broker API key, a real cost decision to
     # make explicitly with the user, not default into) should implement the
     # same two method signatures so main.py's trading endpoints only need

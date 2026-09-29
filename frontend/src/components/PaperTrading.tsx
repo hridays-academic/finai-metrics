@@ -503,7 +503,7 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
               <button type="button" className="trading-reset-confirm-btn" onClick={handleReset}>
                 Confirm reset
               </button>
-              <button type="button" className="tapetide-gate-skip" onClick={() => setConfirmingReset(false)}>
+              <button type="button" className="modal-skip" onClick={() => setConfirmingReset(false)}>
                 Cancel
               </button>
             </div>

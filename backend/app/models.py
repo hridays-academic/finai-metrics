@@ -42,7 +42,7 @@ class RawFinancials(BaseModel):
     # Optional direct figure for ROCE's denominator (Total Assets - Current
     # Liabilities). Only needed when a provider can't supply current
     # liabilities separately but does report/imply capital employed some
-    # other way -- see e.g. TapetideProvider. Most providers leave this
+    # other way. Most providers leave this
     # unset and let metrics.py derive it from total_assets/current_liabilities.
     capital_employed: Optional[float] = None
 
@@ -78,14 +78,11 @@ class MetricStatus(str, Enum):
 
 
 class DataSourceName(str, Enum):
-    """Which provider served a given piece of data -- yfinance (the primary
-    source since 2026-09, free and key-less) or Tapetide (an optional
-    per-user bring-your-own-key upgrade, tried first only when a visitor
-    supplied a key). See CLAUDE.md's "Keyless, cache-first sourcing"
-    section. Bharat-SM-Data is deliberately not a member: it's been unwired
-    since Tickertape IP-blocked the app's Vercel deployment."""
+    """Which provider served a given piece of data. yfinance is the only one
+    (Tapetide was removed 2026-09); kept as an enum so a future provider is
+    an additive change. Bharat-SM-Data is deliberately not a member: it's
+    been unwired since Tickertape IP-blocked the app's Vercel deployment."""
 
-    TAPETIDE = "tapetide"
     YFINANCE = "yfinance"
 
 
@@ -149,15 +146,8 @@ class CompanyFinancialsResponse(BaseModel):
     metric_groups: list[MetricGroup]
     health_snapshot: HealthSnapshot
     analyst_consensus: Optional[AnalystConsensus] = None
-    # Which source served analyst_consensus (Tapetide or its yfinance
-    # fallback) -- None if it was never attempted/unavailable. info/raw are
-    # NOT reported here since they always come from Bharat-SM-Data now.
+    # Which source served analyst_consensus -- None if unavailable.
     consensus_source: Optional[DataSourceName] = None
-    # ISO 8601 timestamp for when Tapetide's daily quota is expected to
-    # reset -- the next local midnight IST, per Tapetide's documented daily
-    # reset cadence (not dependent on having actually seen a quota-exceeded
-    # message first).
-    tapetide_reset_at: Optional[str] = None
     # (2026-09) When the fundamentals in this response were actually fetched
     # upstream, ISO 8601. Set only when they came from the shared Postgres
     # cache (see fundamentals_cache.py) -- None means they were fetched live
@@ -186,26 +176,13 @@ class PriceHistoryResponse(BaseModel):
     currency: str = "INR"
     points: list[PricePoint]  # oldest first, ~5yr weekly -- powers the 1Y/3Y/5Y views
     recent_points: list[PricePoint] = []  # oldest first, ~6-7mo daily -- powers the 1D/5D views
-    active_source: DataSourceName = DataSourceName.TAPETIDE  # which source served this price data
-    tapetide_reset_at: Optional[str] = None  # see CompanyFinancialsResponse.tapetide_reset_at
+    active_source: DataSourceName = DataSourceName.YFINANCE  # which source served this price data
     # (2026-09) Same meaning as CompanyFinancialsResponse's pair: when this
     # series was actually fetched upstream (None = fetched live during this
     # request), and whether it's being served past its freshness window
     # because upstream was unreachable. Additive with defaults.
     history_as_of: Optional[str] = None
     is_stale: bool = False
-
-
-class QuotaStatus(BaseModel):
-    """Powers the "searches remaining today" counter next to the search bar.
-    A local estimate (see TapetideProvider.get_quota_status) -- we have no
-    way to read Tapetide's own server-side counter directly."""
-
-    tapetide_calls_used_today: int
-    tapetide_calls_remaining_estimate: int
-    tapetide_calls_per_search: int  # recount from main.py's actual call sites if this drifts
-    tapetide_searches_remaining_estimate: int
-    tapetide_reset_at: str  # next local midnight IST
 
 
 class ChatMessage(BaseModel):
@@ -245,32 +222,19 @@ class ResetPasswordRequest(BaseModel):
 
 class UserPublic(BaseModel):
     """Never includes password_hash/password_salt -- those never leave
-    auth_service.py's DB layer. `tapetide_key` is the account's saved
-    Tapetide key, decrypted and ready to use (None if this account never
-    saved one) -- see auth_service.py's get_tapetide_key. Sending the
-    decrypted key back to its own owner is fine: anyone with a valid
-    session token for this account already has the same trust level.
-    `has_password` is False for a Google-only account (see
-    login_with_google) -- SettingsPanel.tsx uses it to skip the password-
-    verification step before reconfiguring a saved Tapetide key, since
-    that check would otherwise always fail for an account with no password
-    to verify."""
+    auth_service.py's DB layer. `has_password` is False for a Google-only
+    account (see login_with_google)."""
 
     id: int
     email: str
     name: str
     created_at: str
     has_password: bool
-    tapetide_key: Optional[str] = None
 
 
 class AuthResponse(BaseModel):
     token: str
     user: UserPublic
-
-
-class TapetideKeyRequest(BaseModel):
-    key: str
 
 
 class GoogleAuthRequest(BaseModel):

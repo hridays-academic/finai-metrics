@@ -61,7 +61,7 @@ them never discards what you'd picked.
 
 ## Where the data comes from
 
-**yfinance is the primary source, and it needs no API key.** That's what
+**yfinance is the only data source, and it needs no API key.** That's what
 makes the app usable without signup. Because Yahoo's endpoints are
 unofficial and rate-sensitive, responses are cached in Postgres and shared
 across all visitors — one real upstream fetch serves everyone looking at
@@ -78,14 +78,6 @@ Two freshness clocks, deliberately:
 A single TTL would either serve a week-old share price — making three
 valuation ratios quietly wrong — or throw away the expensive statement fetch
 every 15 minutes.
-
-**Tapetide is an optional upgrade.** Add your own free key in Settings and
-the backend will try Tapetide first, mainly for its more precise
-analyst-target periods, falling back to yfinance automatically when its
-50-calls/day free tier is exhausted. Tapetide results are deliberately
-**never written to the shared cache**: that data is metered against your
-personal key, so redistributing it to other visitors would spend your quota
-on strangers. Everything works identically without a key.
 
 Sources are abstracted behind `FinancialDataProvider`
 (`backend/app/services/data_provider.py`). A third implementation,
@@ -120,8 +112,7 @@ backend/app/
   models.py                 Pydantic schemas
   services/
     data_provider.py        Provider interface, errors, known-rename table
-    yfinance_provider.py    PRIMARY source (no key needed)
-    tapetide_provider.py    Optional bring-your-own-key source
+    yfinance_provider.py    The data source (no key needed)
     bharat_sm_provider.py   Dormant — not wired in (IP-blocked on Vercel)
     fundamentals_cache.py   Postgres cache: statements, price overlay, OHLC
     rate_limit.py           Per-IP fixed-window limiting (Postgres-backed)
@@ -184,11 +175,9 @@ Set `DATABASE_URL` to your Neon **pooled** connection string (the `-pooler`
 hostname). The app opens a fresh connection per request, which is exactly
 what the pooler exists for. Tables are created idempotently on first start.
 
-Everything else is optional: `ENCRYPTION_KEY` (lets a signed-in user save a
-Tapetide key to their account), `GOOGLE_CLIENT_ID` (Google Sign-In),
+Everything else is optional: `GOOGLE_CLIENT_ID` (Google Sign-In),
 `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` (password-reset emails),
-`MOONSHOT_API_KEY` (the unrendered chat endpoint). **There is no
-`TAPETIDE_TOKEN`** — Tapetide is per-user and never a server-side secret.
+`MOONSHOT_API_KEY` (the unrendered chat endpoint).
 
 `.env` is git-ignored. Never commit it or hardcode a key in source.
 

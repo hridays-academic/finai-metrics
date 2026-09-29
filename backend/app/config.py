@@ -28,19 +28,11 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-4-5"
 
     # Neon Postgres connection string (see db.py) -- backs user accounts,
-    # sessions, activity logs, and Tapetide per-key quota tracking. Required
+    # sessions, activity logs, caches and the Results League. Required
     # in any real deployment (Vercel's serverless functions have no
     # persistent local disk, unlike the SQLite file this replaced); locally,
     # set it in backend/.env.
     database_url: Optional[str] = None
-
-    # Symmetric encryption key (Fernet, see auth_service.py) for a signed-in
-    # user's saved Tapetide API key at rest in Postgres -- generate one with
-    # `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
-    # Without this set, saving/reading an account's Tapetide key just fails
-    # gracefully (see auth_service.py) rather than ever storing one in
-    # plaintext.
-    encryption_key: Optional[str] = None
 
     # Google OAuth Client ID (see auth_service.py / main.py's /api/auth/google
     # and frontend/src/lib/googleAuth.ts) -- the SAME value the frontend uses
@@ -66,22 +58,9 @@ class Settings(BaseSettings):
     gmail_address: Optional[str] = None
     gmail_app_password: Optional[str] = None
 
-    # NOT a server-side secret anymore (2026-07) -- Tapetide (NSE/BSE quotes,
-    # financials, ratios) is now bring-your-own-key: every user enters their
-    # own Tapetide API key client-side, sent per-request as the
-    # `X-Tapetide-Token` header (see main.py and CLAUDE.md's "Bring-your-own
-    # Tapetide key" section). There is deliberately no TAPETIDE_TOKEN env var
-    # anymore -- only the (non-secret) API endpoint URL stays configurable here.
-    tapetide_mcp_url: str = "https://mcp.tapetide.com/mcp"
-
-    # Dev-only: if set, both TapetideProvider and BharatSMProvider cache
-    # their real network calls to this same directory on disk and serve
-    # repeat calls from there instead of hitting the network -- saves
-    # Tapetide's free-tier quota (and just speeds up repeat local testing
-    # against Bharat-SM-Data, which isn't quota-limited but still slow
-    # per-call) -- see both providers' docstrings. They write distinctly-
-    # named/formatted files into the same folder, so one directory covers
-    # both. NEVER set this in a real deployment.
+    # Dev-only: if set, the dormant BharatSMProvider caches its real network
+    # calls to this directory on disk and serves repeat calls from there.
+    # NEVER set this in a real deployment.
     dev_cache_dir: Optional[str] = None
 
     # Optional -- only used if the data provider is swapped to one of these.

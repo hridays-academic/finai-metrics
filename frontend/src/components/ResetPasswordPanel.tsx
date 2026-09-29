@@ -9,7 +9,7 @@ interface ResetPasswordPanelProps {
 // Shown by App.tsx whenever the page loads with a "?reset_token=" query
 // param -- the link a password-reset email points at (see main.py's
 // /api/auth/forgot-password, which builds that link from this same
-// origin). A blocking overlay (the shared `.tapetide-gate-*` modal styles,
+// origin). A blocking overlay (the shared `.modal-*` modal styles,
 // see TradingTutorial.tsx on that name), not a slide-over like
 // AuthPanel.tsx, since arriving here IS the whole reason for this
 // page load -- there's nothing else useful to show behind it yet anyway
@@ -40,13 +40,13 @@ export default function ResetPasswordPanel({ token, onDone }: ResetPasswordPanel
   }
 
   return (
-    <div className="tapetide-gate-overlay" role="dialog" aria-modal="true" aria-label="Reset your password">
-      <div className="tapetide-gate-card">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Reset your password">
+      <div className="modal-card">
         <h2>Reset your password</h2>
 
         {done ? (
           <>
-            <p className="tapetide-gate-intro">
+            <p className="modal-intro">
               Your password has been reset. You can now sign in with your new password.
             </p>
             <button type="button" className="search-button auth-submit" onClick={onDone}>
@@ -77,7 +77,7 @@ export default function ResetPasswordPanel({ token, onDone }: ResetPasswordPanel
             <button type="submit" className="search-button auth-submit" disabled={loading}>
               {loading ? "..." : "Reset password"}
             </button>
-            <button type="button" className="tapetide-gate-skip" onClick={onDone}>
+            <button type="button" className="modal-skip" onClick={onDone}>
               Cancel
             </button>
           </form>

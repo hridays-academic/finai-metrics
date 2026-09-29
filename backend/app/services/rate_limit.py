@@ -1,10 +1,9 @@
 """
 Per-IP fixed-window rate limiting for the keyless data endpoints.
 
-Exists because /api/company and /api/price-history stopped requiring a
-Tapetide API key (see CLAUDE.md's "Sourcing" section). That key was never a
-security control, but it did incidentally cap how much traffic any one
-visitor could generate. Without it, nothing stopped a single client from
+Exists because /api/company and /api/price-history need no API key or
+sign-in (see CLAUDE.md's "Sourcing" section), so nothing else caps how much
+traffic one visitor can generate. Without this, nothing stops a single client from
 walking all ~8,200 NSE/BSE symbols and getting this app's server IP
 throttled by Yahoo -- which would break the app for everyone, not just the
 offender (see yfinance_provider.py's docstring on sustained request volume).

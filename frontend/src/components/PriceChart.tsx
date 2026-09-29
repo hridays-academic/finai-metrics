@@ -39,7 +39,7 @@ const PERIODS: { key: Period; label: string }[] = [
 ];
 
 // The weekly "points" series and the daily "recent_points" series are
-// fetched independently (see tapetide_provider.py) and don't always land on
+// fetched independently and don't always land on
 // the same real-world last date -- confirmed live, not hypothetical: a
 // genuine cached response had "points" ending 4 days before "recent_points"
 // did. Left alone, switching from 1D/5D (daily) to 1Y/3Y/5Y (weekly) made
@@ -75,10 +75,9 @@ interface PriceChartProps {
   symbol: string;
   currency: string;
   theme: Theme;
-  onTapetideResetAtChange?: (resetAt: string | null) => void;
 }
 
-export default function PriceChart({ symbol, currency, theme, onTapetideResetAtChange }: PriceChartProps) {
+export default function PriceChart({ symbol, currency, theme }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
@@ -104,10 +103,7 @@ export default function PriceChart({ symbol, currency, theme, onTapetideResetAtC
     setPeriod("5Y");
     fetchPriceHistory(symbol)
       .then((res) => {
-        if (!cancelled) {
-          setData(res);
-          onTapetideResetAtChange?.(res.tapetide_reset_at);
-        }
+        if (!cancelled) setData(res);
       })
       .catch((err) => {
         if (!cancelled) {

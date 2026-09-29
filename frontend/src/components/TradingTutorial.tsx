@@ -7,12 +7,8 @@ interface TradingTutorialProps {
 // Shown once per browser on first visit to Paper Trading (see
 // PaperTrading.tsx's TUTORIAL_SEEN_KEY), reachable again anytime via the
 // "?" button next to the page heading. Uses the app's shared overlay/card
-// styles rather than inventing a second modal pattern. Those classes are
-// still named `.tapetide-gate-*` for historical reasons -- they originated
-// in a blocking Tapetide key gate that was removed in 2026-09 once the app
-// went keyless; the styles outlived it and are now the app's generic modal
-// look (also used by MarketStatusNotice, ResetPasswordPanel, SettingsPanel
-// and others). Same optional-video approach too: the <video> element
+// styles (`.modal-*`) rather than inventing a second modal pattern -- also
+// used by MarketStatusNotice, ResetPasswordPanel, SettingsPanel and others. Same optional-video approach too: the <video> element
 // points at a file that may not exist yet (no walkthrough recorded as of
 // this writing) -- onError hides it and falls back to the text-only steps
 // below rather than showing a broken player.
@@ -20,16 +16,16 @@ export default function TradingTutorial({ onClose }: TradingTutorialProps) {
   const [videoFailed, setVideoFailed] = useState(false);
 
   return (
-    <div className="tapetide-gate-overlay" role="dialog" aria-modal="true" aria-label="How Paper Trading works">
-      <div className="tapetide-gate-card trading-tutorial-card">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="How Paper Trading works">
+      <div className="modal-card trading-tutorial-card">
         <h2>Welcome to Paper Trading</h2>
-        <p className="tapetide-gate-intro">
+        <p className="modal-intro">
           Practice buying and selling real NSE/BSE stocks with virtual coins -- here's how it works.
         </p>
 
         {!videoFailed && (
           <video
-            className="tapetide-gate-video"
+            className="modal-video"
             src="/videos/paper-trading-guide.mp4"
             controls
             playsInline
@@ -38,7 +34,7 @@ export default function TradingTutorial({ onClose }: TradingTutorialProps) {
           />
         )}
 
-        <ol className="tapetide-gate-steps">
+        <ol className="modal-steps">
           <li>Search any NSE/BSE stock above and hit "Use" to start trading it.</li>
           <li>
             Prices and the chart refresh automatically every ~20 seconds, and are delayed roughly

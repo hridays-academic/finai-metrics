@@ -1,19 +1,18 @@
 """
 Postgres storage (Neon, free tier) for user accounts, sessions, activity
-logs, and Tapetide per-key quota tracking. Originally SQLite (a single
+logs, shared data caches and the Results League. Originally SQLite (a single
 gitignored local file) -- migrated 2026-07 when the app moved to Vercel:
 serverless functions have an ephemeral filesystem, so anything written to
-local disk (the SQLite file, and tapetide_provider.py's old
-.tapetide_quota_state.json) is silently wiped on every cold start/redeploy.
+local disk is silently wiped on every cold start/redeploy.
 A real hosted database is the only way persistence survives there. Neon
 specifically because its free tier needs no credit card and is permanent
 (not a trial) -- see CLAUDE.md.
 
 Uses psycopg (v3) directly (no ORM) -- same reasoning as the old SQLite
-setup: nine small tables here don't need one (four originally, plus the four
-data-cache/rate-limit tables the 2026-09 keyless migration added and
-`password_reset_tokens`). The Results League's tables live in
-league_schema.py and run through the same init_db(). `row_factory=dict_row` keeps the
+setup: eight small tables here don't need one (users, sessions,
+activity_log, password_reset_tokens, and the four data-cache/rate-limit
+tables). The Results League's tables live in league_schema.py and run
+through the same init_db(). `row_factory=dict_row` keeps the
 `row["colname"]` access pattern every call site already used with
 sqlite3.Row, so only the `?` -> `%s` placeholder syntax and a couple of
 INSERT...RETURNING swaps (Postgres has no `cursor.lastrowid`) needed to
@@ -56,27 +55,8 @@ _SCHEMA_STATEMENTS = [
         created_at TEXT NOT NULL DEFAULT (NOW()::text)
     )
     """,
-    # One row per Tapetide key (hashed, never the raw token -- see
-    # tapetide_provider.py), replacing the old .tapetide_quota_state.json's
-    # {token_hash: {"date": ..., "calls_today": ...}} shape.
-    """
-    CREATE TABLE IF NOT EXISTS tapetide_quota (
-        token_hash TEXT PRIMARY KEY,
-        quota_date TEXT NOT NULL,
-        calls_today INTEGER NOT NULL DEFAULT 0
-    )
-    """,
     "CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_activity_log_user_id ON activity_log(user_id, created_at DESC)",
-    # Added 2026-07 -- a signed-in user's own Tapetide key, encrypted at rest
-    # (see auth_service.py's _encrypt_key/_decrypt_key), so logging in from
-    # a different browser/device doesn't require re-entering it. NULL for
-    # any account that hasn't saved one (every pre-existing row, and anyone
-    # who signs up but chooses "Continue without an account" for the key
-    # step). ADD COLUMN IF NOT EXISTS rather than a separate migration
-    # script -- consistent with this file's existing "idempotent, safe to
-    # call on every cold start" schema model.
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS tapetide_key_encrypted TEXT",
     # Added 2026-07 -- Google Sign-In (see auth_service.py's
     # login_with_google). NULL for every password-based account; UNIQUE so
     # the same Google account can never back two different rows. Matched
@@ -99,7 +79,7 @@ _SCHEMA_STATEMENTS = [
     # logged/forwarded along the way than a session cookie) and is a
     # higher-stakes secret (whoever has one can take over the account
     # outright), so it gets the same "don't store the literal secret"
-    # treatment tapetide_quota's token_hash already uses. One row per user
+    # treatment. One row per user
     # at most in practice (request_password_reset deletes any existing row
     # for that user before inserting a new one) -- not enforced by a UNIQUE
     # constraint here since a stale leftover row for a deleted-in-the-
@@ -116,8 +96,7 @@ _SCHEMA_STATEMENTS = [
     # yfinance can be the PRIMARY fundamentals source without one real
     # upstream call per visitor (see fundamentals_cache.py and CLAUDE.md's
     # "Sourcing" section). Keyed by resolved symbol, NOT by user: this data
-    # is identical for everyone, unlike tapetide_quota above, which is
-    # deliberately per-key.
+    # is identical for everyone.
     #
     # Two independent freshness clocks in one row, on purpose -- RawFinancials
     # mixes data with very different lifetimes:
@@ -194,6 +173,21 @@ _SCHEMA_STATEMENTS = [
     # Supports the opportunistic sweep of expired buckets in rate_limit.py --
     # without it that DELETE would sequential-scan the whole table.
     "CREATE INDEX IF NOT EXISTS idx_rate_limit_expires ON rate_limit_buckets(expires_at)",
+    # Removed 2026-09: the Tapetide integration. Blank every saved (encrypted)
+    # user API key, then drop the column and the per-key quota table (which
+    # held hashes of keys and daily call counts). Idempotent: the UPDATE only
+    # runs while the column still exists, and the drops are IF EXISTS.
+    """
+    DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema = current_schema() AND table_name = 'users'
+                     AND column_name = 'tapetide_key_encrypted') THEN
+            UPDATE users SET tapetide_key_encrypted = NULL WHERE tapetide_key_encrypted IS NOT NULL;
+        END IF;
+    END $$
+    """,
+    "ALTER TABLE users DROP COLUMN IF EXISTS tapetide_key_encrypted",
+    "DROP TABLE IF EXISTS tapetide_quota",
 ]
 
 
@@ -210,7 +204,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001

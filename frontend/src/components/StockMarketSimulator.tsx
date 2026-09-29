@@ -1,9 +1,8 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { fetchCompany, fetchPriceHistory, ApiError } from "../lib/api";
 import { formatINR } from "../lib/format";
-import QuotaCounter from "./QuotaCounter";
 import SimulatorChart, { type SimPoint } from "./SimulatorChart";
-import type { PricePoint, QuotaStatus } from "../lib/types";
+import type { PricePoint } from "../lib/types";
 import type { Theme } from "../hooks/useTheme";
 
 type Horizon = 13 | 26 | 52 | 104;
@@ -87,18 +86,16 @@ function toNumber(raw: string): number {
 }
 
 interface StockMarketSimulatorProps {
-  quota: QuotaStatus | null;
-  onQuotaSpent: () => void;
   theme: Theme;
 }
 
 // The app's third top-level page (via Sidebar) -- a Monte Carlo "what
 // might happen" game for a real, picked stock, distinct from Return
 // Calculator's deterministic analyst-target projection. Picking a stock
-// still costs real Tapetide quota (same fetchCompany + fetchPriceHistory
-// call pair ReturnCalculator.tsx makes); re-running the simulation itself
-// is pure client-side math and costs nothing.
-export default function StockMarketSimulator({ quota, onQuotaSpent, theme }: StockMarketSimulatorProps) {
+// makes the same fetchCompany + fetchPriceHistory call pair
+// ReturnCalculator.tsx makes; re-running the simulation itself is pure
+// client-side math and makes no request at all.
+export default function StockMarketSimulator({ theme }: StockMarketSimulatorProps) {
   const [stockQuery, setStockQuery] = useState("");
   const [stockLoading, setStockLoading] = useState(false);
   const [stockError, setStockError] = useState<string | null>(null);
@@ -184,10 +181,6 @@ export default function StockMarketSimulator({ quota, onQuotaSpent, theme }: Sto
       setStockError(err instanceof ApiError ? err.message : "Couldn't load that stock's price history.");
     } finally {
       setStockLoading(false);
-      // Both calls spend real Tapetide quota -- see CLAUDE.md's "Sourcing"
-      // section -- refresh even on failure, since a quota-exceeded response
-      // still means calls were attempted.
-      onQuotaSpent();
     }
   }
 
@@ -233,7 +226,6 @@ export default function StockMarketSimulator({ quota, onQuotaSpent, theme }: Sto
         <div className="calculator-stock-picker">
           <div className="calculator-field-header">
             <span>Pick the stock you want to simulate</span>
-            {quota && <QuotaCounter quota={quota} />}
           </div>
           {pickedStock ? (
             <div className="calculator-stock-chip">

@@ -32,7 +32,7 @@ a miss) and a write is logged and dropped. A database hiccup should degrade
 this to "fetch it live," never take down a request.
 
 **No secrets are stored here.** Rows contain only a public ticker symbol and
-public financial data -- never a Tapetide key, session token, or user id.
+public financial data -- never an API key, session token, or user id.
 """
 import json
 import logging

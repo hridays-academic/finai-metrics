@@ -2,8 +2,7 @@
 Wraps the DeepSeek API for the in-app chat assistant. Alternate
 implementation -- app/services/moonshot_service.py is the active default
 (wired in app/main.py); app/services/claude_service.py is a second alternate
-using Claude/Anthropic (same pattern as the data provider swap between
-TapetideProvider/YFinanceProvider).
+using Claude/Anthropic (same swap pattern as FinancialDataProvider).
 
 DeepSeek's Chat Completions API is OpenAI-compatible plain JSON over HTTPS
 (https://api-docs.deepseek.com/api/create-chat-completion/) -- no SDK

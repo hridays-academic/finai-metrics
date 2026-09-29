@@ -121,7 +121,7 @@ export default function AnalystConsensus({ consensus, currentPrice, currency, co
       )}
 
       <div className="analyst-disclaimer">
-        Aggregated third-party sell-side analyst opinion (via Tapetide) -- not Stackly's
+        Aggregated third-party sell-side analyst opinion (via Yahoo Finance) -- not Stackly's
         own view, and not investment advice.
       </div>
     </div>

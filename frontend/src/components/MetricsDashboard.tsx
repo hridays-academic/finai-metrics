@@ -68,10 +68,9 @@ function ShowMoreToggle({ expanded, onToggle }: { expanded: boolean; onToggle: (
 interface MetricsDashboardProps {
   data: CompanyFinancialsResponse;
   theme: Theme;
-  onTapetideResetAtChange?: (resetAt: string | null) => void;
 }
 
-export default function MetricsDashboard({ data, theme, onTapetideResetAtChange }: MetricsDashboardProps) {
+export default function MetricsDashboard({ data, theme }: MetricsDashboardProps) {
   const { info, raw, metric_groups, analyst_consensus } = data;
   // Collapsed by default -- the two charts + the summary row below are the
   // whole story most of the time; every grouped ratio card (and the raw
@@ -134,7 +133,6 @@ export default function MetricsDashboard({ data, theme, onTapetideResetAtChange 
             symbol={info.resolved_symbol}
             currency={raw.currency}
             theme={theme}
-            onTapetideResetAtChange={onTapetideResetAtChange}
           />
 
           {hasForecast && (

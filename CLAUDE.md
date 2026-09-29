@@ -73,11 +73,9 @@ backend/app/
   models.py                Pydantic response/request schemas
   services/
     data_provider.py       Abstract base class for a financial data provider
-    tapetide_provider.py   Serves price history + analyst consensus for every search
-                            (the two things Bharat-SM-Data structurally can't provide)
-    yfinance_provider.py   Automatic fallback for the above, used when Tapetide's
-                            quota is exhausted -- ALSO the sole source for Paper
-                            Trading's live quote polling + intraday chart (see
+    yfinance_provider.py   The only data provider (Tapetide was removed 2026-09) --
+                            fundamentals, price history, analyst consensus, and
+                            Paper Trading's live quote polling + intraday chart (see
                             get_live_quote/get_intraday_history and the "Paper
                             Trading" section below), which has no Tapetide
                             equivalent at all
@@ -381,7 +379,7 @@ frontend/src/
     Header.tsx              Logo (left) + account icon + settings gear (top-right)
     SettingsPanel.tsx        Slide-over: theme (green/blue) + mode (dark/light)
                               pickers, independently persisted to localStorage, +
-                              Tapetide key reconfiguration
+                              Paper Trading starting balance
     AuthPanel.tsx            Slide-over: sign in/up form, or (once signed in) account
                               summary + recent activity feed + sign out -- see "Accounts
                               & activity tracking" below
@@ -392,12 +390,8 @@ frontend/src/
     Sidebar.tsx              Left icon rail: switches between the search page,
                               ReturnCalculator, and StockMarketSimulator (the app's
                               three top-level views)
-    CompanySearch.tsx        Ticker/company name input + (only when a Tapetide key is
-                              stored) the "~N searches left today" quota counter and
-                              Tapetide-reset countdown. No source dropdown -- sourcing
+    CompanySearch.tsx        Ticker/company name input. No source dropdown -- sourcing
                               is fixed, see "Keyless, cache-first sourcing" below
-    QuotaCounter.tsx          The "~N searches left today" pill -- shared by
-                              CompanySearch.tsx and ReturnCalculator.tsx so both stay in sync
     MetricsDashboard.tsx     Full-width, grouped color-coded metric cards
     MetricCard.tsx           Single metric card; hover/tap opens a popover with
                               its plain-English definition + value-aware assessment
@@ -1383,6 +1377,11 @@ unconditionally rather than wrapping every log call in `if current_user:`.
 
 ## Keyless, cache-first sourcing (2026-09)
 
+> **Tapetide was removed entirely later in 2026-09** -- see "Tapetide
+> integration (removed)" below. Paragraphs here that describe Tapetide
+> fallthrough or its never-cached rule are history; yfinance is the only
+> provider.
+
 **yfinance is the PRIMARY source for fundamentals and price history, and it
 needs no API key.** This supersedes the Tapetide-primary design described in
 the "Sourcing" subsection above, which is kept for the history of *why*
@@ -1530,7 +1529,22 @@ exempt *cache hits* from counting -- the thing worth limiting is misses, and
 a scraper is all misses by definition -- but that needs the counter to run
 after the cache lookup, so it's a restructure rather than a tweak.
 
-## Optional bring-your-own Tapetide key
+## Tapetide integration (removed 2026-09)
+
+**Tapetide is gone.** The provider class, the `X-Tapetide-Token` header,
+`/api/quota`, `/api/tapetide/validate`, `/api/auth/tapetide-key`, the
+Settings key panel, the quota counter and the stored keys are all removed.
+Schema version 3 (`db.py`) blanks every `users.tapetide_key_encrypted`, then
+drops that column and the `tapetide_quota` table; the frontend deletes any
+leftover `finai_tapetide_key` from localStorage on load. `ENCRYPTION_KEY`
+existed only to encrypt those keys and is no longer read. The shared modal
+styles that started life as `.tapetide-gate-*` are now `.modal-*`.
+
+Everything below this line in this section is history, kept for the
+reasoning it records. Don't reintroduce a per-user third-party key without
+discussing it with the user first.
+
+### (History) Optional bring-your-own Tapetide key
 
 **(2026-09) A Tapetide key is OPTIONAL. There is no key gate.** Visitors
 land directly on a fully working app and never have to see the word
@@ -1778,11 +1792,8 @@ from Vercel project environment variables in production:
   credit card) backing user accounts, sessions, activity logs, and Tapetide
   quota tracking — see "Deployment" and "Accounts & activity tracking"
   above. Use the **pooled** connection string, not the direct one.
-- `ENCRYPTION_KEY` — required for a signed-in user to save a Tapetide key to
-  their account (see "Optional bring-your-own Tapetide key" below); without it, that
-  specific feature just fails gracefully rather than ever storing a key in
-  plaintext. Generate one with
-  `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
+- `ENCRYPTION_KEY` — **no longer used** (2026-09). It only encrypted saved
+  Tapetide keys, which were removed; delete it from Vercel and `.env`.
 - `MOONSHOT_API_KEY` — required for the chat assistant to function. Get one
   at https://platform.kimi.ai
 - `GOOGLE_CLIENT_ID` — required for Google Sign-In to work (see "Google

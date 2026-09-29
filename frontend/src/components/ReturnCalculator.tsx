@@ -1,9 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { fetchCompany, fetchPriceHistory, ApiError } from "../lib/api";
 import { formatINR } from "../lib/format";
-import QuotaCounter from "./QuotaCounter";
 import GrowthChart from "./GrowthChart";
-import type { MetricGroup, MetricStatus, PricePoint, QuotaStatus } from "../lib/types";
+import type { MetricGroup, MetricStatus, PricePoint } from "../lib/types";
 import type { Theme } from "../hooks/useTheme";
 
 type PeriodUnit = "day" | "month" | "year" | "decade";
@@ -42,9 +41,9 @@ interface PickedStock {
   ticker: string;
   points: PricePoint[];
   currentPrice: number | null;
-  // Real third-party analyst price target (Tapetide), same Low/Mean/High
+  // Real third-party analyst price target (yfinance), same Low/Mean/High
   // figures PriceForecastChart plots on the main search page -- null if
-  // this stock has no analyst coverage. Never fabricated: if Tapetide
+  // this stock has no analyst coverage. Never fabricated: if the provider
   // doesn't have a target for this stock, this stays null and the scenario
   // section below just doesn't render, same "no data unavailable" principle
   // as everywhere else in the app.
@@ -88,7 +87,7 @@ interface ProjectionRate {
 
 // Finds the price point closest to `targetDate`, clamping to the oldest
 // point if the requested lookback goes further back than the data covers
-// (Tapetide/yfinance give ~5yr weekly + ~6-7mo daily, never a full decade+).
+// (yfinance gives ~5yr weekly + ~6-7mo daily, never a full decade+).
 function closestPoint(series: PricePoint[], targetTime: number): PricePoint {
   let closest = series[0];
   let minDiff = Infinity;
@@ -269,16 +268,10 @@ function computeVolatility(points: PricePoint[]): Volatility | null {
 }
 
 interface ReturnCalculatorProps {
-  // Same QuotaStatus/refresh function App.tsx feeds CompanySearch -- one
-  // shared source of truth (via QuotaCounter, the same component both pages
-  // render) so the two pages' counters can never drift out of sync with
-  // each other or with the real count.
-  quota: QuotaStatus | null;
-  onQuotaSpent: () => void;
   theme: Theme;
 }
 
-export default function ReturnCalculator({ quota, onQuotaSpent, theme }: ReturnCalculatorProps) {
+export default function ReturnCalculator({ theme }: ReturnCalculatorProps) {
   const [principal, setPrincipal] = useState("100000");
   const [shares, setShares] = useState("100");
   const [investmentMode, setInvestmentMode] = useState<InvestmentMode>("amount");
@@ -359,10 +352,6 @@ export default function ReturnCalculator({ quota, onQuotaSpent, theme }: ReturnC
       setStockError(err instanceof ApiError ? err.message : "Couldn't load that stock's price history.");
     } finally {
       setStockLoading(false);
-      // Both fetchCompany and fetchPriceHistory spend real Tapetide quota
-      // (see CLAUDE.md's "Hybrid sourcing") -- refresh even on failure,
-      // since a quota-exceeded response still means calls were attempted.
-      onQuotaSpent();
     }
   }
 
@@ -458,7 +447,6 @@ export default function ReturnCalculator({ quota, onQuotaSpent, theme }: ReturnC
         <div className="calculator-stock-picker">
           <div className="calculator-field-header">
             <span>Pick the stock you want to calculate</span>
-            {quota && <QuotaCounter quota={quota} />}
           </div>
           {pickedStock ? (
             <div className="calculator-stock-chip">
