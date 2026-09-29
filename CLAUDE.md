@@ -1913,7 +1913,12 @@ backend, not split across two services. This follows directly from
 path (written that way for the dev proxy in `vite.config.ts`, but it works
 unchanged in production too as long as both pieces share one domain).
 
-**Live at `stackly-metrics.vercel.app`** (2026-08, renamed from
+**Live at the custom domain `stackslymetrics.com`** (2026-09); the
+`stackly-*.vercel.app` aliases below still serve the same deployment.
+Deploys happen by pushing to `origin/master` -- a commit that isn't pushed
+isn't live.
+
+**Previously live at `stackly-metrics.vercel.app`** (2026-08, renamed from
 `finai-metrics.vercel.app` alongside the app's own rename -- see "What this
 project is" above). The Vercel *project* itself was renamed again shortly
 after, from `stackly-metrics` to `stackly` (dropping "Metrics" everywhere,
@@ -1994,22 +1999,63 @@ Two things worth knowing if this ever needs touching again:
 
 ## Testing
 
-**There is no committed test suite in this repository.** No pytest, no
-vitest, no test files, no test script in `package.json`.
+(2026-09) **Backend: pytest, in `backend/tests/`.** Install the dev-only
+dependencies with `python -m pip install -r requirements-dev.txt` (Vercel
+never installs that file), then run `python -m pytest` from `backend/`.
 
-This matters because several sections above describe tests as though they
-were permanent artifacts ("unit-tested", "verified with a mocked-clock
-test"). Those were real, and they really did catch real bugs before they
-shipped -- but every one was a throwaway script run once against the live
-API/database and then discarded. Don't go looking for them, and don't
-assume a change is covered by an existing test.
+- **Pure tests** (`test_scoring.py`, `test_league_config.py`) need no
+  database.
+- **Database tests** run ONLY against the Neon `test` branch
+  (`TEST_DATABASE_URL` in `backend/.env`). They truncate tables. The guard in
+  `tests/conftest.py` refuses to run unless that URL differs from
+  `DATABASE_URL` AND the database's `stackly_env` table says `test`.
+  Production has no `stackly_env` table, so a pasted-wrong connection string
+  still can't reach it. Never weaken this guard.
+- Neon branches: `main` = production (its URL lives only in Vercel, managed
+  by the Neon integration -- never edit it); `dev` = local development
+  (`DATABASE_URL` in `backend/.env`, labelled `dev`); `test` = tests
+  (labelled `test`). Both are schema-only copies with no user data.
+- From India each round trip to Neon (US East) takes ~0.3s, so the database
+  tests take a few minutes locally. That's latency, not a hang.
 
-If you add one, the highest-value targets are the pure functions, which
-need no mocking at all: `metrics.py` (the ratio math), `main.py`'s
-`_looks_like_the_query` (the wrong-company guard), `lib/portfolioHistory.ts`
-(the reconstruction that already had one off-by-one-day bug) and
-`lib/marketHolidays.ts` (IST date handling). The cache and rate-limit
-services are also testable but need a real `DATABASE_URL`.
+Several older sections above describe tests as though they were permanent
+artifacts ("unit-tested", "verified with a mocked-clock test"). Those were
+throwaway scripts, run once and discarded -- don't go looking for them.
+
+**Frontend: no test suite.** `npm run build` (strict `tsc -b` plus
+`noUnusedLocals`/`noUnusedParameters`) is the check. Untested pure functions
+worth covering if a JS test runner is ever added: `lib/portfolioHistory.ts`
+(already had one off-by-one-day bug) and `lib/marketHolidays.ts` (IST dates).
+
+## Results League (2026-09, in progress)
+
+Stackly is becoming a forecasting league: before a company reports
+quarterly results, users forecast revenue growth, operating margin and an
+optional sector KPI as 80% ranges; after results, each forecast is scored
+for accuracy, skill (vs. a "lazy" baseline) and calibration. Built in phases
+for a Q2 FY27 pilot (results late Oct - mid Nov 2026).
+
+- `services/league_schema.py` -- the league's tables, in the same
+  idempotent-SQL style as `db.py`. Actuals are keyed by **fiscal period**,
+  not event, and carry a versioned `definition_key`. Integrity lives in
+  **database triggers**: forecasts can't be created, edited or deleted after
+  their event's `lock_at` (database clock), and a passed `lock_at` can't be
+  moved.
+- `services/scoring.py` -- all scoring, pure functions (interval score,
+  points, beat-lazy, calibration and leaderboard thresholds).
+- `league_config.py` -- per-market metric definitions, sector KPI templates
+  (cement, autos, FMCG, IT; banks/NBFCs excluded for now), reason tags and
+  bounds. Change a definition by adding a new `.vN` key, never by editing
+  the text of an existing one.
+- yfinance history depth (measured 2026-09, 41 NSE tickers): 5 quarters,
+  non-consecutive (Sep 2025 missing for 28 of 40), so year-ago quarters are
+  admin-entered; 4 complete fiscal years for 39 of 41.
+
+**Schema changes need a version bump.** `init_db()` skips all schema
+statements when the database's `schema_version` row is already at
+`db.SCHEMA_VERSION`, saving ~50 round trips per cold start. If you add or
+change any statement in `db.py` or `league_schema.py`, bump
+`SCHEMA_VERSION`, or deployed databases will never run it.
 
 Note the frontend build is a genuine check worth running -- `npm run build`
 runs `tsc -b` with `strict`, `noUnusedLocals` and `noUnusedParameters`, so

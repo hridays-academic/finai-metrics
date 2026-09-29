@@ -10,9 +10,10 @@ specifically because its free tier needs no credit card and is permanent
 (not a trial) -- see CLAUDE.md.
 
 Uses psycopg (v3) directly (no ORM) -- same reasoning as the old SQLite
-setup: nine small tables don't need one (four originally, plus the four
+setup: nine small tables here don't need one (four originally, plus the four
 data-cache/rate-limit tables the 2026-09 keyless migration added and
-`password_reset_tokens`). `row_factory=dict_row` keeps the
+`password_reset_tokens`). The Results League's tables live in
+league_schema.py and run through the same init_db(). `row_factory=dict_row` keeps the
 `row["colname"]` access pattern every call site already used with
 sqlite3.Row, so only the `?` -> `%s` placeholder syntax and a couple of
 INSERT...RETURNING swaps (Postgres has no `cursor.lastrowid`) needed to
@@ -25,6 +26,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.config import get_settings
+from app.services.league_schema import LEAGUE_SCHEMA_STATEMENTS
 
 _SCHEMA_STATEMENTS = [
     """
@@ -205,11 +207,51 @@ def _dsn() -> str:
     return dsn
 
 
+# Bump whenever any statement in _SCHEMA_STATEMENTS or
+# league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
+# already-migrated databases skip it (see init_db).
+SCHEMA_VERSION = 2
+
+# Arbitrary constant; serializes concurrent cold starts running the schema.
+_SCHEMA_LOCK_KEY = 72_561_001
+
+
 def init_db() -> None:
-    """Idempotent -- safe to call on every cold start."""
+    """Idempotent -- safe to call on every cold start.
+
+    Skips all schema work when the database already records SCHEMA_VERSION
+    or newer: running every statement costs one round trip each, and with
+    the league tables that's ~50 round trips added to every cold start. A
+    newer stored version (an older deploy rolled back to) is also skipped,
+    so a rollback never re-runs an older schema over a newer one."""
     with psycopg.connect(_dsn()) as conn:
-        for statement in _SCHEMA_STATEMENTS:
+        try:
+            row = conn.execute("SELECT version FROM schema_version").fetchone()
+            if row and row[0] >= SCHEMA_VERSION:
+                return
+        except psycopg.errors.UndefinedTable:
+            conn.rollback()
+
+        conn.execute("SELECT pg_advisory_xact_lock(%s)", (_SCHEMA_LOCK_KEY,))
+        for statement in _SCHEMA_STATEMENTS + LEAGUE_SCHEMA_STATEMENTS:
             conn.execute(statement)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_version (
+                id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
+                version INTEGER NOT NULL,
+                applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO schema_version (id, version) VALUES (TRUE, %s)
+            ON CONFLICT (id) DO UPDATE SET version = EXCLUDED.version, applied_at = NOW()
+            WHERE schema_version.version < EXCLUDED.version
+            """,
+            (SCHEMA_VERSION,),
+        )
         conn.commit()
 
 

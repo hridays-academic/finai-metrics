@@ -1,0 +1,7 @@
+# Local development and tests only. Vercel installs requirements.txt (via
+# the root requirements.txt), never this file, so nothing here ships.
+-r requirements.txt
+
+pytest==8.4.2
+# FastAPI's TestClient is built on httpx.
+httpx==0.28.1

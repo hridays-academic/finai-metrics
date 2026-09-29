@@ -20,3 +20,6 @@ frontend/tsconfig.tsbuildinfo
 .claude/
 .vercel
 .env*
+
+# pytest
+.pytest_cache/
