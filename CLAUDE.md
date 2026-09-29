@@ -1793,7 +1793,9 @@ from Vercel project environment variables in production:
   quota tracking — see "Deployment" and "Accounts & activity tracking"
   above. Use the **pooled** connection string, not the direct one.
 - `ENCRYPTION_KEY` — **no longer used** (2026-09). It only encrypted saved
-  Tapetide keys, which were removed; delete it from Vercel and `.env`.
+  Tapetide keys, which were removed. Already gone from `backend/.env`;
+  delete it from Vercel too.
+- `TEST_DATABASE_URL` — local only, the Neon `test` branch. See "Testing".
 - `MOONSHOT_API_KEY` — required for the chat assistant to function. Get one
   at https://platform.kimi.ai
 - `GOOGLE_CLIENT_ID` — required for Google Sign-In to work (see "Google
@@ -1926,8 +1928,17 @@ unchanged in production too as long as both pieces share one domain).
 
 **Live at the custom domain `stackslymetrics.com`** (2026-09); the
 `stackly-*.vercel.app` aliases below still serve the same deployment.
-Deploys happen by pushing to `origin/master` -- a commit that isn't pushed
-isn't live.
+
+**Deploying = `vercel deploy --prod --yes` from the repo root. Pushing to
+GitHub does NOT deploy.** The Vercel project ("stackly") is linked to this
+folder via `.vercel/project.json` and is not Git-connected -- confirmed
+2026-09-29, when a push produced no deployment at all. Push too (so GitHub
+matches production), but a commit is only live once you've run the CLI
+deploy. `.vercelignore` keeps `.env` files, venvs, tests and `node_modules`
+out of the upload; don't delete it. To verify a deploy, compare the
+`/assets/index-*.js` hash served by stackslymetrics.com with
+`frontend/dist` after a local `npm run build` -- identical source builds to
+the identical hash. Runtime logs: `vercel logs <deployment-url> --json`.
 
 **Previously live at `stackly-metrics.vercel.app`** (2026-08, renamed from
 `finai-metrics.vercel.app` alongside the app's own rename -- see "What this
@@ -2039,6 +2050,33 @@ worth covering if a JS test runner is ever added: `lib/portfolioHistory.ts`
 (already had one off-by-one-day bug) and `lib/marketHolidays.ts` (IST dates).
 
 ## Results League (2026-09, in progress)
+
+**Status (2026-09-29):** Phase 1 (schema, scoring, config, tests) is
+deployed; production's schema is at version 3. Phase 2 is next. Full
+handoff, including every product decision and pending item, is in the
+codebase map's `03_logs/2026-09-29.md`.
+
+**Deadlines:** Phases 1-2 plus the reveal page (from Phase 3) live by
+~2026-10-20. Profiles and leagues once results season starts (late Oct).
+Practice after the pilot. The Phase 5 nav switch isn't urgent -- pilot
+students can use hash URLs.
+
+**Product decisions already made (don't re-ask):**
+- Hide analyst consensus and price targets everywhere, including the
+  standalone Research page; Return Calculator becomes historical-returns
+  only (remove its analyst-target fallback).
+- If an event defines a sector KPI, every forecaster must forecast it.
+- Crowd median is shown only with at least 5 forecasters.
+- The research panel's quarterly table shows whatever quarters yfinance has
+  (N/A for the rest) alongside admin-entered past actuals, each labelled by
+  source and definition.
+- Diagnosis rules: draft them and get approval before wiring them in.
+- Sector KPIs for the pilot: cement, autos, FMCG, IT (drafts in
+  `league_config.py`, awaiting sign-off). Banks/NBFCs excluded from the
+  pilot and from Practice; a bank template comes in January.
+- Practice shows revenue indexed to Year 1 = 100, never absolute figures.
+- No third-party analytics: remove the GA4 tag from `index.html` (approved,
+  not yet done). Measure the pilot from our own database instead.
 
 Stackly is becoming a forecasting league: before a company reports
 quarterly results, users forecast revenue growth, operating margin and an
