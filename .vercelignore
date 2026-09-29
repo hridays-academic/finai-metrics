@@ -1,0 +1,16 @@
+# This project deploys from the CLI (`vercel deploy --prod`), which uploads
+# the working directory. Keep local secrets and dev-only files out of it:
+# production's configuration lives in Vercel's environment variables, and
+# the frontend is rebuilt remotely by vercel.json's buildCommand.
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv
+**/venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+backend/tests
+backend/.tapetide_cache
+frontend/dist
+frontend/design-backups
