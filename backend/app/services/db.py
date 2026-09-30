@@ -18,6 +18,8 @@ sqlite3.Row, so only the `?` -> `%s` placeholder syntax and a couple of
 INSERT...RETURNING swaps (Postgres has no `cursor.lastrowid`) needed to
 change in auth_service.py.
 """
+import logging
+import os
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -188,6 +190,17 @@ _SCHEMA_STATEMENTS = [
     """,
     "ALTER TABLE users DROP COLUMN IF EXISTS tapetide_key_encrypted",
     "DROP TABLE IF EXISTS tapetide_quota",
+    # Added 2026-09 -- first-party aggregate page-load counts, replacing
+    # Google Analytics (see services/visits.py). Deliberately just these
+    # three columns: no IP, no user, no URL.
+    """
+    CREATE TABLE IF NOT EXISTS page_visits_daily (
+        day DATE NOT NULL,
+        page TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, page)
+    )
+    """,
 ]
 
 
@@ -204,10 +217,40 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001
+
+
+_LOCAL_SAFE_LABELS = {"dev", "test"}
+
+
+def _refuse_unlabelled_database_locally(conn: psycopg.Connection) -> None:
+    """A server running anywhere except Vercel must be connected to a Neon
+    branch labelled 'dev' or 'test' (the `stackly_env` table). Production has
+    no such table, so a local server holding production's connection string
+    refuses to start instead of silently writing to live data -- which
+    happened on 2026-09-30: a local server started on 2026-09-13 kept
+    production's string for weeks and a local test created a real account.
+
+    Vercel sets VERCEL=1 in every deployment (the project exposes system env
+    vars), which is how production is exempt."""
+    if os.environ.get("VERCEL"):
+        return
+    try:
+        labels = {row[0] for row in conn.execute("SELECT name FROM stackly_env")}
+    except psycopg.errors.UndefinedTable:
+        conn.rollback()
+        labels = set()
+    if labels & _LOCAL_SAFE_LABELS:
+        logging.getLogger("finai").info("Local server using the Neon '%s' database", ",".join(sorted(labels)))
+        return
+    raise RuntimeError(
+        "Refusing to start: DATABASE_URL is not a database labelled 'dev' or 'test'. "
+        "Local servers must use the Neon dev branch (backend/.env) -- never production. "
+        "See CLAUDE.md's Testing section."
+    )
 
 
 def init_db() -> None:
@@ -219,6 +262,7 @@ def init_db() -> None:
     newer stored version (an older deploy rolled back to) is also skipped,
     so a rollback never re-runs an older schema over a newer one."""
     with psycopg.connect(_dsn()) as conn:
+        _refuse_unlabelled_database_locally(conn)
         try:
             row = conn.execute("SELECT version FROM schema_version").fetchone()
             if row and row[0] >= SCHEMA_VERSION:

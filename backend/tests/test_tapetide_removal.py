@@ -41,15 +41,6 @@ def test_existing_tapetide_data_is_deleted_on_migration(conn):
     assert conn.execute("SELECT count(*) FROM users WHERE email = 'k@example.com'").fetchone()[0] == 1
 
 
-@pytest.fixture
-def client(db_url):
-    from fastapi.testclient import TestClient
-
-    from app.main import app
-
-    return TestClient(app)
-
-
 @pytest.mark.parametrize(
     "method,path",
     [("get", "/api/quota"), ("get", "/api/tapetide/validate"), ("post", "/api/auth/tapetide-key")],

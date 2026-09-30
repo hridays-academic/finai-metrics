@@ -218,3 +218,34 @@ export async function fetchActivity(): Promise<ActivityResponse> {
   }
   return res.json();
 }
+
+// ---------- First-party visit counter (replaces Google Analytics) ----------
+// Sends only a fixed page name -- never the URL, query string or anything
+// about the visitor. See backend/app/services/visits.py.
+export type VisitPage = "search" | "reset_password" | "admin";
+
+export function recordVisit(page: VisitPage): void {
+  fetch(`${BASE_URL}/visit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ page }),
+    keepalive: true,
+  }).catch(() => {
+    // Counting is best-effort; never surface an error for it.
+  });
+}
+
+export interface DailyVisits {
+  day: string; // YYYY-MM-DD, India time
+  page: string;
+  count: number;
+}
+
+export async function fetchAdminVisits(days: number): Promise<{ days: number; rows: DailyVisits[] }> {
+  const res = await fetch(`${BASE_URL}/admin/visits?days=${days}`, { headers: authHeaders() });
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+  return res.json();
+}

@@ -67,6 +67,14 @@ class Settings(BaseSettings):
     alpha_vantage_api_key: Optional[str] = None
     fmp_api_key: Optional[str] = None
 
+    # Comma-separated emails allowed to use /api/admin/* (see
+    # routes/deps.require_admin). Set in Vercel's env vars, never in code.
+    admin_emails: str = ""
+
+    @property
+    def admin_email_set(self) -> frozenset[str]:
+        return frozenset(e.strip().lower() for e in self.admin_emails.split(",") if e.strip())
+
     # Comma-separated list of allowed frontend origins for CORS.
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

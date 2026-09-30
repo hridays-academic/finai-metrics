@@ -37,7 +37,7 @@ _WIPE_TABLES = (
     "audit_log", "practice_attempts", "practice_cases", "league_members", "leagues",
     "diagnoses", "scores", "baselines", "actuals", "forecast_values", "forecasts",
     "forecast_events", "fiscal_periods", "companies", "activity_log", "sessions",
-    "password_reset_tokens", "users",
+    "password_reset_tokens", "users", "page_visits_daily",
 )
 
 
@@ -88,3 +88,13 @@ def conn(db_url: str):
     wipe(db_url)
     with psycopg.connect(db_url, autocommit=True) as c:
         yield c
+
+
+@pytest.fixture
+def client(db_url):
+    """FastAPI test client bound to the verified test database."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    return TestClient(app)

@@ -9,10 +9,15 @@ import ReturnCalculator from "./components/ReturnCalculator";
 import StockMarketSimulator from "./components/StockMarketSimulator";
 import PaperTrading from "./components/PaperTrading";
 import ResetPasswordPanel from "./components/ResetPasswordPanel";
+import AdminPage from "./components/AdminPage";
 import { useTheme } from "./hooks/useTheme";
-import { fetchCompany, fetchMe, ApiError } from "./lib/api";
+import { fetchCompany, fetchMe, recordVisit, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
 import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
+
+// One aggregate count per page load (see recordVisit). Module-level so React
+// StrictMode's dev-only double effect run can't count a load twice.
+let visitRecorded = false;
 
 export default function App() {
   const { theme, themeName, mode, setThemeName, setMode } = useTheme();
@@ -31,6 +36,9 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get("reset_token")
   );
   const [view, setView] = useState<View>("search");
+  // Minimal hash route for the admin page until Phase 2's router lands.
+  const [hash, setHash] = useState(() => window.location.hash);
+  const isAdminRoute = hash === "#/admin";
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +47,16 @@ export default function App() {
   const [homeKey, setHomeKey] = useState(0);
 
   useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  useEffect(() => {
+    if (!visitRecorded) {
+      visitRecorded = true;
+      recordVisit(resetToken ? "reset_password" : isAdminRoute ? "admin" : "search");
+    }
     // The app used to keep a user's own Tapetide API key here. That
     // integration is gone; delete any key a previous version left behind.
     try {
@@ -71,7 +89,20 @@ export default function App() {
 
   // Clicking the logo goes back to the empty state, same as a fresh page
   // load -- no network call, just resets local state.
+  function leaveAdminRoute() {
+    if (window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      setHash("");
+    }
+  }
+
+  function handleChangeView(next: View) {
+    leaveAdminRoute();
+    setView(next);
+  }
+
   function handleGoHome() {
+    leaveAdminRoute();
     setView("search");
     setCompany(null);
     setLoading(false);
@@ -86,7 +117,7 @@ export default function App() {
         <div className="app-backdrop-glow" />
       </div>
 
-      <Sidebar view={view} onChange={setView} />
+      <Sidebar view={view} onChange={handleChangeView} />
 
       <div className="app-shell-content">
         <Header
@@ -112,7 +143,7 @@ export default function App() {
             `visible` (this view being the active one) for the same reason --
             see PaperTrading.tsx/useLiveQuotes.ts. */}
         <main className="app-main">
-          <div className={`view-wrapper ${view === "search" ? "" : "view-hidden"}`}>
+          <div className={`view-wrapper ${view === "search" && !isAdminRoute ? "" : "view-hidden"}`}>
             <CompanySearch
               key={homeKey}
               onSearch={handleSearch}
@@ -156,17 +187,23 @@ export default function App() {
             </div>
           </div>
 
-          <div className={`view-wrapper ${view === "calculator" ? "" : "view-hidden"}`}>
+          <div className={`view-wrapper ${view === "calculator" && !isAdminRoute ? "" : "view-hidden"}`}>
             <ReturnCalculator theme={theme} />
           </div>
 
-          <div className={`view-wrapper ${view === "simulator" ? "" : "view-hidden"}`}>
+          <div className={`view-wrapper ${view === "simulator" && !isAdminRoute ? "" : "view-hidden"}`}>
             <StockMarketSimulator theme={theme} />
           </div>
 
-          <div className={`view-wrapper ${view === "trading" ? "" : "view-hidden"}`}>
-            <PaperTrading theme={theme} visible={view === "trading"} />
+          <div className={`view-wrapper ${view === "trading" && !isAdminRoute ? "" : "view-hidden"}`}>
+            <PaperTrading theme={theme} visible={view === "trading" && !isAdminRoute} />
           </div>
+
+          {isAdminRoute && (
+            <div className="view-wrapper">
+              <AdminPage user={user} onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          )}
         </main>
       </div>
 

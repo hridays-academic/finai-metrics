@@ -52,6 +52,8 @@ from app.services.yfinance_provider import YFinanceProvider
 from app.services import auth_service, fundamentals_cache, rate_limit
 from app.services.auth_service import AuthError
 from app.services.db import get_conn, init_db
+from app.routes import admin as admin_routes, visits as visit_routes
+from app.routes.deps import optional_user as _current_user
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("finai")
@@ -69,16 +71,8 @@ app.add_middleware(
 
 init_db()
 
-
-def _current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
-    """Optional auth -- returns the signed-in user dict (see
-    auth_service.get_user_from_token) if `Authorization: Bearer <token>` is
-    present and valid, else None. Never raises 401: every endpoint that uses
-    this still works fully signed-out, since sign-in in this app is purely
-    for activity tracking, not a gate on using the product (see CLAUDE.md)."""
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    return auth_service.get_user_from_token(authorization.removeprefix("Bearer ").strip())
+app.include_router(visit_routes.router)
+app.include_router(admin_routes.router)
 
 
 def _rate_limited(request: Request) -> None:

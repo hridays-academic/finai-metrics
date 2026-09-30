@@ -1997,12 +1997,12 @@ Two things worth knowing if this ever needs touching again:
   no longer needs local disk, running the backend as Vercel functions
   alongside the frontend is simpler than managing two platforms, and avoids
   CORS entirely (same origin).
-- **`vercel.json`'s `maxDuration: 60`** (the max Vercel's Hobby tier allows
-  without enabling Fluid compute) gives headroom for `/api/company`'s worst
-  case -- a Bharat-SM-Data fetch followed by up to two sequential Tapetide
-  calls (each with its own 15s `requests` timeout in `tapetide_provider.py`)
-  -- rather than the Hobby default, which has been too short for this in
-  practice.
+- **The Vercel account is on the Pro plan** (verified via the Vercel API,
+  2026-09-30 -- older notes here said Hobby). Pro bills metered usage beyond
+  its included credit, so check the cost of any usage-billed Vercel feature
+  (e.g. Web Analytics) with the user before enabling it.
+- **`vercel.json`'s `maxDuration: 60`** gives headroom for `/api/company`'s
+  worst case (an uncached yfinance fetch) rather than the platform default.
 - **Persistence moved to Neon Postgres** (see "Accounts & activity
   tracking" and the quota-tracking section above) specifically because
   Vercel's serverless functions have no persistent local filesystem --
@@ -2037,6 +2037,15 @@ never installs that file), then run `python -m pytest` from `backend/`.
   by the Neon integration -- never edit it); `dev` = local development
   (`DATABASE_URL` in `backend/.env`, labelled `dev`); `test` = tests
   (labelled `test`). Both are schema-only copies with no user data.
+- **Before any local test, confirm which database the running server is
+  connected to.** Check who owns the port (`lsof -nP -iTCP:8000
+  -sTCP:LISTEN`) and look for the startup log line `Local server using the
+  Neon 'dev' database`. On 2026-09-30 a server started on 2026-09-13 was
+  still holding production's string, and a local test created a real
+  account in production. Since then `db.init_db()` refuses to start any
+  non-Vercel server whose database isn't labelled `dev`/`test`
+  (`_refuse_unlabelled_database_locally`; Vercel deployments are exempt via
+  the `VERCEL=1` system env var, which this project exposes).
 - From India each round trip to Neon (US East) takes ~0.3s, so the database
   tests take a few minutes locally. That's latency, not a hang.
 
@@ -2048,6 +2057,20 @@ throwaway scripts, run once and discarded -- don't go looking for them.
 `noUnusedLocals`/`noUnusedParameters`) is the check. Untested pure functions
 worth covering if a JS test runner is ever added: `lib/portfolioHistory.ts`
 (already had one off-by-one-day bug) and `lib/marketHolidays.ts` (IST dates).
+
+## First-party visit counter (2026-09, replaces Google Analytics)
+
+GA4 was removed. `POST /api/visit` (`routes/visits.py`,
+`services/visits.py`) adds 1 to `page_visits_daily (day, page, count)`:
+aggregate page loads per IST day per page, and nothing else -- no cookies,
+IPs, user ids or URLs. `page` must be a name in `visits.PAGES` (add new
+routes there), so a query string such as `?reset_token=` can never be
+stored. The frontend sends one count per page load (`recordVisit` in
+`lib/api.ts`). It deliberately skips the per-IP rate limiter, which stores
+IP-derived keys, so bots can inflate counts. Admins see the counts at
+`#/admin` (`GET /api/admin/visits`, gated by `ADMIN_EMAILS` via
+`routes/deps.require_admin`). Vercel Web Analytics was considered and
+rejected: the account is on Pro, where it bills per event.
 
 ## Results League (2026-09, in progress)
 
@@ -2075,8 +2098,12 @@ students can use hash URLs.
   `league_config.py`, awaiting sign-off). Banks/NBFCs excluded from the
   pilot and from Practice; a bank template comes in January.
 - Practice shows revenue indexed to Year 1 = 100, never absolute figures.
-- No third-party analytics: remove the GA4 tag from `index.html` (approved,
-  not yet done). Measure the pilot from our own database instead.
+- No third-party analytics (GA4 removed; see "First-party visit counter").
+  Measure the pilot from our own database.
+- Submitting a forecast counts as league participation: under-18 users with
+  pending guardian consent can't submit. Consent is collected through
+  schools on signed forms, and an admin marks it received. Keep the
+  `TODO(legal)` placeholder and never claim legal compliance anywhere.
 
 Stackly is becoming a forecasting league: before a company reports
 quarterly results, users forecast revenue growth, operating margin and an
