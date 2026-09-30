@@ -3,8 +3,6 @@ import type { CompanyFinancialsResponse } from "../lib/types";
 import { formatRawValue } from "../lib/format";
 import MetricCard from "./MetricCard";
 import PriceChart from "./PriceChart";
-import PriceForecastChart from "./PriceForecastChart";
-import AnalystConsensus from "./AnalystConsensus";
 import type { Theme } from "../hooks/useTheme";
 
 // One small glyph per metric-group category -- purely for faster visual
@@ -71,7 +69,7 @@ interface MetricsDashboardProps {
 }
 
 export default function MetricsDashboard({ data, theme }: MetricsDashboardProps) {
-  const { info, raw, metric_groups, analyst_consensus } = data;
+  const { info, raw, metric_groups } = data;
   // Collapsed by default -- the two charts + the summary row below are the
   // whole story most of the time; every grouped ratio card (and the raw
   // revenue/assets/etc. figures) are a deliberate "more detail" step behind
@@ -86,15 +84,11 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
     ["Total Equity", raw.total_equity],
   ];
 
-  const hasForecast =
-    !!analyst_consensus &&
-    analyst_consensus.target_date !== null &&
-    analyst_consensus.target_low !== null &&
-    analyst_consensus.target_mean !== null &&
-    analyst_consensus.target_high !== null &&
-    raw.current_price !== null;
-
-  const hasConsensus = !!analyst_consensus;
+  // (2026-09) Analyst consensus and price targets are deliberately not
+  // shown anywhere: Stackly is a forecast-the-business game and must never
+  // display buy/sell/hold calls or share-price targets. AnalystConsensus.tsx
+  // and PriceForecastChart.tsx are kept (unrendered) in case that decision
+  // is revisited; see CLAUDE.md's Results League decisions.
 
   // Refs per group, keyed by group.key, so the quick-jump nav can
   // smooth-scroll .metrics-pane to a specific group without hiding any of
@@ -135,27 +129,8 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
             theme={theme}
           />
 
-          {hasForecast && (
-            <PriceForecastChart
-              currentPrice={raw.current_price!}
-              currency={raw.currency}
-              forecast={analyst_consensus!}
-              theme={theme}
-            />
-          )}
         </div>
 
-        {hasConsensus && (
-          <div className="summary-row">
-            <AnalystConsensus
-              consensus={analyst_consensus!}
-              currentPrice={raw.current_price}
-              currency={raw.currency}
-              compact
-              fullWidth
-            />
-          </div>
-        )}
       </div>
 
       <ShowMoreToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />

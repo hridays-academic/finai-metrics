@@ -10,6 +10,9 @@ import StockMarketSimulator from "./components/StockMarketSimulator";
 import PaperTrading from "./components/PaperTrading";
 import ResetPasswordPanel from "./components/ResetPasswordPanel";
 import AdminPage from "./components/AdminPage";
+import LeagueHome from "./components/league/LeagueHome";
+import ForecastPage from "./components/league/ForecastPage";
+import { clearRoute, useHashRoute } from "./lib/router";
 import { useTheme } from "./hooks/useTheme";
 import { fetchCompany, fetchMe, recordVisit, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
@@ -36,9 +39,10 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get("reset_token")
   );
   const [view, setView] = useState<View>("search");
-  // Minimal hash route for the admin page until Phase 2's router lands.
-  const [hash, setHash] = useState(() => window.location.hash);
-  const isAdminRoute = hash === "#/admin";
+  // Hash routes (#/league, #/event/12, #/admin) take over the main area;
+  // with no route, the original sidebar views show as before.
+  const route = useHashRoute();
+  const onRoute = route !== null;
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,15 +51,9 @@ export default function App() {
   const [homeKey, setHomeKey] = useState(0);
 
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash);
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
-
-  useEffect(() => {
     if (!visitRecorded) {
       visitRecorded = true;
-      recordVisit(resetToken ? "reset_password" : isAdminRoute ? "admin" : "search");
+      recordVisit(resetToken ? "reset_password" : route ? route.name : "search");
     }
     // The app used to keep a user's own Tapetide API key here. That
     // integration is gone; delete any key a previous version left behind.
@@ -89,20 +87,13 @@ export default function App() {
 
   // Clicking the logo goes back to the empty state, same as a fresh page
   // load -- no network call, just resets local state.
-  function leaveAdminRoute() {
-    if (window.location.hash) {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      setHash("");
-    }
-  }
-
   function handleChangeView(next: View) {
-    leaveAdminRoute();
+    clearRoute();
     setView(next);
   }
 
   function handleGoHome() {
-    leaveAdminRoute();
+    clearRoute();
     setView("search");
     setCompany(null);
     setLoading(false);
@@ -143,7 +134,7 @@ export default function App() {
             `visible` (this view being the active one) for the same reason --
             see PaperTrading.tsx/useLiveQuotes.ts. */}
         <main className="app-main">
-          <div className={`view-wrapper ${view === "search" && !isAdminRoute ? "" : "view-hidden"}`}>
+          <div className={`view-wrapper ${view === "search" && !onRoute ? "" : "view-hidden"}`}>
             <CompanySearch
               key={homeKey}
               onSearch={handleSearch}
@@ -187,21 +178,38 @@ export default function App() {
             </div>
           </div>
 
-          <div className={`view-wrapper ${view === "calculator" && !isAdminRoute ? "" : "view-hidden"}`}>
+          <div className={`view-wrapper ${view === "calculator" && !onRoute ? "" : "view-hidden"}`}>
             <ReturnCalculator theme={theme} />
           </div>
 
-          <div className={`view-wrapper ${view === "simulator" && !isAdminRoute ? "" : "view-hidden"}`}>
+          <div className={`view-wrapper ${view === "simulator" && !onRoute ? "" : "view-hidden"}`}>
             <StockMarketSimulator theme={theme} />
           </div>
 
-          <div className={`view-wrapper ${view === "trading" && !isAdminRoute ? "" : "view-hidden"}`}>
-            <PaperTrading theme={theme} visible={view === "trading" && !isAdminRoute} />
+          <div className={`view-wrapper ${view === "trading" && !onRoute ? "" : "view-hidden"}`}>
+            <PaperTrading theme={theme} visible={view === "trading" && !onRoute} />
           </div>
 
-          {isAdminRoute && (
+          {route?.name === "admin" && (
             <div className="view-wrapper">
               <AdminPage user={user} onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          )}
+          {route?.name === "league" && (
+            <div className="view-wrapper">
+              <LeagueHome user={user} onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          )}
+          {route?.name === "event" && (
+            <div className="view-wrapper">
+              <ForecastPage
+                key={route.id}
+                eventId={route.id}
+                user={user}
+                onUserChange={setUser}
+                onOpenAuth={() => setAuthOpen(true)}
+                theme={theme}
+              />
             </div>
           )}
         </main>

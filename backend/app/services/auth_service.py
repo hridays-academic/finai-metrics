@@ -40,6 +40,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from app.config import get_settings
 from app.services.db import get_conn
 
 PBKDF2_ITERATIONS = 200_000
@@ -228,8 +229,9 @@ def log_out(token: str) -> None:
 
 
 def get_user_from_token(token: str) -> Optional[dict]:
-    """Returns {id, email, name, created_at, has_password} for a valid,
-    unexpired session, else None. Never raises -- callers treat auth as
+    """Returns {id, email, name, created_at, has_password, handle, age_band,
+    guardian_consent_status, school_name, is_admin} for a valid, unexpired
+    session, else None. Never raises -- callers treat auth as
     optional (see main.py's activity logging), so an invalid/expired/missing
     token just means "anonymous", not an error. `has_password` is False for
     a Google-only account (see login_with_google)."""
@@ -238,7 +240,8 @@ def get_user_from_token(token: str) -> Optional[dict]:
     with get_conn() as conn:
         row = conn.execute(
             """
-            SELECT u.id, u.email, u.name, u.created_at, u.password_hash, s.expires_at
+            SELECT u.id, u.email, u.name, u.created_at, u.password_hash, s.expires_at,
+                   u.handle, u.age_band, u.guardian_consent_status, u.school_name
             FROM sessions s JOIN users u ON u.id = s.user_id
             WHERE s.token = %s
             """,
@@ -254,6 +257,27 @@ def get_user_from_token(token: str) -> Optional[dict]:
         "name": row["name"],
         "created_at": row["created_at"],
         "has_password": row["password_hash"] is not None,
+        "handle": row["handle"],
+        "age_band": row["age_band"],
+        "guardian_consent_status": row["guardian_consent_status"],
+        "school_name": row["school_name"],
+        "is_admin": row["email"].strip().lower() in get_settings().admin_email_set,
+    }
+
+
+def get_user_by_id(user_id: int) -> dict:
+    """Same shape as get_user_from_token, for a known user id."""
+    with get_conn() as conn:
+        row = conn.execute(
+            """SELECT id, email, name, created_at, password_hash, handle, age_band,
+                      guardian_consent_status, school_name FROM users WHERE id = %s""",
+            (user_id,),
+        ).fetchone()
+    return {
+        "id": row["id"], "email": row["email"], "name": row["name"], "created_at": row["created_at"],
+        "has_password": row["password_hash"] is not None, "handle": row["handle"], "age_band": row["age_band"],
+        "guardian_consent_status": row["guardian_consent_status"], "school_name": row["school_name"],
+        "is_admin": row["email"].strip().lower() in get_settings().admin_email_set,
     }
 
 

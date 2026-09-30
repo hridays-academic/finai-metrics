@@ -230,6 +230,14 @@ class UserPublic(BaseModel):
     name: str
     created_at: str
     has_password: bool
+    # Results League identity (all None until the user sets them on their
+    # first league action). guardian_consent_status: not_required | pending |
+    # granted -- see league_service.forecast_eligibility.
+    handle: Optional[str] = None
+    age_band: Optional[str] = None
+    guardian_consent_status: Optional[str] = None
+    school_name: Optional[str] = None
+    is_admin: bool = False
 
 
 class AuthResponse(BaseModel):

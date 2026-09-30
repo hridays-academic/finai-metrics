@@ -13,6 +13,7 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from google.auth.transport import requests as google_auth_requests
 from google.oauth2 import id_token as google_id_token
 
@@ -48,11 +49,12 @@ from app.services.data_provider import (
 )
 from app.services.metrics import compute_health_snapshot, compute_metric_groups
 from app.services import gmail_service
-from app.services.yfinance_provider import YFinanceProvider
+from app.services.providers import provider as shared_provider
 from app.services import auth_service, fundamentals_cache, rate_limit
 from app.services.auth_service import AuthError
 from app.services.db import get_conn, init_db
-from app.routes import admin as admin_routes, visits as visit_routes
+from app.routes import admin as admin_routes, league as league_routes, visits as visit_routes
+from app.services.league_service import LeagueError
 from app.routes.deps import optional_user as _current_user
 
 logging.basicConfig(level=logging.INFO)
@@ -73,6 +75,12 @@ init_db()
 
 app.include_router(visit_routes.router)
 app.include_router(admin_routes.router)
+app.include_router(league_routes.router)
+
+
+@app.exception_handler(LeagueError)
+def _league_error(_request: Request, exc: LeagueError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status, content={"detail": {"code": exc.code, "message": exc.message}})
 
 
 def _rate_limited(request: Request) -> None:
@@ -94,9 +102,9 @@ def _rate_limited(request: Request) -> None:
         )
 
 
-# The app's one data provider (yfinance), a shared module-level singleton.
-# Everything reaches it through the FinancialDataProvider interface.
-provider: FinancialDataProvider = YFinanceProvider()
+# The app's one data provider (yfinance), shared with the route modules via
+# services/providers.py. Reached through the FinancialDataProvider interface.
+provider: FinancialDataProvider = shared_provider
 
 # Simple in-process cache of the last-fetched company per ticker, so the chat
 # endpoint can attach context without the frontend having to resend the full

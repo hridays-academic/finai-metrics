@@ -2127,6 +2127,36 @@ for a Q2 FY27 pilot (results late Oct - mid Nov 2026).
   non-consecutive (Sep 2025 missing for 28 of 40), so year-ago quarters are
   admin-entered; 4 complete fiscal years for 39 of 41.
 
+**Phase 2 (built 2026-09-30).** Reached by hash URL only for now
+(`#/league`, `#/event/<id>`, `#/admin`; `lib/router.ts`) -- the sidebar
+nav switch is Phase 5 and not urgent.
+- Backend: `routes/league.py` (config, events, forecast save/read, research
+  history, `PATCH /api/league/me`), `routes/admin.py` (quick event setup,
+  event edits, periods, actuals, baselines, users + guardian consent,
+  audit log, visits), `routes/deps.py` (optional_user / require_user /
+  require_admin). Logic in `services/league_service.py` (user side),
+  `services/league_admin.py`, `services/research_history.py`,
+  `services/audit.py`, `services/results_provider.py` (Manual + a documented
+  SEC EDGAR stub). Rule violations raise `LeagueError` -> JSON
+  `{"detail": {"code", "message"}}`.
+- Eligibility: forecasting needs a handle and age band; under-18 needs
+  `guardian_consent_status = 'granted'`, set by an admin (Players tab) when
+  the school's signed form arrives. The age band can only be set once by
+  the user (admins can correct it), so a minor can't self-exempt.
+- The research table always shows the eight quarter-ends before the event,
+  N/A where yfinance lacks one; yfinance figures (Yahoo definitions,
+  labelled) and admin actuals (league definitions, with source links) sit
+  in separate columns and are never merged.
+- Demo companies (`is_demo`) are hidden from listings whenever `VERCEL` is
+  set. Draft events are invisible to players.
+- Analyst consensus and price targets are no longer rendered anywhere
+  (`AnalystConsensus.tsx`/`PriceForecastChart.tsx` kept but unused); the
+  Return Calculator is historical-returns only.
+- Not built yet: scoring, reveal page, crowd stats, diagnosis (Phase 3),
+  seed script (with scoring), profiles/leagues, practice.
+- The full backend suite takes ~25 minutes from India (latency); run a
+  single file while iterating.
+
 **Schema changes need a version bump.** `init_db()` skips all schema
 statements when the database's `schema_version` row is already at
 `db.SCHEMA_VERSION`, saving ~50 round trips per cold start. If you add or

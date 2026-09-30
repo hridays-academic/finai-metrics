@@ -354,6 +354,31 @@ class YFinanceProvider(FinancialDataProvider):
             target_date=target_date,
         )
 
+    # ---------- Results League research panel ----------
+    def get_quarterly_income(self, symbol: str) -> list[dict]:
+        """Recent quarters' revenue and operating income, newest first, as
+        Yahoo reports them: `Total Revenue` (falling back to `Operating
+        Revenue`) and `Operating Income`. Missing values stay None.
+
+        Measured 2026-09 (41 NSE tickers): ~5 quarters, often NOT
+        consecutive -- Sep 2025 was missing for 28 of 40. Never fill gaps.
+        Not on FinancialDataProvider's ABC for the same reason as the Paper
+        Trading methods below: few providers offer it."""
+        try:
+            df = yf.Ticker(symbol).quarterly_income_stmt
+        except Exception as exc:
+            raise DataProviderError(f"Couldn't fetch quarterly results for '{symbol}': {exc}") from exc
+        if df is None or df.empty:
+            return []
+        quarters = []
+        for i, col in enumerate(df.columns):
+            quarters.append({
+                "period_end_date": pd.Timestamp(col).date().isoformat(),
+                "revenue": _row(df, "Total Revenue", "Operating Revenue", col=i),
+                "operating_income": _row(df, "Operating Income", col=i),
+            })
+        return quarters
+
     # ---------- Paper Trading: live quote + intraday chart ----------
     # Neither method is part of FinancialDataProvider's ABC -- most data
     # providers have no live tick data or intraday bars, so a shared

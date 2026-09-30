@@ -201,6 +201,16 @@ _SCHEMA_STATEMENTS = [
         PRIMARY KEY (day, page)
     )
     """,
+    # Added 2026-09 -- the Results League research panel's recent quarters
+    # from yfinance (see research_history.py), shared across users like the
+    # other caches. 7-day TTL: quarterly figures change once a quarter.
+    """
+    CREATE TABLE IF NOT EXISTS statement_history_cache (
+        symbol TEXT PRIMARY KEY,
+        quarters_json TEXT NOT NULL,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
 ]
 
 
@@ -217,7 +227,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001

@@ -1,4 +1,14 @@
 import type {
+  ActualRow,
+  AdminEventRow,
+  AdminUser,
+  AuditEntry,
+  EventDetail,
+  EventSummary,
+  Forecast,
+  ForecastValue,
+  LeagueConfig,
+  ResearchHistory,
   ActivityResponse,
   AuthResponse,
   CompanyFinancialsResponse,
@@ -26,20 +36,28 @@ function authHeaders(): HeadersInit {
 }
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number) {
+  // `code` is set by the Results League endpoints (e.g. "forecast_locked",
+  // "profile_required") so the UI can react to a specific rule.
+  constructor(message: string, public status: number, public code: string | null = null) {
     super(message);
   }
 }
 
-async function parseErrorDetail(res: Response): Promise<{ message: string }> {
+async function parseErrorDetail(res: Response): Promise<{ message: string; code: string | null }> {
   try {
     const body = await res.json();
-    if (typeof body.detail === "string") return { message: body.detail };
-    if (body.detail && typeof body.detail.message === "string") return { message: body.detail.message };
+    if (typeof body.detail === "string") return { message: body.detail, code: null };
+    if (body.detail && typeof body.detail.message === "string") {
+      return { message: body.detail.message, code: body.detail.code ?? null };
+    }
+    // FastAPI validation errors: a list of {loc, msg}
+    if (Array.isArray(body.detail) && body.detail[0]?.msg) {
+      return { message: String(body.detail[0].msg).replace(/^Value error, /, ""), code: "validation" };
+    }
   } catch {
     // response wasn't JSON -- fall through to generic message
   }
-  return { message: "Something went wrong. Please try again." };
+  return { message: "Something went wrong. Please try again.", code: null };
 }
 
 export async function fetchCompany(query: string): Promise<CompanyFinancialsResponse> {
@@ -222,7 +240,7 @@ export async function fetchActivity(): Promise<ActivityResponse> {
 // ---------- First-party visit counter (replaces Google Analytics) ----------
 // Sends only a fixed page name -- never the URL, query string or anything
 // about the visitor. See backend/app/services/visits.py.
-export type VisitPage = "search" | "reset_password" | "admin";
+export type VisitPage = "search" | "reset_password" | "admin" | "league" | "event";
 
 export function recordVisit(page: VisitPage): void {
   fetch(`${BASE_URL}/visit`, {
@@ -249,3 +267,46 @@ export async function fetchAdminVisits(days: number): Promise<{ days: number; ro
   }
   return res.json();
 }
+
+// ---------- Results League ----------
+
+async function leagueRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: { ...(body !== undefined ? { "Content-Type": "application/json" } : {}), ...authHeaders() },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const { message, code } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status, code);
+  }
+  return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+export const fetchLeagueConfig = () => leagueRequest<LeagueConfig>("GET", "/league/config");
+export const fetchLeagueEvents = (scope: "upcoming" | "scored") =>
+  leagueRequest<EventSummary[]>("GET", `/league/events?scope=${scope}`);
+export const fetchLeagueEvent = (id: number) => leagueRequest<EventDetail>("GET", `/league/events/${id}`);
+export const fetchMyForecast = (id: number) => leagueRequest<Forecast | null>("GET", `/league/events/${id}/my-forecast`);
+export const saveForecast = (id: number, body: { values: ForecastValue[]; reason_tags: string[]; note: string | null }) =>
+  leagueRequest<Forecast>("PUT", `/league/events/${id}/forecast`, body);
+export const fetchResearchHistory = (companyId: number) =>
+  leagueRequest<ResearchHistory>("GET", `/league/companies/${companyId}/history`);
+export const updateLeagueProfile = (body: { handle: string; age_band: string; school_name: string | null }) =>
+  leagueRequest<UserPublic>("PATCH", "/league/me", body);
+
+// Admin (ADMIN_EMAILS only)
+export const adminListEvents = () => leagueRequest<AdminEventRow[]>("GET", "/admin/events");
+export const adminQuickEvent = (body: Record<string, unknown>) => leagueRequest<{ id: number }>("POST", "/admin/events/quick", body);
+export const adminPatchEvent = (id: number, body: Record<string, unknown>) =>
+  leagueRequest<void>("PATCH", `/admin/events/${id}`, body);
+export const adminCreatePeriod = (body: Record<string, unknown>) => leagueRequest<{ id: number }>("POST", "/admin/periods", body);
+export const adminPutActuals = (periodId: number, items: Record<string, unknown>[]) =>
+  leagueRequest<void>("PUT", `/admin/periods/${periodId}/actuals`, items);
+export const adminFindUsers = (q: string) => leagueRequest<AdminUser[]>("GET", `/admin/users?q=${encodeURIComponent(q)}`);
+export const adminSetConsent = (userId: number, status: "pending" | "granted") =>
+  leagueRequest<void>("PUT", `/admin/users/${userId}/guardian-consent`, { status });
+export const adminAudit = (limit = 100) => leagueRequest<AuditEntry[]>("GET", `/admin/audit?limit=${limit}`);
+
+export const adminCompanyActuals = (companyId: number) =>
+  leagueRequest<ActualRow[]>("GET", `/admin/companies/${companyId}/actuals`);

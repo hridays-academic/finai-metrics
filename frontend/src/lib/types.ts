@@ -116,6 +116,12 @@ export interface UserPublic {
   created_at: string;
   // False for a Google-only account (see api.ts's loginWithGoogle).
   has_password: boolean;
+  // Results League identity -- null until set on the first league action.
+  handle: string | null;
+  age_band: "under_18" | "18_plus" | null;
+  guardian_consent_status: "not_required" | "pending" | "granted" | null;
+  school_name: string | null;
+  is_admin: boolean;
 }
 
 export interface AuthResponse {
@@ -169,3 +175,138 @@ export interface ActivityEntry {
 export interface ActivityResponse {
   entries: ActivityEntry[];
 }
+
+// ---------- Results League (mirrors backend/app/league_models.py) ----------
+
+export interface LeagueMetric {
+  key: "revenue_growth_yoy" | "operating_margin" | "sector_kpi";
+  definition_key: string;
+  label: string;
+  unit: string;
+  definition: string;
+  min_value: number;
+  max_value: number;
+}
+
+export interface LeagueConfig {
+  market: string;
+  timezone: string;
+  confidence: number;
+  core_metrics: LeagueMetric[];
+  kpi_templates: { sector: string; metric: LeagueMetric; source_hint: string }[];
+  reason_tags: { key: string; label: string }[];
+  excluded_sectors: string[];
+  note_max_chars: number;
+}
+
+export interface LeagueCompany {
+  id: number;
+  market_code: string;
+  exchange: string;
+  ticker: string;
+  name: string;
+  sector: string;
+  currency: string;
+  provider_symbol: string | null;
+}
+
+export type EventStatus = "draft" | "open" | "locked" | "scored";
+
+export interface EventSummary {
+  id: number;
+  company: LeagueCompany;
+  fiscal_year_label: string;
+  fiscal_quarter: number;
+  period_end_date: string;
+  season_label: string;
+  results_date: string;
+  lock_at: string; // ISO, UTC
+  status: EventStatus;
+  submitted: boolean;
+}
+
+export interface EventDetail extends EventSummary {
+  metrics: LeagueMetric[];
+  research_notes: string | null;
+  server_now: string; // the database clock when the response was built
+}
+
+export interface ForecastValue {
+  metric_key: string;
+  low: number;
+  high: number;
+}
+
+export interface Forecast {
+  event_id: number;
+  submitted_at: string;
+  updated_at: string;
+  reason_tags: string[];
+  note: string | null;
+  values: (ForecastValue & { confidence: number })[];
+  locked: boolean;
+}
+
+export interface QuarterRow {
+  period_end_date: string;
+  revenue: number | null;
+  operating_margin_pct: number | null;
+}
+
+export interface ActualRow {
+  period_id: number;
+  fiscal_year_label: string;
+  fiscal_quarter: number;
+  period_end_date: string;
+  metric_key: string;
+  definition_key: string;
+  value: number;
+  source_url: string;
+  entered_at: string;
+}
+
+export interface ResearchHistory {
+  provider_rows: QuarterRow[];
+  provider_source: string;
+  provider_definition: string;
+  provider_as_of: string | null;
+  actuals: ActualRow[];
+}
+
+export interface AdminEventRow {
+  id: number;
+  status: EventStatus;
+  lock_at: string;
+  results_date: string;
+  season_label: string;
+  period_id: number;
+  fiscal_year_label: string;
+  fiscal_quarter: number;
+  company_id: number;
+  company_name: string;
+  ticker: string;
+  sector: string;
+  lock_passed: boolean;
+  forecasts: number;
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  name: string;
+  handle: string | null;
+  age_band: string | null;
+  guardian_consent_status: string | null;
+  school_name: string | null;
+}
+
+export interface AuditEntry {
+  id: number;
+  at: string;
+  actor_user_id: number | null;
+  action: string;
+  entity: string;
+  entity_id: string;
+  details: Record<string, unknown> | null;
+}
+
