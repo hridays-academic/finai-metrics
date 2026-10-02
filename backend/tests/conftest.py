@@ -29,6 +29,9 @@ _TEST_DB = os.environ.get("TEST_DATABASE_URL") or _FILE_ENV.get("TEST_DATABASE_U
 
 _UNVERIFIED = "postgresql://tests-must-use-db_url-fixture.invalid:1/none"
 os.environ["DATABASE_URL"] = _UNVERIFIED
+# Takes precedence over DATABASE_URL (see config.py), so it must never leak
+# into a test run.
+os.environ.pop("STACKLY_DATABASE_URL", None)
 
 # League tables plus users (tests create their own users). Truncating
 # bypasses the row-level lock triggers, which is what lets tests clean up

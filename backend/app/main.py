@@ -52,6 +52,7 @@ from app.services import gmail_service
 from app.services.providers import provider as shared_provider
 from app.services import auth_service, fundamentals_cache, rate_limit
 from app.services.auth_service import AuthError
+from app.services import db as db_module
 from app.services.db import get_conn, init_db
 from app.routes import admin as admin_routes, league as league_routes, visits as visit_routes
 from app.services.league_service import LeagueError
@@ -118,7 +119,9 @@ _last_company_by_ticker: dict[str, CompanyFinancialsResponse] = {}
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok"}
+    # Only the database's label ("production", "dev" or "test") -- never the
+    # connection string. Lets anyone confirm which database the live site uses.
+    return {"status": "ok", "database": db_module.DATABASE_LABEL}
 
 
 def _normalize_for_match(s: str) -> str:

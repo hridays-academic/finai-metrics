@@ -21,7 +21,7 @@ change in auth_service.py.
 import logging
 import os
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Iterator, Optional
 
 import psycopg
 from psycopg.rows import dict_row
@@ -215,11 +215,11 @@ _SCHEMA_STATEMENTS = [
 
 
 def _dsn() -> str:
-    dsn = get_settings().database_url
+    dsn = get_settings().effective_database_url
     if not dsn:
         raise RuntimeError(
-            "DATABASE_URL is not set -- see CLAUDE.md's Neon Postgres setup. "
-            "Locally, add it to backend/.env; in Vercel, set it as a project env var."
+            "No database configured (STACKLY_DATABASE_URL / DATABASE_URL) -- see CLAUDE.md. "
+            "Locally, set DATABASE_URL in backend/.env to the Neon dev branch."
         )
     return dsn
 
@@ -233,34 +233,64 @@ SCHEMA_VERSION = 5
 _SCHEMA_LOCK_KEY = 72_561_001
 
 
-_LOCAL_SAFE_LABELS = {"dev", "test"}
+_LABELLED = {"dev", "test"}
+
+# Which database this process is connected to: "dev"/"test" (a labelled Neon
+# branch) or "production" (no stackly_env table). Set by init_db, reported by
+# /api/health -- never the URL itself.
+DATABASE_LABEL: Optional[str] = None
+
+logger = logging.getLogger("finai")
 
 
-def _refuse_unlabelled_database_locally(conn: psycopg.Connection) -> None:
-    """A server running anywhere except Vercel must be connected to a Neon
-    branch labelled 'dev' or 'test' (the `stackly_env` table). Production has
-    no such table, so a local server holding production's connection string
-    refuses to start instead of silently writing to live data -- which
-    happened on 2026-09-30: a local server started on 2026-09-13 kept
-    production's string for weeks and a local test created a real account.
-
-    Vercel sets VERCEL=1 in every deployment (the project exposes system env
-    vars), which is how production is exempt."""
-    if os.environ.get("VERCEL"):
-        return
+def _database_label(conn: psycopg.Connection) -> str:
     try:
         labels = {row[0] for row in conn.execute("SELECT name FROM stackly_env")}
     except psycopg.errors.UndefinedTable:
         conn.rollback()
-        labels = set()
-    if labels & _LOCAL_SAFE_LABELS:
-        logging.getLogger("finai").info("Local server using the Neon '%s' database", ",".join(sorted(labels)))
-        return
-    raise RuntimeError(
-        "Refusing to start: DATABASE_URL is not a database labelled 'dev' or 'test'. "
-        "Local servers must use the Neon dev branch (backend/.env) -- never production. "
-        "See CLAUDE.md's Testing section."
-    )
+        return "production"
+    labelled = sorted(labels & _LABELLED)
+    return labelled[0] if labelled else "production"
+
+
+def _check_database_label(conn: psycopg.Connection) -> str:
+    """Refuses to start a server connected to the wrong kind of database.
+
+    - Outside Vercel (local servers, tests): the database must be labelled
+      'dev' or 'test'. 2026-09-30: a local server started on 2026-09-13 kept
+      production's string and a local test created a real account.
+    - A Vercel *production* deployment must NOT be on a 'dev'/'test'
+      database. 2026-09-29: the Neon integration re-pointed DATABASE_URL at
+      the dev branch and the live site silently ran on dev for days.
+      Failing loudly beats splitting live data across two databases.
+    - Preview deployments are allowed either way.
+
+    Vercel sets VERCEL=1 and VERCEL_ENV in every deployment (this project
+    exposes system env vars)."""
+    label = _database_label(conn)
+    on_vercel = bool(os.environ.get("VERCEL"))
+    if not on_vercel and label not in _LABELLED:
+        raise RuntimeError(
+            "Refusing to start: the database is not labelled 'dev' or 'test'. "
+            "Local servers must use the Neon dev branch (backend/.env) -- never production. "
+            "See CLAUDE.md's Testing section."
+        )
+    if on_vercel and os.environ.get("VERCEL_ENV") == "production" and label in _LABELLED:
+        raise RuntimeError(
+            f"Refusing to start: this production deployment is connected to the '{label}' database. "
+            "Set STACKLY_DATABASE_URL (Production) to the Neon main branch."
+        )
+    logger.info("Database: %s", label)
+    return label
+
+
+def _tapetide_storage_present(conn: psycopg.Connection) -> str:
+    column = conn.execute(
+        """SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema()
+                          AND table_name = 'users' AND column_name = 'tapetide_key_encrypted')"""
+    ).fetchone()[0]
+    table = conn.execute("SELECT to_regclass('tapetide_quota') IS NOT NULL").fetchone()[0]
+    return f"tapetide_key_encrypted column={'yes' if column else 'no'}, tapetide_quota table={'yes' if table else 'no'}"
 
 
 def init_db() -> None:
@@ -271,16 +301,20 @@ def init_db() -> None:
     the league tables that's ~50 round trips added to every cold start. A
     newer stored version (an older deploy rolled back to) is also skipped,
     so a rollback never re-runs an older schema over a newer one."""
+    global DATABASE_LABEL
     with psycopg.connect(_dsn()) as conn:
-        _refuse_unlabelled_database_locally(conn)
+        DATABASE_LABEL = _check_database_label(conn)
+        current = None
         try:
             row = conn.execute("SELECT version FROM schema_version").fetchone()
-            if row and row[0] >= SCHEMA_VERSION:
+            current = row[0] if row else None
+            if current is not None and current >= SCHEMA_VERSION:
                 return
         except psycopg.errors.UndefinedTable:
             conn.rollback()
 
         conn.execute("SELECT pg_advisory_xact_lock(%s)", (_SCHEMA_LOCK_KEY,))
+        before = _tapetide_storage_present(conn)
         for statement in _SCHEMA_STATEMENTS + LEAGUE_SCHEMA_STATEMENTS:
             conn.execute(statement)
         conn.execute(
@@ -300,7 +334,18 @@ def init_db() -> None:
             """,
             (SCHEMA_VERSION,),
         )
+        after = _tapetide_storage_present(conn)
+        league = conn.execute(
+            """SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema()
+               AND table_name IN ('markets', 'companies', 'fiscal_periods', 'forecast_events', 'forecasts',
+                                  'forecast_values', 'actuals', 'baselines', 'scores', 'audit_log')"""
+        ).fetchone()[0]
         conn.commit()
+        logger.info(
+            "Schema migrated on %s database: version %s -> %s; league tables present: %s/10; "
+            "Tapetide storage before: %s; after: %s",
+            DATABASE_LABEL, current if current is not None else "none", SCHEMA_VERSION, league, before, after,
+        )
 
 
 @contextmanager

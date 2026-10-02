@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     # persistent local disk, unlike the SQLite file this replaced); locally,
     # set it in backend/.env.
     database_url: Optional[str] = None
+    # Production-only override, set in Vercel to the Neon `main` branch.
+    # Exists because the Neon integration manages DATABASE_URL itself and on
+    # 2026-09-29 re-pointed it (for every environment) at the dev branch,
+    # silently splitting production data. When set, it wins over
+    # DATABASE_URL. Never print or log either value.
+    stackly_database_url: Optional[str] = None
+
+    @property
+    def effective_database_url(self) -> Optional[str]:
+        return self.stackly_database_url or self.database_url
 
     # Google OAuth Client ID (see auth_service.py / main.py's /api/auth/google
     # and frontend/src/lib/googleAuth.ts) -- the SAME value the frontend uses

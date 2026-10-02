@@ -70,3 +70,8 @@ def test_admin_visits_returns_counts_for_admins(conn, client, admin_env):
     body = res.json()
     assert body["days"] == 7
     assert [(r["page"], r["count"]) for r in body["rows"]] == [("trading", 1)]
+
+
+def test_health_reports_only_the_database_label(conn, client):
+    body = client.get("/api/health").json()
+    assert body == {"status": "ok", "database": "test"}
