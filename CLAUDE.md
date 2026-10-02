@@ -1788,6 +1788,14 @@ the same email-submit-and-confirm logic a third time.
 Backend reads from `backend/.env` locally (see `backend/.env.example`), or
 from Vercel project environment variables in production:
 
+- **`STACKLY_DATABASE_URL` — Production only, set in Vercel to the Neon
+  `main` branch's pooled string. When set it wins over `DATABASE_URL`
+  (`config.effective_database_url`).** It exists because the Neon
+  integration manages `DATABASE_URL` itself (one value for Production,
+  Preview and Development) and on 2026-09-29 re-pointed it at the `dev`
+  branch, so the live site ran on dev until 2026-10-02 (see "Incident
+  2026-09-29" below). Never print or log either value. Never set
+  `STACKLY_DATABASE_URL` locally; tests strip it.
 - `DATABASE_URL` — required. Neon Postgres connection string (free tier, no
   credit card) backing user accounts, sessions, activity logs, and Tapetide
   quota tracking — see "Deployment" and "Accounts & activity tracking"
@@ -1928,6 +1936,21 @@ unchanged in production too as long as both pieces share one domain).
 
 **Live at the custom domain `stackslymetrics.com`** (2026-09); the
 `stackly-*.vercel.app` aliases below still serve the same deployment.
+
+**Incident 2026-09-29 -> 2026-10-02: production ran on the dev database.**
+The Neon integration recreated `DATABASE_URL` for all environments
+pointing at `dev` (around when the dev/test branches were created and
+`main`'s password was rotated). Every deploy after that read and wrote dev:
+two real Google accounts and their searches landed there (since deleted
+from dev; not copied to production). **Earlier notes claiming the league
+migrations and the Tapetide cleanup ran on production were wrong** -- they
+ran on dev; production was migrated (none -> v5, Tapetide column/table
+removed) only on 2026-10-02, confirmed from its startup log. Safeguards
+since: `STACKLY_DATABASE_URL` (above); a production deployment refuses to
+start on a database labelled `dev`/`test`; `/api/health` reports the
+database label (`production`/`dev`/`test`, never the URL); migrations log
+before/after version and Tapetide state. **After every deploy, check
+`/api/health` says `"database": "production"`.**
 
 **Deploying = `vercel deploy --prod --yes` from the repo root. Pushing to
 GitHub does NOT deploy.** The Vercel project ("stackly") is linked to this
