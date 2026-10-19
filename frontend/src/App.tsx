@@ -10,10 +10,12 @@ import StockMarketSimulator from "./components/StockMarketSimulator";
 import PaperTrading from "./components/PaperTrading";
 import ResetPasswordPanel from "./components/ResetPasswordPanel";
 import AdminPage from "./components/AdminPage";
+import SiteFooter from "./components/SiteFooter";
 import LeagueHome from "./components/league/LeagueHome";
 import ForecastPage from "./components/league/ForecastPage";
 import { clearRoute, useHashRoute } from "./lib/router";
 import { useTheme } from "./hooks/useTheme";
+import { SHOW_EXTRA_TOOLS } from "./lib/features";
 import { fetchCompany, fetchMe, recordVisit, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
 import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
@@ -38,22 +40,23 @@ export default function App() {
   const [resetToken, setResetToken] = useState<string | null>(
     () => new URLSearchParams(window.location.search).get("reset_token")
   );
-  const [view, setView] = useState<View>("search");
-  // Hash routes (#/league, #/event/12, #/admin) take over the main area;
-  // with no route, the original sidebar views show as before.
+  // Home (the league stock picker) is the landing page (2026-10).
+  const [view, setView] = useState<View>("home");
+  // Hash routes (#/event/12, #/admin) take over the main area. #/league is
+  // just another address for Home.
   const route = useHashRoute();
-  const onRoute = route !== null;
+  const showHome = route?.name === "league" || (view === "home" && route === null);
+  // A company page belongs to Home in the nav; the admin page to nothing.
+  const navView: View | null =
+    route?.name === "admin" ? null : route?.name === "event" || route?.name === "league" ? "home" : view;
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Bumped on "go home" to force CompanySearch to remount, clearing its
-  // internal (uncontrolled) search-box text along with everything else.
-  const [homeKey, setHomeKey] = useState(0);
 
   useEffect(() => {
     if (!visitRecorded) {
       visitRecorded = true;
-      recordVisit(resetToken ? "reset_password" : route ? route.name : "search");
+      recordVisit(resetToken ? "reset_password" : route ? route.name : "home");
     }
     // The app used to keep a user's own Tapetide API key here. That
     // integration is gone; delete any key a previous version left behind.
@@ -85,20 +88,14 @@ export default function App() {
     }
   }
 
-  // Clicking the logo goes back to the empty state, same as a fresh page
-  // load -- no network call, just resets local state.
   function handleChangeView(next: View) {
     clearRoute();
     setView(next);
   }
 
+  // The logo goes to Home. Research keeps its loaded company.
   function handleGoHome() {
-    clearRoute();
-    setView("search");
-    setCompany(null);
-    setLoading(false);
-    setError(null);
-    setHomeKey((k) => k + 1);
+    handleChangeView("home");
   }
 
   return (
@@ -108,7 +105,7 @@ export default function App() {
         <div className="app-backdrop-glow" />
       </div>
 
-      <Sidebar view={view} onChange={handleChangeView} />
+      <Sidebar view={navView} onChange={handleChangeView} />
 
       <div className="app-shell-content">
         <Header
@@ -134,9 +131,16 @@ export default function App() {
             `visible` (this view being the active one) for the same reason --
             see PaperTrading.tsx/useLiveQuotes.ts. */}
         <main className="app-main">
-          <div className={`view-wrapper ${view === "search" && !onRoute ? "" : "view-hidden"}`}>
+          {/* Mounted only while shown, so its lists are fresh each visit
+              (e.g. a forecast saved on a company page shows up at once). */}
+          {showHome && (
+            <div className="view-wrapper">
+              <LeagueHome user={user} onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          )}
+
+          <div className={`view-wrapper ${view === "search" && route === null ? "" : "view-hidden"}`}>
             <CompanySearch
-              key={homeKey}
               onSearch={handleSearch}
               loading={loading}
               error={error}
@@ -174,30 +178,31 @@ export default function App() {
                     <p>Search an NSE/BSE-listed company above to see its financial metrics.</p>
                   </div>
                 )}
+                <SiteFooter />
               </div>
             </div>
           </div>
 
-          <div className={`view-wrapper ${view === "calculator" && !onRoute ? "" : "view-hidden"}`}>
-            <ReturnCalculator theme={theme} />
-          </div>
+          {/* Hidden behind a flag while the league is the focus (lib/features.ts). */}
+          {SHOW_EXTRA_TOOLS && (
+            <>
+              <div className={`view-wrapper ${view === "calculator" && route === null ? "" : "view-hidden"}`}>
+                <ReturnCalculator theme={theme} />
+              </div>
 
-          <div className={`view-wrapper ${view === "simulator" && !onRoute ? "" : "view-hidden"}`}>
-            <StockMarketSimulator theme={theme} />
-          </div>
+              <div className={`view-wrapper ${view === "simulator" && route === null ? "" : "view-hidden"}`}>
+                <StockMarketSimulator theme={theme} />
+              </div>
+            </>
+          )}
 
-          <div className={`view-wrapper ${view === "trading" && !onRoute ? "" : "view-hidden"}`}>
-            <PaperTrading theme={theme} visible={view === "trading" && !onRoute} />
+          <div className={`view-wrapper ${view === "trading" && route === null ? "" : "view-hidden"}`}>
+            <PaperTrading theme={theme} visible={view === "trading" && route === null} />
           </div>
 
           {route?.name === "admin" && (
             <div className="view-wrapper">
               <AdminPage user={user} onOpenAuth={() => setAuthOpen(true)} />
-            </div>
-          )}
-          {route?.name === "league" && (
-            <div className="view-wrapper">
-              <LeagueHome user={user} onOpenAuth={() => setAuthOpen(true)} />
             </div>
           )}
           {route?.name === "event" && (

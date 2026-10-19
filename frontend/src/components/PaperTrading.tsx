@@ -10,6 +10,7 @@ import MarketStatusNotice from "./MarketStatusNotice";
 import PortfolioAnalysis from "./PortfolioAnalysis";
 import CoinAmount from "./CoinAmount";
 import CoinIcon from "./CoinIcon";
+import SiteFooter from "./SiteFooter";
 import type { Theme } from "../hooks/useTheme";
 
 type PageTab = "trade" | "analysis";
@@ -515,6 +516,7 @@ export default function PaperTrading({ theme, visible }: PaperTradingProps) {
           are not tied to your account and won't follow you to another device or browser, and clearing
           this site's data will erase them. Starting balance is configurable in Settings.
         </div>
+        <SiteFooter />
       </div>
     </div>
   );

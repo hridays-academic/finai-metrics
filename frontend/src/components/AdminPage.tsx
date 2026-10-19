@@ -1,29 +1,29 @@
 import { useState } from "react";
 import type { UserPublic } from "../lib/types";
-import AdminActuals from "./admin/AdminActuals";
-import AdminAudit from "./admin/AdminAudit";
-import AdminEvents from "./admin/AdminEvents";
+import AdminCompanies from "./admin/AdminCompanies";
+import AdminMore from "./admin/AdminMore";
 import AdminUsers from "./admin/AdminUsers";
-import AdminVisits from "./admin/AdminVisits";
+import SiteFooter from "./SiteFooter";
 
 interface AdminPageProps {
   user: UserPublic | null;
   onOpenAuth: () => void;
 }
 
+// Built around four jobs (2026-10): add a company, enter numbers, score
+// (placeholder until scoring exists) -- all on Companies -- and approve
+// students. Visits and the audit log sit under More.
 const TABS = [
-  { key: "events", label: "Events", Component: AdminEvents },
-  { key: "actuals", label: "Results", Component: AdminActuals },
-  { key: "users", label: "Players", Component: AdminUsers },
-  { key: "visits", label: "Visits", Component: AdminVisits },
-  { key: "audit", label: "Audit log", Component: AdminAudit },
+  { key: "companies", label: "Companies", Component: AdminCompanies },
+  { key: "students", label: "Students", Component: AdminUsers },
+  { key: "more", label: "More", Component: AdminMore },
 ] as const;
 
 // Reached at #/admin. The server enforces access (ADMIN_EMAILS); the checks
 // here only decide what to render. Uses existing styles -- the design pass
 // is deferred (see CLAUDE.md).
 export default function AdminPage({ user, onOpenAuth }: AdminPageProps) {
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("events");
+  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("companies");
   const Active = TABS.find((t) => t.key === tab)!.Component;
 
   return (
@@ -58,6 +58,7 @@ export default function AdminPage({ user, onOpenAuth }: AdminPageProps) {
             <Active />
           </>
         )}
+        <SiteFooter />
       </div>
     </div>
   );

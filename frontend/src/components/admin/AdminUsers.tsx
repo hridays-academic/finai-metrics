@@ -38,8 +38,8 @@ export default function AdminUsers() {
   return (
     <div>
       <p className="calculator-subtitle">
-        Players under 18 can't submit forecasts until their school's signed guardian consent form has been received.
-        Mark it here once you have the form. Pending players are listed first.
+        Students under 18 can't submit forecasts until their school's signed guardian consent form has been received.
+        Mark it here once you have the form. Pending students are listed first.
       </p>
       <form className="calculator-stock-form" onSubmit={handleSearch}>
         <input placeholder="Search email, handle or name" value={q} onChange={(e) => setQ(e.target.value)} />

@@ -4,6 +4,7 @@ and baselines; record guardian consent. Target: one event set up in under
 two minutes (quick_event does company + period + event in one call).
 Every change writes audit_log in the same transaction.
 """
+import re
 from datetime import date, datetime, time, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -15,9 +16,11 @@ from app.league_config import SECTOR_KPI, MarketConfig, all_definitions, market_
 from app.league_models import (
     ActualIn,
     ActualOut,
+    AdminBoardRow,
     AdminUserOut,
     BaselineIn,
     EventPatch,
+    MetricDefinitionOut,
     PeriodIn,
     QuickEventIn,
 )
@@ -56,6 +59,14 @@ def quick_event(conn: psycopg.Connection, actor: dict, data: QuickEventIn) -> in
         raise LeagueError(422, "sector_excluded", f"'{sector}' companies aren't part of the league yet.")
     if data.results_date < data.period_end_date:
         raise LeagueError(422, "bad_dates", "The results date can't be before the period end date.")
+    ticker = data.ticker.strip().upper()
+    template = cfg.kpi_templates.get(sector)
+    if data.include_kpi and template and ticker in template.non_disclosing_tickers:
+        raise LeagueError(
+            422, "kpi_not_disclosed",
+            f"{ticker} doesn't disclose {template.metric.label.lower()}, so its events have no sector KPI. "
+            "Untick the KPI box.",
+        )
     lock_at = data.lock_at or default_lock_at(data.results_date, cfg)
     now = conn.execute("SELECT now()").fetchone()["now"]
     if lock_at <= now:
@@ -64,16 +75,19 @@ def quick_event(conn: psycopg.Connection, actor: dict, data: QuickEventIn) -> in
 
     company = conn.execute(
         """
-        INSERT INTO companies (market_code, exchange, ticker, name, sector, currency, fiscal_year_end_month, provider_symbol)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO companies (market_code, exchange, ticker, name, sector, currency, fiscal_year_end_month,
+                               provider_symbol, description)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (market_code, exchange, ticker) DO UPDATE
             SET name = EXCLUDED.name, sector = EXCLUDED.sector,
                 fiscal_year_end_month = EXCLUDED.fiscal_year_end_month,
-                provider_symbol = COALESCE(EXCLUDED.provider_symbol, companies.provider_symbol)
+                provider_symbol = COALESCE(EXCLUDED.provider_symbol, companies.provider_symbol),
+                description = COALESCE(EXCLUDED.description, companies.description)
         RETURNING id
         """,
-        (data.market_code, data.exchange.strip().upper(), data.ticker.strip().upper(), data.company_name.strip(),
-         sector, cfg.currency, data.fiscal_year_end_month, (data.provider_symbol or "").strip().upper() or None),
+        (data.market_code, data.exchange.strip().upper(), ticker, data.company_name.strip(),
+         sector, cfg.currency, data.fiscal_year_end_month, (data.provider_symbol or "").strip().upper() or None,
+         (data.description or "").strip() or None),
     ).fetchone()["id"]
     period = _upsert_period(conn, company, data.fiscal_year_label, data.fiscal_quarter, data.period_end_date)
     try:
@@ -234,15 +248,114 @@ def find_users(conn: psycopg.Connection, query: Optional[str], limit: int = 50) 
     return [AdminUserOut(**dict(r)) for r in rows]
 
 
-def list_admin_events(conn: psycopg.Connection) -> list[dict]:
+# ---------- Companies board (the admin page's main list) ----------
+
+def year_ago_label(fy_label: str) -> str:
+    """'FY27' -> 'FY26'. Keeps the prefix and the digit width."""
+    m = re.fullmatch(r"([A-Za-z]*)(\d+)", fy_label.strip())
+    if not m:
+        raise LeagueError(422, "bad_fiscal_year", f"Can't work out the year before '{fy_label}'.")
+    prefix, digits = m.groups()
+    return f"{prefix.upper()}{int(digits) - 1:0{len(digits)}d}"
+
+
+def _missing(metrics: list[dict], have: set[tuple[str, str]]) -> list[str]:
+    """Metric keys with no actual recorded under the event's own definition."""
+    return [m["key"] for m in metrics if (m["key"], m["definition_key"]) not in have]
+
+
+def _board_status(row: dict, missing_last_year: list[str], missing_results: list[str]) -> str:
+    if row["status"] == "scored":
+        return "scored"
+    if row["lock_passed"]:
+        return "ready_to_score" if not missing_results else "results_due"
+    if missing_last_year:
+        return "needs_last_year"
+    return "hidden" if row["status"] == "draft" else "open"
+
+
+def admin_board(conn: psycopg.Connection) -> list[AdminBoardRow]:
     rows = conn.execute(
         """
-        SELECT e.id, e.status, e.lock_at, e.results_date, e.season_label, p.id AS period_id,
-               p.fiscal_year_label, p.fiscal_quarter, c.id AS company_id, c.name AS company_name, c.ticker, c.sector,
+        SELECT e.id, e.status, e.lock_at, e.results_date, e.season_label, e.metric_definitions, e.research_notes,
+               p.fiscal_year_label, p.fiscal_quarter, p.period_end_date,
+               c.id AS company_id, c.name AS company_name, c.ticker, c.sector,
                e.lock_at <= now() AS lock_passed,
                (SELECT count(*) FROM forecasts f WHERE f.event_id = e.id) AS forecasts
         FROM forecast_events e JOIN fiscal_periods p ON p.id = e.period_id JOIN companies c ON c.id = p.company_id
-        ORDER BY e.results_date DESC, c.name
+        ORDER BY e.results_date, c.name
         """
     ).fetchall()
-    return [dict(r) for r in rows]
+    have: dict[tuple[int, str, int], set[tuple[str, str]]] = {}
+    for a in conn.execute(
+        """SELECT p.company_id, p.fiscal_year_label, p.fiscal_quarter, a.metric_key, a.definition_key
+           FROM actuals a JOIN fiscal_periods p ON p.id = a.period_id"""
+    ).fetchall():
+        have.setdefault((a["company_id"], a["fiscal_year_label"], a["fiscal_quarter"]), set()).add(
+            (a["metric_key"], a["definition_key"]))
+    out = []
+    for r in rows:
+        metrics = r["metric_definitions"]["metrics"]
+        prev = year_ago_label(r["fiscal_year_label"])
+        missing_last_year = _missing(metrics, have.get((r["company_id"], prev, r["fiscal_quarter"]), set()))
+        missing_results = _missing(metrics, have.get((r["company_id"], r["fiscal_year_label"], r["fiscal_quarter"]), set()))
+        out.append(AdminBoardRow(
+            id=r["id"], company_id=r["company_id"], company_name=r["company_name"], ticker=r["ticker"],
+            sector=r["sector"], season_label=r["season_label"], fiscal_year_label=r["fiscal_year_label"],
+            fiscal_quarter=r["fiscal_quarter"], period_end_date=r["period_end_date"], results_date=r["results_date"],
+            lock_at=r["lock_at"], lock_passed=r["lock_passed"], forecasts=r["forecasts"], raw_status=r["status"],
+            status=_board_status(r, missing_last_year, missing_results), year_ago_label=prev,
+            metrics=[MetricDefinitionOut(**m) for m in metrics], missing_last_year=missing_last_year,
+            missing_results=missing_results, research_notes=r["research_notes"],
+        ))
+    return out
+
+
+def _event_for_entry(conn: psycopg.Connection, event_id: int) -> dict:
+    row = conn.execute(
+        """SELECT e.id, e.status, e.metric_definitions, e.lock_at <= now() AS lock_passed,
+                  p.id AS period_id, p.company_id, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date
+           FROM forecast_events e JOIN fiscal_periods p ON p.id = e.period_id WHERE e.id = %s""",
+        (event_id,),
+    ).fetchone()
+    if row is None:
+        raise LeagueError(404, "event_not_found", "No such event.")
+    return row
+
+
+def _check_event_definitions(event: dict, items: list[ActualIn]) -> None:
+    """Numbers entered from an event's row must use that event's own definitions."""
+    defs = {m["key"]: m["definition_key"] for m in event["metric_definitions"]["metrics"]}
+    for item in items:
+        if defs.get(item.metric_key) != item.definition_key:
+            raise LeagueError(422, "wrong_definition",
+                              f"'{item.definition_key}' isn't this event's definition for '{item.metric_key}'.")
+
+
+def put_last_year(conn: psycopg.Connection, actor: dict, event_id: int, items: list[ActualIn]) -> bool:
+    """Saves the year-ago quarter's numbers. Once every metric has one, a
+    hidden event opens for forecasts. Returns whether it opened."""
+    event = _event_for_entry(conn, event_id)
+    _check_event_definitions(event, items)
+    end = event["period_end_date"]
+    period = _upsert_period(conn, event["company_id"], year_ago_label(event["fiscal_year_label"]),
+                            event["fiscal_quarter"], end.replace(year=end.year - 1))
+    put_actuals(conn, actor, period, items)
+    have = {(r["metric_key"], r["definition_key"]) for r in conn.execute(
+        "SELECT metric_key, definition_key FROM actuals WHERE period_id = %s", (period,)).fetchall()}
+    if event["status"] == "draft" and not _missing(event["metric_definitions"]["metrics"], have):
+        conn.execute("UPDATE forecast_events SET status = 'open', updated_at = now() WHERE id = %s", (event_id,))
+        audit.write(conn, actor["id"], "update", "forecast_event", event_id,
+                    {"status": "open", "reason": "last year's numbers complete"})
+        return True
+    return False
+
+
+def put_results(conn: psycopg.Connection, actor: dict, event_id: int, items: list[ActualIn]) -> None:
+    """Saves the reported numbers for the event's own quarter -- only after
+    the lock, so a result can never be visible while forecasts are open."""
+    event = _event_for_entry(conn, event_id)
+    if not event["lock_passed"]:
+        raise LeagueError(409, "results_before_lock", "Forecasts are still open. Enter results after the lock time.")
+    _check_event_definitions(event, items)
+    put_actuals(conn, actor, event["period_id"], items)

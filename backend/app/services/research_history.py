@@ -33,7 +33,8 @@ def _rows(quarters: list[dict]) -> list[QuarterRow]:
     for q in quarters:
         rev, op = q.get("revenue"), q.get("operating_income")
         margin = (op / rev * 100) if rev not in (None, 0) and op is not None else None
-        out.append(QuarterRow(period_end_date=q["period_end_date"], revenue=rev, operating_margin_pct=margin))
+        out.append(QuarterRow(period_end_date=q["period_end_date"], revenue=rev, operating_margin_pct=margin,
+                              net_income=q.get("net_income")))
     return out
 
 
@@ -53,7 +54,10 @@ def company_history(company_id: int) -> ResearchHistoryOut:
     quarters, as_of = [], None
     if cached is not None:
         quarters, as_of = json.loads(cached["quarters_json"]), cached["fetched_at"]
-    fresh = as_of is not None and datetime.now(timezone.utc) - as_of < HISTORY_TTL
+    # Rows cached before net income was added (2026-10) count as stale, so
+    # they're refetched once instead of showing N/A profit for a week.
+    complete = all("net_income" in q for q in quarters)
+    fresh = as_of is not None and complete and datetime.now(timezone.utc) - as_of < HISTORY_TTL
     if symbol and not fresh:
         try:
             quarters = provider.get_quarterly_income(symbol)

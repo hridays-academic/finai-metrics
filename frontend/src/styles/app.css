@@ -3412,3 +3412,344 @@ button:not(.icon-button):not(.modal-skip):active {
   }
 }
 
+
+/* ---------- Results League front end (2026-10) ----------
+   Home stock picker, company page flow, site footer and the phone bottom
+   bar. Existing tokens and card styles only; the design pass comes later. */
+
+.site-footer {
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+/* Text labels exist for the phone bottom bar only. */
+.sidebar-label {
+  display: none;
+}
+
+.picker-page h2 {
+  font-size: 1.35rem;
+}
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+  gap: 0.8rem;
+  margin-top: 1.1rem;
+  align-items: start;
+}
+
+.picker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.25s var(--ease-snap), box-shadow 0.25s ease;
+}
+.picker-card:focus-visible,
+.picker-card.expanded {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .picker-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+}
+
+.picker-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.picker-sector {
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.picker-countdown {
+  color: var(--accent);
+  white-space: nowrap;
+}
+.picker-name {
+  margin: 0.1rem 0 0;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+.picker-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* Collapsed by default; grows open on hover (desktop), focus, or tap (.expanded). */
+.picker-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+.picker-more-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.picker-card.expanded .picker-more,
+.picker-card:focus-visible .picker-more {
+  grid-template-rows: 1fr;
+}
+@media (hover: hover) and (pointer: fine) {
+  .picker-card:hover .picker-more {
+    grid-template-rows: 1fr;
+  }
+}
+
+.picker-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.4rem;
+}
+.picker-figures dt {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+.picker-figures dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.picker-source {
+  margin: 0 0 0.3rem;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+}
+.picker-cta {
+  display: inline-block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.picker-shuffle {
+  margin-top: 0.9rem;
+}
+
+.picker-empty {
+  margin-top: 1.1rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: 12px;
+  background: var(--status-neutral-bg);
+}
+.picker-empty h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+.picker-empty p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.picker-mine {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.picker-mine a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+.picker-mine-status {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+/* Company page: explainer, research, forecast form, one column. */
+.league-company-flow {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.league-company-flow > .calculator-card {
+  max-width: none;
+}
+.league-company-flow .league-form-card {
+  max-width: 640px;
+}
+.league-page > .site-footer {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.league-jump {
+  font-size: 0.85rem;
+  width: fit-content;
+}
+
+.league-explainer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 1rem 1.5rem;
+  margin-top: 0.9rem;
+}
+.league-explainer h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.9rem;
+}
+.league-explainer p,
+.league-explainer li {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.league-explainer ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* Phones: the icon rail becomes a labelled bottom bar. */
+@media (max-width: 640px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    width: auto;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    padding: 0.3rem 0.5rem calc(0.3rem + env(safe-area-inset-bottom));
+    border-right: none;
+    border-top: 1px solid var(--border-subtle);
+    background: color-mix(in srgb, var(--bg-surface) 95%, transparent);
+  }
+  .sidebar-icon-button {
+    flex: 1;
+    max-width: 120px;
+    height: 52px;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .sidebar-icon-button.active {
+    box-shadow: none;
+  }
+  .sidebar-label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+  .app-shell-content {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+}
+.calculator-card.picker-page {
+  max-width: 1100px;
+}
+.picker-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+}
+.picker-figures dd {
+  white-space: nowrap;
+}
+.league-company-flow ~ .site-footer,
+.league-page-header {
+  max-width: 1100px;
+}
+
+/* Admin Companies board (2026-10) */
+.admin-board-actions {
+  margin-bottom: 0.75rem;
+}
+.admin-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.admin-board-row {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.7rem 0;
+}
+.admin-board-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+}
+.admin-board-info {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.admin-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--status-neutral-bg);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.admin-status-needs_last_year,
+.admin-status-results_due {
+  color: var(--status-warning);
+}
+.admin-status-open,
+.admin-status-ready_to_score {
+  color: var(--status-good);
+}
+.admin-next {
+  min-height: 40px;
+}
+.admin-next:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.admin-panel {
+  margin-top: 0.75rem;
+  padding: 0.9rem;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+.admin-more-section {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.6rem 0;
+}
+.admin-more-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}

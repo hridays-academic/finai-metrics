@@ -233,6 +233,9 @@ LEAGUE_SCHEMA_STATEMENTS = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity, entity_id)",
+    # One plain-English line for the home page card (schema v6). NULL falls
+    # back to league_config's default for the ticker.
+    "ALTER TABLE companies ADD COLUMN IF NOT EXISTS description TEXT",
     # ---------- Users: public league identity ----------
     # All nullable, so existing accounts keep working and are asked for a
     # handle on their first league action. Handles are unique

@@ -387,9 +387,15 @@ frontend/src/
                               password" below
     ResetPasswordPanel.tsx   Shown via "?reset_token=" in the URL -- see "Forgot
                               password" below
-    Sidebar.tsx              Left icon rail: switches between the search page,
-                              ReturnCalculator, and StockMarketSimulator (the app's
-                              three top-level views)
+    Sidebar.tsx              Primary nav (2026-10): Home (league stock picker),
+                              Research (company search), Paper Trading. Left icon
+                              rail on desktop, labelled bottom bar at <=640px.
+                              ReturnCalculator/StockMarketSimulator only appear when
+                              lib/features.ts's SHOW_EXTRA_TOOLS is on
+                              (VITE_SHOW_EXTRA_TOOLS=true at build time) -- hidden,
+                              not deleted
+    SiteFooter.tsx           The one-line "Educational forecasting game. Not
+                              investment advice..." footer on every page
     CompanySearch.tsx        Ticker/company name input. No source dropdown -- sourcing
                               is fixed, see "Keyless, cache-first sourcing" below
     MetricsDashboard.tsx     Full-width, grouped color-coded metric cards
@@ -1937,6 +1943,19 @@ unchanged in production too as long as both pieces share one domain).
 **Live at the custom domain `stackslymetrics.com`** (2026-09); the
 `stackly-*.vercel.app` aliases below still serve the same deployment.
 
+**stackslymetrics.com is blocked by at least one network's web filter**
+(found 2026-10-16: a FortiGuard-style "Web Filter Violation" page,
+category "Unrated" -- the domain is new, so filters haven't classified it).
+Schools are exactly the kind of network that filters, so check this before
+the January school pilot: ask the school's IT to allowlist the domain, or
+submit it for categorisation with the filter vendor. When the custom domain
+is blocked, use `finai-metrics.vercel.app` (a production alias that follows
+every `--prod` deploy) for `/api/health` checks. `stackly-metrics.vercel.app`
+is a manual alias that does NOT follow deploys: it was left on an old,
+broken deployment (500 `FUNCTION_INVOCATION_FAILED`) until 2026-10-19, when
+it was re-pointed with `vercel alias set`. Re-point it after each deploy,
+or ignore it.
+
 **Incident 2026-09-29 -> 2026-10-02: production ran on the dev database.**
 The Neon integration recreated `DATABASE_URL` for all environments
 pointing at `dev` (around when the dev/test branches were created and
@@ -2097,15 +2116,14 @@ rejected: the account is on Pro, where it bills per event.
 
 ## Results League (2026-09, in progress)
 
-**Status (2026-09-29):** Phase 1 (schema, scoring, config, tests) is
-deployed; production's schema is at version 3. Phase 2 is next. Full
-handoff, including every product decision and pending item, is in the
-codebase map's `03_logs/2026-09-29.md`.
+**Status (2026-10-19):** Phases 1-2 plus the student front end and the
+simplified admin page are deployed; schema version 6. Scoring and the
+results page are next. Handoffs are in the codebase map's `03_logs/`
+(latest first).
 
-**Deadlines:** Phases 1-2 plus the reveal page (from Phase 3) live by
-~2026-10-20. Profiles and leagues once results season starts (late Oct).
-Practice after the pilot. The Phase 5 nav switch isn't urgent -- pilot
-students can use hash URLs.
+**Plan (changed 2026-10-16):** a small November mini-pilot (Hriday plus
+5-15 friends, 8-10 companies reporting from late October), then the full
+school pilot in January. Scoring and the results page come next.
 
 **Product decisions already made (don't re-ask):**
 - Hide analyst consensus and price targets everywhere, including the
@@ -2179,6 +2197,44 @@ nav switch is Phase 5 and not urgent.
   seed script (with scoring), profiles/leagues, practice.
 - The full backend suite takes ~25 minutes from India (latency); run a
   single file while iterating.
+
+**Student front end + simplified admin (2026-10-19).**
+- **Home is the landing page** (`league/LeagueHome.tsx`, view `"home"`;
+  `#/league` is another address for it). Four random *open* events, one
+  per sector where possible, plus "Show me 4 others". Each card: sector,
+  name, one-line description, results countdown (IST days); hover
+  (desktop) / first tap (touch) expands it to show the latest quarter's
+  revenue and profit from the research-history endpoint (Yahoo, labelled
+  with quarter end and fetch date, N/A when missing). "My forecasts" below
+  for signed-in users. Mounted only while shown, so it refetches each visit.
+- **Company page** (`#/event/<id>`) is one column: "How this business makes
+  money" (`league/SectorExplainer.tsx`), research, then the forecast form.
+- **Explainers and default card descriptions live in `league_config.py`**
+  (`sector_explainers`, `company_descriptions` by ticker), both approved by
+  Hriday 2026-10-19. `companies.description` (schema v6, set from the admin
+  form) overrides the config default. M&M is deliberately not in the pool:
+  its car and tractor sales come in separate releases, so the autos units
+  KPI is ambiguous for it.
+- **KPI decisions are final (2026-10-16):** cement volume growth (tonnes,
+  YoY); autos total units (domestic + exports, every vehicle type in the
+  monthly sales release, `.v2`); FMCG underlying volume growth only where
+  disclosed (`non_disclosing_tickers`, currently ITC and NESTLEIND, are
+  refused a KPI -- never estimate one); IT constant-currency growth YoY.
+- **Admin page = Companies / Students / More.** `GET /api/admin/events`
+  returns `AdminBoardRow`s with a derived `status`: `needs_last_year` ->
+  `open` (or `hidden` if an admin moved it to draft) -> `results_due` (lock
+  passed, the event's own actuals incomplete) -> `ready_to_score` ->
+  `scored`. "Complete" means an actual exists under the event's own
+  `definition_key`, not just the metric key.
+- **New events are hidden (draft) until last year's numbers are in.**
+  `QuickEventIn.open_now` defaults to False (only tests/seed scripts set
+  it). `PUT /api/admin/events/{id}/last-year` writes the year-ago quarter
+  (`year_ago_label`: FY27 -> FY26) and opens the event once every metric
+  has a value. `PUT .../results` refuses before the lock
+  (`results_before_lock`), so a result can never be visible while
+  forecasts are open. The old generic Results/Events tabs were removed.
+- `statement_history_cache` rows now carry `net_income`; rows cached
+  before that are treated as stale and refetched once.
 
 **Schema changes need a version bump.** `init_db()` skips all schema
 statements when the database's `schema_version` row is already at

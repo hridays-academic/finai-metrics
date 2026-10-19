@@ -20,6 +20,7 @@ import psycopg
 from app.league_config import MarketConfig, market_config
 from app.league_models import (
     CompanyOut,
+    SectorExplainerOut,
     EventDetail,
     EventSummary,
     ForecastIn,
@@ -63,12 +64,19 @@ def config_out(code: str = "IN") -> LeagueConfigOut:
         confidence=CONFIDENCE,
         core_metrics=[_metric_out(m) for m in cfg.core_metrics],
         kpi_templates=[
-            KpiTemplateOut(sector=t.sector, metric=_metric_out(t.metric), source_hint=t.source_hint)
+            KpiTemplateOut(sector=t.sector, metric=_metric_out(t.metric), source_hint=t.source_hint,
+                           non_disclosing_tickers=sorted(t.non_disclosing_tickers))
             for t in cfg.kpi_templates.values()
         ],
         reason_tags=[ReasonTagOut(key=t.key, label=t.label) for t in cfg.reason_tags],
         excluded_sectors=sorted(cfg.excluded_sectors),
         note_max_chars=NOTE_MAX_CHARS,
+        sector_explainers=[
+            SectorExplainerOut(sector=e.sector, display_name=e.display_name, sells=e.sells,
+                               sales_drivers=e.sales_drivers, cost_drivers=e.cost_drivers,
+                               checklist=list(e.checklist))
+            for e in cfg.sector_explainers.values()
+        ],
     )
 
 
@@ -91,7 +99,7 @@ _EVENT_SELECT = f"""
            {_EFFECTIVE_STATUS} AS effective_status,
            p.id AS period_id, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date,
            c.id AS company_id, c.market_code, c.exchange, c.ticker, c.name AS company_name, c.sector,
-           c.currency, c.provider_symbol,
+           c.currency, c.provider_symbol, c.description,
            EXISTS (SELECT 1 FROM forecasts f WHERE f.event_id = e.id AND f.user_id = %(user_id)s) AS submitted
     FROM forecast_events e
     JOIN fiscal_periods p ON p.id = e.period_id
@@ -107,6 +115,7 @@ def _summary(row: dict) -> EventSummary:
             id=row["company_id"], market_code=row["market_code"], exchange=row["exchange"], ticker=row["ticker"],
             name=row["company_name"], sector=row["sector"], currency=row["currency"],
             provider_symbol=row["provider_symbol"],
+            description=row["description"] or market_config(row["market_code"]).company_descriptions.get(row["ticker"]),
         ),
         fiscal_year_label=row["fiscal_year_label"],
         fiscal_quarter=row["fiscal_quarter"],

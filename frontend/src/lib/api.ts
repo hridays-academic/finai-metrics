@@ -1,6 +1,5 @@
 import type {
-  ActualRow,
-  AdminEventRow,
+  AdminBoardRow,
   AdminUser,
   AuditEntry,
   EventDetail,
@@ -240,7 +239,7 @@ export async function fetchActivity(): Promise<ActivityResponse> {
 // ---------- First-party visit counter (replaces Google Analytics) ----------
 // Sends only a fixed page name -- never the URL, query string or anything
 // about the visitor. See backend/app/services/visits.py.
-export type VisitPage = "search" | "reset_password" | "admin" | "league" | "event";
+export type VisitPage = "home" | "search" | "trading" | "reset_password" | "admin" | "league" | "event";
 
 export function recordVisit(page: VisitPage): void {
   fetch(`${BASE_URL}/visit`, {
@@ -296,17 +295,16 @@ export const updateLeagueProfile = (body: { handle: string; age_band: string; sc
   leagueRequest<UserPublic>("PATCH", "/league/me", body);
 
 // Admin (ADMIN_EMAILS only)
-export const adminListEvents = () => leagueRequest<AdminEventRow[]>("GET", "/admin/events");
+export const adminListEvents = () => leagueRequest<AdminBoardRow[]>("GET", "/admin/events");
 export const adminQuickEvent = (body: Record<string, unknown>) => leagueRequest<{ id: number }>("POST", "/admin/events/quick", body);
 export const adminPatchEvent = (id: number, body: Record<string, unknown>) =>
   leagueRequest<void>("PATCH", `/admin/events/${id}`, body);
-export const adminCreatePeriod = (body: Record<string, unknown>) => leagueRequest<{ id: number }>("POST", "/admin/periods", body);
-export const adminPutActuals = (periodId: number, items: Record<string, unknown>[]) =>
-  leagueRequest<void>("PUT", `/admin/periods/${periodId}/actuals`, items);
+export type ActualInput = { metric_key: string; definition_key: string; value: number; source_url: string };
+export const adminPutLastYear = (eventId: number, items: ActualInput[]) =>
+  leagueRequest<{ opened: boolean }>("PUT", `/admin/events/${eventId}/last-year`, items);
+export const adminPutResults = (eventId: number, items: ActualInput[]) =>
+  leagueRequest<void>("PUT", `/admin/events/${eventId}/results`, items);
 export const adminFindUsers = (q: string) => leagueRequest<AdminUser[]>("GET", `/admin/users?q=${encodeURIComponent(q)}`);
 export const adminSetConsent = (userId: number, status: "pending" | "granted") =>
   leagueRequest<void>("PUT", `/admin/users/${userId}/guardian-consent`, { status });
 export const adminAudit = (limit = 100) => leagueRequest<AuditEntry[]>("GET", `/admin/audit?limit=${limit}`);
-
-export const adminCompanyActuals = (companyId: number) =>
-  leagueRequest<ActualRow[]>("GET", `/admin/companies/${companyId}/actuals`);

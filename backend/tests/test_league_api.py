@@ -36,6 +36,8 @@ def _quick(client, admin, **overrides):
         "exchange": "NSE", "ticker": "DEMOCEM", "company_name": "Demo Cement (fictional)", "sector": "cement",
         "fiscal_year_label": "FY27", "fiscal_quarter": 2, "period_end_date": "2026-09-30",
         "results_date": "2026-11-20", "season_label": "Q2 FY27", "include_kpi": True,
+        # Most tests want an open event; the hidden-by-default flow has its own tests.
+        "open_now": True,
     }
     body.update(overrides)
     return client.post("/api/admin/events/quick", json=body, headers=admin)
@@ -259,3 +261,63 @@ def test_demo_companies_hidden_on_vercel(conn, client, setup, monkeypatch):
     assert client.get("/api/league/events").json() == []
     monkeypatch.delenv("VERCEL")
     assert len(client.get("/api/league/events").json()) == 1
+
+
+# ---------- Admin board: hidden until last year's numbers, results after lock ----------
+
+SRC = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/q2.pdf"
+CEMENT_DEFS = {
+    "revenue_growth_yoy": "in.revenue_growth_yoy.v1",
+    "operating_margin": "in.operating_margin.v1",
+    "sector_kpi": "in.cement.volume_growth_yoy.v1",
+}
+
+
+def _items(keys):
+    return [{"metric_key": k, "definition_key": CEMENT_DEFS[k], "value": 5.0, "source_url": SRC} for k in keys]
+
+
+def _board_row(client, admin, event_id):
+    return next(r for r in client.get("/api/admin/events", headers=admin).json() if r["id"] == event_id)
+
+
+def test_new_company_hidden_until_last_years_numbers_then_opens(conn, client, setup):
+    admin = setup["admin"]
+    body = {
+        "exchange": "NSE", "ticker": "HIDDENCO", "company_name": "Hidden Co", "sector": "cement",
+        "fiscal_year_label": "FY27", "fiscal_quarter": 2, "period_end_date": "2026-09-30",
+        "results_date": "2026-11-20", "season_label": "Q2 FY27", "include_kpi": True,
+    }
+    event = client.post("/api/admin/events/quick", json=body, headers=admin).json()["id"]
+    row = _board_row(client, admin, event)
+    assert (row["status"], row["year_ago_label"]) == ("needs_last_year", "FY26")
+    assert client.get(f"/api/league/events/{event}").status_code == 404
+
+    url = f"/api/admin/events/{event}/last-year"
+    assert client.put(url, json=_items(["revenue_growth_yoy", "operating_margin"]), headers=admin).json() == {"opened": False}
+    assert _board_row(client, admin, event)["missing_last_year"] == ["sector_kpi"]
+    assert client.put(url, json=_items(["sector_kpi"]), headers=admin).json() == {"opened": True}
+    assert _board_row(client, admin, event)["status"] == "open"
+    assert client.get(f"/api/league/events/{event}").json()["status"] == "open"
+    period = conn.execute(
+        "SELECT p.period_end_date FROM fiscal_periods p JOIN companies c ON c.id = p.company_id "
+        "WHERE c.ticker = 'HIDDENCO' AND p.fiscal_year_label = 'FY26'").fetchone()[0]
+    assert period.isoformat() == "2025-09-30"
+
+
+def test_last_year_numbers_must_use_the_events_definitions(conn, client, setup):
+    wrong = [{"metric_key": "sector_kpi", "definition_key": "in.it.cc_revenue_growth_yoy.v1", "value": 3.0,
+              "source_url": SRC}]
+    res = client.put(f"/api/admin/events/{setup['event']}/last-year", json=wrong, headers=setup["admin"])
+    assert res.status_code == 422 and res.json()["detail"]["code"] == "wrong_definition"
+
+
+def test_results_only_after_lock_then_ready_to_score(conn, client, setup):
+    admin, event = setup["admin"], setup["event"]
+    url = f"/api/admin/events/{event}/results"
+    res = client.put(url, json=_items(CEMENT_DEFS), headers=admin)
+    assert res.status_code == 409 and res.json()["detail"]["code"] == "results_before_lock"
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    assert _board_row(client, admin, event)["status"] == "results_due"
+    assert client.put(url, json=_items(CEMENT_DEFS), headers=admin).status_code == 204
+    assert _board_row(client, admin, event)["status"] == "ready_to_score"

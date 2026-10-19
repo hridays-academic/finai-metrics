@@ -1,32 +1,56 @@
-export type View = "search" | "calculator" | "simulator" | "trading";
+import { SHOW_EXTRA_TOOLS } from "../lib/features";
+
+export type View = "home" | "search" | "calculator" | "simulator" | "trading";
 
 interface SidebarProps {
-  view: View;
+  view: View | null;
   onChange: (view: View) => void;
 }
 
-// Slim icon rail pinned to the left edge, full viewport height -- the app's
-// primary nav between the three top-level pages (stock search, return
-// calculator, market simulator). Icons match Header.tsx's gear icon: 1.6
-// stroke width, currentColor, no fill, so all icon-buttons in the app read
-// as one family.
+// The app's primary nav: a slim icon rail on the left, and a labelled bottom
+// bar on phones (see .sidebar in app.css). Home (the league stock picker),
+// Research (company search) and Paper Trading; the Return Calculator and
+// Market Simulator only appear when SHOW_EXTRA_TOOLS is on. Icons match
+// Header.tsx's gear icon: 1.6-1.8 stroke width, currentColor, no fill.
 export default function Sidebar({ view, onChange }: SidebarProps) {
   return (
     <nav className="sidebar" aria-label="Primary">
       <button
         type="button"
+        className={`sidebar-icon-button ${view === "home" ? "active" : ""}`}
+        aria-label="Home"
+        aria-current={view === "home"}
+        title="Home: pick a company to forecast"
+        onClick={() => onChange("home")}
+      >
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H14.5v-6h-5v6H5.5A1.5 1.5 0 0 1 4 19z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="sidebar-label">Home</span>
+      </button>
+
+      <button
+        type="button"
         className={`sidebar-icon-button ${view === "search" ? "active" : ""}`}
-        aria-label="Stock search"
+        aria-label="Research"
         aria-current={view === "search"}
-        title="Stock search"
+        title="Research: look up any company"
         onClick={() => onChange("search")}
       >
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
           <path d="M20 20L15.8 15.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
+        <span className="sidebar-label">Research</span>
       </button>
 
+      {SHOW_EXTRA_TOOLS && (
+        <>
       <button
         type="button"
         className={`sidebar-icon-button ${view === "calculator" ? "active" : ""}`}
@@ -72,6 +96,9 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
         </svg>
       </button>
 
+        </>
+      )}
+
       <button
         type="button"
         className={`sidebar-icon-button ${view === "trading" ? "active" : ""}`}
@@ -89,6 +116,7 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
           <path d="M17 3v9M17 19v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           <rect x="14.5" y="9" width="5" height="10" rx="1" stroke="currentColor" strokeWidth="1.6" />
         </svg>
+        <span className="sidebar-label">Trading</span>
       </button>
     </nav>
   );

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.league_models import (
     ActualIn,
     ActualOut,
+    AdminBoardRow,
     AdminUserOut,
     AuditEntryOut,
     BaselineIn,
@@ -41,10 +42,26 @@ def get_visits(days: int = Query(30, ge=1, le=366)) -> VisitsResponse:
     return VisitsResponse(days=days, rows=visits.daily_counts(days))
 
 
-@router.get("/events")
-def list_events() -> list[dict]:
+class OpenedOut(BaseModel):
+    opened: bool
+
+
+@router.get("/events", response_model=list[AdminBoardRow])
+def list_events() -> list[AdminBoardRow]:
     with get_conn() as conn:
-        return league_admin.list_admin_events(conn)
+        return league_admin.admin_board(conn)
+
+
+@router.put("/events/{event_id}/last-year", response_model=OpenedOut)
+def put_last_year(event_id: int, body: list[ActualIn], admin: dict = Depends(require_admin)) -> OpenedOut:
+    with get_conn() as conn:
+        return OpenedOut(opened=league_admin.put_last_year(conn, admin, event_id, body))
+
+
+@router.put("/events/{event_id}/results", status_code=204)
+def put_results(event_id: int, body: list[ActualIn], admin: dict = Depends(require_admin)) -> None:
+    with get_conn() as conn:
+        league_admin.put_results(conn, admin, event_id, body)
 
 
 @router.post("/events/quick", response_model=IdOut)

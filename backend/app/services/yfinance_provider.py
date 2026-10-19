@@ -356,9 +356,10 @@ class YFinanceProvider(FinancialDataProvider):
 
     # ---------- Results League research panel ----------
     def get_quarterly_income(self, symbol: str) -> list[dict]:
-        """Recent quarters' revenue and operating income, newest first, as
-        Yahoo reports them: `Total Revenue` (falling back to `Operating
-        Revenue`) and `Operating Income`. Missing values stay None.
+        """Recent quarters' revenue, operating income and net income, newest
+        first, as Yahoo reports them: `Total Revenue` (falling back to
+        `Operating Revenue`), `Operating Income` and `Net Income`. Missing
+        values stay None.
 
         Measured 2026-09 (41 NSE tickers): ~5 quarters, often NOT
         consecutive -- Sep 2025 was missing for 28 of 40. Never fill gaps.
@@ -376,6 +377,7 @@ class YFinanceProvider(FinancialDataProvider):
                 "period_end_date": pd.Timestamp(col).date().isoformat(),
                 "revenue": _row(df, "Total Revenue", "Operating Revenue", col=i),
                 "operating_income": _row(df, "Operating Income", col=i),
+                "net_income": _row(df, "Net Income", "Net Income Common Stockholders", col=i),
             })
         return quarters
 

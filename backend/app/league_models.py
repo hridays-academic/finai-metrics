@@ -32,6 +32,16 @@ class KpiTemplateOut(BaseModel):
     sector: str
     metric: MetricDefinitionOut
     source_hint: str
+    non_disclosing_tickers: list[str]
+
+
+class SectorExplainerOut(BaseModel):
+    sector: str
+    display_name: str
+    sells: str
+    sales_drivers: str
+    cost_drivers: str
+    checklist: list[str]
 
 
 class LeagueConfigOut(BaseModel):
@@ -43,6 +53,7 @@ class LeagueConfigOut(BaseModel):
     reason_tags: list[ReasonTagOut]
     excluded_sectors: list[str]
     note_max_chars: int
+    sector_explainers: list[SectorExplainerOut]
 
 
 # ---------- Events ----------
@@ -56,6 +67,7 @@ class CompanyOut(BaseModel):
     sector: str
     currency: str
     provider_symbol: Optional[str]
+    description: Optional[str] = None  # one plain-English line for the home page card
 
 
 class EventSummary(BaseModel):
@@ -154,6 +166,7 @@ class QuarterRow(BaseModel):
     period_end_date: date
     revenue: Optional[float] = None  # in the company's currency, as reported
     operating_margin_pct: Optional[float] = None
+    net_income: Optional[float] = None  # Yahoo's Net Income (profit after tax)
 
 
 class ResearchHistoryOut(BaseModel):
@@ -178,6 +191,7 @@ class QuickEventIn(BaseModel):
     exchange: str = Field(min_length=2, max_length=10)
     ticker: str = Field(min_length=1, max_length=20)
     company_name: str = Field(min_length=2, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=140)
     sector: str = Field(min_length=2, max_length=30)
     provider_symbol: Optional[str] = Field(default=None, max_length=30)
     fiscal_year_end_month: int = Field(default=3, ge=1, le=12)
@@ -189,7 +203,10 @@ class QuickEventIn(BaseModel):
     include_kpi: bool = True
     research_notes: Optional[str] = Field(default=None, max_length=2000)
     season_label: str = Field(min_length=2, max_length=20)
-    open_now: bool = True
+    # New events stay hidden (draft) until last year's numbers are entered,
+    # which opens them (league_admin.put_last_year). The admin page never
+    # sends this; it's for tests and seed scripts.
+    open_now: bool = False
 
 
 class EventPatch(BaseModel):
@@ -257,6 +274,32 @@ class ConsentIn(BaseModel):
         if v not in ("pending", "granted"):
             raise ValueError("status must be pending or granted")
         return v
+
+
+class AdminBoardRow(BaseModel):
+    """One event on the admin Companies list, with its next step."""
+
+    id: int
+    company_id: int
+    company_name: str
+    ticker: str
+    sector: str
+    season_label: str
+    fiscal_year_label: str
+    fiscal_quarter: int
+    period_end_date: date
+    results_date: date
+    lock_at: datetime
+    lock_passed: bool
+    forecasts: int
+    raw_status: str
+    # needs_last_year | hidden | open | results_due | ready_to_score | scored
+    status: str
+    year_ago_label: str
+    metrics: list[MetricDefinitionOut]
+    missing_last_year: list[str]  # metric keys
+    missing_results: list[str]
+    research_notes: Optional[str]
 
 
 class AdminUserOut(BaseModel):

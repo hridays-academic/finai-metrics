@@ -16,7 +16,7 @@ from app.services.db import get_conn
 # Add a name here when a new page/route ships (the frontend sends these).
 PAGES = frozenset({
     # current views
-    "search", "calculator", "simulator", "trading", "reset_password", "admin",
+    "home", "search", "calculator", "simulator", "trading", "reset_password", "admin",
     # Results League routes (Phase 2+)
     "league", "event", "reveal", "profile", "leagues", "practice",
 })

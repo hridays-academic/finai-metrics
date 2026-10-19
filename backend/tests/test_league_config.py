@@ -30,3 +30,23 @@ def test_reason_tags_unique():
     for cfg in MARKETS.values():
         keys = [t.key for t in cfg.reason_tags]
         assert len(keys) == len(set(keys))
+
+
+def test_every_kpi_sector_has_a_beginner_explainer():
+    for cfg in MARKETS.values():
+        assert set(cfg.kpi_templates) <= set(cfg.sector_explainers)
+        for sector, e in cfg.sector_explainers.items():
+            assert e.sector == sector
+            assert e.sells and e.sales_drivers and e.cost_drivers and e.checklist
+
+
+def test_company_descriptions_fit_one_card_line():
+    for cfg in MARKETS.values():
+        for ticker, text in cfg.company_descriptions.items():
+            assert ticker == ticker.upper()
+            assert 0 < len(text) <= 140, ticker
+
+
+def test_fmcg_volume_kpi_is_never_set_for_non_disclosers():
+    fmcg = MARKETS["IN"].kpi_templates["fmcg"]
+    assert {"ITC", "NESTLEIND"} <= fmcg.non_disclosing_tickers

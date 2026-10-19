@@ -193,10 +193,20 @@ export interface LeagueConfig {
   timezone: string;
   confidence: number;
   core_metrics: LeagueMetric[];
-  kpi_templates: { sector: string; metric: LeagueMetric; source_hint: string }[];
+  kpi_templates: { sector: string; metric: LeagueMetric; source_hint: string; non_disclosing_tickers: string[] }[];
   reason_tags: { key: string; label: string }[];
   excluded_sectors: string[];
   note_max_chars: number;
+  sector_explainers: SectorExplainer[];
+}
+
+export interface SectorExplainer {
+  sector: string;
+  display_name: string;
+  sells: string;
+  sales_drivers: string;
+  cost_drivers: string;
+  checklist: string[];
 }
 
 export interface LeagueCompany {
@@ -208,6 +218,7 @@ export interface LeagueCompany {
   sector: string;
   currency: string;
   provider_symbol: string | null;
+  description: string | null;
 }
 
 export type EventStatus = "draft" | "open" | "locked" | "scored";
@@ -251,6 +262,7 @@ export interface QuarterRow {
   period_end_date: string;
   revenue: number | null;
   operating_margin_pct: number | null;
+  net_income: number | null;
 }
 
 export interface ActualRow {
@@ -273,21 +285,30 @@ export interface ResearchHistory {
   actuals: ActualRow[];
 }
 
-export interface AdminEventRow {
+export type BoardStatus = "needs_last_year" | "hidden" | "open" | "results_due" | "ready_to_score" | "scored";
+
+// One event on the admin Companies list (backend AdminBoardRow).
+export interface AdminBoardRow {
   id: number;
-  status: EventStatus;
-  lock_at: string;
-  results_date: string;
-  season_label: string;
-  period_id: number;
-  fiscal_year_label: string;
-  fiscal_quarter: number;
   company_id: number;
   company_name: string;
   ticker: string;
   sector: string;
+  season_label: string;
+  fiscal_year_label: string;
+  fiscal_quarter: number;
+  period_end_date: string;
+  results_date: string;
+  lock_at: string;
   lock_passed: boolean;
   forecasts: number;
+  raw_status: EventStatus;
+  status: BoardStatus;
+  year_ago_label: string;
+  metrics: LeagueMetric[];
+  missing_last_year: string[];
+  missing_results: string[];
+  research_notes: string | null;
 }
 
 export interface AdminUser {
