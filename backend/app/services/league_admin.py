@@ -264,9 +264,12 @@ def _missing(metrics: list[dict], have: set[tuple[str, str]]) -> list[str]:
     return [m["key"] for m in metrics if (m["key"], m["definition_key"]) not in have]
 
 
-def _board_status(row: dict, missing_last_year: list[str], missing_results: list[str]) -> str:
+def _board_status(row: dict, missing_last_year: list[str], missing_results: list[str],
+                  numbers_changed_at=None) -> str:
     if row["status"] == "scored":
-        return "scored"
+        # A result or last year's number corrected after the last run.
+        changed = numbers_changed_at and row["scored_at"] and numbers_changed_at > row["scored_at"]
+        return "rescore_needed" if changed else "scored"
     if row["lock_passed"]:
         return "ready_to_score" if not missing_results else "results_due"
     if missing_last_year:
@@ -278,7 +281,7 @@ def admin_board(conn: psycopg.Connection) -> list[AdminBoardRow]:
     rows = conn.execute(
         """
         SELECT e.id, e.status, e.lock_at, e.results_date, e.season_label, e.metric_definitions, e.research_notes,
-               p.fiscal_year_label, p.fiscal_quarter, p.period_end_date,
+               e.scored_at, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date,
                c.id AS company_id, c.name AS company_name, c.ticker, c.sector,
                e.lock_at <= now() AS lock_passed,
                (SELECT count(*) FROM forecasts f WHERE f.event_id = e.id) AS forecasts
@@ -287,12 +290,14 @@ def admin_board(conn: psycopg.Connection) -> list[AdminBoardRow]:
         """
     ).fetchall()
     have: dict[tuple[int, str, int], set[tuple[str, str]]] = {}
+    changed_at: dict[tuple[int, str, int], object] = {}
     for a in conn.execute(
-        """SELECT p.company_id, p.fiscal_year_label, p.fiscal_quarter, a.metric_key, a.definition_key
+        """SELECT p.company_id, p.fiscal_year_label, p.fiscal_quarter, a.metric_key, a.definition_key, a.entered_at
            FROM actuals a JOIN fiscal_periods p ON p.id = a.period_id"""
     ).fetchall():
-        have.setdefault((a["company_id"], a["fiscal_year_label"], a["fiscal_quarter"]), set()).add(
-            (a["metric_key"], a["definition_key"]))
+        key = (a["company_id"], a["fiscal_year_label"], a["fiscal_quarter"])
+        have.setdefault(key, set()).add((a["metric_key"], a["definition_key"]))
+        changed_at[key] = max(changed_at.get(key, a["entered_at"]), a["entered_at"])
     out = []
     for r in rows:
         metrics = r["metric_definitions"]["metrics"]
@@ -304,7 +309,11 @@ def admin_board(conn: psycopg.Connection) -> list[AdminBoardRow]:
             sector=r["sector"], season_label=r["season_label"], fiscal_year_label=r["fiscal_year_label"],
             fiscal_quarter=r["fiscal_quarter"], period_end_date=r["period_end_date"], results_date=r["results_date"],
             lock_at=r["lock_at"], lock_passed=r["lock_passed"], forecasts=r["forecasts"], raw_status=r["status"],
-            status=_board_status(r, missing_last_year, missing_results), year_ago_label=prev,
+            status=_board_status(r, missing_last_year, missing_results, max(
+                (t for t in (changed_at.get((r["company_id"], prev, r["fiscal_quarter"])),
+                             changed_at.get((r["company_id"], r["fiscal_year_label"], r["fiscal_quarter"]))) if t),
+                default=None)),
+            year_ago_label=prev,
             metrics=[MetricDefinitionOut(**m) for m in metrics], missing_last_year=missing_last_year,
             missing_results=missing_results, research_notes=r["research_notes"],
         ))

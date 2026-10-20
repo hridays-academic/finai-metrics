@@ -3753,3 +3753,181 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
 }
+
+/* Home: "Your season so far" (2026-10) */
+.picker-season {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 1.75rem;
+}
+.picker-season-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.picker-season-label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+.picker-season .picker-source {
+  flex-basis: 100%;
+  margin: 0.2rem 0 0;
+}
+
+/* Results page (2026-10) */
+.results-title {
+  margin-top: 0.6rem;
+}
+.results-score-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.results-score-value {
+  font-size: 2.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  margin: 0.15rem 0 0.4rem;
+}
+.results-score p,
+.results-explain li {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.results-metric-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+.results-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.results-points {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.results-explain {
+  margin: 0.8rem 0 0;
+  padding-left: 1.1rem;
+}
+
+/* Number line: track with your range, markers, and labels stacked in lanes. */
+.nl {
+  position: relative;
+  margin: 1.4rem 0 0.4rem;
+}
+.nl-track {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+.nl-range {
+  position: absolute;
+  top: -5px;
+  height: 14px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  border: 1px solid var(--accent);
+}
+.nl-mark {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.nl-actual {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  border: 2px solid var(--bg-surface);
+  z-index: 3;
+}
+.nl-lazy {
+  width: 11px;
+  height: 11px;
+  background: var(--status-warning);
+  transform: translate(-50%, -50%) rotate(45deg);
+  z-index: 2;
+}
+.nl-crowd {
+  width: 0;
+  height: 0;
+  top: -9px;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 9px solid var(--text-tertiary);
+}
+.nl-labels {
+  position: relative;
+  margin-top: 0.7rem;
+}
+.nl-label {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.nl-label-actual {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.nl-label-lazy {
+  color: var(--status-warning);
+}
+.nl-label-range {
+  color: var(--accent);
+}
+.nl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.76rem;
+  color: var(--text-tertiary);
+}
+.nl-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.nl-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+.nl-key-range {
+  width: 16px;
+  height: 8px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  border: 1px solid var(--accent);
+}
+.nl-key-actual {
+  border-radius: 50%;
+  background: var(--text-primary);
+}
+.nl-key-lazy {
+  width: 8px;
+  height: 8px;
+  background: var(--status-warning);
+  transform: rotate(45deg);
+}
+.nl-key-crowd {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid var(--text-tertiary);
+}

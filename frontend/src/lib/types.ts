@@ -234,6 +234,7 @@ export interface EventSummary {
   lock_at: string; // ISO, UTC
   status: EventStatus;
   submitted: boolean;
+  my_score: number | null; // the signed-in user's event score, once scored
 }
 
 export interface EventDetail extends EventSummary {
@@ -285,7 +286,14 @@ export interface ResearchHistory {
   actuals: ActualRow[];
 }
 
-export type BoardStatus = "needs_last_year" | "hidden" | "open" | "results_due" | "ready_to_score" | "scored";
+export type BoardStatus =
+  | "needs_last_year"
+  | "hidden"
+  | "open"
+  | "results_due"
+  | "ready_to_score"
+  | "scored"
+  | "rescore_needed";
 
 // One event on the admin Companies list (backend AdminBoardRow).
 export interface AdminBoardRow {
@@ -331,3 +339,41 @@ export interface AuditEntry {
   details: Record<string, unknown> | null;
 }
 
+
+// ---------- Results (mirrors league_models.ResultOut / SeasonOut) ----------
+
+export interface MetricResult {
+  metric_key: string;
+  label: string;
+  unit: string;
+  low: number;
+  high: number;
+  actual: number;
+  lazy: number | null;
+  crowd_median: number | null;
+  interval_score: number;
+  points: number;
+  hit: boolean;
+  beat_lazy: boolean | null;
+  explanations: string[];
+}
+
+export interface EventResult {
+  event: EventSummary;
+  event_score: number;
+  event_score_explanation: string;
+  forecasters: number;
+  crowd_shown: boolean;
+  crowd_explanation: string;
+  lock_at: string;
+  metrics: MetricResult[];
+}
+
+export interface Season {
+  events_scored: number;
+  average_score: number | null;
+  scored_metrics: number;
+  hits: number;
+  calibration: number | null;
+  min_metrics_for_calibration: number;
+}

@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { ApiError, saveForecast } from "../../lib/api";
+import { formatDay } from "../../lib/leagueFormat";
 import type { EventDetail, Forecast, LeagueConfig, UserPublic } from "../../lib/types";
 
 interface ForecastFormProps {
@@ -178,7 +179,17 @@ export default function ForecastForm(props: ForecastFormProps) {
       {error && <div className="search-error">{error}</div>}
       {readOnly ? (
         <div className="calculator-field-note">
-          {forecast ? "Your forecast is locked. It will be scored after results are announced." : "Forecasts for this event are locked."}
+          {event.status === "scored" ? (
+            forecast ? (
+              <a href={`#/results/${event.id}`}>Scored. See your results →</a>
+            ) : (
+              "Results are in. You didn't forecast this company."
+            )
+          ) : forecast ? (
+            `Locked. Results are announced on ${formatDay(event.results_date, true)}; your score appears here after that.`
+          ) : (
+            "Forecasts for this company are locked."
+          )}
         </div>
       ) : (
         <>

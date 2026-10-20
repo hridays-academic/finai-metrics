@@ -3,11 +3,13 @@ import type {
   AdminUser,
   AuditEntry,
   EventDetail,
+  EventResult,
   EventSummary,
   Forecast,
   ForecastValue,
   LeagueConfig,
   ResearchHistory,
+  Season,
   ActivityResponse,
   AuthResponse,
   CompanyFinancialsResponse,
@@ -239,7 +241,7 @@ export async function fetchActivity(): Promise<ActivityResponse> {
 // ---------- First-party visit counter (replaces Google Analytics) ----------
 // Sends only a fixed page name -- never the URL, query string or anything
 // about the visitor. See backend/app/services/visits.py.
-export type VisitPage = "home" | "search" | "trading" | "reset_password" | "admin" | "league" | "event";
+export type VisitPage = "home" | "search" | "trading" | "reset_password" | "admin" | "league" | "event" | "results";
 
 export function recordVisit(page: VisitPage): void {
   fetch(`${BASE_URL}/visit`, {
@@ -289,6 +291,8 @@ export const fetchLeagueEvent = (id: number) => leagueRequest<EventDetail>("GET"
 export const fetchMyForecast = (id: number) => leagueRequest<Forecast | null>("GET", `/league/events/${id}/my-forecast`);
 export const saveForecast = (id: number, body: { values: ForecastValue[]; reason_tags: string[]; note: string | null }) =>
   leagueRequest<Forecast>("PUT", `/league/events/${id}/forecast`, body);
+export const fetchMyResult = (id: number) => leagueRequest<EventResult>("GET", `/league/events/${id}/my-result`);
+export const fetchMySeason = () => leagueRequest<Season>("GET", "/league/me/season");
 export const fetchResearchHistory = (companyId: number) =>
   leagueRequest<ResearchHistory>("GET", `/league/companies/${companyId}/history`);
 export const updateLeagueProfile = (body: { handle: string; age_band: string; school_name: string | null }) =>
@@ -302,6 +306,8 @@ export const adminPatchEvent = (id: number, body: Record<string, unknown>) =>
 export type ActualInput = { metric_key: string; definition_key: string; value: number; source_url: string };
 export const adminPutLastYear = (eventId: number, items: ActualInput[]) =>
   leagueRequest<{ opened: boolean }>("PUT", `/admin/events/${eventId}/last-year`, items);
+export const adminScoreEvent = (eventId: number) =>
+  leagueRequest<{ scored: number }>("POST", `/admin/events/${eventId}/score`);
 export const adminPutResults = (eventId: number, items: ActualInput[]) =>
   leagueRequest<void>("PUT", `/admin/events/${eventId}/results`, items);
 export const adminFindUsers = (q: string) => leagueRequest<AdminUser[]>("GET", `/admin/users?q=${encodeURIComponent(q)}`);

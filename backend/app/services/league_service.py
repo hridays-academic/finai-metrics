@@ -100,7 +100,9 @@ _EVENT_SELECT = f"""
            p.id AS period_id, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date,
            c.id AS company_id, c.market_code, c.exchange, c.ticker, c.name AS company_name, c.sector,
            c.currency, c.provider_symbol, c.description,
-           EXISTS (SELECT 1 FROM forecasts f WHERE f.event_id = e.id AND f.user_id = %(user_id)s) AS submitted
+           EXISTS (SELECT 1 FROM forecasts f WHERE f.event_id = e.id AND f.user_id = %(user_id)s) AS submitted,
+           (SELECT avg(s.points) FROM scores s JOIN forecasts f ON f.id = s.forecast_id
+             WHERE f.event_id = e.id AND f.user_id = %(user_id)s) AS my_score
     FROM forecast_events e
     JOIN fiscal_periods p ON p.id = e.period_id
     JOIN companies c ON c.id = p.company_id
@@ -125,6 +127,7 @@ def _summary(row: dict) -> EventSummary:
         lock_at=row["lock_at"],
         status=row["effective_status"],
         submitted=row["submitted"],
+        my_score=row["my_score"] if row["effective_status"] == "scored" else None,
     )
 
 

@@ -2116,14 +2116,15 @@ rejected: the account is on Pro, where it bills per event.
 
 ## Results League (2026-09, in progress)
 
-**Status (2026-10-19):** Phases 1-2 plus the student front end and the
-simplified admin page are deployed; schema version 6. Scoring and the
-results page are next. Handoffs are in the codebase map's `03_logs/`
-(latest first).
+**Status (2026-10-20):** Phases 1-2, the student front end, the
+simplified admin page, and scoring + the results page are deployed; schema
+version 7. That's every core piece for the November mini-pilot. Not part of
+it (deferred by Hriday): written diagnosis rules, leagues, profiles, design
+polish. Handoffs are in the codebase map's `03_logs/` (latest first).
 
 **Plan (changed 2026-10-16):** a small November mini-pilot (Hriday plus
 5-15 friends, 8-10 companies reporting from late October), then the full
-school pilot in January. Scoring and the results page come next.
+school pilot in January. First pilot companies report from ~2026-10-30.
 
 **Product decisions already made (don't re-ask):**
 - Hide analyst consensus and price targets everywhere, including the
@@ -2193,10 +2194,11 @@ nav switch is Phase 5 and not urgent.
 - Analyst consensus and price targets are no longer rendered anywhere
   (`AnalystConsensus.tsx`/`PriceForecastChart.tsx` kept but unused); the
   Return Calculator is historical-returns only.
-- Not built yet: scoring, reveal page, crowd stats, diagnosis (Phase 3),
-  seed script (with scoring), profiles/leagues, practice.
-- The full backend suite takes ~25 minutes from India (latency); run a
-  single file while iterating.
+- Not built yet: diagnosis (Phase 3), seed script, profiles/leagues,
+  practice. Scoring, the results page and crowd stats shipped 2026-10-20.
+- The full backend suite takes ~30 minutes from India (latency); run a
+  single file while iterating. A lone "server closed the connection
+  unexpectedly" failure is a dropped Neon connection -- rerun that test.
 
 **Student front end + simplified admin (2026-10-19).**
 - **Home is the landing page** (`league/LeagueHome.tsx`, view `"home"`;
@@ -2224,7 +2226,8 @@ nav switch is Phase 5 and not urgent.
   returns `AdminBoardRow`s with a derived `status`: `needs_last_year` ->
   `open` (or `hidden` if an admin moved it to draft) -> `results_due` (lock
   passed, the event's own actuals incomplete) -> `ready_to_score` ->
-  `scored`. "Complete" means an actual exists under the event's own
+  `scored` (-> `rescore_needed` if any current or year-ago actual was
+  entered after `forecast_events.scored_at`). "Complete" means an actual exists under the event's own
   `definition_key`, not just the metric key.
 - **New events are hidden (draft) until last year's numbers are in.**
   `QuickEventIn.open_now` defaults to False (only tests/seed scripts set
@@ -2235,6 +2238,41 @@ nav switch is Phase 5 and not urgent.
   forecasts are open. The old generic Results/Events tabs were removed.
 - `statement_history_cache` rows now carry `net_income`; rows cached
   before that are treated as stale and refetched once.
+
+**Scoring and the results page (2026-10-20).** `services/league_scoring.py`;
+the maths in `scoring.py` is unchanged.
+- **Lazy baseline = the same metric's year-ago actual** (the admin's "last
+  year's numbers", under the event's own `definition_key`): revenue growth
+  -> last year's same-quarter YoY growth (Q2 FY26 vs Q2 FY25, which the
+  admin computes from the Q2 FY26 filing; the form shows the formula);
+  margin -> last year's margin; KPI -> last year's KPI value. Missing or
+  differently defined -> NULL -> N/A, no bonus. Never estimated. Computed
+  at each scoring run and written to `baselines`.
+- `POST /api/admin/events/{id}/score` refuses before the lock
+  (`not_locked`) or with any result missing (`results_missing`, naming
+  them); returns `{"scored": n}`. Each run deletes and rewrites the event's
+  scores in one transaction (idempotent), sets status `scored` +
+  `scored_at`, and audits `score`/`rescore` with the actuals and lazy
+  values used. A typo is fixed via "Correct a result" (results or last
+  year's numbers, audited as an `actual` update), then "Re-score".
+- `scores` also stores `actual_value` and `lazy_value` (schema v7), so the
+  results page always shows exactly what was scored, even after a
+  correction that hasn't been re-scored yet.
+- **Student side:** `GET /api/league/events/{id}/my-result` (own forecast
+  only; `not_scored`/`no_forecast` -> 404, which the page turns into "Locked.
+  Results are announced on <date>; your score appears here after that." --
+  never an error), `GET /api/league/me/season` (events scored, average,
+  calibration once 10 metrics are scored), `EventSummary.my_score`. Page:
+  `#/results/<id>` (`league/ResultsPage.tsx`), number line with labels
+  stacked in lanes so close values never overlap.
+- **Explanations** come from `scoring.explain_metric`/`explain_event_score`/
+  `explain_crowd` (pure, tested). Wording approved by Hriday: widths and
+  misses are "percentage points" (or the KPI's unit); "points" only ever
+  means score; a floored score adds "Scores can't go below 0, so this
+  counts as 0." `_n` rounds half up so a sentence never disagrees with the
+  frontend's `toFixed` label (7.25 -> 7.3 in both).
+- Crowd median = median of all forecasters' midpoints, shown only at
+  `min_forecasters_for_crowd` (5)+.
 
 **Schema changes need a version bump.** `init_db()` skips all schema
 statements when the database's `schema_version` row is already at

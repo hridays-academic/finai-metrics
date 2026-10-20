@@ -2,10 +2,13 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from app.league_models import EventDetail, EventSummary, ForecastIn, ForecastOut, LeagueConfigOut, ProfileIn, ResearchHistoryOut
+from app.league_models import (
+    EventDetail, EventSummary, ForecastIn, ForecastOut, LeagueConfigOut, ProfileIn, ResearchHistoryOut, ResultOut,
+    SeasonOut,
+)
 from app.models import UserPublic
 from app.routes.deps import optional_user, require_user
-from app.services import auth_service, league_service, research_history
+from app.services import auth_service, league_scoring, league_service, research_history
 from app.services.db import get_conn
 
 router = APIRouter(prefix="/api/league")
@@ -35,6 +38,18 @@ def get_event(event_id: int, user: Optional[dict] = Depends(optional_user)) -> E
 def get_my_forecast(event_id: int, user: dict = Depends(require_user)) -> Optional[ForecastOut]:
     with get_conn() as conn:
         return league_service.get_my_forecast(conn, user["id"], event_id)
+
+
+@router.get("/events/{event_id}/my-result", response_model=ResultOut)
+def get_my_result(event_id: int, user: dict = Depends(require_user)) -> ResultOut:
+    with get_conn() as conn:
+        return league_scoring.my_result(conn, user["id"], event_id)
+
+
+@router.get("/me/season", response_model=SeasonOut)
+def get_my_season(user: dict = Depends(require_user)) -> SeasonOut:
+    with get_conn() as conn:
+        return league_scoring.season(conn, user["id"])
 
 
 @router.put("/events/{event_id}/forecast", response_model=ForecastOut)

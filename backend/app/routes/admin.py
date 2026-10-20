@@ -14,9 +14,10 @@ from app.league_models import (
     EventPatch,
     PeriodIn,
     QuickEventIn,
+    ScoreRunOut,
 )
 from app.routes.deps import require_admin
-from app.services import audit, league_admin, visits
+from app.services import audit, league_admin, league_scoring, visits
 from app.services.db import get_conn
 
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
@@ -56,6 +57,12 @@ def list_events() -> list[AdminBoardRow]:
 def put_last_year(event_id: int, body: list[ActualIn], admin: dict = Depends(require_admin)) -> OpenedOut:
     with get_conn() as conn:
         return OpenedOut(opened=league_admin.put_last_year(conn, admin, event_id, body))
+
+
+@router.post("/events/{event_id}/score", response_model=ScoreRunOut)
+def score_event(event_id: int, admin: dict = Depends(require_admin)) -> ScoreRunOut:
+    with get_conn() as conn:
+        return ScoreRunOut(scored=league_scoring.score_event(conn, admin, event_id))
 
 
 @router.put("/events/{event_id}/results", status_code=204)

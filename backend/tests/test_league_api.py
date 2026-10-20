@@ -321,3 +321,59 @@ def test_results_only_after_lock_then_ready_to_score(conn, client, setup):
     assert _board_row(client, admin, event)["status"] == "results_due"
     assert client.put(url, json=_items(CEMENT_DEFS), headers=admin).status_code == 204
     assert _board_row(client, admin, event)["status"] == "ready_to_score"
+
+
+# ---------- Scoring and results ----------
+
+def _actual(key, value):
+    return {"metric_key": key, "definition_key": CEMENT_DEFS[key], "value": value, "source_url": SRC}
+
+
+def test_scoring_flow_results_page_rescore_and_refusals(conn, client, ready):
+    admin, user, event = ready["admin"], ready["user"], ready["event"]
+    values = [{"metric_key": "revenue_growth_yoy", "low": 6.0, "high": 10.0},
+              {"metric_key": "operating_margin", "low": 18.0, "high": 22.0},
+              {"metric_key": "sector_kpi", "low": 2.0, "high": 8.0}]
+    assert client.put(f"/api/league/events/{event}/forecast", json={"values": values}, headers=user).status_code == 200
+    # Last year's numbers: revenue growth 13 -> lazy 13; no KPI -> lazy N/A.
+    client.put(f"/api/admin/events/{event}/last-year",
+               json=[_actual("revenue_growth_yoy", 13.0), _actual("operating_margin", 25.0)], headers=admin)
+
+    score_url = f"/api/admin/events/{event}/score"
+    res = client.post(score_url, headers=admin)
+    assert res.status_code == 409 and res.json()["detail"]["code"] == "not_locked"
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    client.put(f"/api/admin/events/{event}/results",
+               json=[_actual("revenue_growth_yoy", 8.0), _actual("operating_margin", 21.0)], headers=admin)
+    res = client.post(score_url, headers=admin)
+    assert res.status_code == 409 and res.json()["detail"]["code"] == "results_missing"
+    assert "Sales volume growth" in res.json()["detail"]["message"]
+    assert client.get(f"/api/league/events/{event}/my-result", headers=user).json()["detail"]["code"] == "not_scored"
+
+    client.put(f"/api/admin/events/{event}/results", json=[_actual("sector_kpi", 9.0)], headers=admin)
+    assert client.post(score_url, headers=admin).json() == {"scored": 1}
+
+    result = client.get(f"/api/league/events/{event}/my-result", headers=user).json()
+    rev, margin, kpi = result["metrics"]
+    assert (rev["points"], rev["hit"], rev["beat_lazy"], rev["lazy"]) == (102.0, True, True, 13.0)
+    assert rev["explanations"][0].endswith("100 - 8 = 92.") and rev["explanations"][1].endswith("92 + 10 = 102.")
+    assert margin["beat_lazy"] is True and margin["points"] == 102.0  # mid 20 vs lazy 25, actual 21
+    assert (kpi["hit"], kpi["lazy"], kpi["beat_lazy"], kpi["points"]) == (False, None, None, 68.0)  # 9 vs 2-8
+    assert result["event_score"] == pytest.approx((102 + 102 + 68) / 3)
+    assert result["crowd_shown"] is False and rev["crowd_median"] is None
+    listed = client.get("/api/league/events?scope=scored", headers=user).json()
+    assert listed[0]["my_score"] == pytest.approx(result["event_score"])
+    season = client.get("/api/league/me/season", headers=user).json()
+    assert (season["events_scored"], season["scored_metrics"], season["hits"], season["calibration"]) == (1, 3, 2, None)
+
+    # Correct a typo after scoring -> board asks for a re-score -> scores replaced, not duplicated.
+    client.put(f"/api/admin/events/{event}/results", json=[_actual("revenue_growth_yoy", 12.0)], headers=admin)
+    assert _board_row(client, admin, event)["status"] == "rescore_needed"
+    assert client.post(score_url, headers=admin).json() == {"scored": 1}
+    assert _board_row(client, admin, event)["status"] == "scored"
+    rev = client.get(f"/api/league/events/{event}/my-result", headers=user).json()["metrics"][0]
+    assert (rev["actual"], rev["hit"]) == (12.0, False)
+    assert conn.execute("SELECT count(*) FROM scores").fetchone()[0] == 3
+    runs = [r[0] for r in conn.execute(
+        "SELECT action FROM audit_log WHERE entity = 'forecast_event' AND action IN ('score', 'rescore') ORDER BY id")]
+    assert runs == ["score", "rescore"]

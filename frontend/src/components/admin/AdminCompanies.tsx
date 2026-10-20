@@ -5,6 +5,7 @@ import {
   adminPutLastYear,
   adminPutResults,
   adminQuickEvent,
+  adminScoreEvent,
   ApiError,
   fetchLeagueConfig,
   type ActualInput,
@@ -34,6 +35,7 @@ const STATUS_LABEL: Record<BoardStatus, string> = {
   results_due: "Results due: enter numbers",
   ready_to_score: "Ready to score",
   scored: "Scored",
+  rescore_needed: "Results changed: re-score",
 };
 
 type Panel = { id: number; mode: "last_year" | "results" | "edit" } | null;
@@ -66,6 +68,19 @@ export default function AdminCompanies() {
       reload();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Couldn't open it.");
+    }
+  }
+
+  async function score(row: AdminBoardRow) {
+    setError(null);
+    setMessage(`Scoring ${row.company_name}...`);
+    try {
+      const res = await adminScoreEvent(row.id);
+      setMessage(`Scored ${res.scored} forecast${res.scored === 1 ? "" : "s"} for ${row.company_name}.`);
+      reload();
+    } catch (e) {
+      setMessage(null);
+      setError(e instanceof ApiError ? e.message : "Couldn't score.");
     }
   }
 
@@ -112,10 +127,16 @@ export default function AdminCompanies() {
                   </div>
                 </div>
                 <span className={`admin-status admin-status-${row.status}`}>{STATUS_LABEL[row.status]}</span>
-                <NextStep row={row} onPanel={setPanel} onOpen={openNow} />
+                <NextStep row={row} onPanel={setPanel} onOpen={openNow} onScore={score} />
               </div>
               {panel?.id === row.id && panel.mode !== "edit" && (
-                <NumbersPanel row={row} mode={panel.mode} onDone={done} onCancel={() => setPanel(null)} />
+                <NumbersPanel
+                  row={row}
+                  mode={panel.mode}
+                  onSwitch={row.status === "scored" || row.status === "rescore_needed" ? (mode) => setPanel({ id: row.id, mode }) : undefined}
+                  onDone={done}
+                  onCancel={() => setPanel(null)}
+                />
               )}
               {panel?.id === row.id && panel.mode === "edit" && (
                 <EditPanel row={row} onDone={done} onCancel={() => setPanel(null)} />
@@ -128,7 +149,12 @@ export default function AdminCompanies() {
   );
 }
 
-function NextStep({ row, onPanel, onOpen }: { row: AdminBoardRow; onPanel: (p: Panel) => void; onOpen: (r: AdminBoardRow) => void }) {
+function NextStep({ row, onPanel, onOpen, onScore }: {
+  row: AdminBoardRow;
+  onPanel: (p: Panel) => void;
+  onOpen: (r: AdminBoardRow) => void;
+  onScore: (r: AdminBoardRow) => void;
+}) {
   const button = (label: string, onClick?: () => void) => (
     <button type="button" className="settings-row-action admin-next" onClick={onClick} disabled={!onClick}>
       {label}
@@ -144,8 +170,12 @@ function NextStep({ row, onPanel, onOpen }: { row: AdminBoardRow; onPanel: (p: P
     case "results_due":
       return button("Enter results", () => onPanel({ id: row.id, mode: "results" }));
     case "ready_to_score":
-      // Scoring isn't built yet (Phase 3).
-      return button("Score (coming soon)");
+      return button("Score", () => onScore(row));
+    case "rescore_needed":
+      return button("Re-score", () => onScore(row));
+    case "scored":
+      // A typo can be fixed after scoring; the board then asks for a re-score.
+      return button("Correct a result", () => onPanel({ id: row.id, mode: "results" }));
     default:
       return null;
   }
@@ -153,9 +183,15 @@ function NextStep({ row, onPanel, onOpen }: { row: AdminBoardRow; onPanel: (p: P
 
 type Entry = { value: string; source_url: string };
 
-function NumbersPanel({ row, mode, onDone, onCancel }: {
+// "FY26" -> "FY25", for the revenue-growth hint.
+function yearBefore(label: string): string {
+  return label.replace(/\d+/, (d) => String(Number(d) - 1).padStart(d.length, "0"));
+}
+
+function NumbersPanel({ row, mode, onSwitch, onDone, onCancel }: {
   row: AdminBoardRow;
   mode: "last_year" | "results";
+  onSwitch?: (mode: "last_year" | "results") => void;
   onDone: (msg: string) => void;
   onCancel: () => void;
 }) {
@@ -220,7 +256,13 @@ function NumbersPanel({ row, mode, onDone, onCancel }: {
         {formatDay(end, true)}).{" "}
         {mode === "last_year" && "Once every number is saved, the company opens for forecasts. "}
         Compute each value exactly per its definition, and link the filing it came from.
+        {mode === "last_year" && " These numbers are also the lazy guess each forecast is compared with."}
       </div>
+      {onSwitch && (
+        <button type="button" className="auth-forgot-link" onClick={() => onSwitch(mode === "results" ? "last_year" : "results")}>
+          {mode === "results" ? "Correct last year's numbers instead" : "Correct this quarter's results instead"}
+        </button>
+      )}
       {row.metrics.map((m) => (
         <div className="calculator-field" key={m.key}>
           <div className="calculator-field-header">
@@ -232,6 +274,13 @@ function NumbersPanel({ row, mode, onDone, onCancel }: {
             <summary>Definition ({m.definition_key})</summary>
             {m.definition}
           </details>
+          {mode === "last_year" && m.key === "revenue_growth_yoy" && (
+            <span className="auth-field-hint">
+              Q{row.fiscal_quarter} {row.year_ago_label} versus Q{row.fiscal_quarter} {yearBefore(row.year_ago_label)}: (Q
+              {row.fiscal_quarter} {row.year_ago_label} revenue / Q{row.fiscal_quarter} {yearBefore(row.year_ago_label)}{" "}
+              revenue - 1) x 100. The Q{row.fiscal_quarter} {row.year_ago_label} results filing shows both quarters.
+            </span>
+          )}
           <div className="admin-grid">
             <input
               type="number"

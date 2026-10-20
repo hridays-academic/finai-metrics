@@ -1,7 +1,7 @@
 import { type MouseEvent, useEffect, useMemo, useState } from "react";
-import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchResearchHistory } from "../../lib/api";
+import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMySeason, fetchResearchHistory } from "../../lib/api";
 import { formatCrore, formatDay, resultsCountdown } from "../../lib/leagueFormat";
-import type { EventSummary, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
+import type { EventSummary, LeagueConfig, ResearchHistory, Season, UserPublic } from "../../lib/types";
 import SiteFooter from "../SiteFooter";
 import LockCountdown, { formatIst } from "./LockCountdown";
 
@@ -113,7 +113,7 @@ function MyForecasts({ events }: { events: EventSummary[] }) {
     <ul className="picker-mine">
       {events.map((e) => (
         <li key={e.id}>
-          <a href={`#/event/${e.id}`}>
+          <a href={e.status === "scored" ? `#/results/${e.id}` : `#/event/${e.id}`}>
             <span className="picker-mine-name">
               {e.company.name} <span className="trading-table-stock-ticker">{e.season_label}</span>
             </span>
@@ -121,15 +121,42 @@ function MyForecasts({ events }: { events: EventSummary[] }) {
               {e.status === "open" ? (
                 <LockCountdown lockAt={e.lock_at} compact />
               ) : e.status === "scored" ? (
-                "Scored"
+                <span className="league-submitted">
+                  Score {e.my_score !== null ? e.my_score.toFixed(1) : "--"} · See results →
+                </span>
               ) : (
-                `Locked. Results ${formatDay(e.results_date)}`
+                `Locked. Results are announced on ${formatDay(e.results_date, true)}; your score appears here after that.`
               )}
             </span>
           </a>
         </li>
       ))}
     </ul>
+  );
+}
+
+function SeasonSoFar({ season }: { season: Season }) {
+  if (season.events_scored === 0) {
+    return <div className="calculator-empty-hint">No scored forecasts yet. Scores appear here after results come out.</div>;
+  }
+  return (
+    <div className="picker-season">
+      <div>
+        <div className="picker-season-value">{season.events_scored}</div>
+        <div className="picker-season-label">events scored</div>
+      </div>
+      <div>
+        <div className="picker-season-value">{season.average_score?.toFixed(1)}</div>
+        <div className="picker-season-label">average score</div>
+      </div>
+      <p className="picker-source">
+        {season.calibration === null
+          ? `Calibration: not enough forecasts yet. It needs ${season.min_metrics_for_calibration} scored numbers; you have ${season.scored_metrics}.`
+          : `Calibration: ${season.hits} of your ${season.scored_metrics} ranges contained the result (${Math.round(
+              season.calibration * 100
+            )}%). Honest 80% ranges should land near 80%.`}
+      </p>
+    </div>
   );
 }
 
@@ -143,10 +170,12 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
   const [seen, setSeen] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<number | null>(null);
   const [histories, setHistories] = useState<Record<number, HistoryState>>({});
+  const [season, setSeason] = useState<Season | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchLeagueConfig().then((c) => !cancelled && setConfig(c)).catch(() => {});
+    if (user) fetchMySeason().then((s) => !cancelled && setSeason(s)).catch(() => {});
     Promise.all([fetchLeagueEvents("upcoming"), fetchLeagueEvents("scored")])
       .then(([u, s]) => {
         if (cancelled) return;
@@ -245,6 +274,13 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
                 Show me 4 others
               </button>
             )}
+          </>
+        )}
+
+        {user && season && (
+          <>
+            <div className="trading-section-header">Your season so far</div>
+            <SeasonSoFar season={season} />
           </>
         )}
 

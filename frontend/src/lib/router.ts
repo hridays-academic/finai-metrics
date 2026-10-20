@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 export type Route =
   | { name: "league" }
   | { name: "event"; id: number }
+  | { name: "results"; id: number }
   | { name: "admin" }
   | null;
 
@@ -15,6 +16,8 @@ export function parseHash(hash: string): Route {
   if (path === "/admin") return { name: "admin" };
   const event = /^\/event\/(\d+)$/.exec(path);
   if (event) return { name: "event", id: Number(event[1]) };
+  const results = /^\/results\/(\d+)$/.exec(path);
+  if (results) return { name: "results", id: Number(results[1]) };
   return null;
 }
 

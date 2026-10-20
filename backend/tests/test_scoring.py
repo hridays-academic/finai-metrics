@@ -5,7 +5,8 @@ from app.services.scoring import (
     ScoringConfig,
     calibration,
     event_score,
-    explain_metric_score,
+    explain_event_score,
+    explain_metric,
     interval_score,
     leaderboard_eligible,
     score_metric,
@@ -145,19 +146,52 @@ class TestThresholds:
 
 
 class TestExplanations:
-    def test_hit_sentence(self):
-        s = score_metric("operating_margin", 18.0, 22.0, 20.5, 18.0, CFG)
-        text = explain_metric_score(s, 18.0, 22.0, 20.5, "%", CFG)
-        assert "inside your range" in text and "bonus" in text and "102.0" in text
+    def test_worked_example_6_to_10_actual_8_lazy_13(self):
+        s = score_metric("revenue_growth_yoy", 6.0, 10.0, 8.0, 13.0, CFG)
+        assert s.points == 102.0
+        lines = explain_metric(s, "Revenue growth (YoY)", 6.0, 10.0, 8.0, 13.0, "%", CFG)
+        assert lines[0] == ("Your range was 4 percentage points wide and the result (8%) landed inside it, "
+                            "so you lost 8 points for width: 100 - 8 = 92.")
+        assert lines[1] == ("Your midpoint (8%) was closer to the result than the lazy guess (13%), "
+                            "so you earned the +10 bonus: 92 + 10 = 102.")
 
-    def test_miss_sentence_names_direction_and_distance(self):
+    def test_miss_sentence_names_direction_distance_and_cost(self):
         s = score_metric("revenue_growth_yoy", 8.0, 12.0, 6.0, None, CFG)
-        text = explain_metric_score(s, 8.0, 12.0, 6.0, "%", CFG)
-        assert "2.0 points below your range" in text
-        assert "no lazy forecast" in text
+        lines = explain_metric(s, "Revenue growth (YoY)", 8.0, 12.0, 6.0, None, "%", CFG)
+        assert "2 percentage points below your range" in lines[0]
+        assert "(20 for each percentage point you missed by)" in lines[0]
+        assert "100 - 48 = 52." in lines[0] and s.points == 52.0
+        assert "no bonus was possible" in lines[1]
+        assert len(lines) == 2  # no lazy-meaning or crowd line without those numbers
+
+    def test_huge_miss_floors_at_zero(self):
+        s = score_metric("revenue_growth_yoy", 0.0, 1.0, 40.0, None, CFG)
+        line = explain_metric(s, "Revenue growth", 0.0, 1.0, 40.0, None, "%", CFG)[0]
+        assert s.points == 0.0
+        assert line.endswith("100 - 782 = -682. Scores can't go below 0, so this counts as 0.")
+
+    def test_singular_percentage_point(self):
+        s = score_metric("sector_kpi", 2.0, 8.0, 9.0, None, CFG)
+        line = explain_metric(s, "Sales volume growth", 2.0, 8.0, 9.0, None, "%", CFG)[0]
+        assert "landed 1 percentage point above your range" in line
+        assert "points wide" not in line
+
+    def test_crowd_line_only_when_given(self):
+        s = score_metric("operating_margin", 18.0, 22.0, 20.5, 18.0, CFG)
+        lines = explain_metric(s, "Operating margin", 18.0, 22.0, 20.5, 18.0, "%", CFG, crowd_median=19.5, forecasters=6)
+        assert lines[-1] == "The crowd median, the middle of all 6 forecasters' midpoints, was 19.5%."
+
+    def test_rounding_matches_the_frontend(self):
+        s = score_metric("operating_margin", 18.0, 22.0, 20.5, 18.0, CFG)
+        lines = explain_metric(s, "Operating margin", 18.0, 22.0, 20.5, 18.0, "%", CFG, crowd_median=7.25, forecasters=6)
+        assert lines[-1].endswith("was 7.3%.")
+
+    def test_event_score_sentence(self):
+        assert explain_event_score([102.0, 52.0, 90.0]) == (
+            "Your event score is the average of your 3 scores: (102 + 52 + 90) / 3 = 81.3.")
 
     def test_explanations_never_mention_stock_or_trading(self):
         s = score_metric("revenue_growth_yoy", 8.0, 12.0, 13.0, 9.0, CFG)
-        text = explain_metric_score(s, 8.0, 12.0, 13.0, "%", CFG).lower()
+        text = " ".join(explain_metric(s, "Revenue growth", 8.0, 12.0, 13.0, 9.0, "%", CFG)).lower()
         for banned in ("buy", "sell", "hold", "price target", "stock"):
             assert banned not in text

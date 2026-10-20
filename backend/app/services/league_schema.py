@@ -236,6 +236,13 @@ LEAGUE_SCHEMA_STATEMENTS = [
     # One plain-English line for the home page card (schema v6). NULL falls
     # back to league_config's default for the ticker.
     "ALTER TABLE companies ADD COLUMN IF NOT EXISTS description TEXT",
+    # Scoring runs (schema v7). scored_at tells the admin board whether a
+    # result was corrected after the last run. Each score keeps the actual
+    # and lazy values it was computed from, so the results page always shows
+    # what was actually scored, even after a correction (until re-scored).
+    "ALTER TABLE forecast_events ADD COLUMN IF NOT EXISTS scored_at TIMESTAMPTZ",
+    "ALTER TABLE scores ADD COLUMN IF NOT EXISTS actual_value DOUBLE PRECISION",
+    "ALTER TABLE scores ADD COLUMN IF NOT EXISTS lazy_value DOUBLE PRECISION",
     # ---------- Users: public league identity ----------
     # All nullable, so existing accounts keep working and are asked for a
     # handle on their first league action. Handles are unique

@@ -83,6 +83,7 @@ class EventSummary(BaseModel):
     # the database clock, never trusted from the client.
     status: str
     submitted: bool = False  # the requesting user has a forecast here
+    my_score: Optional[float] = None  # the requesting user's event score, once scored
 
 
 class EventDetail(EventSummary):
@@ -276,6 +277,48 @@ class ConsentIn(BaseModel):
         return v
 
 
+# ---------- Scoring and results ----------
+
+class ScoreRunOut(BaseModel):
+    scored: int  # forecasts scored in this run
+
+
+class MetricResultOut(BaseModel):
+    metric_key: str
+    label: str
+    unit: str
+    low: float
+    high: float
+    actual: float
+    lazy: Optional[float]  # None -> N/A, no bonus possible
+    crowd_median: Optional[float]  # None below the minimum crowd size
+    interval_score: float
+    points: float
+    hit: bool
+    beat_lazy: Optional[bool]
+    explanations: list[str]
+
+
+class ResultOut(BaseModel):
+    event: EventSummary
+    event_score: float
+    event_score_explanation: str
+    forecasters: int
+    crowd_shown: bool
+    crowd_explanation: str
+    lock_at: datetime
+    metrics: list[MetricResultOut]
+
+
+class SeasonOut(BaseModel):
+    events_scored: int
+    average_score: Optional[float]
+    scored_metrics: int
+    hits: int
+    calibration: Optional[float]  # None until min_scored_metrics_for_calibration
+    min_metrics_for_calibration: int
+
+
 class AdminBoardRow(BaseModel):
     """One event on the admin Companies list, with its next step."""
 
@@ -293,7 +336,7 @@ class AdminBoardRow(BaseModel):
     lock_passed: bool
     forecasts: int
     raw_status: str
-    # needs_last_year | hidden | open | results_due | ready_to_score | scored
+    # needs_last_year | hidden | open | results_due | ready_to_score | scored | rescore_needed
     status: str
     year_ago_label: str
     metrics: list[MetricDefinitionOut]

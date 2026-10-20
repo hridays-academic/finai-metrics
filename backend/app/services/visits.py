@@ -18,7 +18,7 @@ PAGES = frozenset({
     # current views
     "home", "search", "calculator", "simulator", "trading", "reset_password", "admin",
     # Results League routes (Phase 2+)
-    "league", "event", "reveal", "profile", "leagues", "practice",
+    "league", "event", "results", "reveal", "profile", "leagues", "practice",
 })
 
 

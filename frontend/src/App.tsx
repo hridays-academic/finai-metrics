@@ -13,6 +13,7 @@ import AdminPage from "./components/AdminPage";
 import SiteFooter from "./components/SiteFooter";
 import LeagueHome from "./components/league/LeagueHome";
 import ForecastPage from "./components/league/ForecastPage";
+import ResultsPage from "./components/league/ResultsPage";
 import { clearRoute, useHashRoute } from "./lib/router";
 import { useTheme } from "./hooks/useTheme";
 import { SHOW_EXTRA_TOOLS } from "./lib/features";
@@ -48,7 +49,7 @@ export default function App() {
   const showHome = route?.name === "league" || (view === "home" && route === null);
   // A company page belongs to Home in the nav; the admin page to nothing.
   const navView: View | null =
-    route?.name === "admin" ? null : route?.name === "event" || route?.name === "league" ? "home" : view;
+    route?.name === "admin" ? null : route !== null ? "home" : view;
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -203,6 +204,11 @@ export default function App() {
           {route?.name === "admin" && (
             <div className="view-wrapper">
               <AdminPage user={user} onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          )}
+          {route?.name === "results" && (
+            <div className="view-wrapper">
+              <ResultsPage key={route.id} eventId={route.id} user={user} onOpenAuth={() => setAuthOpen(true)} />
             </div>
           )}
           {route?.name === "event" && (
