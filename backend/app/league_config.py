@@ -221,7 +221,9 @@ _IN_SECTOR_EXPLAINERS = {
             "Sales = units sold x average price per vehicle. Units depend on demand: the festive season, "
             "harvests and village incomes, and loan interest rates. The price per vehicle rises when "
             "buyers choose pricier models (an SUV instead of a small car). Companies publish units sold "
-            "every month, so most of the quarter's unit count is public before results day."
+            "every month, so most of the quarter's unit count is public before results day. Some "
+            "companies also sell construction machines such as cranes and backhoe loaders, which "
+            "follow building activity rather than farm incomes."
         ),
         cost_drivers=(
             "Raw materials (steel, aluminium, rubber, plastics, and batteries for electric models) are "
@@ -286,7 +288,8 @@ _IN_SECTOR_EXPLAINERS = {
     ),
 }
 
-# Approved 2026-10-19 for the November mini-pilot; the admin form can
+# Approved 2026-10-19 (ESCORTS, JYOTHYLAB, MPHASIS, SAGCEM added 2026-10-21)
+# for the November mini-pilot; the admin form can
 # override any of these. M&M is left out on purpose: its car and tractor
 # sales come in separate releases, so the autos units KPI is ambiguous for it.
 _IN_COMPANY_DESCRIPTIONS = {
@@ -294,8 +297,10 @@ _IN_COMPANY_DESCRIPTIONS = {
     "ULTRACEMCO": "India's biggest cement maker, supplying homebuilders and big infrastructure projects across the country.",
     "AMBUJACEM": "A large cement maker owned by the Adani group.",
     "SHREECEM": "One of India's biggest cement makers, strongest in the north and known for running low-cost plants.",
+    "SAGCEM": "A Hyderabad-based cement maker with plants in Telangana, Andhra Pradesh, Madhya Pradesh and Odisha.",
     # Autos
     "MARUTI": "India's biggest car maker, behind popular models like the Swift, Baleno and Brezza.",
+    "ESCORTS": "Makes Farmtrac, Powertrac and Kubota tractors for Indian farmers, plus cranes and other construction machines.",
     "TVSMOTOR": "Makes motorcycles, scooters (including the electric iQube) and three-wheelers, and exports many of them.",
     "HEROMOTOCO": "India's biggest motorcycle maker, best known for the Splendor.",
     # Everyday goods (FMCG)
@@ -303,12 +308,14 @@ _IN_COMPANY_DESCRIPTIONS = {
     "DABUR": "Ayurvedic and natural products: Dabur Chyawanprash, Real juices, Red toothpaste and Vatika hair oil.",
     "MARICO": "Hair oils and healthy foods: Parachute coconut oil, Saffola cooking oil and Saffola oats.",
     "GODREJCP": "Household and personal care: Good Knight mosquito repellents, HIT and Cinthol soap.",
+    "JYOTHYLAB": "Household brands like Ujala fabric whitener, Henko detergent, Exo and Pril dishwash, and Margo soap.",
     "ITC": "Best known for cigarettes, and also sells Aashirvaad atta, Sunfeast biscuits, Bingo chips and paper.",
     "NESTLEIND": "Maggi noodles, Nescafe coffee, KitKat chocolates and baby foods like Cerelac.",
     # IT services
     "TECHM": "IT services company that also builds and runs telecom networks for clients around the world.",
     "COFORGE": "Mid-sized IT services company with many clients in banking, insurance and travel.",
     "PERSISTENT": "Builds software for tech companies, banks and healthcare firms, mostly in the US.",
+    "MPHASIS": "IT services company that builds and runs software for banks, insurers and tech firms, mostly in the Americas.",
 }
 
 _IN_REASON_TAGS = (
