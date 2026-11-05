@@ -445,6 +445,8 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
     dividend_yield = _safe_div(r.dividends_per_share, r.current_price)
     dividend_yield = dividend_yield * 100 if dividend_yield is not None else None
 
+    # r.current_price is a close at least 30 days old (main.py's
+    # _with_lagged_price), hence "Share Price" rather than "Current Price".
     # Valuation ratios don't have a universal "healthy" direction (a low P/E
     # can mean "cheap" or "distressed" depending on context) so these stay
     # NEUTRAL/informational rather than good/bad colored, deliberately.
@@ -456,7 +458,7 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 "pe_ratio", "P/E Ratio", pe_ratio, "x",
                 "How much investors are currently paying for each rupee of the company's annual "
                 "earnings -- used to compare how \"expensive\" a stock is relative to its profits.",
-                "Current Price / EPS",
+                "Share Price / EPS",
                 "Compare against sector peers and historical average -- context-dependent.",
                 "A high P/E can mean investors expect strong future growth -- or that the stock "
                 "is simply expensive relative to current earnings; it doesn't tell you which on "
@@ -467,7 +469,7 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 "pb_ratio", "P/B Ratio", pb_ratio, "x",
                 "How much investors are currently paying relative to the company's net worth "
                 "(assets minus liabilities) per share.",
-                "Current Price / Book Value per Share",
+                "Share Price / Book Value per Share",
                 "Below 1x can indicate undervaluation or underlying distress -- check further.",
                 "This is most meaningful for asset-heavy businesses (like banks or "
                 "manufacturers) -- less so for asset-light ones (like software) where most "
@@ -486,9 +488,9 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
             ),
             _metric(
                 "dividend_yield", "Dividend Yield", dividend_yield, "%",
-                "The annual dividend payment expressed as a percentage of the current share "
+                "The annual dividend payment expressed as a percentage of the share "
                 "price -- a measure of cash income relative to the stock's price.",
-                "Dividends per Share / Current Price x 100",
+                "Dividends per Share / Share Price x 100",
                 "Annual dividend income relative to share price.",
                 "A very high yield can sometimes mean the market expects a dividend cut, since "
                 "yield rises automatically as a falling share price shrinks the denominator.",
@@ -498,7 +500,7 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 "market_cap", "Market Cap", r.market_cap, "INR",
                 "The total market value of all a company's outstanding shares -- share price "
                 "multiplied by number of shares.",
-                "Current Price x Shares Outstanding",
+                "Share Price x Shares Outstanding",
                 "Total market value of outstanding shares.",
                 "This is what the market currently thinks the whole company is worth -- a "
                 "starting point for classifying company size, not a judgment of value for money.",

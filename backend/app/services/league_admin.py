@@ -19,6 +19,7 @@ from app.league_models import (
     AdminBoardRow,
     AdminUserOut,
     BaselineIn,
+    ConsentIn,
     EventPatch,
     MetricDefinitionOut,
     PeriodIn,
@@ -222,24 +223,44 @@ def put_baselines(conn: psycopg.Connection, actor: dict, event_id: int, items: l
         audit.write(conn, actor["id"], "update", "baseline", f"{event_id}:{item.metric_key}", item.model_dump())
 
 
-def set_guardian_consent(conn: psycopg.Connection, actor: dict, user_id: int, status: str) -> None:
-    # TODO(legal): records that the school's signed consent form was received.
-    # It is a record-keeping placeholder, not a verified legal consent flow.
-    row = conn.execute("SELECT age_band FROM users WHERE id = %s", (user_id,)).fetchone()
+def set_guardian_consent(conn: psycopg.Connection, actor: dict, user_id: int, consent: ConsentIn) -> None:
+    """Records (or undoes) a parent or guardian's consent: who, how (signed
+    form or an email from the parent) and when. Undoing clears all three.
+
+    TODO(legal): a record-keeping placeholder, not a verified legal consent
+    flow. The audit entry leaves out the parent's name, so deleting the
+    account (which blanks the users row) removes it everywhere."""
+    row = conn.execute(
+        "SELECT age_band FROM users WHERE id = %s AND deleted_at IS NULL", (user_id,)
+    ).fetchone()
     if row is None:
         raise LeagueError(404, "user_not_found", "No such user.")
     if row["age_band"] != "under_18":
         raise LeagueError(422, "not_under_18", "Guardian consent only applies to users under 18.")
-    conn.execute("UPDATE users SET guardian_consent_status = %s WHERE id = %s", (status, user_id))
-    audit.write(conn, actor["id"], "update", "guardian_consent", user_id, {"status": status})
+    granted = consent.status == "granted"
+    conn.execute(
+        """UPDATE users SET guardian_consent_status = %s, guardian_consent_by = %s,
+                  guardian_consent_method = %s, guardian_consent_date = %s WHERE id = %s""",
+        (consent.status,
+         consent.parent_name if granted else None,
+         consent.method if granted else None,
+         consent.consent_date if granted else None,
+         user_id),
+    )
+    details = {"status": consent.status}
+    if granted:
+        details.update(method=consent.method, date=consent.consent_date.isoformat())
+    audit.write(conn, actor["id"], "update", "guardian_consent", user_id, details)
 
 
 def find_users(conn: psycopg.Connection, query: Optional[str], limit: int = 50) -> list[AdminUserOut]:
     q = f"%{(query or '').strip().lower()}%"
     rows = conn.execute(
         """
-        SELECT id, email, name, handle, age_band, guardian_consent_status, school_name FROM users
-        WHERE lower(email) LIKE %s OR lower(coalesce(handle, '')) LIKE %s OR lower(name) LIKE %s
+        SELECT id, email, name, handle, age_band, guardian_consent_status, school_name,
+               guardian_consent_by, guardian_consent_method, guardian_consent_date FROM users
+        WHERE deleted_at IS NULL
+          AND (lower(email) LIKE %s OR lower(coalesce(handle, '')) LIKE %s OR lower(name) LIKE %s)
         ORDER BY (age_band = 'under_18' AND guardian_consent_status = 'pending') DESC, id DESC
         LIMIT %s
         """,

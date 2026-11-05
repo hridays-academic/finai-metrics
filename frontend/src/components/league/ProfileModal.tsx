@@ -68,8 +68,8 @@ export default function ProfileModal({ user, onSaved, onClose }: ProfileModalPro
           </fieldset>
           {ageBand === "under_18" && (
             <p className="calculator-field-note">
-              Players under 18 need a parent or guardian's consent, collected through your school, before they can
-              submit forecasts. You can still browse and research in the meantime.
+              Players under 18 need a parent or guardian's consent, by signed form or by email from the parent,
+              recorded by us, before they can submit forecasts. You can still browse and research in the meantime.
             </p>
           )}
 

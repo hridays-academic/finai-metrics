@@ -1,9 +1,15 @@
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import type { ThemeMode, ThemeName } from "../hooks/useTheme";
+import { deleteAccount, ApiError } from "../lib/api";
+import { clearAuthToken } from "../lib/auth";
+import type { UserPublic } from "../lib/types";
 import { getStartingBalance, setStartingBalance } from "../lib/portfolio";
+import { SHOW_EXTRA_TOOLS } from "../lib/features";
 import CoinAmount from "./CoinAmount";
 
 interface SettingsPanelProps {
+  user: UserPublic | null;
+  onAccountDeleted: () => void;
   themeName: ThemeName;
   mode: ThemeMode;
   onSetThemeName: (theme: ThemeName) => void;
@@ -33,6 +39,8 @@ const MODE_OPTIONS: { value: ThemeMode; label: string; bg: string }[] = [
 ];
 
 export default function SettingsPanel({
+  user,
+  onAccountDeleted,
   themeName,
   mode,
   onSetThemeName,
@@ -42,6 +50,28 @@ export default function SettingsPanel({
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState(() => String(getStartingBalance()));
   const [startingBalance, setStartingBalanceState] = useState(getStartingBalance);
+
+  // Delete my account (2026-11): a typed "DELETE" confirms it. See
+  // auth_service.delete_account for what is deleted and what is kept
+  // anonymised.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDelete(e: FormEvent) {
+    e.preventDefault();
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount(deleteInput.trim());
+      clearAuthToken();
+      onAccountDeleted();
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Couldn't delete your account. Please try again.");
+      setDeleting(false);
+    }
+  }
 
   function saveStartingBalance() {
     const parsed = Number(balanceInput);
@@ -104,6 +134,8 @@ export default function SettingsPanel({
           <div className="settings-row-sub">Preference is saved on this device</div>
         </div>
 
+        {SHOW_EXTRA_TOOLS && (
+          <>
         <div className="settings-row">
           <div>
             <div className="settings-row-label">Paper Trading starting balance</div>
@@ -140,6 +172,42 @@ export default function SettingsPanel({
               Save
             </button>
           </form>
+        )}
+          </>
+        )}
+
+        {user && (
+          <>
+            <div className="settings-row">
+              <div>
+                <div className="settings-row-label">Delete my account</div>
+                <div className="settings-row-sub">
+                  Deletes your account, profile, sign-ins and activity. Your forecasts stay in league results without
+                  your name or notes. This can't be undone.
+                </div>
+              </div>
+              {!confirmingDelete && (
+                <button type="button" className="settings-row-action" onClick={() => setConfirmingDelete(true)}>
+                  Delete
+                </button>
+              )}
+            </div>
+            {confirmingDelete && (
+              <form className="modal-form" onSubmit={handleDelete}>
+                <input
+                  placeholder="Type DELETE to confirm"
+                  value={deleteInput}
+                  onChange={(e) => setDeleteInput(e.target.value)}
+                  aria-label="Type DELETE to confirm deleting your account"
+                  autoFocus
+                />
+                <button type="submit" disabled={deleteInput.trim() !== "DELETE" || deleting}>
+                  {deleting ? "Deleting..." : "Delete my account"}
+                </button>
+              </form>
+            )}
+            {deleteError && <div className="search-error">{deleteError}</div>}
+          </>
         )}
       </div>
     </>

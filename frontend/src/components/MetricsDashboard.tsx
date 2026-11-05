@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { CompanyFinancialsResponse } from "../lib/types";
 import { formatRawValue } from "../lib/format";
+import { formatDay } from "../lib/leagueFormat";
 import MetricCard from "./MetricCard";
 import PriceChart from "./PriceChart";
 import type { Theme } from "../hooks/useTheme";
@@ -186,6 +187,13 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
                   {GROUP_ICONS[group.key]}
                   {group.label}
                 </h3>
+                {group.key === "valuation" && (
+                  <p className="price-lag-note">
+                    {data.price_as_of
+                      ? `Uses the share price on ${formatDay(data.price_as_of, true)}. Prices on Stackly are at least 30 days old.`
+                      : "No share price at least 30 days old is available, so the price-based figures show N/A."}
+                  </p>
+                )}
                 <div className="metric-cards">
                   {group.metrics.map((metric) => (
                     <MetricCard metric={metric} key={metric.key} />

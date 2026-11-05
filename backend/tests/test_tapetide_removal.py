@@ -51,7 +51,7 @@ def test_tapetide_routes_are_gone(client, method, path):
 
 def test_signed_in_user_payload_has_no_key_field(conn, client):
     res = client.post(
-        "/api/auth/signup", json={"email": "s@example.com", "name": "S", "password": "longenough1"}
+        "/api/auth/signup", json={"email": "s@example.com", "name": "S", "password": "longenough1", "accept_terms": True}
     )
     assert res.status_code == 200
     user = res.json()["user"]

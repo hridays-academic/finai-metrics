@@ -165,6 +165,8 @@ def get_event(conn: psycopg.Connection, event_id: int, user_id: Optional[int]) -
 
 def forecast_eligibility(user: dict) -> None:
     """Raises LeagueError when this user may not submit forecasts yet."""
+    if user.get("needs_terms"):
+        raise LeagueError(403, "terms_required", "Please agree to the Terms of Use and Privacy Policy first.")
     if not user.get("handle") or not user.get("age_band"):
         raise LeagueError(409, "profile_required", "Choose a public handle and your age group before forecasting.")
     if user["age_band"] == "under_18" and user.get("guardian_consent_status") != "granted":
@@ -172,8 +174,9 @@ def forecast_eligibility(user: dict) -> None:
         raise LeagueError(
             403,
             "guardian_consent_pending",
-            "Because you're under 18, a parent or guardian's consent is needed before you can join the "
-            "league. Your school collects the form; once it's recorded you can forecast. Practice stays open.",
+            "Because you're under 18, we need a parent or guardian's consent before you can join the league: "
+            "a signed form, or an email from your parent. Once we've recorded it you can forecast. "
+            "Practice stays open.",
         )
 
 

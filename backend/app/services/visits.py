@@ -19,6 +19,8 @@ PAGES = frozenset({
     "home", "search", "calculator", "simulator", "trading", "reset_password", "admin",
     # Results League routes (Phase 2+)
     "league", "event", "results", "reveal", "profile", "leagues", "practice",
+    # legal pages (2026-11)
+    "privacy", "terms",
 })
 
 

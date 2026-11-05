@@ -721,6 +721,13 @@ button:not(.icon-button):not(.modal-skip):active {
   color: var(--text-tertiary);
 }
 
+/* The 30-day price delay label (PriceChart, the Valuation group). */
+.price-lag-note {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
 /* flex: 1 (not a fixed height) -- lets the canvas grow to fill whatever
    height .price-chart-card ends up stretched to in .charts-row, instead of
    sitting at a fixed size with dead space around it. min-height is a floor
@@ -3416,6 +3423,29 @@ button:not(.icon-button):not(.modal-skip):active {
 /* ---------- Results League front end (2026-10) ----------
    Home stock picker, company page flow, site footer and the phone bottom
    bar. Existing tokens and card styles only; the design pass comes later. */
+
+/* Privacy Policy / Terms of Use (LegalPage.tsx): a readable text column. */
+.legal-page {
+  max-width: 720px;
+  margin: 0 auto;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.legal-page h2 {
+  margin: 1.5rem 0 0.4rem;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+.legal-page ul {
+  padding-left: 1.25rem;
+}
+.legal-page li + li {
+  margin-top: 0.35rem;
+}
+
+.site-footer a {
+  color: var(--text-secondary);
+}
 
 .site-footer {
   margin-top: 1.5rem;

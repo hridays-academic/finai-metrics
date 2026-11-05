@@ -173,7 +173,7 @@ export default function ForecastForm(props: ForecastFormProps) {
 
       {needsConsent && (
         <div className="calculator-field-note">
-          Because you're under 18, a guardian's consent (collected by your school) is needed before you can submit.
+          Because you're under 18, we need a parent or guardian's consent (a signed form or an email from your parent) before you can submit.
         </div>
       )}
       {error && <div className="search-error">{error}</div>}

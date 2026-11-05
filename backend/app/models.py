@@ -160,6 +160,11 @@ class CompanyFinancialsResponse(BaseModel):
     # labelled beats erroring out, but the staleness is reported rather than
     # hidden -- the same honesty rule LiveQuote.is_delayed follows.
     is_stale: bool = False
+    # (2026-11) The date of the share price behind the valuation ratios and
+    # raw.current_price/market_cap -- always at least 30 days old (see
+    # services/price_lag.py). None when no old-enough price was available,
+    # in which case those fields are None too.
+    price_as_of: Optional[str] = None
 
 
 class PricePoint(BaseModel):
@@ -175,7 +180,7 @@ class PriceHistoryResponse(BaseModel):
     symbol: str
     currency: str = "INR"
     points: list[PricePoint]  # oldest first, ~5yr weekly -- powers the 1Y/3Y/5Y views
-    recent_points: list[PricePoint] = []  # oldest first, ~6-7mo daily -- powers the 1D/5D views
+    recent_points: list[PricePoint] = []  # oldest first, ~6-7mo daily -- its last point ends every chart period
     active_source: DataSourceName = DataSourceName.YFINANCE  # which source served this price data
     # (2026-09) Same meaning as CompanyFinancialsResponse's pair: when this
     # series was actually fetched upstream (None = fetched live during this
@@ -183,6 +188,9 @@ class PriceHistoryResponse(BaseModel):
     # because upstream was unreachable. Additive with defaults.
     history_as_of: Optional[str] = None
     is_stale: bool = False
+    # (2026-11) Date of the newest close in this response; every point is at
+    # least 30 days old (see services/price_lag.py).
+    price_as_of: Optional[str] = None
 
 
 class ChatMessage(BaseModel):
@@ -201,18 +209,25 @@ class ChatResponse(BaseModel):
 
 
 class SignUpRequest(BaseModel):
-    email: str
-    name: str
+    email: str = Field(..., max_length=254)
+    name: str = Field(..., max_length=100)
     password: str = Field(..., min_length=8, max_length=200)
+    # The required "I agree to the Terms and Privacy Policy" checkbox.
+    accept_terms: bool = False
 
 
 class LogInRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=200)
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: str
+    email: str = Field(..., max_length=254)
+
+
+class DeleteAccountRequest(BaseModel):
+    # Must be exactly "DELETE" -- the Settings panel's typed confirmation.
+    confirm: str
 
 
 class ResetPasswordRequest(BaseModel):
@@ -238,6 +253,10 @@ class UserPublic(BaseModel):
     guardian_consent_status: Optional[str] = None
     school_name: Optional[str] = None
     is_admin: bool = False
+    # When this user agreed to the Terms/Privacy Policy; needs_terms is True
+    # until they agree to the current version (auth_service.TERMS_VERSION).
+    terms_accepted_at: Optional[str] = None
+    needs_terms: bool = False
 
 
 class AuthResponse(BaseModel):
@@ -250,6 +269,8 @@ class GoogleAuthRequest(BaseModel):
     # (see frontend/src/lib/googleAuth.ts) -- main.py verifies it against
     # GOOGLE_CLIENT_ID before trusting anything inside it.
     credential: str
+    # Only matters when this Google account is new: the sign-up checkbox.
+    accept_terms: bool = False
 
 
 class LiveQuote(BaseModel):

@@ -90,6 +90,9 @@ export interface CompanyFinancialsResponse {
   analyst_consensus: AnalystConsensus | null;
   // Which source served analyst_consensus -- null if unavailable.
   consensus_source: DataSourceName | null;
+  // Date of the share price behind raw.current_price/market_cap and the
+  // valuation ratios: always at least 30 days old (backend price_lag.py).
+  price_as_of: string | null;
 }
 
 export interface PricePoint {
@@ -105,8 +108,10 @@ export interface PriceHistoryResponse {
   symbol: string;
   currency: string;
   points: PricePoint[]; // ~5yr weekly
-  recent_points: PricePoint[]; // ~6-7mo daily
+  recent_points: PricePoint[]; // ~6mo daily
   active_source: DataSourceName;
+  // Date of the newest close; every point is at least 30 days old.
+  price_as_of: string | null;
 }
 
 export interface UserPublic {
@@ -122,6 +127,10 @@ export interface UserPublic {
   guardian_consent_status: "not_required" | "pending" | "granted" | null;
   school_name: string | null;
   is_admin: boolean;
+  // Agreement to the Terms/Privacy Policy; needs_terms until the current
+  // version is accepted (App.tsx then shows TermsPrompt).
+  terms_accepted_at: string | null;
+  needs_terms: boolean;
 }
 
 export interface AuthResponse {
@@ -327,6 +336,9 @@ export interface AdminUser {
   age_band: string | null;
   guardian_consent_status: string | null;
   school_name: string | null;
+  guardian_consent_by: string | null;
+  guardian_consent_method: "signed_form" | "parent_email" | null;
+  guardian_consent_date: string | null;
 }
 
 export interface AuditEntry {

@@ -19,12 +19,16 @@ behaviour at a window boundary (up to 2x the limit across two adjacent
 windows). That's acceptable here -- the goal is stopping sustained scraping
 and runaway client loops, not precise fairness.
 """
+import hashlib
+import hmac
 import logging
-import random
+import math
+import secrets
 import time
 from dataclasses import dataclass
 from typing import Optional
 
+from app.config import get_settings
 from app.services.db import get_conn
 
 logger = logging.getLogger("finai")
@@ -47,11 +51,33 @@ WINDOWS: list[tuple[int, int]] = [
     (3600, 600),
 ]
 
-# Expired rows are swept opportunistically rather than on every request (that
-# would add a DELETE to every single call for no benefit). At ~2%, a
-# moderately busy deployment sweeps every few dozen requests, and a quiet one
-# leaves at most a handful of dead rows behind.
-_SWEEP_PROBABILITY = 0.02
+# Sign-in, sign-up and password-reset limits (2026-11). Per-IP limits are
+# generous for the same classroom reason as above (30 students signing in
+# together from one school IP); the per-account limits are the real
+# brute-force and email-bombing protection.
+AUTH_LIMITS: dict[str, list[tuple[int, int]]] = {
+    "login": [(60, 20), (3600, 200)],      # per IP
+    "login_account": [(900, 10)],          # per email: 10 tries / 15 min
+    "signup": [(3600, 60)],                # per IP
+    "google": [(60, 30), (3600, 300)],     # per IP
+    "reset_request": [(3600, 20)],         # per IP
+    "reset_account": [(3600, 3)],          # per email: 3 reset emails / hour
+    "reset_confirm": [(3600, 30)],         # per IP
+    "account_delete": [(3600, 10)],        # per IP
+}
+
+# (2026-11) Stored keys are a keyed hash (HMAC-SHA256) of the IP or email,
+# never the raw value: a plain hash of an IPv4 address can be reversed by
+# trying all 4 billion. IP_HASH_KEY comes from Vercel's env vars; without it
+# each process invents a key, which still hides IPs but means separate
+# serverless instances count separately.
+_PROCESS_KEY = secrets.token_bytes(32)
+
+
+def _digest(value: str) -> str:
+    configured = get_settings().ip_hash_key
+    key = configured.encode("utf-8") if configured else _PROCESS_KEY
+    return hmac.new(key, value.strip().lower().encode("utf-8"), hashlib.sha256).hexdigest()[:32]
 
 
 @dataclass
@@ -89,6 +115,19 @@ def client_ip(headers: dict, fallback: Optional[str]) -> str:
 
 
 def check(ip: str) -> RateLimitResult:
+    """The data endpoints' per-IP limit (WINDOWS)."""
+    return check_key("data", ip, WINDOWS)
+
+
+def check_auth(scope: str, value: str) -> RateLimitResult:
+    """One of AUTH_LIMITS, keyed by IP or email. Allows everything when
+    AUTH_RATE_LIMITS_ENABLED is false (the test suite only)."""
+    if not get_settings().auth_rate_limits_enabled:
+        return RateLimitResult(allowed=True)
+    return check_key(scope, value, AUTH_LIMITS[scope])
+
+
+def check_key(scope: str, value: str, windows: list[tuple[int, int]]) -> RateLimitResult:
     """Counts this request against every window and reports whether it's
     allowed.
 
@@ -106,9 +145,14 @@ def check(ip: str) -> RateLimitResult:
     now = int(time.time())
     try:
         with get_conn() as conn:
-            for window_seconds, limit in WINDOWS:
+            # Every request, so no row outlives its window by more than the
+            # gap until the next request (the Privacy Policy says about an
+            # hour). One indexless DELETE on a table of live windows only.
+            conn.execute("DELETE FROM rate_limit_buckets WHERE expires_at < NOW()")
+            digest = _digest(value)
+            for window_seconds, limit in windows:
                 window_start = now - (now % window_seconds)
-                bucket_key = f"{ip}:{window_seconds}:{window_start}"
+                bucket_key = f"{scope}:{digest}:{window_seconds}:{window_start}"
                 expires_at = window_start + window_seconds
 
                 # Atomic: concurrent requests from the same IP (different
@@ -133,9 +177,6 @@ def check(ip: str) -> RateLimitResult:
                         limit=limit,
                         window_seconds=window_seconds,
                     )
-
-            if random.random() < _SWEEP_PROBABILITY:
-                conn.execute("DELETE FROM rate_limit_buckets WHERE expires_at < NOW()")
     except Exception:  # noqa: BLE001 -- see the fail-open note above
         logger.warning("Rate limit check failed -- allowing the request", exc_info=True)
         return RateLimitResult(allowed=True)
@@ -150,3 +191,8 @@ def friendly_message(result: RateLimitResult) -> str:
         f"{result.limit // 2} company lookups per {unit} per network. "
         f"Please wait {result.retry_after} second(s) and try again."
     )
+
+
+def friendly_auth_message(result: RateLimitResult) -> str:
+    minutes = max(1, math.ceil(result.retry_after / 60))
+    return f"Too many attempts. Please wait {minutes} minute{'s' if minutes != 1 else ''} and try again."

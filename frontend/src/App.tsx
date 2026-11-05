@@ -11,6 +11,8 @@ import PaperTrading from "./components/PaperTrading";
 import ResetPasswordPanel from "./components/ResetPasswordPanel";
 import AdminPage from "./components/AdminPage";
 import SiteFooter from "./components/SiteFooter";
+import LegalPage from "./components/LegalPage";
+import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
 import ForecastPage from "./components/league/ForecastPage";
 import ResultsPage from "./components/league/ResultsPage";
@@ -47,9 +49,10 @@ export default function App() {
   // just another address for Home.
   const route = useHashRoute();
   const showHome = route?.name === "league" || (view === "home" && route === null);
-  // A company page belongs to Home in the nav; the admin page to nothing.
+  const isLegalRoute = route?.name === "privacy" || route?.name === "terms";
+  // A company page belongs to Home in the nav; admin and legal pages to nothing.
   const navView: View | null =
-    route?.name === "admin" ? null : route !== null ? "home" : view;
+    route?.name === "admin" || isLegalRoute ? null : route !== null ? "home" : view;
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -194,16 +197,23 @@ export default function App() {
               <div className={`view-wrapper ${view === "simulator" && route === null ? "" : "view-hidden"}`}>
                 <StockMarketSimulator theme={theme} />
               </div>
+
+              {/* Also hidden because it shows ~15-minute-delayed prices; its
+                  backend endpoints need ENABLE_PAPER_TRADING too. */}
+              <div className={`view-wrapper ${view === "trading" && route === null ? "" : "view-hidden"}`}>
+                <PaperTrading theme={theme} visible={view === "trading" && route === null} />
+              </div>
             </>
           )}
-
-          <div className={`view-wrapper ${view === "trading" && route === null ? "" : "view-hidden"}`}>
-            <PaperTrading theme={theme} visible={view === "trading" && route === null} />
-          </div>
 
           {route?.name === "admin" && (
             <div className="view-wrapper">
               <AdminPage user={user} onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          )}
+          {(route?.name === "privacy" || route?.name === "terms") && (
+            <div className="view-wrapper">
+              <LegalPage kind={route.name} />
             </div>
           )}
           {route?.name === "results" && (
@@ -228,6 +238,11 @@ export default function App() {
 
       {settingsOpen && (
         <SettingsPanel
+          user={user}
+          onAccountDeleted={() => {
+            setUser(null);
+            setSettingsOpen(false);
+          }}
           themeName={themeName}
           mode={mode}
           onSetThemeName={setThemeName}
@@ -244,6 +259,11 @@ export default function App() {
         // hinted otherwise).
         <AuthPanel user={user} onAuthChange={setUser} onClose={() => setAuthOpen(false)} />
       )}
+
+      {/* Accounts created before the Terms/Privacy Policy existed (or before
+          their latest version) agree here on their next visit. Hidden on
+          the legal pages themselves so they can be read first. */}
+      {user?.needs_terms && !isLegalRoute && <TermsPrompt onAgreed={setUser} onSignedOut={() => setUser(null)} />}
 
       {/* Shown when a visitor arrives from a password-reset email link
           ("?reset_token=..."), read once on mount -- see the state

@@ -32,6 +32,9 @@ os.environ["DATABASE_URL"] = _UNVERIFIED
 # Takes precedence over DATABASE_URL (see config.py), so it must never leak
 # into a test run.
 os.environ.pop("STACKLY_DATABASE_URL", None)
+# Tests sign up hundreds of users from one client "IP"; the limits get
+# their own test (test_privacy.py), which switches them back on.
+os.environ["AUTH_RATE_LIMITS_ENABLED"] = "false"
 
 # League tables plus users (tests create their own users). Truncating
 # bypasses the row-level lock triggers, which is what lets tests clean up
@@ -40,7 +43,7 @@ _WIPE_TABLES = (
     "audit_log", "practice_attempts", "practice_cases", "league_members", "leagues",
     "diagnoses", "scores", "baselines", "actuals", "forecast_values", "forecasts",
     "forecast_events", "fiscal_periods", "companies", "activity_log", "sessions",
-    "password_reset_tokens", "users", "page_visits_daily",
+    "password_reset_tokens", "users", "page_visits_daily", "rate_limit_buckets",
 )
 
 

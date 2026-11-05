@@ -48,7 +48,9 @@ plot the forecast fan's endpoint on the time axis; don't remove it as
 The backend also has a working AI chat assistant (`/api/chat`) that was
 removed from the frontend UI at the user's request (2026-07) to keep the
 site to a single, full-width metrics view — the endpoint and its three
-swappable LLM backends are still intact and functional, just not rendered
+swappable LLM backends are still intact, but the endpoint 404s unless
+`ENABLE_CHAT=true` (2026-11: it was an open, unauthenticated endpoint on a
+paid API key), and it's not rendered
 anywhere. To bring it back, re-add a chat component that calls `POST
 /api/chat` (see backend/app/main.py for the request/response shape).
 
@@ -1760,12 +1762,12 @@ a hypothetical one. `main.py`'s `forgot_password` handler swallows a
 account exists..." message either way; the actual failure is only ever
 visible in server logs.
 
-**The reset link's base URL comes from the request's own `Origin` header**
-(falling back to `request.base_url` if absent), not a hardcoded/configured
-frontend URL — this app is single-origin in both local dev and production
-(see "Deployment" below), so the request that asks for a reset link is
-always already coming from exactly the right origin to build one against.
-No `FRONTEND_BASE_URL`-style env var needed.
+**The reset link's origin is allowlisted (fixed 2026-11).** It used to be
+the request's raw `Origin` header, which let anyone send a victim a genuine
+reset email whose link pointed at the attacker's site (token theft). Now
+`_reset_link_origin` uses `Origin` only if it is in `PUBLIC_ORIGINS` (or,
+off Vercel, `CORS_ORIGINS` for the Vite dev server), else the first public
+origin. A reset also deletes every session and reset link for that user.
 
 **No client-side routing exists in this app at all** (see `App.tsx`'s
 plain view-state pattern for search/calculator/simulator/trading) — the
@@ -1810,6 +1812,11 @@ from Vercel project environment variables in production:
   Tapetide keys, which were removed. Already gone from `backend/.env`;
   delete it from Vercel too.
 - `TEST_DATABASE_URL` — local only, the Neon `test` branch. See "Testing".
+- `IP_HASH_KEY` — Production. Secret key for hashing IPs/emails in
+  `rate_limit_buckets`. Never print it. Without it each process invents one.
+- `ENABLE_PAPER_TRADING` / `ENABLE_CHAT` — off by default (2026-11); see
+  "30-day share-price lag" and the AI assistant note at the top.
+- `PUBLIC_ORIGINS` — origins a password-reset link may use (has a default).
 - `MOONSHOT_API_KEY` — required for the chat assistant to function. Get one
   at https://platform.kimi.ai
 - `GOOGLE_CLIENT_ID` — required for Google Sign-In to work (see "Google
@@ -1859,6 +1866,73 @@ from Vercel project environment variables in production:
 
 Never commit `.env`. Never hardcode keys in source. The frontend has no env
 vars containing secrets — it only needs the backend's base URL.
+
+## 30-day share-price lag (2026-11)
+
+To reduce SEBI and market-data risk before the pilot, **the API never serves
+a share price less than 30 days old** (`services/price_lag.py`, pure and
+tested). This is enforced server-side, not just hidden in the UI:
+- `/api/price-history` cuts both series back to the cutoff (IST today minus
+  30 days). A weekly bar counts only once its Monday + 6 days is on or before
+  the cutoff, because yfinance gives a Monday-labelled bar the week's latest
+  close (checked live). `price_as_of` is the newest close served. PriceChart
+  has no 1D/5D buttons and labels the delay.
+- `/api/company` replaces `raw.current_price`/`market_cap` with that lagged
+  close (`_with_lagged_price`), so P/E, P/B, dividend yield and market cap
+  use it too, labelled in the Valuation group. No lagged price available
+  means N/A, never a newer price. The 15-minute price overlay is no longer
+  fetched. `analyst_consensus` is always null in the response (still cached).
+- Paper Trading is behind `SHOW_EXTRA_TOOLS`, and its `/api/trading/*`
+  endpoints 404 unless `ENABLE_PAPER_TRADING=true` (backend setting).
+- The caches still hold current prices; they just never leave the API.
+The league uses company results only and was left alone.
+
+## Privacy, consent and security (2026-11)
+
+Pre-pilot work; the Privacy Policy and Terms (`LegalPage.tsx`, `#/privacy`,
+`#/terms`, linked in `SiteFooter`) were approved by Hriday 2026-11-05 with
+[YOUR NAME]/[CONTACT EMAIL]/[CITY] placeholders still to fill in. Never claim
+legal compliance anywhere. Schema version 8.
+- **Terms agreement.** Sign-up needs `accept_terms` (checkbox in AuthPanel);
+  a new Google account gets 409 `terms_required` and nothing is created
+  unless the box was ticked. `users.terms_accepted_at`/`terms_version`;
+  `UserPublic.needs_terms` is true until the current
+  `auth_service.TERMS_VERSION` is accepted. Existing accounts see
+  `TermsPrompt.tsx` and the backend refuses forecasts (`terms_required`).
+  Bump `TERMS_VERSION` (and `LEGAL_UPDATED`) when either page changes
+  materially.
+- **Delete my account** (Settings, typed "DELETE",
+  `POST /api/auth/delete-account`, `auth_service.delete_account`). The users
+  row stays as a blank shell (`deleted_at`, email `deleted-<id>@deleted.invalid`,
+  every personal field NULL) because forecasts reference it, so scores and
+  crowd stats are unchanged. Forecast notes are cleared (the lock trigger
+  allows exactly that one change after a lock). Sessions, activity, reset
+  links, league memberships and practice attempts are deleted. Audit entry:
+  entity `account`, id + forecast count only. Deleted users are hidden from
+  the admin Students list and can't sign in; the email can sign up again.
+- **Guardian consent** records the parent's name, method (`signed_form` |
+  `parent_email`) and date (`guardian_consent_by/_method/_date`), shown in
+  the Students tab. Undo clears them. The parent's name is deliberately NOT
+  in the audit entry, so deletion removes it everywhere.
+- **Retention** (`db.purge_expired_personal_data`, run at every new session
+  and every cold start): expired sessions and reset links, and activity
+  older than 12 months, are deleted.
+- **Rate limiter keys are HMAC-SHA256 of the IP/email** (`IP_HASH_KEY`), and
+  expired rows are deleted on every check. Auth attempt limits
+  (`rate_limit.AUTH_LIMITS`): per IP for login/sign-up/Google/reset, plus
+  10 logins per 15 min per email and 3 reset emails per hour per email (over
+  that, forgot-password still returns the generic answer but sends nothing).
+  Off in tests only (`AUTH_RATE_LIMITS_ENABLED=false` in conftest).
+- **Security headers** (CSP, X-Frame-Options, HSTS, nosniff, Referrer- and
+  Permissions-Policy) are set in `vercel.json` for every path. The CSP allows
+  Google Fonts and Google Identity Services only; adding any other external
+  script, font, image or frame needs a CSP change.
+- `docs/incident-plan.md` is the breach plan (CERT-In 6 hours, DPDP Board).
+- Known, not yet fixed (from the 2026-11-05 audit): session tokens are
+  stored unhashed; FastAPI 0.115.6 pins Starlette 0.41.3 (advisories in
+  form/static-file code this app doesn't use) -- upgrade with testing;
+  Gmail env vars aren't set in Vercel, so reset emails don't send; Neon
+  Free keeps only 6 hours of restore history.
 
 ## Known constraints / things not to "fix" without asking
 

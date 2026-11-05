@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -268,6 +269,10 @@ class BaselineIn(BaseModel):
 
 class ConsentIn(BaseModel):
     status: str
+    # Required when granting (2026-11): who consented, how, and on what day.
+    parent_name: Optional[str] = Field(default=None, max_length=80)
+    method: Optional[str] = None
+    consent_date: Optional[date] = None
 
     @field_validator("status")
     @classmethod
@@ -275,6 +280,21 @@ class ConsentIn(BaseModel):
         if v not in ("pending", "granted"):
             raise ValueError("status must be pending or granted")
         return v
+
+    @model_validator(mode="after")
+    def _granted_needs_details(self) -> "ConsentIn":
+        if self.status == "granted":
+            self.parent_name = (self.parent_name or "").strip() or None
+            if not self.parent_name:
+                raise ValueError("Enter the parent or guardian's name.")
+            if self.method not in ("signed_form", "parent_email"):
+                raise ValueError("Choose how consent was given: signed form or parent email.")
+            if self.consent_date is None:
+                raise ValueError("Enter the date consent was given.")
+            # India's date, not the server's (UTC on Vercel).
+            if self.consent_date > datetime.now(ZoneInfo("Asia/Kolkata")).date():
+                raise ValueError("The consent date can't be in the future.")
+        return self
 
 
 # ---------- Scoring and results ----------
@@ -353,6 +373,9 @@ class AdminUserOut(BaseModel):
     age_band: Optional[str]
     guardian_consent_status: Optional[str]
     school_name: Optional[str]
+    guardian_consent_by: Optional[str] = None
+    guardian_consent_method: Optional[str] = None
+    guardian_consent_date: Optional[date] = None
 
 
 class AuditEntryOut(BaseModel):

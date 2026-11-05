@@ -8,12 +8,16 @@ export type Route =
   | { name: "event"; id: number }
   | { name: "results"; id: number }
   | { name: "admin" }
+  | { name: "privacy" }
+  | { name: "terms" }
   | null;
 
 export function parseHash(hash: string): Route {
   const path = hash.replace(/^#/, "").replace(/\/+$/, "");
   if (path === "/league") return { name: "league" };
   if (path === "/admin") return { name: "admin" };
+  if (path === "/privacy") return { name: "privacy" };
+  if (path === "/terms") return { name: "terms" };
   const event = /^\/event\/(\d+)$/.exec(path);
   if (event) return { name: "event", id: Number(event[1]) };
   const results = /^\/results\/(\d+)$/.exec(path);

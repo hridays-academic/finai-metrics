@@ -51,7 +51,7 @@ def admin_env(monkeypatch):
 
 
 def _signup(client, email):
-    res = client.post("/api/auth/signup", json={"email": email, "name": "T", "password": "longenough1"})
+    res = client.post("/api/auth/signup", json={"email": email, "name": "T", "password": "longenough1", "accept_terms": True})
     return {"Authorization": f"Bearer {res.json()['token']}"}
 
 

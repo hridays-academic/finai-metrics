@@ -9,6 +9,7 @@ import {
 } from "lightweight-charts";
 import type { PriceHistoryResponse, PricePoint } from "../lib/types";
 import { ApiError, fetchPriceHistory } from "../lib/api";
+import { formatDay } from "../lib/leagueFormat";
 import type { Theme } from "../hooks/useTheme";
 
 function cssVar(name: string): string {
@@ -29,10 +30,10 @@ function seriesColorsFor(changePct: number | null): { lineColor: string; topColo
   return { lineColor: color, topColor: `${color}66`, bottomColor: `${color}00` };
 }
 
-type Period = "1D" | "5D" | "1Y" | "3Y" | "5Y";
+// No 1D/5D (2026-11): the API only serves prices at least 30 days old, so a
+// "last day" view would show a day from a month ago.
+type Period = "1Y" | "3Y" | "5Y";
 const PERIODS: { key: Period; label: string }[] = [
-  { key: "1D", label: "1D" },
-  { key: "5D", label: "5D" },
   { key: "1Y", label: "1Y" },
   { key: "3Y", label: "3Y" },
   { key: "5Y", label: "5Y (Max)" },
@@ -55,12 +56,8 @@ function withLatestDailyPoint(weeklyPoints: PricePoint[], recentPoints: PricePoi
   return [...weeklyPoints, lastDaily];
 }
 
-// 1D/5D use the daily "recent_points" series (~6-7mo of history); everything
-// else uses the ~5yr weekly "points" series, too sparse for a short zoom.
 function sliceForPeriod(data: PriceHistoryResponse | null, period: Period): PricePoint[] {
   if (!data) return [];
-  if (period === "1D") return data.recent_points.slice(-2);
-  if (period === "5D") return data.recent_points.slice(-5);
   if (period === "1Y") return withLatestDailyPoint(data.points.slice(-52), data.recent_points);
   if (period === "3Y") return withLatestDailyPoint(data.points.slice(-156), data.recent_points);
   return withLatestDailyPoint(data.points, data.recent_points); // 5Y / Max
@@ -231,6 +228,10 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
     <div className="price-chart-card">
       <div className="price-chart-header">
         <h3>Price History</h3>
+        <p className="price-lag-note">
+          Prices on Stackly are at least 30 days old
+          {data?.price_as_of ? `. Latest shown: ${formatDay(data.price_as_of, true)}.` : "."}
+        </p>
         {displayed && (
           <div className="price-chart-readout">
             <span className="price-chart-price">

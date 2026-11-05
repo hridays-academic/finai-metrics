@@ -1,8 +1,9 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { signUp, logIn, logOut, loginWithGoogle, fetchActivity, ApiError } from "../lib/api";
 import { setAuthToken, clearAuthToken } from "../lib/auth";
 import type { ActivityEntry, UserPublic } from "../lib/types";
 import GoogleSignInButton from "./GoogleSignInButton";
+import { isGoogleSignInConfigured } from "../lib/googleAuth";
 import ForgotPasswordForm from "./ForgotPasswordForm";
 
 interface AuthPanelProps {
@@ -33,6 +34,12 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  // The required "I agree to the Terms and Privacy Policy" box (2026-11).
+  // A ref too, because GoogleSignInButton keeps the credential callback it
+  // was mounted with.
+  const [agreed, setAgreed] = useState(false);
+  const agreedRef = useRef(false);
+  agreedRef.current = agreed;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +66,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
     setLoading(true);
     setError(null);
     try {
-      const res = mode === "signup" ? await signUp(email, name, password) : await logIn(email, password);
+      const res = mode === "signup" ? await signUp(email, name, password, agreed) : await logIn(email, password);
       setAuthToken(res.token);
       onAuthChange(res.user);
     } catch (err) {
@@ -73,10 +80,16 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
     setLoading(true);
     setError(null);
     try {
-      const res = await loginWithGoogle(credential);
+      const res = await loginWithGoogle(credential, agreedRef.current);
       setAuthToken(res.token);
       onAuthChange(res.user);
     } catch (err) {
+      if (err instanceof ApiError && err.code === "terms_required") {
+        // A new Google account from the sign-in tab: nothing was created.
+        setMode("signup");
+        setError("New to Stackly? Tick the box to agree to the Terms of Use and Privacy Policy, then continue with Google.");
+        return;
+      }
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -178,6 +191,22 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               </button>
             )}
 
+            {mode === "signup" && (
+              <label className="market-status-dont-show">
+                <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
+                <span>
+                  I agree to the{" "}
+                  <a href="#/terms" target="_blank" rel="noopener">
+                    Terms of Use
+                  </a>{" "}
+                  and{" "}
+                  <a href="#/privacy" target="_blank" rel="noopener">
+                    Privacy Policy
+                  </a>
+                </span>
+              </label>
+            )}
+
             {error && <div className="search-error">{error}</div>}
 
             {/* Directly above the submit button, not after the Google
@@ -192,7 +221,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               its owner(s) accept no liability for outcomes resulting from its use.
             </p>
 
-            <button type="submit" className="search-button auth-submit" disabled={loading}>
+            <button type="submit" className="search-button auth-submit" disabled={loading || (mode === "signup" && !agreed)}>
               {loading ? "..." : mode === "signup" ? "Create account" : "Sign in"}
             </button>
 
@@ -201,7 +230,13 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
             <div className="auth-divider">
               <span>or</span>
             </div>
-            <GoogleSignInButton onCredential={handleGoogleCredential} />
+            {/* Google creates the account on its first click, so on the
+                sign-up tab it only appears once the box is ticked. */}
+            {mode === "signup" && !agreed ? (
+              isGoogleSignInConfigured() && <p className="auth-field-hint">Tick the box above to continue with Google.</p>
+            ) : (
+              <GoogleSignInButton onCredential={handleGoogleCredential} />
+            )}
           </form>
         )}
       </div>

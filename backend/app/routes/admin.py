@@ -116,7 +116,7 @@ def find_users(q: Optional[str] = Query(None, max_length=80)) -> list[AdminUserO
 @router.put("/users/{user_id}/guardian-consent", status_code=204)
 def set_consent(user_id: int, body: ConsentIn, admin: dict = Depends(require_admin)) -> None:
     with get_conn() as conn:
-        league_admin.set_guardian_consent(conn, admin, user_id, body.status)
+        league_admin.set_guardian_consent(conn, admin, user_id, body)
 
 
 @router.get("/audit", response_model=list[AuditEntryOut])

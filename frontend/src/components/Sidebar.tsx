@@ -8,9 +8,9 @@ interface SidebarProps {
 }
 
 // The app's primary nav: a slim icon rail on the left, and a labelled bottom
-// bar on phones (see .sidebar in app.css). Home (the league stock picker),
-// Research (company search) and Paper Trading; the Return Calculator and
-// Market Simulator only appear when SHOW_EXTRA_TOOLS is on. Icons match
+// bar on phones (see .sidebar in app.css). Home (the league stock picker) and
+// Research (company search); the Return Calculator, Market Simulator and
+// Paper Trading only appear when SHOW_EXTRA_TOOLS is on. Icons match
 // Header.tsx's gear icon: 1.6-1.8 stroke width, currentColor, no fill.
 export default function Sidebar({ view, onChange }: SidebarProps) {
   return (
@@ -96,9 +96,6 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
         </svg>
       </button>
 
-        </>
-      )}
-
       <button
         type="button"
         className={`sidebar-icon-button ${view === "trading" ? "active" : ""}`}
@@ -118,6 +115,9 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
         </svg>
         <span className="sidebar-label">Trading</span>
       </button>
+
+        </>
+      )}
     </nav>
   );
 }

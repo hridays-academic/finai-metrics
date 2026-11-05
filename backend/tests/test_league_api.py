@@ -22,7 +22,7 @@ def admin_env(monkeypatch):
 
 
 def _signup(client, email):
-    res = client.post("/api/auth/signup", json={"email": email, "name": "T", "password": "longenough1"})
+    res = client.post("/api/auth/signup", json={"email": email, "name": "T", "password": "longenough1", "accept_terms": True})
     assert res.status_code == 200, res.text
     return {"Authorization": f"Bearer {res.json()['token']}"}
 
@@ -110,7 +110,8 @@ def test_under_18_blocked_until_admin_records_consent(conn, client, setup):
     assert res.status_code == 403 and res.json()["detail"]["code"] == "guardian_consent_pending"
 
     uid = conn.execute("SELECT id FROM users WHERE email = 'student@example.com'").fetchone()[0]
-    assert client.put(f"/api/admin/users/{uid}/guardian-consent", json={"status": "granted"},
+    assert client.put(f"/api/admin/users/{uid}/guardian-consent", json={"status": "granted", "parent_name": "A Parent",
+                      "method": "signed_form", "consent_date": "2026-11-01"},
                       headers=setup["admin"]).status_code == 204
     assert client.put(url, json={"values": _values()}, headers=setup["user"]).status_code == 200
 

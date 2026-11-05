@@ -85,6 +85,35 @@ class Settings(BaseSettings):
     def admin_email_set(self) -> frozenset[str]:
         return frozenset(e.strip().lower() for e in self.admin_emails.split(",") if e.strip())
 
+    # Paper Trading's /api/trading/* endpoints serve ~15-minute-delayed
+    # quotes, so they 404 unless this is true (2026-11, see main.py). Pair it
+    # with the frontend's VITE_SHOW_EXTRA_TOOLS.
+    enable_paper_trading: bool = False
+    # /api/chat calls a paid LLM API and has no UI caller (see CLAUDE.md's
+    # "AI assistant"), so it 404s unless this is true (2026-11).
+    enable_chat: bool = False
+
+    # Secret key for hashing client IPs before the rate limiter stores them
+    # (rate_limit.py). Set in Vercel; without it each process makes up its
+    # own key, which still hashes but weakens limits across instances.
+    ip_hash_key: Optional[str] = None
+    # Off only in the test suite, which signs up hundreds of users from one
+    # "IP" (tests/conftest.py).
+    auth_rate_limits_enabled: bool = True
+
+    # Origins a password-reset link may point at. The request's Origin header
+    # is used only if it is in this list (or cors_origins); anything else
+    # gets the first entry. Never trust Origin on its own: a forged header
+    # would put a real reset token in a link to someone else's site.
+    public_origins: str = (
+        "https://stackslymetrics.com,https://www.stackslymetrics.com,"
+        "https://finai-metrics.vercel.app,https://stackly-metrics.vercel.app"
+    )
+
+    @property
+    def public_origin_list(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.public_origins.split(",") if o.strip()]
+
     # Comma-separated list of allowed frontend origins for CORS.
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

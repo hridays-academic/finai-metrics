@@ -7,6 +7,7 @@ app/services/*. Run with:
 (from the backend/ directory, with the virtualenv active).
 """
 import logging
+import os
 import re
 from dataclasses import dataclass
 from typing import Optional
@@ -27,6 +28,7 @@ from app.models import (
     CompanyFinancialsResponse,
     CompanyInfo,
     DataSourceName,
+    DeleteAccountRequest,
     ForgotPasswordRequest,
     GoogleAuthRequest,
     IntradayHistoryResponse,
@@ -50,13 +52,13 @@ from app.services.data_provider import (
 from app.services.metrics import compute_health_snapshot, compute_metric_groups
 from app.services import gmail_service
 from app.services.providers import provider as shared_provider
-from app.services import auth_service, fundamentals_cache, rate_limit
-from app.services.auth_service import AuthError
+from app.services import auth_service, fundamentals_cache, price_lag, rate_limit
+from app.services.auth_service import AuthError, TermsRequiredError
 from app.services import db as db_module
 from app.services.db import get_conn, init_db
 from app.routes import admin as admin_routes, league as league_routes, visits as visit_routes
 from app.services.league_service import LeagueError
-from app.routes.deps import optional_user as _current_user
+from app.routes.deps import optional_user as _current_user, require_user
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("finai")
@@ -94,11 +96,27 @@ def _rate_limited(request: Request) -> None:
     rate_limit.check fails open on database trouble rather than taking the
     endpoint down with it.
     """
-    result = rate_limit.check(rate_limit.client_ip(request.headers, request.client.host if request.client else None))
+    result = rate_limit.check(rate_limit.client_ip(
+        request.headers, request.client.host if request.client else None))
     if not result.allowed:
         raise HTTPException(
             status_code=429,
             detail=rate_limit.friendly_message(result),
+            headers={"Retry-After": str(result.retry_after)},
+        )
+
+
+def _client_ip(request: Request) -> str:
+    return rate_limit.client_ip(request.headers, request.client.host if request.client else None)
+
+
+def _auth_limit(scope: str, value: str) -> None:
+    """Sign-in/sign-up/reset attempt limits (rate_limit.AUTH_LIMITS)."""
+    result = rate_limit.check_auth(scope, value)
+    if not result.allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=rate_limit.friendly_auth_message(result),
             headers={"Retry-After": str(result.retry_after)},
         )
 
@@ -194,34 +212,6 @@ class _Fundamentals:
     is_stale: bool = False
 
 
-def _refresh_price_overlay(symbol: str, raw: RawFinancials) -> RawFinancials:
-    """Re-reads just the price-derived fields via the cheap fast_info call and
-    writes them back as the cache's 15-minute overlay.
-
-    Never raises: the caller already holds a usable (if older) price, and a
-    failed overlay refresh must degrade to "slightly stale price," not to a
-    failed request. Only fields fast_info actually returned are overridden,
-    so a partial response can't blank out a good cached value.
-    """
-    try:
-        price, market_cap = provider.get_quick_price(symbol)
-    except Exception:  # noqa: BLE001 -- keep whatever price we already have
-        logger.warning("Price overlay refresh failed for symbol=%s", symbol, exc_info=True)
-        return raw
-
-    update = {}
-    if price is not None:
-        update["current_price"] = price
-    if market_cap is not None:
-        update["market_cap"] = market_cap
-    if not update:
-        return raw
-
-    with get_conn() as conn:
-        fundamentals_cache.put_price_overlay(symbol, price, market_cap, conn=conn)
-    return raw.model_copy(update=update)
-
-
 def _yfinance_consensus(symbol: str) -> Optional[AnalystConsensus]:
     """Best-effort -- analyst coverage is a bonus, never core. Cached
     alongside the statements on the same 7-day clock; consensus can change
@@ -230,7 +220,8 @@ def _yfinance_consensus(symbol: str) -> Optional[AnalystConsensus]:
     try:
         return provider.get_analyst_consensus(symbol)
     except Exception:  # noqa: BLE001
-        logger.warning("yfinance analyst consensus failed for symbol=%s", symbol, exc_info=True)
+        logger.warning(
+            "yfinance analyst consensus failed for symbol=%s", symbol, exc_info=True)
         return None
 
 
@@ -251,11 +242,7 @@ def _serve_cached(query: str, cached, *, is_stale: bool) -> _Fundamentals:
         source=DataSourceName.YFINANCE,
         # Deliberately the STATEMENTS timestamp, not CachedFundamentals.as_of
         # (which is the newer of the two clocks). This field answers "how old
-        # are these financials?", and the price half is separately guaranteed
-        # fresh by its own 15-minute TTL -- reporting the price time here
-        # would make week-old statements look like they were fetched minutes
-        # ago, which is precisely the kind of quietly-wrong number the rest
-        # of this codebase refuses to ship.
+        # are these financials?"; the price has its own date, price_as_of.
         as_of=cached.fetched_at.isoformat(),
         is_stale=is_stale,
     )
@@ -293,18 +280,14 @@ def _fetch_company_yfinance_cached(query: str) -> _Fundamentals:
     if symbol is None:
         symbol, exchange = provider.resolve_symbol(query)
         with get_conn() as conn:
-            fundamentals_cache.put_resolution(query, symbol, exchange, conn=conn)
+            fundamentals_cache.put_resolution(
+                query, symbol, exchange, conn=conn)
             cached = fundamentals_cache.get_fundamentals(symbol, conn=conn)
 
     if cached is not None and cached.statements_fresh:
-        result = _serve_cached(query, cached, is_stale=False)
-        if not cached.price_fresh:
-            # Refreshes only current_price/market_cap. `as_of` deliberately
-            # still reports when the STATEMENTS were fetched -- they really
-            # are up to 7 days old, and blanking it here would claim the
-            # whole payload was fetched just now.
-            result.raw = _refresh_price_overlay(symbol, result.raw)
-        return result
+        # No price refresh here: get_company swaps the price for a 30-day-old
+        # close anyway (see _with_lagged_price).
+        return _serve_cached(query, cached, is_stale=False)
 
     try:
         info = provider.get_company_info(symbol)
@@ -313,7 +296,8 @@ def _fetch_company_yfinance_cached(query: str) -> _Fundamentals:
         raw = provider.get_raw_financials(symbol)
         consensus = _yfinance_consensus(symbol)
         with get_conn() as conn:
-            fundamentals_cache.put_fundamentals(symbol, "yfinance", info, raw, consensus, conn=conn)
+            fundamentals_cache.put_fundamentals(
+                symbol, "yfinance", info, raw, consensus, conn=conn)
         return _Fundamentals(
             symbol=symbol, info=info, raw=raw, consensus=consensus,
             source=DataSourceName.YFINANCE,
@@ -323,7 +307,8 @@ def _fetch_company_yfinance_cached(query: str) -> _Fundamentals:
         # e.g. ZOMATO -> ETERNAL), which would otherwise poison this query for
         # the whole RESOLUTION_TTL. Drop the mapping and re-resolve live, once.
         if from_cache:
-            logger.warning("Cached resolution for query=%s -> %s went dead; re-resolving", query, symbol)
+            logger.warning(
+                "Cached resolution for query=%s -> %s went dead; re-resolving", query, symbol)
             # Deliberately does NOT invalidate the fundamentals row for
             # `symbol`: that row is the stale-serve fallback two branches
             # down, and deleting it here would destroy our own safety net
@@ -333,7 +318,8 @@ def _fetch_company_yfinance_cached(query: str) -> _Fundamentals:
             # own TTL.
             fresh_symbol, _exchange = provider.resolve_symbol(query)
             with get_conn() as conn:
-                fundamentals_cache.put_resolution(query, fresh_symbol, _exchange, conn=conn)
+                fundamentals_cache.put_resolution(
+                    query, fresh_symbol, _exchange, conn=conn)
             if fresh_symbol != symbol:
                 return _fetch_company_yfinance_cached(query)
         if cached is not None:
@@ -341,12 +327,14 @@ def _fetch_company_yfinance_cached(query: str) -> _Fundamentals:
             # a sudden "no data" is more often a transient upstream hiccup
             # than a real delisting. Serve what we have, clearly flagged,
             # rather than a 404 for a company the user can see we know about.
-            logger.warning("yfinance reported no data for symbol=%s -- serving stale cache", symbol)
+            logger.warning(
+                "yfinance reported no data for symbol=%s -- serving stale cache", symbol)
             return _serve_cached(query, cached, is_stale=True)
         raise
     except DataProviderError:
         if cached is not None:
-            logger.warning("yfinance unavailable for symbol=%s -- serving stale cache", symbol)
+            logger.warning(
+                "yfinance unavailable for symbol=%s -- serving stale cache", symbol)
             return _serve_cached(query, cached, is_stale=True)
         raise
 
@@ -369,20 +357,23 @@ def get_company(
     except CompanyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DataProviderError as exc:
-        logger.warning("Data provider error fetching company data for query=%s: %s", query, exc)
+        logger.warning(
+            "Data provider error fetching company data for query=%s: %s", query, exc)
         raise HTTPException(
             status_code=502,
             detail="Couldn't fetch this company's data right now -- the data provider may be temporarily "
             "unavailable. Please try again in a moment.",
         ) from exc
     except Exception as exc:  # noqa: BLE001 -- surface as a friendly 500, but log the real cause
-        logger.exception("Unexpected error fetching company data for query=%s", query)
+        logger.exception(
+            "Unexpected error fetching company data for query=%s", query)
         raise HTTPException(
             status_code=500,
             detail="Something went wrong fetching that company's data. Please try again.",
         ) from exc
 
-    info, raw = bundle.info, bundle.raw
+    info = bundle.info
+    raw, price_as_of = _with_lagged_price(bundle.symbol, bundle.raw)
     # Unchanged: metrics.py stays a pure function over already-fetched
     # numbers and still returns None (rendered "N/A") for anything missing,
     # whether that came from a live fetch or the cache -- the cache
@@ -394,10 +385,13 @@ def get_company(
         raw=raw,
         metric_groups=metric_groups,
         health_snapshot=health_snapshot,
-        analyst_consensus=bundle.consensus,
-        consensus_source=bundle.source if bundle.consensus is not None else None,
+        # Never sent (2026-11): analyst ratings and price targets are hidden
+        # everywhere, so the API mustn't hand them out either. Still cached.
+        analyst_consensus=None,
+        consensus_source=None,
         fundamentals_as_of=bundle.as_of,
         is_stale=bundle.is_stale,
+        price_as_of=price_as_of,
     )
     _last_company_by_ticker[info.resolved_symbol] = response
     # No-op if current_user is None (anonymous search) -- see
@@ -407,12 +401,66 @@ def get_company(
     return response
 
 
+@dataclass
+class _PriceSeries:
+    points: list[PricePoint]
+    recent_points: list[PricePoint]
+    as_of: Optional[str] = None
+    is_stale: bool = False
+
+
+def _load_price_series(active_symbol: str) -> _PriceSeries:
+    """Full (unlagged) series, cache-first with the same degradation ladder
+    as /api/company: a stale series beats none when upstream is unreachable.
+    Callers must lag it before it leaves the API."""
+    with get_conn() as conn:
+        cached_history = fundamentals_cache.get_price_history(active_symbol, conn=conn)
+
+    if cached_history is not None and cached_history.is_fresh:
+        return _PriceSeries(cached_history.points, cached_history.recent_points,
+                            cached_history.fetched_at.isoformat())
+    try:
+        points, recent_points = _fetch_price_points(active_symbol)
+        with get_conn() as conn:
+            fundamentals_cache.put_price_history(
+                active_symbol, points, recent_points, conn=conn)
+        return _PriceSeries(points, recent_points)
+    except (CompanyNotFoundError, DataProviderError):
+        if cached_history is None:
+            raise
+        logger.warning(
+            "yfinance price history unavailable for symbol=%s -- serving stale cache", active_symbol
+        )
+        return _PriceSeries(cached_history.points, cached_history.recent_points,
+                            cached_history.fetched_at.isoformat(), is_stale=True)
+
+
+def _with_lagged_price(symbol: str, raw: RawFinancials) -> tuple[RawFinancials, Optional[str]]:
+    """Replaces current_price/market_cap with values from a close at least
+    30 days old (see price_lag.py), so the valuation ratios never reveal a
+    recent price. If no such close is available they become None ("N/A")
+    rather than falling back to a newer price."""
+    lagged = None
+    try:
+        series = _load_price_series(symbol)
+        lagged = price_lag.latest_lagged_close(
+            series.points, series.recent_points, price_lag.today_in_india())
+    except Exception:  # noqa: BLE001 -- valuation ratios are a bonus, never core
+        logger.warning("Couldn't load a lagged price for symbol=%s", symbol, exc_info=True)
+
+    price, as_of = lagged if lagged else (None, None)
+    market_cap = price_lag.lagged_market_cap(
+        price, raw.shares_outstanding, raw.market_cap, raw.current_price)
+    return raw.model_copy(update={"current_price": price, "market_cap": market_cap}), as_of
+
+
 def _fetch_price_points(active_symbol: str) -> tuple[list[PricePoint], list[PricePoint]]:
     points = provider.get_price_history(active_symbol)
     try:
         recent_points = provider.get_recent_price_history(active_symbol)
     except Exception:  # noqa: BLE001 -- the 1D/5D views are a bonus, not core
-        logger.warning("Couldn't fetch recent price history for symbol=%s", active_symbol, exc_info=True)
+        logger.warning(
+            "Couldn't fetch recent price history for symbol=%s", active_symbol, exc_info=True)
         recent_points = []
     return points, recent_points
 
@@ -441,7 +489,8 @@ def _yfinance_price_symbol(symbol: str) -> str:
 
     resolved, exchange = provider.resolve_symbol(symbol)
     with get_conn() as conn:
-        fundamentals_cache.put_resolution(symbol, resolved, exchange, conn=conn)
+        fundamentals_cache.put_resolution(
+            symbol, resolved, exchange, conn=conn)
     return resolved
 
 
@@ -453,60 +502,36 @@ def get_price_history(
     # A single yfinance call returns a clean ~5-year weekly series; the
     # shared cache (6-hour TTL) keeps that to one upstream call per symbol.
     resolved = symbol.strip().upper()
-    recent_points: list[PricePoint] = []
-    history_as_of: Optional[str] = None
-    is_stale = False
-
     try:
-        active_symbol = _yfinance_price_symbol(resolved)
-        with get_conn() as conn:
-            cached_history = fundamentals_cache.get_price_history(active_symbol, conn=conn)
-
-        if cached_history is not None and cached_history.is_fresh:
-            points = cached_history.points
-            recent_points = cached_history.recent_points
-            history_as_of = cached_history.fetched_at.isoformat()
-        else:
-            try:
-                points, recent_points = _fetch_price_points(active_symbol)
-                with get_conn() as conn:
-                    fundamentals_cache.put_price_history(active_symbol, points, recent_points, conn=conn)
-            except (CompanyNotFoundError, DataProviderError):
-                # Same degradation ladder as /api/company: a stale chart beats
-                # no chart when upstream is unreachable. Only raise when
-                # there's genuinely nothing cached to fall back on.
-                if cached_history is None:
-                    raise
-                logger.warning(
-                    "yfinance price history unavailable for symbol=%s -- serving stale cache", active_symbol
-                )
-                points = cached_history.points
-                recent_points = cached_history.recent_points
-                history_as_of = cached_history.fetched_at.isoformat()
-                is_stale = True
+        series = _load_price_series(_yfinance_price_symbol(resolved))
     except CompanyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DataProviderError as exc:
-        logger.warning("Data provider error fetching price history for symbol=%s: %s", resolved, exc)
+        logger.warning(
+            "Data provider error fetching price history for symbol=%s: %s", resolved, exc)
         raise HTTPException(
             status_code=502,
             detail="Couldn't load price history right now -- the data provider may be temporarily "
             "unavailable. Please try again in a moment.",
         ) from exc
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Unexpected error fetching price history for symbol=%s", resolved)
+        logger.exception(
+            "Unexpected error fetching price history for symbol=%s", resolved)
         raise HTTPException(
             status_code=500,
             detail="Something went wrong fetching price history. Please try again.",
         ) from exc
 
+    today = price_lag.today_in_india()
+    lagged = price_lag.latest_lagged_close(series.points, series.recent_points, today)
     return PriceHistoryResponse(
         symbol=resolved,
-        points=points,
-        recent_points=recent_points,
+        points=price_lag.lag_weekly(series.points, today),
+        recent_points=price_lag.lag_daily(series.recent_points, today),
         active_source=DataSourceName.YFINANCE,
-        history_as_of=history_as_of,
-        is_stale=is_stale,
+        history_as_of=series.as_of,
+        is_stale=series.is_stale,
+        price_as_of=lagged[1] if lagged else None,
     )
 
 
@@ -514,13 +539,21 @@ _TRADING_RANGES = ("1D", "1W", "1M", "3M", "1Y", "5Y")
 
 
 # ---------- Paper Trading ----------
+# Hidden (2026-11) with the frontend page, behind SHOW_EXTRA_TOOLS: these
+# serve ~15-minute-delayed quotes, which the 30-day price lag rule forbids.
+# 404 unless ENABLE_PAPER_TRADING=true, so hiding the page also closes the API.
+def _paper_trading_enabled() -> None:
+    if not settings.enable_paper_trading:
+        raise HTTPException(status_code=404, detail="Not found")
+
+
 # Portfolio state itself (cash/holdings/transactions) is intentionally never
 # sent here at all -- it's held entirely client-side (localStorage, see
 # frontend/src/lib/portfolio.ts), so there's nothing for these endpoints to
 # persist. They use the same module-level `provider` as everything else.
 
 
-@app.get("/api/trading/search/{query}", response_model=TradingSymbolInfo)
+@app.get("/api/trading/search/{query}", response_model=TradingSymbolInfo, dependencies=[Depends(_paper_trading_enabled)])
 def trading_search(query: str) -> TradingSymbolInfo:
     """Resolves a company name/ticker for Paper Trading's own stock picker --
     intentionally lighter than /api/company (no financial statements, no
@@ -538,7 +571,8 @@ def trading_search(query: str) -> TradingSymbolInfo:
     except CompanyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DataProviderError as exc:
-        logger.warning("Data provider error resolving trading symbol query=%s: %s", query, exc)
+        logger.warning(
+            "Data provider error resolving trading symbol query=%s: %s", query, exc)
         raise HTTPException(
             status_code=502,
             detail="Couldn't look that up right now -- the data provider may be temporarily unavailable.",
@@ -553,7 +587,7 @@ def trading_search(query: str) -> TradingSymbolInfo:
     )
 
 
-@app.get("/api/trading/quote/{symbol}", response_model=LiveQuote)
+@app.get("/api/trading/quote/{symbol}", response_model=LiveQuote, dependencies=[Depends(_paper_trading_enabled)])
 def trading_quote(symbol: str) -> LiveQuote:
     """The polling endpoint -- see YFinanceProvider.get_live_quote for why
     this is deliberately the cheapest possible call (fast_info, not a full
@@ -564,14 +598,15 @@ def trading_quote(symbol: str) -> LiveQuote:
     except CompanyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DataProviderError as exc:
-        logger.warning("Data provider error fetching live quote for symbol=%s: %s", symbol, exc)
+        logger.warning(
+            "Data provider error fetching live quote for symbol=%s: %s", symbol, exc)
         raise HTTPException(
             status_code=502,
             detail="Couldn't fetch a live quote right now -- please try again shortly.",
         ) from exc
 
 
-@app.get("/api/trading/history/{symbol}", response_model=IntradayHistoryResponse)
+@app.get("/api/trading/history/{symbol}", response_model=IntradayHistoryResponse, dependencies=[Depends(_paper_trading_enabled)])
 def trading_history(symbol: str, range: str = "1D") -> IntradayHistoryResponse:  # noqa: A002 -- matches the query param name the frontend sends
     range_key = range.strip().upper()
     if range_key not in _TRADING_RANGES:
@@ -597,9 +632,11 @@ def trading_history(symbol: str, range: str = "1D") -> IntradayHistoryResponse: 
 
 
 @app.post("/api/auth/signup", response_model=AuthResponse)
-def sign_up(request: SignUpRequest) -> AuthResponse:
+def sign_up(request: SignUpRequest, http_request: Request) -> AuthResponse:
+    _auth_limit("signup", _client_ip(http_request))
     try:
-        _user_id, token = auth_service.sign_up(request.email, request.name, request.password)
+        _user_id, token = auth_service.sign_up(
+            request.email, request.name, request.password, request.accept_terms)
     except AuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     user = auth_service.get_user_from_token(token)
@@ -608,7 +645,9 @@ def sign_up(request: SignUpRequest) -> AuthResponse:
 
 
 @app.post("/api/auth/login", response_model=AuthResponse)
-def log_in(request: LogInRequest) -> AuthResponse:
+def log_in(request: LogInRequest, http_request: Request) -> AuthResponse:
+    _auth_limit("login", _client_ip(http_request))
+    _auth_limit("login_account", request.email)
     try:
         _user_id, token = auth_service.log_in(request.email, request.password)
     except AuthError as exc:
@@ -616,6 +655,22 @@ def log_in(request: LogInRequest) -> AuthResponse:
     user = auth_service.get_user_from_token(token)
     assert user is not None
     return AuthResponse(token=token, user=UserPublic(**user))
+
+
+_FORGOT_PASSWORD_RESPONSE = {
+    "status": "ok", "message": "If an account exists for that email, a reset link has been sent."}
+
+
+def _reset_link_origin(http_request: Request) -> str:
+    """The site a reset link points at. The Origin header is used only when
+    it's one of our own origins (2026-11 security fix): before, a forged
+    Origin made us email a genuine reset token inside a link to any site,
+    handing the token to whoever ran it."""
+    allowed = list(settings.public_origin_list)
+    if not os.environ.get("VERCEL"):  # local dev: the Vite dev server's origin
+        allowed += [o.rstrip("/") for o in settings.cors_origin_list]
+    origin = (http_request.headers.get("origin") or "").rstrip("/")
+    return origin if origin in allowed else settings.public_origin_list[0]
 
 
 # Deliberately always returns the exact same body regardless of whether the
@@ -626,24 +681,27 @@ def log_in(request: LogInRequest) -> AuthResponse:
 # (gmail_service.py) and swallowed here, not surfaced to the caller.
 @app.post("/api/auth/forgot-password")
 def forgot_password(request: ForgotPasswordRequest, http_request: Request) -> dict:
+    _auth_limit("reset_request", _client_ip(http_request))
+    # Over the per-email limit: same generic answer, no email sent. A 429
+    # here would reveal nothing new, but staying silent also stops anyone
+    # using this to flood a stranger's inbox.
+    if not rate_limit.check_auth("reset_account", request.email).allowed:
+        return _FORGOT_PASSWORD_RESPONSE
     result = auth_service.request_password_reset(request.email)
     if result:
         name, token = result
-        # Same-origin deployment (see CLAUDE.md's "Deployment" section) --
-        # the request's own Origin header is always this app's real
-        # frontend URL, in both local dev and production, so there's no
-        # separate FRONTEND_BASE_URL to configure/keep in sync.
-        origin = http_request.headers.get("origin") or str(http_request.base_url).rstrip("/")
-        reset_link = f"{origin}/?reset_token={token}"
+        reset_link = f"{_reset_link_origin(http_request)}/?reset_token={token}"
         try:
-            gmail_service.send_password_reset_email(request.email, name, reset_link)
+            gmail_service.send_password_reset_email(
+                request.email, name, reset_link)
         except gmail_service.EmailSendError:
             pass  # already logged server-side in gmail_service.py
-    return {"status": "ok", "message": "If an account exists for that email, a reset link has been sent."}
+    return _FORGOT_PASSWORD_RESPONSE
 
 
 @app.post("/api/auth/reset-password")
-def reset_password_endpoint(request: ResetPasswordRequest) -> dict:
+def reset_password_endpoint(request: ResetPasswordRequest, http_request: Request) -> dict:
+    _auth_limit("reset_confirm", _client_ip(http_request))
     try:
         auth_service.reset_password(request.token, request.new_password)
     except AuthError as exc:
@@ -652,7 +710,7 @@ def reset_password_endpoint(request: ResetPasswordRequest) -> dict:
 
 
 @app.post("/api/auth/google", response_model=AuthResponse)
-def google_auth(request: GoogleAuthRequest) -> AuthResponse:
+def google_auth(request: GoogleAuthRequest, http_request: Request) -> AuthResponse:
     """Verifies the ID token Google Identity Services handed the frontend
     (see frontend/src/lib/googleAuth.ts's credential callback) before
     trusting anything in it -- `verify_oauth2_token` checks the signature,
@@ -660,9 +718,11 @@ def google_auth(request: GoogleAuthRequest) -> AuthResponse:
     this token was actually minted for this app, not some other one using
     the same Google account). Same response shape as /api/auth/signup and
     /api/auth/login -- the frontend treats all three interchangeably."""
+    _auth_limit("google", _client_ip(http_request))
     client_id = settings.google_client_id
     if not client_id:
-        raise HTTPException(status_code=503, detail="Google Sign-In isn't configured on this server yet.")
+        raise HTTPException(
+            status_code=503, detail="Google Sign-In isn't configured on this server yet.")
     try:
         payload = google_id_token.verify_oauth2_token(
             request.credential, google_auth_requests.Request(), client_id
@@ -675,12 +735,17 @@ def google_auth(request: GoogleAuthRequest) -> AuthResponse:
     email = payload.get("email")
     google_id = payload.get("sub")
     if not email or not google_id:
-        raise HTTPException(status_code=401, detail="Google didn't return the expected account details.")
+        raise HTTPException(
+            status_code=401, detail="Google didn't return the expected account details.")
     if not payload.get("email_verified", False):
-        raise HTTPException(status_code=401, detail="Please verify your email with Google before signing in.")
+        raise HTTPException(
+            status_code=401, detail="Please verify your email with Google before signing in.")
     name = payload.get("name") or email.split("@")[0]
 
-    _user_id, token = auth_service.login_with_google(email, name, google_id)
+    try:
+        _user_id, token = auth_service.login_with_google(email, name, google_id, request.accept_terms)
+    except TermsRequiredError as exc:
+        raise HTTPException(status_code=409, detail={"code": "terms_required", "message": str(exc)}) from exc
     user = auth_service.get_user_from_token(token)
     assert user is not None  # just created/found, token can't be invalid/expired yet
     return AuthResponse(token=token, user=UserPublic(**user))
@@ -698,14 +763,37 @@ def get_me(current_user: Optional[dict] = Depends(_current_user)) -> Optional[Us
     return UserPublic(**current_user) if current_user else None
 
 
+@app.post("/api/auth/accept-terms", response_model=UserPublic)
+def accept_terms(user: dict = Depends(require_user)) -> UserPublic:
+    auth_service.accept_terms(user["id"])
+    return UserPublic(**auth_service.get_user_by_id(user["id"]))
+
+
+@app.post("/api/auth/delete-account", status_code=204)
+def delete_account(body: DeleteAccountRequest, http_request: Request, user: dict = Depends(require_user)) -> None:
+    """Settings -> Delete my account. See auth_service.delete_account for
+    what is deleted and what is kept anonymised."""
+    _auth_limit("account_delete", _client_ip(http_request))
+    if body.confirm != "DELETE":
+        raise HTTPException(status_code=400, detail='Type DELETE to confirm.')
+    auth_service.delete_account(user["id"])
+
+
 @app.get("/api/activity", response_model=ActivityResponse)
 def get_activity(current_user: Optional[dict] = Depends(_current_user)) -> ActivityResponse:
     if not current_user:
-        raise HTTPException(status_code=401, detail="Sign in to view your activity.")
+        raise HTTPException(
+            status_code=401, detail="Sign in to view your activity.")
     return ActivityResponse(entries=auth_service.get_activity(current_user["id"]))
 
 
-@app.post("/api/chat", response_model=ChatResponse)
+def _chat_enabled() -> None:
+    # Off unless ENABLE_CHAT=true: no UI calls it, and each call costs money.
+    if not settings.enable_chat:
+        raise HTTPException(status_code=404, detail="Not found")
+
+
+@app.post("/api/chat", response_model=ChatResponse, dependencies=[Depends(_chat_enabled)])
 def chat(request: ChatRequest) -> ChatResponse:
     context = None
     if request.ticker:

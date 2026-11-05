@@ -1,15 +1,36 @@
-import { FormEvent, useEffect, useState } from "react";
-import { adminFindUsers, adminSetConsent, ApiError } from "../../lib/api";
+import { FormEvent, Fragment, useEffect, useState } from "react";
+import { adminFindUsers, adminSetConsent, ApiError, type ConsentDetails } from "../../lib/api";
+import { formatDay } from "../../lib/leagueFormat";
+import { todayInIndia } from "../../lib/marketHolidays";
 import type { AdminUser } from "../../lib/types";
 
-// Guardian consent for under-18 players. TODO(legal): this only records that
-// the school's signed consent form was received; it is a record-keeping
-// placeholder, not a verified legal consent process, and nothing in the app
-// may claim otherwise.
+// Guardian consent for under-18 players: who gave it (the parent's name),
+// how (signed form or an email from the parent) and the date (2026-11).
+// TODO(legal): a record-keeping placeholder, not a verified legal consent
+// process, and nothing in the app may claim otherwise.
+
+const METHOD_LABEL: Record<ConsentDetails["method"], string> = {
+  signed_form: "signed form",
+  parent_email: "parent email",
+};
+
+function consentSummary(u: AdminUser): string {
+  if (u.age_band !== "under_18") return "not needed";
+  if (u.guardian_consent_status !== "granted") return u.guardian_consent_status ?? "pending";
+  const parts = ["granted"];
+  if (u.guardian_consent_by) parts.push(`by ${u.guardian_consent_by}`);
+  if (u.guardian_consent_method) parts.push(METHOD_LABEL[u.guardian_consent_method]);
+  if (u.guardian_consent_date) parts.push(formatDay(u.guardian_consent_date, true));
+  return parts.join(", ");
+}
 export default function AdminUsers() {
   const [q, setQ] = useState("");
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The row whose consent details are being entered, and the form fields.
+  const [recording, setRecording] = useState<number | null>(null);
+  const [details, setDetails] = useState<ConsentDetails>({ parent_name: "", method: "signed_form", consent_date: "" });
+  const [saving, setSaving] = useState(false);
 
   const search = (query: string) =>
     adminFindUsers(query)
@@ -20,13 +41,23 @@ export default function AdminUsers() {
     search("");
   }, []);
 
-  async function setConsent(u: AdminUser, status: "pending" | "granted") {
+  function startRecording(u: AdminUser) {
     setError(null);
+    setDetails({ parent_name: "", method: "signed_form", consent_date: todayInIndia().dateStr });
+    setRecording(u.id);
+  }
+
+  async function setConsent(u: AdminUser, status: "pending" | "granted", consent?: ConsentDetails) {
+    setError(null);
+    setSaving(true);
     try {
-      await adminSetConsent(u.id, status);
+      await adminSetConsent(u.id, status, consent);
+      setRecording(null);
       search(q);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Couldn't update consent.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -38,8 +69,8 @@ export default function AdminUsers() {
   return (
     <div>
       <p className="calculator-subtitle">
-        Students under 18 can't submit forecasts until their school's signed guardian consent form has been received.
-        Mark it here once you have the form. Pending students are listed first.
+        Students under 18 can't submit forecasts until a parent or guardian has consented, by signed form or by
+        email from the parent. Record it here with the parent's name and the date. Pending students are listed first.
       </p>
       <form className="calculator-stock-form" onSubmit={handleSearch}>
         <input placeholder="Search email, handle or name" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -60,27 +91,83 @@ export default function AdminUsers() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id}>
+                <Fragment key={u.id}>
+                <tr>
                   <td>
                     <div className="trading-table-stock-name">{u.handle ?? "(no handle yet)"}</div>
                     <div className="trading-table-stock-ticker">{u.email}</div>
                   </td>
                   <td>{u.school_name ?? "--"}</td>
                   <td>{u.age_band === "under_18" ? "Under 18" : u.age_band === "18_plus" ? "18+" : "--"}</td>
-                  <td>{u.age_band === "under_18" ? u.guardian_consent_status : "not needed"}</td>
+                  <td>{consentSummary(u)}</td>
                   <td>
                     {u.age_band === "under_18" &&
                       (u.guardian_consent_status === "granted" ? (
-                        <button type="button" className="settings-row-action" onClick={() => setConsent(u, "pending")}>
+                        <button
+                          type="button"
+                          className="settings-row-action"
+                          disabled={saving}
+                          onClick={() => setConsent(u, "pending")}
+                        >
                           Undo
                         </button>
                       ) : (
-                        <button type="button" className="settings-row-action" onClick={() => setConsent(u, "granted")}>
-                          Mark form received
-                        </button>
+                        recording !== u.id && (
+                          <button type="button" className="settings-row-action" onClick={() => startRecording(u)}>
+                            Record consent
+                          </button>
+                        )
                       ))}
                   </td>
                 </tr>
+                {recording === u.id && (
+                  <tr>
+                    <td colSpan={5}>
+                      <form
+                        className="calculator-stock-form"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          setConsent(u, "granted", details);
+                        }}
+                      >
+                        <input
+                          placeholder="Parent or guardian's name"
+                          aria-label="Parent or guardian's name"
+                          value={details.parent_name}
+                          maxLength={80}
+                          onChange={(e) => setDetails({ ...details, parent_name: e.target.value })}
+                          required
+                          autoFocus
+                        />
+                        <select
+                          aria-label="How consent was given"
+                          value={details.method}
+                          onChange={(e) =>
+                            setDetails({ ...details, method: e.target.value as ConsentDetails["method"] })
+                          }
+                        >
+                          <option value="signed_form">Signed form</option>
+                          <option value="parent_email">Email from the parent</option>
+                        </select>
+                        <input
+                          type="date"
+                          aria-label="Date consent was given"
+                          value={details.consent_date}
+                          max={todayInIndia().dateStr}
+                          onChange={(e) => setDetails({ ...details, consent_date: e.target.value })}
+                          required
+                        />
+                        <button type="submit" disabled={saving || !details.parent_name.trim()}>
+                          {saving ? "Saving..." : "Save consent"}
+                        </button>
+                        <button type="button" className="settings-row-action" onClick={() => setRecording(null)}>
+                          Cancel
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

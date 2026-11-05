@@ -252,6 +252,19 @@ LEAGUE_SCHEMA_STATEMENTS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS school_name TEXT",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS age_band TEXT",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_consent_status TEXT",
+    # (v8) Who gave consent, how, and when, entered by an admin. Cleared when
+    # consent is undone or the account is deleted.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_consent_by TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_consent_method TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS guardian_consent_date DATE",
+    """
+    DO $$ BEGIN
+        ALTER TABLE users ADD CONSTRAINT users_guardian_consent_method_check
+            CHECK (guardian_consent_method IS NULL
+                   OR guardian_consent_method IN ('signed_form', 'parent_email'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
+    """,
     """
     DO $$ BEGIN
         ALTER TABLE users ADD CONSTRAINT users_age_band_check
@@ -278,6 +291,16 @@ LEAGUE_SCHEMA_STATEMENTS = [
         v_event_id INTEGER;
         v_lock_at TIMESTAMPTZ;
     BEGIN
+        -- Clearing a note is allowed after the lock: account deletion
+        -- (auth_service.delete_account) removes free text, and nothing that
+        -- is scored changes. Any other column changing still falls through.
+        -- (Nested: forecast_values has no note column to resolve.)
+        IF TG_TABLE_NAME = 'forecasts' AND TG_OP = 'UPDATE' THEN
+            IF (to_jsonb(NEW) ->> 'note') IS NULL
+               AND (to_jsonb(NEW) - 'note') = (to_jsonb(OLD) - 'note') THEN
+                RETURN NEW;
+            END IF;
+        END IF;
         IF TG_TABLE_NAME = 'forecasts' THEN
             v_event_id := COALESCE(NEW.event_id, OLD.event_id);
             IF TG_OP = 'UPDATE' AND NEW.event_id <> OLD.event_id THEN

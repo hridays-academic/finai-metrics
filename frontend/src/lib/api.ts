@@ -147,11 +147,16 @@ export async function fetchTradingHistory(
   return res.json();
 }
 
-export async function signUp(email: string, name: string, password: string): Promise<AuthResponse> {
+export async function signUp(
+  email: string,
+  name: string,
+  password: string,
+  acceptTerms: boolean
+): Promise<AuthResponse> {
   const res = await fetch(`${BASE_URL}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, name, password }),
+    body: JSON.stringify({ email, name, password, accept_terms: acceptTerms }),
   });
   if (!res.ok) {
     const { message } = await parseErrorDetail(res);
@@ -206,17 +211,41 @@ export async function resetPassword(token: string, newPassword: string): Promise
 // credential callback (see lib/googleAuth.ts) -- main.py's /api/auth/google
 // verifies it server-side before ever trusting it. Same response shape as
 // signUp/logIn, so callers treat all three interchangeably.
-export async function loginWithGoogle(credential: string): Promise<AuthResponse> {
+// A brand-new Google account needs acceptTerms (the sign-up checkbox);
+// without it the backend creates nothing and answers code "terms_required".
+export async function loginWithGoogle(credential: string, acceptTerms: boolean): Promise<AuthResponse> {
   const res = await fetch(`${BASE_URL}/auth/google`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify({ credential, accept_terms: acceptTerms }),
   });
+  if (!res.ok) {
+    const { message, code } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status, code);
+  }
+  return res.json();
+}
+
+export async function acceptTerms(): Promise<UserPublic> {
+  const res = await fetch(`${BASE_URL}/auth/accept-terms`, { method: "POST", headers: authHeaders() });
   if (!res.ok) {
     const { message } = await parseErrorDetail(res);
     throw new ApiError(message, res.status);
   }
   return res.json();
+}
+
+// Settings -> Delete my account. `confirm` must be the typed word "DELETE".
+export async function deleteAccount(confirm: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/delete-account`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ confirm }),
+  });
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
 }
 
 export async function logOut(): Promise<void> {
@@ -241,7 +270,17 @@ export async function fetchActivity(): Promise<ActivityResponse> {
 // ---------- First-party visit counter (replaces Google Analytics) ----------
 // Sends only a fixed page name -- never the URL, query string or anything
 // about the visitor. See backend/app/services/visits.py.
-export type VisitPage = "home" | "search" | "trading" | "reset_password" | "admin" | "league" | "event" | "results";
+export type VisitPage =
+  | "home"
+  | "search"
+  | "trading"
+  | "reset_password"
+  | "admin"
+  | "league"
+  | "event"
+  | "results"
+  | "privacy"
+  | "terms";
 
 export function recordVisit(page: VisitPage): void {
   fetch(`${BASE_URL}/visit`, {
@@ -311,6 +350,11 @@ export const adminScoreEvent = (eventId: number) =>
 export const adminPutResults = (eventId: number, items: ActualInput[]) =>
   leagueRequest<void>("PUT", `/admin/events/${eventId}/results`, items);
 export const adminFindUsers = (q: string) => leagueRequest<AdminUser[]>("GET", `/admin/users?q=${encodeURIComponent(q)}`);
-export const adminSetConsent = (userId: number, status: "pending" | "granted") =>
-  leagueRequest<void>("PUT", `/admin/users/${userId}/guardian-consent`, { status });
+export interface ConsentDetails {
+  parent_name: string;
+  method: "signed_form" | "parent_email";
+  consent_date: string; // YYYY-MM-DD
+}
+export const adminSetConsent = (userId: number, status: "pending" | "granted", details?: ConsentDetails) =>
+  leagueRequest<void>("PUT", `/admin/users/${userId}/guardian-consent`, { status, ...details });
 export const adminAudit = (limit = 100) => leagueRequest<AuditEntry[]>("GET", `/admin/audit?limit=${limit}`);

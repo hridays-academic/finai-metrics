@@ -211,7 +211,34 @@ _SCHEMA_STATEMENTS = [
         fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
     """,
+    # Added 2026-11 (v8) -- Terms/Privacy agreement and account deletion
+    # (auth_service.accept_terms / delete_account). A deleted account keeps
+    # its row with every personal field blanked, so its anonymised forecasts
+    # still count in scores and crowd stats.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
+    # Before v8 the rate limiter stored raw IPs; it stores keyed hashes now.
+    # Rows only live for an hour, so dropping them all just resets counts.
+    "DELETE FROM rate_limit_buckets",
 ]
+
+
+# How long personal records are kept (Privacy Policy, 2026-11).
+ACTIVITY_RETENTION = "12 months"
+
+
+def purge_expired_personal_data(conn: psycopg.Connection) -> None:
+    """Deletes expired sessions and reset links, and activity older than
+    ACTIVITY_RETENTION. Run at every new session and every cold start, so
+    the limits in the Privacy Policy hold without a scheduled job. The text
+    timestamps cast cleanly: NOW()::text and isoformat() both parse."""
+    conn.execute("DELETE FROM sessions WHERE expires_at::timestamptz < NOW()")
+    conn.execute("DELETE FROM password_reset_tokens WHERE expires_at::timestamptz < NOW()")
+    conn.execute(
+        "DELETE FROM activity_log WHERE created_at::timestamptz < NOW() - %s::interval",
+        (ACTIVITY_RETENTION,),
+    )
 
 
 def _dsn() -> str:
@@ -227,7 +254,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001
@@ -293,6 +320,16 @@ def _tapetide_storage_present(conn: psycopg.Connection) -> str:
     return f"tapetide_key_encrypted column={'yes' if column else 'no'}, tapetide_quota table={'yes' if table else 'no'}"
 
 
+def _purge_at_startup(conn: psycopg.Connection) -> None:
+    # Never blocks a cold start: the next new session purges too.
+    try:
+        purge_expired_personal_data(conn)
+        conn.commit()
+    except psycopg.Error:
+        conn.rollback()
+        logger.warning("Retention purge failed at startup", exc_info=True)
+
+
 def init_db() -> None:
     """Idempotent -- safe to call on every cold start.
 
@@ -309,6 +346,7 @@ def init_db() -> None:
             row = conn.execute("SELECT version FROM schema_version").fetchone()
             current = row[0] if row else None
             if current is not None and current >= SCHEMA_VERSION:
+                _purge_at_startup(conn)
                 return
         except psycopg.errors.UndefinedTable:
             conn.rollback()
