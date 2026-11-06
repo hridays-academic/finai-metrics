@@ -17,30 +17,25 @@ export default function CompanySearch({ onSearch, loading, error }: CompanySearc
 
   return (
     <div className="search-bar-wrap">
-      <div className="search-row">
-        <form className="search-form" onSubmit={handleSubmit}>
-          <input
-            className="search-input"
-            type="text"
-            placeholder="Enter a company name or ticker, e.g. Reliance, TCS, or RELIANCE.NS"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Company name or ticker"
-          />
-          <button className="search-button" type="submit" disabled={loading || !query.trim()}>
-            {loading ? "Loading..." : "Search"}
-          </button>
-        </form>
-      </div>
-      {error && <div className="search-error">{error}</div>}
-      <div className="search-hint">
-        Tip: use the exact NSE/BSE ticker (e.g. "RELIANCE.NS" or "TATASTEEL.BO") for the most
-        reliable match.
-      </div>
-      <p className="page-disclaimer">
-        Stackly provides financial data and educational information only. Any financial decisions
-        you make using data from this site are your own responsibility -- the site and its
-        owner(s) accept no liability for outcomes resulting from its use.
+      <h1 className="page-title">Research</h1>
+      <form className="search-form" onSubmit={handleSubmit}>
+        <input
+          className="input search-input"
+          type="search"
+          placeholder="Company name or ticker, e.g. Reliance, TCS or RELIANCE.NS"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Company name or ticker"
+        />
+        <button className="btn btn-primary" type="submit" disabled={loading || !query.trim()} aria-busy={loading}>
+          {loading ? "Searching..." : "Search"}
+        </button>
+      </form>
+      {error && <div className="form-error">{error}</div>}
+      <p className="footnote">
+        For the most reliable match, use the exact ticker, such as RELIANCE.NS or TATASTEEL.BO. Stackly is for education
+        only. Any financial decisions you make are your own responsibility, and Stackly and its owner accept no liability
+        for them.
       </p>
     </div>
   );

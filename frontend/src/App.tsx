@@ -28,7 +28,7 @@ import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
 let visitRecorded = false;
 
 export default function App() {
-  const { theme, themeName, mode, setThemeName, setMode } = useTheme();
+  const { theme, mode, setMode } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   // Sign-in is purely for activity tracking, not a gate on using the app --
@@ -104,11 +104,6 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {/* Full-viewport ambient background -- see .app-backdrop in app.css. */}
-      <div className="app-backdrop" aria-hidden="true">
-        <div className="app-backdrop-glow" />
-      </div>
-
       <Sidebar view={navView} onChange={handleChangeView} />
 
       <div className="app-shell-content">
@@ -156,30 +151,8 @@ export default function App() {
                   <MetricsDashboard data={company} theme={theme} />
                 ) : (
                   <div className="empty-state">
-                    {/* A real magnifying glass -- the circle IS the lens
-                        (fully containing the trend line inside it, not
-                        overlapping/clipping it), with an actual handle
-                        extending from the rim. Reads unambiguously as
-                        "search," which the previous version (a checkmark
-                        line with an off-center ring randomly behind it,
-                        the line's own end poking outside the circle)
-                        didn't -- that one had no real reason for the
-                        circle to be there at all. */}
-                    <div className="empty-state-icon" aria-hidden="true">
-                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.8" />
-                        <path
-                          d="M6 12.5L9 9L11.5 10.8L14.5 6.5"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path d="M15.3 15.3L20.5 20.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                      </svg>
-                    </div>
-                    <h2>No company loaded yet</h2>
-                    <p>Search an NSE/BSE-listed company above to see its financial metrics.</p>
+                    <h2>Look up any listed company</h2>
+                    <p>Search for an NSE or BSE company to see its financial ratios and price history.</p>
                   </div>
                 )}
                 <SiteFooter />
@@ -243,9 +216,7 @@ export default function App() {
             setUser(null);
             setSettingsOpen(false);
           }}
-          themeName={themeName}
           mode={mode}
-          onSetThemeName={setThemeName}
           onSetMode={setMode}
           onClose={() => setSettingsOpen(false)}
         />

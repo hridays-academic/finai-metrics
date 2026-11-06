@@ -53,7 +53,7 @@ export default function SimulatorChart({ points, revealedCount, theme }: Simulat
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: cssVar("--text-secondary"),
-        fontFamily: "Inter, sans-serif",
+        fontFamily: cssVar("--font-sans"),
         fontSize: 11,
       },
       grid: {

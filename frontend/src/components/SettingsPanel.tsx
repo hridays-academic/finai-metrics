@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import type { ThemeMode, ThemeName } from "../hooks/useTheme";
+import type { ThemeMode } from "../hooks/useTheme";
 import { deleteAccount, ApiError } from "../lib/api";
 import { clearAuthToken } from "../lib/auth";
 import type { UserPublic } from "../lib/types";
@@ -10,40 +10,20 @@ import CoinAmount from "./CoinAmount";
 interface SettingsPanelProps {
   user: UserPublic | null;
   onAccountDeleted: () => void;
-  themeName: ThemeName;
   mode: ThemeMode;
-  onSetThemeName: (theme: ThemeName) => void;
   onSetMode: (mode: ThemeMode) => void;
   onClose: () => void;
 }
 
-// Preview swatch colors for the pickers below -- hand-kept, approximate
-// copies of each combination's --bg-app/--accent from theme.css, not read
-// live off CSS variables. There's no way to sample "what would --accent
-// look like under a theme/mode that ISN'T currently active" without
-// something like an offscreen iframe per swatch, and these are purely
-// decorative preview dots (not applied anywhere as real UI color), so a
-// hand-kept copy is the pragmatic choice -- just keep in sync if
-// theme.css's actual values change. Theme swatches always preview that
-// theme's DARK mode (its primary identity); the mode picker's own swatches
-// are deliberately generic (near-black / near-white) rather than
-// theme-tinted, since mode is a light/dark choice independent of theme.
-const THEME_OPTIONS: { value: ThemeName; label: string; bg: string; accent: string }[] = [
-  { value: "green", label: "Green", bg: "#0a0f0b", accent: "#4f9d6f" },
-  { value: "blue", label: "Blue", bg: "#0e1116", accent: "#4fd1c5" },
-];
-
-const MODE_OPTIONS: { value: ThemeMode; label: string; bg: string }[] = [
-  { value: "dark", label: "Dark", bg: "#0a0a0a" },
-  { value: "light", label: "Light", bg: "#f5f5f5" },
+const MODE_OPTIONS: { value: ThemeMode; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
 ];
 
 export default function SettingsPanel({
   user,
   onAccountDeleted,
-  themeName,
   mode,
-  onSetThemeName,
   onSetMode,
   onClose,
 }: SettingsPanelProps) {
@@ -85,54 +65,33 @@ export default function SettingsPanel({
   return (
     <>
       <div className="settings-backdrop" onClick={onClose} />
-      <div className="settings-panel" role="dialog" aria-label="Settings">
+      <div className="settings-panel sheet" role="dialog" aria-modal="true" aria-label="Settings">
         <div className="settings-panel-header">
           <h2>Settings</h2>
-          <button className="icon-button" aria-label="Close settings" onClick={onClose}>
+          <button type="button" className="icon-button" aria-label="Close settings" onClick={onClose}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
         </div>
 
-        <div className="settings-theme-section">
-          <div className="settings-row-label">Theme</div>
-          <div className="theme-picker" role="group" aria-label="Choose a theme">
-            {THEME_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                className={`theme-picker-option ${themeName === opt.value ? "active" : ""}`}
-                aria-pressed={themeName === opt.value}
-                onClick={() => onSetThemeName(opt.value)}
-              >
-                <span className="theme-picker-swatch" style={{ background: opt.bg }}>
-                  <span className="theme-picker-swatch-accent" style={{ background: opt.accent }} />
-                </span>
-                <span className="theme-picker-name">{opt.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="settings-theme-section">
-          <div className="settings-row-label">Mode</div>
-          <div className="theme-picker" role="group" aria-label="Choose light or dark mode">
+        <section className="settings-section">
+          <h3 className="settings-section-title">Appearance</h3>
+          <div className="segmented" role="group" aria-label="Appearance">
             {MODE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
-                className={`theme-picker-option ${mode === opt.value ? "active" : ""}`}
+                className={mode === opt.value ? "active" : ""}
                 aria-pressed={mode === opt.value}
                 onClick={() => onSetMode(opt.value)}
               >
-                <span className="theme-picker-swatch" style={{ background: opt.bg }} />
-                <span className="theme-picker-name">{opt.label}</span>
+                {opt.label}
               </button>
             ))}
           </div>
-          <div className="settings-row-sub">Preference is saved on this device</div>
-        </div>
+          <p className="settings-row-sub">Saved on this device.</p>
+        </section>
 
         {SHOW_EXTRA_TOOLS && (
           <>
@@ -140,7 +99,7 @@ export default function SettingsPanel({
           <div>
             <div className="settings-row-label">Paper Trading starting balance</div>
             <div className="settings-row-sub">
-              <CoinAmount value={startingBalance} /> -- applies next time you reset your portfolio, or on
+              <CoinAmount value={startingBalance} />. Applies next time you reset your portfolio, or on
               first use
             </div>
           </div>
@@ -178,35 +137,53 @@ export default function SettingsPanel({
 
         {user && (
           <>
-            <div className="settings-row">
-              <div>
-                <div className="settings-row-label">Delete my account</div>
-                <div className="settings-row-sub">
-                  Deletes your account, profile, sign-ins and activity. Your forecasts stay in league results without
-                  your name or notes. This can't be undone.
-                </div>
-              </div>
-              {!confirmingDelete && (
-                <button type="button" className="settings-row-action" onClick={() => setConfirmingDelete(true)}>
-                  Delete
+            <section className="settings-section">
+              <h3 className="settings-section-title">Account</h3>
+              <p className="settings-row-sub">
+                Deleting your account removes your profile, sign-ins and activity. Your forecasts stay in league
+                results without your name or notes. This can't be undone.
+              </p>
+              {!confirmingDelete ? (
+                <button type="button" className="btn btn-destructive" onClick={() => setConfirmingDelete(true)}>
+                  Delete my account
                 </button>
+              ) : (
+                <form className="settings-delete-form" onSubmit={handleDelete}>
+                  <label className="field">
+                    <span className="field-label">Type DELETE to confirm</span>
+                    <input
+                      className="input"
+                      value={deleteInput}
+                      onChange={(e) => setDeleteInput(e.target.value)}
+                      autoComplete="off"
+                      autoFocus
+                    />
+                  </label>
+                  <div className="button-row">
+                    <button
+                      type="submit"
+                      className="btn btn-destructive-filled"
+                      disabled={deleteInput.trim() !== "DELETE" || deleting}
+                    >
+                      {deleting ? "Deleting..." : "Delete my account"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-tertiary"
+                      disabled={deleting}
+                      onClick={() => {
+                        setConfirmingDelete(false);
+                        setDeleteInput("");
+                        setDeleteError(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               )}
-            </div>
-            {confirmingDelete && (
-              <form className="modal-form" onSubmit={handleDelete}>
-                <input
-                  placeholder="Type DELETE to confirm"
-                  value={deleteInput}
-                  onChange={(e) => setDeleteInput(e.target.value)}
-                  aria-label="Type DELETE to confirm deleting your account"
-                  autoFocus
-                />
-                <button type="submit" disabled={deleteInput.trim() !== "DELETE" || deleting}>
-                  {deleting ? "Deleting..." : "Delete my account"}
-                </button>
-              </form>
-            )}
-            {deleteError && <div className="search-error">{deleteError}</div>}
+              {deleteError && <div className="form-error">{deleteError}</div>}
+            </section>
           </>
         )}
       </div>

@@ -27,39 +27,39 @@ export default function AdminPage({ user, onOpenAuth }: AdminPageProps) {
   const Active = TABS.find((t) => t.key === tab)!.Component;
 
   return (
-    <div className="calculator-page">
-      <div className="calculator-card trading-card">
-        <h2>Admin</h2>
-        {!user && (
-          <div className="calculator-empty-hint">
-            <p>Sign in with an administrator account to see this page.</p>
-            <button type="button" className="search-button" onClick={onOpenAuth}>
-              Sign in
-            </button>
+    <div className="page page-wide">
+      <header className="page-header">
+        <h1 className="page-title">Admin</h1>
+      </header>
+      {!user && (
+        <section className="section">
+          <p className="section-text">Sign in with an administrator account to see this page.</p>
+          <button type="button" className="btn btn-primary" onClick={onOpenAuth}>
+            Sign in
+          </button>
+        </section>
+      )}
+      {user && !user.is_admin && <p className="section-text">This page is for administrators only.</p>}
+      {user?.is_admin && (
+        <>
+          <div className="segmented admin-tabs" role="tablist">
+            {TABS.map((t) => (
+              <button
+                type="button"
+                role="tab"
+                key={t.key}
+                aria-selected={tab === t.key}
+                className={tab === t.key ? "active" : ""}
+                onClick={() => setTab(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-        )}
-        {user && !user.is_admin && <div className="calculator-empty-hint">This page is for administrators only.</div>}
-        {user?.is_admin && (
-          <>
-            <div className="calculator-mode-toggle admin-tabs" role="tablist">
-              {TABS.map((t) => (
-                <button
-                  type="button"
-                  role="tab"
-                  key={t.key}
-                  aria-selected={tab === t.key}
-                  className={tab === t.key ? "active" : ""}
-                  onClick={() => setTab(t.key)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <Active />
-          </>
-        )}
-        <SiteFooter />
-      </div>
+          <Active />
+        </>
+      )}
+      <SiteFooter />
     </div>
   );
 }

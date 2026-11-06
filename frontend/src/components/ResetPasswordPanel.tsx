@@ -41,7 +41,7 @@ export default function ResetPasswordPanel({ token, onDone }: ResetPasswordPanel
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Reset your password">
-      <div className="modal-card">
+      <div className="modal-card sheet">
         <h2>Reset your password</h2>
 
         {done ? (
@@ -49,15 +49,15 @@ export default function ResetPasswordPanel({ token, onDone }: ResetPasswordPanel
             <p className="modal-intro">
               Your password has been reset. You can now sign in with your new password.
             </p>
-            <button type="button" className="search-button auth-submit" onClick={onDone}>
+            <button type="button" className="btn btn-primary btn-block" onClick={onDone}>
               Continue
             </button>
           </>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
-            <label className="auth-field">
-              <span>New password</span>
-              <input
+            <label className="field">
+              <span className="field-label">New password</span>
+              <input className="input"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -65,19 +65,19 @@ export default function ResetPasswordPanel({ token, onDone }: ResetPasswordPanel
                 minLength={8}
                 autoFocus
               />
-              <span className="auth-field-hint">At least 8 characters</span>
+              <span className="field-hint">At least 8 characters.</span>
             </label>
-            <label className="auth-field">
-              <span>Confirm new password</span>
-              <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
+            <label className="field">
+              <span className="field-label">Confirm new password</span>
+              <input className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
             </label>
 
-            {error && <div className="search-error">{error}</div>}
+            {error && <div className="form-error">{error}</div>}
 
-            <button type="submit" className="search-button auth-submit" disabled={loading}>
-              {loading ? "..." : "Reset password"}
+            <button type="submit" className="btn btn-primary btn-block" disabled={loading} aria-busy={loading}>
+              {loading ? "Saving..." : "Reset password"}
             </button>
-            <button type="button" className="modal-skip" onClick={onDone}>
+            <button type="button" className="btn btn-tertiary btn-block" onClick={onDone}>
               Cancel
             </button>
           </form>

@@ -35,11 +35,11 @@ export default function ForgotPasswordForm({ initialEmail, onBack }: ForgotPassw
   if (sent) {
     return (
       <div className="auth-form">
-        <p className="auth-field-hint">
-          If an account exists for <strong>{email}</strong>, a password reset link has been sent --
-          it's valid for 30 minutes. Check your inbox (and spam folder).
+        <p className="field-hint">
+          If an account exists for <strong>{email}</strong>, we've sent a password reset link. It works for 30
+          minutes. Check your inbox and spam folder.
         </p>
-        <button type="button" className="modal-skip" onClick={onBack}>
+        <button type="button" className="btn btn-tertiary btn-block" onClick={onBack}>
           Back to sign in
         </button>
       </div>
@@ -48,20 +48,20 @@ export default function ForgotPasswordForm({ initialEmail, onBack }: ForgotPassw
 
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
-      <p className="auth-field-hint">
+      <p className="field-hint">
         Enter your account's email and we'll send you a link to reset your password.
       </p>
-      <label className="auth-field">
-        <span>Email</span>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+      <label className="field">
+        <span className="field-label">Email</span>
+        <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
       </label>
 
-      {error && <div className="search-error">{error}</div>}
+      {error && <div className="form-error">{error}</div>}
 
-      <button type="submit" className="search-button auth-submit" disabled={loading || !email.trim()}>
-        {loading ? "..." : "Send reset link"}
+      <button type="submit" className="btn btn-primary btn-block" disabled={loading || !email.trim()} aria-busy={loading}>
+        {loading ? "Sending..." : "Send reset link"}
       </button>
-      <button type="button" className="modal-skip" onClick={onBack}>
+      <button type="button" className="btn btn-tertiary btn-block" onClick={onBack}>
         Back to sign in
       </button>
     </form>

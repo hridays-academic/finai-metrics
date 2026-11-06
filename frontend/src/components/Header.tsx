@@ -27,11 +27,12 @@ export default function Header({ onOpenSettings, onOpenAuth, onGoHome, user }: H
             {(user.name.trim()[0] ?? user.email[0] ?? "?").toUpperCase()}
           </button>
         ) : (
-          <button type="button" className="header-signin" onClick={onOpenAuth}>
+          <button type="button" className="btn btn-secondary btn-compact" onClick={onOpenAuth}>
             Sign in
           </button>
         )}
         <button
+          type="button"
           className="icon-button"
           aria-label="Settings"
           title="Settings"

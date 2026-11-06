@@ -18,6 +18,9 @@ import { formatMetricValue } from "../lib/format";
 // the very top of the page.
 const POPOVER_APPROX_HEIGHT = 260;
 
+const STATUS_WORD: Record<string, string> = { good: "Healthy", warning: "Watch", bad: "Weak" };
+const STATUS_TONE: Record<string, string> = { good: "positive", warning: "caution", bad: "negative" };
+
 export default function MetricCard({ metric }: { metric: Metric }) {
   const [open, setOpen] = useState(false);
   const [openAbove, setOpenAbove] = useState(false);
@@ -54,12 +57,8 @@ export default function MetricCard({ metric }: { metric: Metric }) {
   return (
     <div
       ref={cardRef}
-      // Status color lives on a left-edge ribbon (border-left, see
-      // .metric-card in app.css) rather than the small dot this used to
-      // carry -- a 6px dot was hard to register at a glance across a dense
-      // 20-30-card grid; a full-height colored edge on every card reads
-      // immediately, and matches the same left-border convention already
-      // used for .calculator-risk-row elsewhere in the app.
+      // Status is a coloured dot plus a word (2026-11 design pass), not a
+      // coloured card edge: colour alone isn't readable for everyone.
       className={`metric-card ${metric.status}`}
       onMouseEnter={handleOpen}
       onMouseLeave={() => setOpen(false)}
@@ -67,6 +66,9 @@ export default function MetricCard({ metric }: { metric: Metric }) {
     >
       <div className="metric-card-top">
         <span className="metric-label">{metric.label}</span>
+        {STATUS_WORD[metric.status] && (
+          <span className={`status-text ${STATUS_TONE[metric.status]}`}>{STATUS_WORD[metric.status]}</span>
+        )}
       </div>
       <div className={`metric-value ${na ? "na" : ""}`}>{formatMetricValue(metric)}</div>
 

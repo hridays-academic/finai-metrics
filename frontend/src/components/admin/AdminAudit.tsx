@@ -15,12 +15,12 @@ export default function AdminAudit() {
 
   return (
     <div>
-      <p className="calculator-subtitle">Every create, update, lock and score action, newest first.</p>
-      {error && <div className="search-error">{error}</div>}
-      {rows && rows.length === 0 && <div className="calculator-empty-hint">Nothing recorded yet.</div>}
+      <p className="section-text">Every create, update, lock and score action, newest first.</p>
+      {error && <div className="form-error">{error}</div>}
+      {rows && rows.length === 0 && <div className="empty-note">Nothing recorded yet.</div>}
       {rows && rows.length > 0 && (
-        <div className="trading-table-wrap">
-          <table className="trading-holdings-table">
+        <div className="table-wrap">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>When</th>

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { renderGoogleButton, isGoogleSignInConfigured } from "../lib/googleAuth";
+import { renderGoogleButton, isGoogleSignInConfigured, loadGoogleScript } from "../lib/googleAuth";
 
 interface GoogleSignInButtonProps {
   onCredential: (credential: string) => void;
@@ -11,7 +11,7 @@ interface GoogleSignInButtonProps {
 // Polls briefly for `window.google` to become available rather than
 // checking once on mount -- confirmed live (2026-09) that a single
 // one-shot check was a real bug, not just a theoretical race: the GSI
-// <script> in index.html loads async/defer, and if it hadn't finished by
+// script loads async (now on demand, see loadGoogleScript), and if it hadn't finished by
 // the moment this effect first ran, renderGoogleButton's own no-op guard
 // (`if (!window.google) return`) meant the button silently never
 // appeared for the rest of that mount -- not even after the script
@@ -26,6 +26,7 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
     if (!containerRef.current) return;
     const container = containerRef.current;
     let rendered = false;
+    loadGoogleScript();
 
     function tryRender() {
       if (rendered || !window.google) return;

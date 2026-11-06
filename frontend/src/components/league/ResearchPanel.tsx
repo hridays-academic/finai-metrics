@@ -84,18 +84,18 @@ export default function ResearchPanel({ event, theme }: ResearchPanelProps) {
     <div className="league-research">
       {event.research_notes && (
         <div className="league-notes">
-          <div className="trading-section-header">Research notes</div>
+          <h3 className="subsection-title">Notes from Stackly</h3>
           <p>{event.research_notes}</p>
         </div>
       )}
 
-      <div className="trading-section-header">Last eight quarters</div>
-      {historyError && <div className="search-error">{historyError}</div>}
-      {!history && !historyError && <div className="calculator-empty-hint">Loading...</div>}
+      <h3 className="subsection-title">Last 8 quarters</h3>
+      {historyError && <div className="form-error">{historyError}</div>}
+      {!history && !historyError && <p className="empty-note">Loading...</p>}
       {history && (
         <>
-          <div className="trading-table-wrap">
-            <table className="trading-holdings-table league-history-table">
+          <div className="table-wrap">
+            <table className="data-table league-history-table">
               <thead>
                 <tr>
                   <th>Quarter</th>
@@ -131,14 +131,14 @@ export default function ResearchPanel({ event, theme }: ResearchPanelProps) {
               </tbody>
             </table>
           </div>
-          <p className="calculator-field-note">
+          <p className="footnote">
             * {history.provider_source}.{" "}
             {history.provider_as_of
               ? `Fetched ${new Date(history.provider_as_of).toLocaleDateString("en-IN")}. `
               : "Not available for this company. "}
             {history.provider_definition}
           </p>
-          <p className="calculator-field-note">
+          <p className="footnote">
             † From the company's filings under this league's definitions (links open the source). These are the same
             definitions your forecast is scored on.
           </p>
@@ -147,9 +147,9 @@ export default function ResearchPanel({ event, theme }: ResearchPanelProps) {
 
       {symbol && (
         <>
-          <div className="trading-section-header">Company analysis</div>
-          {analysisError && <div className="search-error">{analysisError}</div>}
-          {!analysis && !analysisError && <div className="calculator-empty-hint">Loading...</div>}
+          <h3 className="subsection-title">Company analysis</h3>
+          {analysisError && <div className="form-error">{analysisError}</div>}
+          {!analysis && !analysisError && <p className="empty-note">Loading...</p>}
           {analysis && <MetricsDashboard data={analysis} theme={theme} />}
         </>
       )}

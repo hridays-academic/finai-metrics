@@ -33,15 +33,15 @@ export default function ProfileModal({ user, onSaved, onClose }: ProfileModalPro
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Set up your league profile">
-      <div className="modal-card">
+      <div className="modal-card sheet">
         <h2>Join the Results League</h2>
         <p className="modal-intro">
           Pick a public handle. It's the only thing other players will see, so don't use your full name.
         </p>
         <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="auth-field">
-            <span>Handle</span>
-            <input
+          <label className="field">
+            <span className="field-label">Handle</span>
+            <input className="input"
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
               minLength={3}
@@ -51,11 +51,11 @@ export default function ProfileModal({ user, onSaved, onClose }: ProfileModalPro
               required
               autoFocus
             />
-            <span className="auth-field-hint">3-20 letters, numbers or underscores</span>
+            <span className="field-hint">3 to 20 letters, numbers or underscores.</span>
           </label>
 
-          <fieldset className="auth-field league-fieldset" disabled={ageLocked}>
-            <legend>Your age group</legend>
+          <fieldset className="field league-fieldset" disabled={ageLocked}>
+            <legend className="field-label">Your age group</legend>
             <label className="league-radio">
               <input type="radio" name="age" checked={ageBand === "under_18"} onChange={() => setAgeBand("under_18")} required />
               Under 18
@@ -64,25 +64,27 @@ export default function ProfileModal({ user, onSaved, onClose }: ProfileModalPro
               <input type="radio" name="age" checked={ageBand === "18_plus"} onChange={() => setAgeBand("18_plus")} />
               18 or over
             </label>
-            {ageLocked && <span className="auth-field-hint">Already set. Ask your teacher to change it.</span>}
+            {ageLocked && <span className="field-hint">Already set. Ask your teacher to change it.</span>}
           </fieldset>
           {ageBand === "under_18" && (
-            <p className="calculator-field-note">
+            <p className="notice">
               Players under 18 need a parent or guardian's consent, by signed form or by email from the parent,
               recorded by us, before they can submit forecasts. You can still browse and research in the meantime.
             </p>
           )}
 
-          <label className="auth-field">
-            <span>School (optional)</span>
-            <input value={school} onChange={(e) => setSchool(e.target.value)} maxLength={80} />
+          <label className="field">
+            <span className="field-label">
+              School <span className="field-optional">Optional</span>
+            </span>
+            <input className="input" value={school} onChange={(e) => setSchool(e.target.value)} maxLength={80} />
           </label>
 
-          {error && <div className="search-error">{error}</div>}
-          <button type="submit" className="search-button auth-submit" disabled={saving || !ageBand}>
+          {error && <div className="form-error">{error}</div>}
+          <button type="submit" className="btn btn-primary btn-block" disabled={saving || !ageBand} aria-busy={saving}>
             {saving ? "Saving..." : "Save"}
           </button>
-          <button type="button" className="modal-skip" onClick={onClose}>
+          <button type="button" className="btn btn-tertiary btn-block" onClick={onClose}>
             Not now
           </button>
         </form>

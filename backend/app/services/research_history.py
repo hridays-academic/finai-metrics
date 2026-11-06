@@ -24,7 +24,7 @@ HISTORY_TTL = timedelta(days=7)
 PROVIDER_SOURCE = "Yahoo Finance (via yfinance), may be delayed or incomplete"
 PROVIDER_DEFINITION = (
     "Revenue = Yahoo's Total Revenue. Operating margin = Yahoo's Operating Income / Total Revenue. "
-    "These are Yahoo's definitions, not the league's -- compare with care."
+    "These are Yahoo's definitions, not the league's, so compare with care."
 )
 
 

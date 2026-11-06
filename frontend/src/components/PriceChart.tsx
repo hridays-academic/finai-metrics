@@ -23,9 +23,9 @@ function cssVar(name: string): string {
 // --accent read as "the chart's color" rather than "the primary action
 // color" everywhere else it's used (search button, active nav, etc.) --
 // a real green-means-everything problem, not just a chart-specific one.
-// null (no data yet) falls back to --accent as a neutral default.
+// null (no data yet) falls back to a neutral grey.
 function seriesColorsFor(changePct: number | null): { lineColor: string; topColor: string; bottomColor: string } {
-  const token = changePct === null ? "--accent" : changePct >= 0 ? "--status-good" : "--status-bad";
+  const token = changePct === null ? "--text-tertiary" : changePct >= 0 ? "--positive" : "--negative";
   const color = cssVar(token);
   return { lineColor: color, topColor: `${color}66`, bottomColor: `${color}00` };
 }
@@ -128,7 +128,7 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: cssVar("--text-secondary"),
-        fontFamily: "Inter, sans-serif",
+        fontFamily: cssVar("--font-sans"),
         fontSize: 11,
       },
       grid: {
@@ -227,7 +227,7 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
   return (
     <div className="price-chart-card">
       <div className="price-chart-header">
-        <h3>Price History</h3>
+        <h3>Price history</h3>
         <p className="price-lag-note">
           Prices on Stackly are at least 30 days old
           {data?.price_as_of ? `. Latest shown: ${formatDay(data.price_as_of, true)}.` : "."}
@@ -265,12 +265,13 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
       </div>
 
       {!loading && !error && (
-        <div className="price-chart-period-row">
+        <div className="segmented price-chart-period-row" role="group" aria-label="Period">
           {PERIODS.map((p) => (
             <button
               key={p.key}
               type="button"
               className={`price-chart-period-btn ${period === p.key ? "active" : ""}`}
+              aria-pressed={period === p.key}
               onClick={() => setPeriod(p.key)}
             >
               {p.label}
@@ -283,7 +284,7 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
         <div className="price-chart-footer">
           <button
             type="button"
-            className="price-chart-reset"
+            className="btn btn-tertiary price-chart-reset"
             onClick={() => chartRef.current?.timeScale().fitContent()}
           >
             Reset zoom

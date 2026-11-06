@@ -76,7 +76,7 @@ def _build_assessment(
             base = f"{company_name}'s {v} is in a healthy range for this ratio (typically at or above {g})."
         elif status == MetricStatus.WARNING:
             base = (
-                f"{company_name}'s {v} is moderate -- below the {g} level usually considered strong, "
+                f"{company_name}'s {v} is moderate, below the {g} level usually considered strong, "
                 "though not yet a warning sign."
             )
         else:
@@ -89,7 +89,7 @@ def _build_assessment(
             base = f"{company_name}'s {v} is in a healthy range for this ratio (typically at or below {g})."
         elif status == MetricStatus.WARNING:
             base = (
-                f"{company_name}'s {v} is moderate -- above the {g} level usually considered conservative, "
+                f"{company_name}'s {v} is moderate, above the {g} level usually considered conservative, "
                 "though not yet a warning sign."
             )
         else:
@@ -174,7 +174,7 @@ def _liquidity_group(r: RawFinancials, company_name: str) -> MetricGroup:
             "day-to-day operations."
             if working_capital > 0
             else "Current liabilities exceed current assets, meaning short-term obligations "
-            "outweigh short-term resources -- worth watching."
+            "outweigh short-term resources, which is worth watching."
         )
 
     return MetricGroup(
@@ -184,19 +184,19 @@ def _liquidity_group(r: RawFinancials, company_name: str) -> MetricGroup:
             _metric(
                 "current_ratio", "Current Ratio", current_ratio, "x",
                 "Compares what a company owns short-term (cash, inventory, receivables) to what "
-                "it owes short-term (bills, short-term debt) -- a check on whether it can cover "
+                "it owes short-term (bills, short-term debt), a check on whether it can cover "
                 "its near-term obligations.",
                 "Current Assets / Current Liabilities",
                 "Healthy range is roughly 1.5x-3x; below 1x can signal short-term cash strain.",
-                "A low current ratio can force a company to raise emergency cash -- through debt "
-                "or selling assets at a discount -- if a large bill comes due unexpectedly.",
+                "A low current ratio can force a company to raise emergency cash, through debt "
+                "or selling assets at a discount, if a large bill comes due unexpectedly.",
                 company_name,
                 good=1.5, warn=1.0,
             ),
             _metric(
                 "quick_ratio", "Quick Ratio", quick_ratio, "x",
                 "Also called the Acid-Test ratio. Like the current ratio, but excludes "
-                "inventory, since inventory can be slow or hard to sell quickly -- a stricter "
+                "inventory, since inventory can be slow or hard to sell quickly. It's a stricter "
                 "test of whether short-term bills can be paid right away.",
                 "(Current Assets - Inventory) / Current Liabilities",
                 "Above 1x means short-term obligations are covered without selling inventory.",
@@ -209,11 +209,11 @@ def _liquidity_group(r: RawFinancials, company_name: str) -> MetricGroup:
             _metric(
                 "working_capital", "Working Capital", working_capital, "INR",
                 "The rupee amount left over after subtracting short-term liabilities from "
-                "short-term assets -- the cash cushion available to run day-to-day operations.",
+                "short-term assets, the cash cushion available to run day-to-day operations.",
                 "Current Assets - Current Liabilities",
                 "Positive means current assets exceed current liabilities.",
-                "A negative number here doesn't automatically mean trouble -- some large, "
-                "cash-generating businesses run on negative working capital by design -- but "
+                "A negative number here doesn't automatically mean trouble. Some large, "
+                "cash-generating businesses run on negative working capital by design, but "
                 "it's worth checking why alongside the current and quick ratios.",
                 company_name,
                 override_status=wc_status, override_assessment=wc_assessment,
@@ -226,7 +226,7 @@ def _liquidity_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 "Cash & Equivalents / Current Liabilities",
                 "Measures ability to cover short-term liabilities with cash alone; >0.5x is strong.",
                 "This is the most conservative liquidity check, since it ignores unpaid customer "
-                "bills and unsold inventory entirely -- useful for judging how a company would "
+                "bills and unsold inventory entirely, useful for judging how a company would "
                 "cope if collections suddenly slowed.",
                 company_name,
                 good=0.5, warn=0.2,
@@ -273,7 +273,7 @@ def _profitability_group(r: RawFinancials, company_name: str) -> MetricGroup:
             _metric(
                 "operating_margin", "Operating Margin", operating_margin, "%",
                 "The percentage of revenue left after covering both direct costs and day-to-day "
-                "operating expenses, before interest and taxes -- a measure of core business "
+                "operating expenses, before interest and taxes, a measure of core business "
                 "efficiency.",
                 "Operating Income / Revenue x 100",
                 "Reflects core operating efficiency before interest and tax.",
@@ -288,7 +288,7 @@ def _profitability_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 "interest payment, and tax is paid.",
                 "Net Income / Revenue x 100",
                 "Above ~10% is generally considered healthy, but varies by sector.",
-                "This is the bottom line after everything -- interest, tax, one-off items -- so "
+                "This is the bottom line after everything (interest, tax, one-off items), so "
                 "it can swing more than operating margin for reasons unrelated to day-to-day "
                 "performance.",
                 company_name,
@@ -296,7 +296,7 @@ def _profitability_group(r: RawFinancials, company_name: str) -> MetricGroup:
             ),
             _metric(
                 "roe", "ROE", roe, "%",
-                "Return on Equity -- how much profit a company generates for every rupee "
+                "Return on Equity: how much profit a company generates for every rupee "
                 "shareholders have invested, a core measure of how efficiently it rewards its "
                 "owners.",
                 "Net Income / Average Total Equity x 100",
@@ -309,19 +309,19 @@ def _profitability_group(r: RawFinancials, company_name: str) -> MetricGroup:
             ),
             _metric(
                 "roa", "ROA", roa, "%",
-                "Return on Assets -- how much profit a company generates for every rupee of "
+                "Return on Assets: how much profit a company generates for every rupee of "
                 "assets it owns, regardless of how those assets were financed.",
                 "Net Income / Average Total Assets x 100",
                 "Measures how efficiently assets generate profit.",
                 "Comparing this to ROE shows how much of the company's returns come from "
-                "leverage -- a big gap between the two usually means debt is doing a lot of "
+                "leverage. A big gap between the two usually means debt is doing a lot of "
                 "the work.",
                 company_name,
                 good=5, warn=2,
             ),
             _metric(
                 "roce", "ROCE", roce, "%",
-                "Return on Capital Employed -- how efficiently a company uses all the capital "
+                "Return on Capital Employed: how efficiently a company uses all the capital "
                 "invested in it, both shareholder equity and borrowed money, to generate profit.",
                 "EBIT / (Total Assets - Current Liabilities) x 100",
                 "Above ~15% suggests efficient use of both equity and debt capital.",
@@ -358,10 +358,10 @@ def _leverage_group(r: RawFinancials, company_name: str) -> MetricGroup:
             _metric(
                 "interest_coverage", "Interest Coverage", interest_coverage, "x",
                 "How many times over a company's operating earnings could cover its interest "
-                "payments -- a measure of how easily it can service its debt.",
+                "payments, a measure of how easily it can service its debt.",
                 "EBIT / Interest Expense",
                 "Below 1.5x can signal difficulty servicing debt from operating earnings.",
-                "This is a more direct test of debt safety than Debt-to-Equity alone -- a "
+                "This is a more direct test of debt safety than Debt-to-Equity alone: a "
                 "company can carry a lot of debt and still be fine if its earnings comfortably "
                 "cover the interest.",
                 company_name,
@@ -403,19 +403,19 @@ def _efficiency_group(r: RawFinancials, company_name: str) -> MetricGroup:
         metrics=[
             _metric(
                 "asset_turnover", "Asset Turnover", asset_turnover, "x",
-                "How much revenue a company generates for every rupee of assets it owns -- a "
+                "How much revenue a company generates for every rupee of assets it owns, a "
                 "measure of how productively assets are being used.",
                 "Revenue / Average Total Assets",
                 "Higher means more revenue generated per unit of assets; varies widely by industry.",
                 "Capital-intensive businesses (like utilities or manufacturers) naturally run "
-                "lower here than asset-light ones (like software) -- compare within the same "
+                "lower here than asset-light ones (like software), compare within the same "
                 "industry, not across.",
                 company_name,
                 good=1.0, warn=0.5,
             ),
             _metric(
                 "inventory_turnover", "Inventory Turnover", inventory_turnover, "x",
-                "How many times a company sells and replaces its entire inventory in a year -- "
+                "How many times a company sells and replaces its entire inventory in a year, "
                 "higher generally means inventory isn't sitting idle.",
                 "COGS / Average Inventory (falls back to Revenue if COGS unavailable)",
                 "Higher generally means inventory is sold and replenished more often.",
@@ -427,11 +427,11 @@ def _efficiency_group(r: RawFinancials, company_name: str) -> MetricGroup:
             _metric(
                 "receivables_turnover", "Receivables Turnover", receivables_turnover, "x",
                 "How many times a year a company collects its average outstanding customer "
-                "payments -- higher means customers are paying faster.",
+                "payments. Higher means customers are paying faster.",
                 "Revenue / Average Receivables",
                 "Higher means customer collections happen faster.",
                 "A falling number over time can be an early warning that customers are taking "
-                "longer to pay -- sometimes a signal of their own financial stress.",
+                "longer to pay, sometimes a signal of their own financial stress.",
                 company_name,
                 good=8.0, warn=4.0,
             ),
@@ -457,10 +457,10 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
             _metric(
                 "pe_ratio", "P/E Ratio", pe_ratio, "x",
                 "How much investors are currently paying for each rupee of the company's annual "
-                "earnings -- used to compare how \"expensive\" a stock is relative to its profits.",
+                "earnings, used to compare how \"expensive\" a stock is relative to its profits.",
                 "Share Price / EPS",
-                "Compare against sector peers and historical average -- context-dependent.",
-                "A high P/E can mean investors expect strong future growth -- or that the stock "
+                "Compare against sector peers and its own history. It depends on context.",
+                "A high P/E can mean investors expect strong future growth, or that the stock "
                 "is simply expensive relative to current earnings; it doesn't tell you which on "
                 "its own.",
                 company_name,
@@ -470,26 +470,26 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
                 "How much investors are currently paying relative to the company's net worth "
                 "(assets minus liabilities) per share.",
                 "Share Price / Book Value per Share",
-                "Below 1x can indicate undervaluation or underlying distress -- check further.",
+                "Below 1x can indicate undervaluation or underlying distress. Check further.",
                 "This is most meaningful for asset-heavy businesses (like banks or "
-                "manufacturers) -- less so for asset-light ones (like software) where most "
+                "manufacturers), less so for asset-light ones (like software) where most "
                 "value isn't on the balance sheet.",
                 company_name,
             ),
             _metric(
                 "eps", "EPS", r.eps, "INR",
-                "Earnings per Share -- the portion of a company's profit allocated to each "
+                "Earnings per Share: the portion of a company's profit allocated to each "
                 "individual share outstanding.",
                 "Net Income / Shares Outstanding",
                 "Net income attributable to each outstanding share.",
                 "On its own this is hard to compare across companies with different share "
-                "counts -- it's most useful tracked over time for the same company.",
+                "counts. It's most useful tracked over time for the same company.",
                 company_name,
             ),
             _metric(
                 "dividend_yield", "Dividend Yield", dividend_yield, "%",
                 "The annual dividend payment expressed as a percentage of the share "
-                "price -- a measure of cash income relative to the stock's price.",
+                "price, a measure of cash income relative to the stock's price.",
                 "Dividends per Share / Share Price x 100",
                 "Annual dividend income relative to share price.",
                 "A very high yield can sometimes mean the market expects a dividend cut, since "
@@ -498,11 +498,11 @@ def _valuation_group(r: RawFinancials, company_name: str) -> MetricGroup:
             ),
             _metric(
                 "market_cap", "Market Cap", r.market_cap, "INR",
-                "The total market value of all a company's outstanding shares -- share price "
+                "The total market value of all a company's outstanding shares: share price "
                 "multiplied by number of shares.",
                 "Share Price x Shares Outstanding",
                 "Total market value of outstanding shares.",
-                "This is what the market currently thinks the whole company is worth -- a "
+                "This is what the market currently thinks the whole company is worth. It's a "
                 "starting point for classifying company size, not a judgment of value for money.",
                 company_name,
             ),

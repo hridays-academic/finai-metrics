@@ -76,77 +76,77 @@ export default function ForecastForm(props: ForecastFormProps) {
 
   return (
     <form className="league-form" onSubmit={handleSubmit}>
-      <div className="league-eighty">
-        <strong>80% sure</strong> -- for each number, give a range you're 80% sure the actual result will land in.
-        Too narrow and a miss costs you a lot; too wide and the width itself costs points.
-      </div>
+      <p className="league-eighty">
+        Give a range you're 80% sure the result lands in. Too narrow, and a miss costs a lot. Too wide, and the width
+        costs points.
+      </p>
 
       {event.metrics.map((m) => {
         const r = ranges[m.key];
         const width = r.low !== "" && r.high !== "" ? Number(r.high) - Number(r.low) : null;
         return (
-          <div className="calculator-field" key={m.key}>
-            <div className="calculator-field-header">
-              <span>{m.label}</span>
-            </div>
+          <fieldset className="field" key={m.key}>
+            <legend className="field-label">{m.label}</legend>
             <div className="league-range-inputs">
-              <div className="calculator-input-wrap">
+              <div className="input-wrap">
                 <input
                   type="number"
                   inputMode="decimal"
                   step="0.1"
                   min={m.min_value}
                   max={m.max_value}
+                  className="input"
                   placeholder="Low"
                   aria-label={`${m.label} low`}
                   value={r.low}
                   disabled={readOnly}
                   onChange={(e) => setRange(m.key, "low", e.target.value)}
                 />
-                <span className="calculator-input-suffix">{m.unit}</span>
+                <span className="input-suffix">{m.unit}</span>
               </div>
               <span className="league-range-to">to</span>
-              <div className="calculator-input-wrap">
+              <div className="input-wrap">
                 <input
                   type="number"
                   inputMode="decimal"
                   step="0.1"
                   min={m.min_value}
                   max={m.max_value}
+                  className="input"
                   placeholder="High"
                   aria-label={`${m.label} high`}
                   value={r.high}
                   disabled={readOnly}
                   onChange={(e) => setRange(m.key, "high", e.target.value)}
                 />
-                <span className="calculator-input-suffix">{m.unit}</span>
+                <span className="input-suffix">{m.unit}</span>
               </div>
             </div>
-            <div className="calculator-field-note">
+            <p className={`field-hint ${width !== null && width < 0 ? "field-hint-error" : ""}`}>
               {width === null
-                ? "Enter a low and a high."
+                ? "Enter both numbers."
                 : width < 0
-                  ? "Low is above high -- swap them."
+                  ? "Low is above high. Swap them."
                   : `Range width: ${width.toFixed(1)} points.`}
-            </div>
+            </p>
             <details className="league-definition">
               <summary>How this is measured</summary>
-              {m.definition}
+              <p>{m.definition}</p>
             </details>
-          </div>
+          </fieldset>
         );
       })}
 
-      <div className="calculator-field">
-        <div className="calculator-field-header">
-          <span>What's driving your forecast? (optional)</span>
-        </div>
+      <fieldset className="field">
+        <legend className="field-label">
+          What's behind your forecast? <span className="field-optional">Optional</span>
+        </legend>
         <div className="league-chips">
           {config.reason_tags.map((t) => (
             <button
               type="button"
               key={t.key}
-              className={`group-jump-pill ${tags.includes(t.key) ? "active" : ""}`}
+              className={`chip ${tags.includes(t.key) ? "active" : ""}`}
               aria-pressed={tags.includes(t.key)}
               disabled={readOnly}
               onClick={() => toggleTag(t.key)}
@@ -155,33 +155,36 @@ export default function ForecastForm(props: ForecastFormProps) {
             </button>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <label className="auth-field">
-        <span>Note (optional)</span>
+      <label className="field">
+        <span className="field-label">
+          Note <span className="field-optional">Optional</span>
+        </span>
         <textarea
+          className="input"
           value={note}
           maxLength={config.note_max_chars}
           rows={2}
           disabled={readOnly}
           onChange={(e) => setNote(e.target.value)}
         />
-        <span className="auth-field-hint">
+        <span className="field-hint">
           {note.length}/{config.note_max_chars}
         </span>
       </label>
 
       {needsConsent && (
-        <div className="calculator-field-note">
+        <div className="notice">
           Because you're under 18, we need a parent or guardian's consent (a signed form or an email from your parent) before you can submit.
         </div>
       )}
-      {error && <div className="search-error">{error}</div>}
+      {error && <div className="form-error">{error}</div>}
       {readOnly ? (
-        <div className="calculator-field-note">
+        <div className="notice">
           {event.status === "scored" ? (
             forecast ? (
-              <a href={`#/results/${event.id}`}>Scored. See your results →</a>
+              <a href={`#/results/${event.id}`}>Scored. See your results</a>
             ) : (
               "Results are in. You didn't forecast this company."
             )
@@ -193,14 +196,19 @@ export default function ForecastForm(props: ForecastFormProps) {
         </div>
       ) : (
         <>
-          <button type="submit" className="search-button" disabled={saving || needsConsent}>
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={saving || needsConsent}
+            aria-busy={saving}
+          >
             {saving ? "Saving..." : !user ? "Sign in to forecast" : forecast ? "Update forecast" : "Submit forecast"}
           </button>
           {savedAt && (
-            <div className="calculator-field-note">
+            <p className="field-hint">
               Saved {new Date(savedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST. You can edit it
-              until the lock; the last saved version counts.
-            </div>
+              until the lock. The last saved version counts.
+            </p>
           )}
         </>
       )}

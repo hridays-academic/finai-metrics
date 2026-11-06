@@ -1,168 +1,195 @@
-/* Theme tokens -- TWO independent axes (2026-08), not one flat list:
-   `data-theme` ("green" default | "blue") picks the color identity,
-   `data-mode` ("dark" default | "light") picks light/dark appearance
-   within that identity. Both attributes are set together by useTheme.ts
-   (see its `theme`/`mode` state) and persisted to localStorage
-   separately, so any of the 4 combinations can be selected independently
-   via SettingsPanel.tsx's two pickers. Keep component CSS reading these
-   variables rather than hardcoding colors, so every combination stays in
-   sync automatically. ("green"/"blue" were briefly called "money"/
-   "classic" at launch -- renamed almost immediately, same colors, just
-   color names instead of concept names.)
+/* Design tokens (2026-11 design pass). One axis, `data-mode` = "dark"
+   (default) | "light", set by useTheme.ts. Components read ONLY these
+   variables: no hex values, spacing or radii hardcoded in app.css.
 
-   "blue" (both modes) is the ORIGINAL, only theme from before "green"
-   existed (2026-08) -- deliberately left byte-for-byte untouched as an
-   easy, no-code-change revert path: picking "Blue" from the theme
-   picker fully restores the app's prior look, in either mode. Don't
-   repurpose or drop either "blue" block without discussing it with the
-   user first. */
+   Colour rules:
+   - Neutral greys for everything structural.
+   - ONE accent (blue), for primary actions, links, focus and key highlights.
+   - --positive / --negative (green/red) ONLY for numbers that went up or
+     down, or a forecast that hit or missed. Never decoration.
+   - Every text token is at least 4.5:1 on --bg-app, --bg-surface and
+     --bg-elevated in its mode (checked with a script, 2026-11-06). */
 
-:root,
-:root[data-theme="green"][data-mode="dark"] {
+:root {
   color-scheme: dark;
 
-  --bg-app: #0a0f0b;
-  --bg-surface: #131a14;
-  --bg-elevated: #1b241d;
-  --bg-hover: #232f25;
+  --bg-app: #0b0b0d;
+  --bg-surface: #1c1c1e;
+  --bg-elevated: #2c2c2e;
+  --bg-hover: #2a2a2d;
+  --bg-pressed: #333336;
 
-  --text-primary: #eef3ee;
-  --text-secondary: #a3b3a6;
-  --text-tertiary: #6c7d6f;
+  --text-primary: #f5f5f7;
+  --text-secondary: #aeaeb2;
+  --text-tertiary: #9a9aa0;
 
-  --border-subtle: #232f25;
-  --border-strong: #334233;
+  /* Hairline dividers vs. control outlines (inputs need 3:1). */
+  --border-subtle: #38383a;
+  --border-strong: #6c6c70;
 
-  --accent: #4f9d6f;
-  --accent-strong: #3f8059;
-  --accent-contrast: #04140b;
+  --accent: #4ea1ff;            /* text, links, focus ring, highlights */
+  --accent-fill: #0a6fd8;       /* primary button fill (white text 4.9:1) */
+  --accent-fill-hover: #0862c0;
+  --accent-fill-pressed: #0754a6;
+  --accent-tint: rgba(78, 161, 255, 0.16);
+  --accent-tint-hover: rgba(78, 161, 255, 0.24);
+  --accent-contrast: #ffffff;
 
-  /* Status "good" is deliberately a touch brighter/more saturated than
-     --accent (both green, on purpose, given the theme) so a metric card's
-     status ribbon and a plain accent-colored button don't read as the same
-     element at a glance -- distinguishable by lightness/saturation, not hue. */
-  --status-good: #5cc98a;
-  --status-good-bg: rgba(92, 201, 138, 0.14);
-  /* Gold rather than this app's usual amber -- fits the green (money)
-     theme without inventing a whole new status vocabulary. */
-  --status-warning: #d1a125;
-  --status-warning-bg: rgba(209, 161, 37, 0.14);
-  --status-bad: #e2636a;
-  --status-bad-bg: rgba(226, 99, 106, 0.14);
-  --status-neutral: #8a988c;
-  --status-neutral-bg: rgba(138, 152, 140, 0.12);
+  --positive: #30d158;
+  --positive-bg: rgba(48, 209, 88, 0.14);
+  --negative: #ff6961;
+  --negative-bg: rgba(255, 105, 97, 0.14);
+  --caution: #ffd60a;
+  --caution-bg: rgba(255, 214, 10, 0.14);
 
-  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --user-bubble-bg: var(--accent);
+  --disabled-bg: #2c2c2e;
+  --disabled-text: #8e8e93;
+
+  --negative-fill: #d70015;     /* destructive button fill (white text 5.3:1) */
+  --negative-fill-hover: #b80012;
+
+  --segment-track: rgba(118, 118, 128, 0.24);
+  --segment-active: #636366;
+  --segment-hover: rgba(118, 118, 128, 0.2);
+  --segment-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+
+  /* Liquid glass (top bar, sidebar/tab bar, sheets only). */
+  --glass-bg: rgba(28, 28, 30, 0.72);
+  --glass-sheet-bg: rgba(28, 28, 30, 0.86);
+  --glass-solid: #1c1c1e;
+  --glass-edge: rgba(255, 255, 255, 0.1);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+  --scrim: rgba(0, 0, 0, 0.5);
+
+  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  /* Older names still read by the hidden extra tools (Calculator,
+     Simulator, Paper Trading) and charts. Aliases, not new colours. */
+  --accent-strong: var(--accent-fill-hover);
+  --status-good: var(--positive);
+  --status-good-bg: var(--positive-bg);
+  --status-bad: var(--negative);
+  --status-bad-bg: var(--negative-bg);
+  --status-warning: var(--caution);
+  --status-warning-bg: var(--caution-bg);
+  --status-neutral: var(--text-secondary);
+  --status-neutral-bg: var(--bg-elevated);
+  --user-bubble-bg: var(--accent-fill);
   --user-bubble-text: var(--accent-contrast);
   --assistant-bubble-bg: var(--bg-elevated);
+
+  /* Spacing: a 4/8 scale. */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  /* Two radii. Circles (avatars, dots) use 50% as a shape, not a radius. */
+  --radius-sm: 8px;   /* controls: buttons, inputs, chips, segmented */
+  --radius-lg: 14px;  /* surfaces: grouped lists, sheets, charts */
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 19px;
+  --text-xl: 24px;
+  --text-2xl: 34px;
+  --text-display: 48px;
+  --leading-tight: 1.2;
+  --leading-body: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Controls */
+  --control-height: 44px;
+  --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--accent);
+
+  /* Motion: short and plain. Reduced-motion users get none (below). */
+  --duration-press: 100ms;
+  --duration-ui: 180ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --press-scale: 0.97;
+
+  /* Layout */
+  --header-height: 56px;
+  --sidebar-width: 88px;
+  --tabbar-height: 64px;
+  --content-max: 960px;
+  --content-wide: 1200px;
+  --reading-max: 680px;
 }
 
-/* Green, light mode -- same green-identity/gold-warning palette as green
-   dark above, re-tuned for a light background (cream/paper rather than
-   pure white, a nod to actual currency) the same way "blue" light below
-   darkens/re-saturates its accent relative to its own dark mode for
-   contrast, rather than just inverting lightness on the same hex values. */
-:root[data-theme="green"][data-mode="light"] {
+:root[data-mode="light"] {
   color-scheme: light;
 
-  --bg-app: #f6f8f4;
+  --bg-app: #f5f5f7;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
-  --bg-hover: #eef3ec;
+  --bg-hover: #ebebef;
+  --bg-pressed: #e0e0e5;
 
-  --text-primary: #10170f;
-  --text-secondary: #4a5c4d;
-  --text-tertiary: #7c8c7e;
+  --text-primary: #1d1d1f;
+  --text-secondary: #48484c;
+  --text-tertiary: #636368;
 
-  --border-subtle: #e1e8e0;
-  --border-strong: #c8d4c6;
+  --border-subtle: #d8d8dc;
+  --border-strong: #8e8e93;
 
-  --accent: #2f7d52;
-  --accent-strong: #255f3f;
+  --accent: #0066cc;
+  --accent-fill: #0071e3;
+  --accent-fill-hover: #0064c9;
+  --accent-fill-pressed: #0057ad;
+  --accent-tint: rgba(0, 113, 227, 0.1);
+  --accent-tint-hover: rgba(0, 113, 227, 0.16);
   --accent-contrast: #ffffff;
 
-  --status-good: #1f7a4c;
-  --status-good-bg: rgba(31, 122, 76, 0.1);
-  --status-warning: #96730a;
-  --status-warning-bg: rgba(150, 115, 10, 0.12);
-  --status-bad: #b8333a;
-  --status-bad-bg: rgba(184, 51, 58, 0.1);
-  --status-neutral: #5c6b5e;
-  --status-neutral-bg: rgba(92, 107, 94, 0.1);
+  --positive: #157a32;
+  --positive-bg: rgba(21, 122, 50, 0.1);
+  --negative: #c4261d;
+  --negative-bg: rgba(196, 38, 29, 0.09);
+  --caution: #8a5a00;
+  --caution-bg: rgba(138, 90, 0, 0.1);
 
-  --shadow-elevated: 0 8px 24px rgba(16, 30, 16, 0.08);
-  --user-bubble-bg: var(--accent);
-  --user-bubble-text: #ffffff;
-  --assistant-bubble-bg: var(--bg-elevated);
+  --disabled-bg: #e8e8ed;
+  --disabled-text: #6e6e73;
+
+  --negative-fill: #c4261d;
+  --negative-fill-hover: #a61f17;
+
+  --segment-track: rgba(118, 118, 128, 0.12);
+  --segment-active: #ffffff;
+  --segment-hover: rgba(118, 118, 128, 0.1);
+  --segment-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-sheet-bg: rgba(255, 255, 255, 0.86);
+  --glass-solid: #ffffff;
+  --glass-edge: rgba(0, 0, 0, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.7);
+  --scrim: rgba(0, 0, 0, 0.32);
+
+  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.12);
 }
 
-:root[data-theme="blue"][data-mode="dark"] {
-  color-scheme: dark;
-
-  --bg-app: #0e1116;
-  --bg-surface: #161a21;
-  --bg-elevated: #1e232c;
-  --bg-hover: #262c37;
-
-  --text-primary: #eef1f6;
-  --text-secondary: #a7b0bf;
-  --text-tertiary: #6b7383;
-
-  --border-subtle: #262c37;
-  --border-strong: #343c4a;
-
-  --accent: #4fd1c5;
-  --accent-strong: #38b2ac;
-  --accent-contrast: #04211f;
-
-  --status-good: #3ecf8e;
-  --status-good-bg: rgba(62, 207, 142, 0.14);
-  --status-warning: #eab308;
-  --status-warning-bg: rgba(234, 179, 8, 0.14);
-  --status-bad: #f2545b;
-  --status-bad-bg: rgba(242, 84, 91, 0.14);
-  --status-neutral: #8b93a7;
-  --status-neutral-bg: rgba(139, 147, 167, 0.12);
-
-  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --user-bubble-bg: var(--accent);
-  --user-bubble-text: #04211f;
-  --assistant-bubble-bg: var(--bg-elevated);
-}
-
-:root[data-theme="blue"][data-mode="light"] {
-  color-scheme: light;
-
-  --bg-app: #f5f7fa;
-  --bg-surface: #ffffff;
-  --bg-elevated: #ffffff;
-  --bg-hover: #eef1f6;
-
-  --text-primary: #14181f;
-  --text-secondary: #4b5563;
-  --text-tertiary: #7a8494;
-
-  --border-subtle: #e3e7ee;
-  --border-strong: #cbd2df;
-
-  --accent: #0f8f86;
-  --accent-strong: #0c766f;
-  --accent-contrast: #ffffff;
-
-  --status-good: #17875a;
-  --status-good-bg: rgba(23, 135, 90, 0.1);
-  --status-warning: #a1690a;
-  --status-warning-bg: rgba(161, 105, 10, 0.12);
-  --status-bad: #c62d33;
-  --status-bad-bg: rgba(198, 45, 51, 0.1);
-  --status-neutral: #5b6373;
-  --status-neutral-bg: rgba(91, 99, 115, 0.1);
-
-  --shadow-elevated: 0 8px 24px rgba(20, 24, 31, 0.08);
-  --user-bubble-bg: var(--accent);
-  --user-bubble-text: #ffffff;
-  --assistant-bubble-bg: var(--bg-elevated);
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-press: 0ms;
+    --duration-ui: 0ms;
+    --press-scale: 1;
+  }
 }
 
 * {
@@ -179,33 +206,51 @@ body {
 body {
   background: var(--bg-app);
   color: var(--text-primary);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+  /* Tabular figures everywhere, so numbers line up in tables, scores and
+     countdowns without each component having to remember. */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-text-size-adjust: 100%;
 }
 
 #root {
   height: 100%;
 }
 
-.serif {
-  font-family: "Lora", Georgia, "Times New Roman", serif;
+h1,
+h2,
+h3,
+h4 {
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
 }
 
 a {
   color: var(--accent);
+  text-underline-offset: 2px;
 }
 
-button {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
+  font-size: inherit;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--accent-tint-hover);
+  color: var(--text-primary);
 }
 
-/* Thin, theme-aware scrollbars */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -216,5 +261,5 @@ button {
 }
 *::-webkit-scrollbar-thumb {
   background: var(--border-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }

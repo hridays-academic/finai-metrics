@@ -9,7 +9,7 @@ or deleted by someone who shouldn't have. A **suspected** breach starts the cloc
 
 ## Who
 
-- **Incident lead:** [YOUR NAME], [PHONE], [CONTACT EMAIL]. Makes every call below.
+- **Incident lead:** Hriday Sharma, [PHONE], stackly.user.support@gmail.com. Makes every call below.
 - **Backup:** [NAME / PHONE] if the lead can't be reached within 1 hour.
 - **Outside help:** a lawyer [NAME / CONTACT]; Neon, Vercel and Google support for
   anything on their side.
@@ -51,7 +51,7 @@ if data was changed or deleted, decide on a restore quickly.
 > On [date] we found that [what happened]. It affected [what data] for [who / how many].
 > [Passwords are stored scrambled and were not readable / Passwords were not affected.]
 > We have [what we did]. You should [specific step, e.g. sign in again / watch for
-> emails pretending to be Stackly]. We're sorry. Questions: [CONTACT EMAIL].
+> emails pretending to be Stackly]. We're sorry. Questions: stackly.user.support@gmail.com.
 
 Send it by email to affected users, show it on the site, and send it to the schools.
 Don't guess numbers; say what is known and when the next update will come.

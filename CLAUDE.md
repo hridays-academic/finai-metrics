@@ -379,9 +379,8 @@ frontend/src/
   main.tsx                  Vite entry point
   components/
     Header.tsx              Logo (left) + account icon + settings gear (top-right)
-    SettingsPanel.tsx        Slide-over: theme (green/blue) + mode (dark/light)
-                              pickers, independently persisted to localStorage, +
-                              Paper Trading starting balance
+    SettingsPanel.tsx        Slide-over sheet: Light/Dark, Delete my account, (behind
+                              SHOW_EXTRA_TOOLS) Paper Trading starting balance
     AuthPanel.tsx            Slide-over: sign in/up form, or (once signed in) account
                               summary + recent activity feed + sign out -- see "Accounts
                               & activity tracking" below
@@ -495,12 +494,72 @@ on a user action, that effect will now keep running in the background for
 every OTHER view too, the whole time it's mounted -- guard it or lift it,
 don't assume "not currently selected" means "not running."
 
-Theming uses plain CSS custom properties (no Tailwind/styled-components) —
-keep it that way unless there's a concrete reason to add a CSS framework.
-Fonts: Inter (sans, UI) + Lora (serif, used sparingly for body/long-form
-explainer text), both loaded via Google Fonts in `index.html`.
+## Design system (2026-11 design pass)
 
-**Responsive breakpoints (`app.css`).** Built 2026-07 after a live phone-width
+Approved by Hriday 2026-11-06 after a screenshot audit. Goal: calm,
+Apple-quality, not "vibe coded". Rules to keep:
+
+- **Tokens only.** `theme.css` holds every colour, spacing step
+  (`--space-1..10`, a 4/8 scale), radius, type size, control height and
+  motion value. `app.css` reads tokens; a literal hex, rem spacing or radius
+  in a new rule is a bug. The older per-feature rules in `app.css` were
+  mapped onto the tokens by script; the "Design system" layer at the END of
+  `app.css` defines the shell, buttons, forms, grouped lists, sheets and the
+  league screens, and deliberately wins over the older rules above it.
+- **Two radii**: `--radius-sm` (8px, controls) and `--radius-lg` (14px,
+  surfaces). Circles (avatars, dots) and 2-4px bar ends are shapes, not radii.
+- **One mode axis**: `data-mode` light/dark only. The green/blue colour
+  themes and their picker were removed (git has them; no "Blue" revert path
+  any more). `useTheme` still sets the attribute in a `useLayoutEffect`
+  (see below for why).
+- **Colour**: neutral greys; ONE accent (blue) for primary actions, links,
+  focus and key highlights; `--positive`/`--negative` (green/red) ONLY for
+  numbers that rose/fell or a forecast that hit/missed, including chart
+  lines (PriceChart colours by period direction) and the results number line
+  (your range = accent, actual = green if hit / red if miss, lazy and crowd
+  marks grey). `--caution` (amber) = "needs attention" (lock soon, admin
+  to-dos). Every text token is >= 4.5:1 on every surface in both modes
+  (checked by script 2026-11-06); re-check if you change one.
+- **Glass** only on the top bar, sidebar/phone tab bar and sheets (`.sheet`:
+  settings/account slide-over, modals): translucent fill + `blur(20px)
+  saturate(180%)` + light edge. Solid fallback when `backdrop-filter` is
+  unsupported or `prefers-reduced-transparency` is set. Never on content.
+  The content column (`.app-shell-content`) is the scroll container so
+  content scrolls under the sticky header and the phone tab bar.
+- **Type**: system font stack (`--font-sans`), no web fonts at all (Google
+  Fonts removed, charts read `--font-sans` too). `font-variant-numeric:
+  tabular-nums` is set on `body`.
+- **Buttons**: `.btn` + `.btn-primary` (one per screen) / `.btn-secondary`
+  (tinted) / `.btn-tertiary` (text) / `.btn-destructive` /
+  `.btn-destructive-filled`, `.btn-block`, `.btn-compact`. 44px minimum
+  height, hover changes background, press darkens + scales to
+  `--press-scale` in `--duration-press` (both zero under reduced motion),
+  `:focus-visible` ring, `aria-busy` shows a spinner (set it while saving,
+  together with `disabled`), disabled is grey not faded. Also `.segmented`,
+  `.chip`, `.link-button`, `.status-text` (a dot plus a word, never colour
+  alone).
+- **Layout primitives**: `.page` (+`.page-wide`), `.page-header`,
+  `.page-title`, `.page-lede`, `.section`, `.section-title`, `.group` (one
+  surface with hairline dividers, used for the home list, My forecasts,
+  results and the admin board), `.field`/`.field-label`/`.input`/
+  `.field-hint`/`.form-error`/`.checkbox-row`, `.table-wrap`/`.data-table`.
+- **No decorative motion**: the animated backdrop glow, fade-in-on-mount,
+  hover lifts, gradients and shimmer were removed. Only sheet slide/fade,
+  popovers and spinners animate, all on the motion tokens.
+- **Copy**: plain and specific; no em dashes (or " -- ") in visible text,
+  no buzzwords, no exclamation marks. This includes server-side text
+  (`metrics.py` popovers, `research_history.py`).
+- Home rows show everything (sector, results date, lock countdown,
+  description, latest-quarter revenue/profit with source and date); the old
+  hover/tap-to-expand cards are gone. "Show different companies" replaces
+  all four.
+- Screenshots for checking a change: there's no committed harness; a
+  Playwright script that mocks open events/admin user/a scored result was
+  used for the 2026-11-06 pass (scratchpad only, not committed).
+
+**Responsive breakpoints (`app.css`).** (Since 2026-11 the live screens' phone
+rules are in the design-system layer's "Phones" block at the end of `app.css`;
+the history below still explains the older rules.) Built 2026-07 after a live phone-width
 audit (375px viewport) found two severely broken layouts: `.summary-row`'s
 2-column grid clipped the Analyst Consensus card off the right edge of the
 screen entirely, and (now removed along with the recommendations feature
@@ -523,7 +582,7 @@ stack above it:
   breakpoint — their existing `max-width: 90vw` / centered-card patterns
   already adapted correctly, confirmed live rather than assumed.
 
-**`useTheme.ts` sets the `data-theme` attribute in a `useLayoutEffect`, not
+**`useTheme.ts` sets the `data-mode` attribute in a `useLayoutEffect`, not
 a plain `useEffect` — this one matters, don't "simplify" it back.**
 `PriceChart.tsx`/`PriceForecastChart.tsx` each have their own `[theme]`-
 triggered effect that reads CSS variables via `getComputedStyle` (`cssVar()`)
@@ -534,7 +593,7 @@ component's plain `useEffect`s in the same commit — but within the same
 effect type, a child's effect still fires before its parent's. `useTheme()`
 lives in `App.tsx` (the root); the two chart components are deep
 descendants. With a plain `useEffect` here, their child effects fired
-*before* this parent effect had actually flipped the `data-theme`
+*before* this parent effect had actually flipped the `data-mode`
 attribute, so they read the *previous* theme's colors and never corrected
 themselves until some unrelated re-render happened to trigger another
 read — matching a user-reported bug where the charts "glitched"
@@ -544,69 +603,6 @@ fix follows directly from React's documented effect-ordering guarantees;
 it wasn't independently reproduced frame-by-frame before fixing (a
 live-rendered canvas glitch that self-corrects on the next unrelated
 re-render is inherently hard to catch with a static screenshot).
-
-**Theme and mode are two independent axes, not one flat list (2026-08) —
-`useTheme.ts`'s `ThemeName` (`"green"` default | `"blue"`) and
-`ThemeMode` (`"dark"` default | `"light"`).** First built as a single
-3-option list (`"money" | "dark" | "light"`), then corrected at the user's
-explicit request: a theme (color identity) and its mode (light/dark
-appearance) should be pickable independently, so *every* theme gets both a
-light and a dark variant rather than the green theme only ever being dark.
-`"money"`/`"classic"` were the theme's original internal names (and still
-the vocabulary used to describe *why* the palettes look the way they do,
-below) — renamed to `"green"`/`"blue"` almost immediately after, same
-colors, just color names instead of concept names. Both attributes
-(`data-theme`, `data-mode`) live on `<html>` together, set by the same
-`useLayoutEffect` in `useTheme.ts` (still `useLayoutEffect`, not
-`useEffect` — see below for why that specifically matters), each persisted
-to its own localStorage key. `theme.css` defines the resulting 2x2 matrix
-as four blocks: `[data-theme="green"][data-mode="dark"]`,
-`[data-theme="green"][data-mode="light"]`,
-`[data-theme="blue"][data-mode="dark"]`,
-`[data-theme="blue"][data-mode="light"]`.
-
-- **"Green"** is a lowkey money-green & black identity — dark mode:
-  `--bg-app: #0a0f0b`, `--accent: #4f9d6f`; light mode: a cream/paper
-  background (`--bg-app: #f6f8f4`, not pure white — a nod to actual
-  currency) with a deeper, more saturated green (`--accent: #2f7d52`) for
-  contrast, the same relationship "blue" light already has to its own
-  dark mode (re-tuned per-mode, not just inverted lightness on the same
-  hex values). Gold for `--status-warning` in both modes, rather than this
-  app's usual amber, since gold fits the money-green theme without
-  inventing a new status vocabulary.
-- **"Blue"** (both modes) is the *original*, only theme from before the
-  green theme existed, kept byte-for-byte untouched specifically as a
-  no-code-change revert path — picking "Blue" (either mode) from the
-  Settings panel's theme picker fully restores the app's exact prior look.
-  Don't repurpose or delete either "blue" block without checking with
-  the user first.
-
-`SettingsPanel.tsx` has two separate picker rows now (`.theme-picker`,
-reused for both — segmented-control style matching
-`.auth-mode-toggle`/`.calculator-mode-toggle` elsewhere in the app), not
-one combined list: "Theme" (Green/Blue) and "Mode" (Dark/Light), so
-either can be changed without touching the other. Preview swatch colors in
-both (`SettingsPanel.tsx`'s `THEME_OPTIONS`/`MODE_OPTIONS`) are hand-kept
-copies of the real CSS values, not read live — there's no way to sample
-"what would this look like under a theme/mode that isn't currently active"
-without something like an offscreen iframe per swatch, and these are
-purely decorative preview dots, never applied anywhere as real UI color.
-Theme swatches always preview that theme's dark mode (its primary
-identity, regardless of the currently-selected mode); mode swatches are
-deliberately generic near-black/near-white circles, not theme-tinted,
-since mode is conceptually independent of which theme is active.
-
-`useTheme()` exports a combined `Theme = \`${ThemeName}-${ThemeMode}\``
-value (template literal type) purely for `PriceChart.tsx`/
-`PriceForecastChart.tsx`'s `useEffect` dependency arrays — both re-read
-CSS variables via `getComputedStyle` to re-theme their lightweight-charts
-canvas whenever this changes, never branching on the literal string.
-Either axis changing alone still needs to trigger that re-read (a
-theme-only change and a mode-only change both produce different CSS
-variable values), which is exactly why those two components need one
-*combined* changing value rather than depending on `themeName`/`mode`
-separately and risking a missed re-render if only one of the two effects'
-dependency arrays gets updated correctly.
 
 **`MetricCard`'s popover carries `definition`/`assessment`/`explanation`
 text computed server-side in `metrics.py`** (not generated client-side or
@@ -620,16 +616,9 @@ reintroduce buy/sell/hold wording, since that compliance line was drawn
 deliberately after the user originally asked for a buy/sell/hold verdict
 box and it was scoped down instead.
 
-**`.metric-card`'s status color is a left-edge ribbon (`border-left`), not
-a small dot.** (2026-07) Originally a 6px `.status-dot` next to the label,
-per user feedback that it was too hard to register at a glance across a
-dense 20-30-card grid. `MetricCard.tsx` now puts the status class directly
-on the card itself (`metric-card good/warning/bad/neutral`) rather than on
-a child dot span, matching the same left-border convention already used by
-`.calculator-scenario-tile`/`.calculator-risk-row`. `.status-dot` itself
-was kept in `app.css` for a while after that for `HealthSnapshot`'s compact
-tile, its last remaining user -- removed entirely once that component was
-(2026-09, see "Financial Health Snapshot" below).
+**`.metric-card` status is a coloured dot plus a word** (Healthy / Watch /
+Weak) since the 2026-11 design pass; before that it was a coloured left-edge
+ribbon on a tinted card, and before that a lone 6px dot.
 
 **`PriceForecastChart` is a deliberately separate chart, not a series
 overlaid on `PriceChart`.** An earlier version drew the High/Mean/Low fan
@@ -1891,7 +1880,9 @@ The league uses company results only and was left alone.
 
 Pre-pilot work; the Privacy Policy and Terms (`LegalPage.tsx`, `#/privacy`,
 `#/terms`, linked in `SiteFooter`) were approved by Hriday 2026-11-05 with
-[YOUR NAME]/[CONTACT EMAIL]/[CITY] placeholders still to fill in. Never claim
+placeholders filled 2026-11-06 (Hriday Sharma, stackly.user.support@gmail.com,
+Bengaluru, India; also in `docs/incident-plan.md`, whose [PHONE] is still
+blank). Never claim
 legal compliance anywhere. Schema version 8.
 - **Terms agreement.** Sign-up needs `accept_terms` (checkbox in AuthPanel);
   a new Google account gets 409 `terms_required` and nothing is created
@@ -1925,7 +1916,11 @@ legal compliance anywhere. Schema version 8.
   Off in tests only (`AUTH_RATE_LIMITS_ENABLED=false` in conftest).
 - **Security headers** (CSP, X-Frame-Options, HSTS, nosniff, Referrer- and
   Permissions-Policy) are set in `vercel.json` for every path. The CSP allows
-  Google Fonts and Google Identity Services only; adding any other external
+  Google Identity Services only (Google Fonts removed 2026-11-06). The GSI
+  script is injected on demand by `googleAuth.loadGoogleScript` when a Google
+  button mounts (sign-in panel, or sign-up after the box is ticked), so other
+  pages send nothing to Google; the Privacy Policy says exactly that. Adding
+  any other external
   script, font, image or frame needs a CSP change.
 - `docs/incident-plan.md` is the breach plan (CERT-In 6 hours, DPDP Board).
 - Known, not yet fixed (from the 2026-11-05 audit): session tokens are

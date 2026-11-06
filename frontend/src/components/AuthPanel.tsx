@@ -105,12 +105,12 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
   return (
     <>
       <div className="settings-backdrop" onClick={onClose} />
-      <div className="settings-panel" role="dialog" aria-label="Account">
+      <div className="settings-panel sheet" role="dialog" aria-modal="true" aria-label="Account">
         <div className="settings-panel-header">
           <h2>
             {user ? "Your account" : mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset password" : "Welcome back"}
           </h2>
-          <button className="icon-button" aria-label="Close" onClick={onClose}>
+          <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
@@ -126,10 +126,10 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
 
             <div className="auth-activity">
               <div className="auth-activity-label">Recent activity</div>
-              {activityError && <div className="search-error">{activityError}</div>}
+              {activityError && <div className="form-error">{activityError}</div>}
               {activity === null && !activityError && <div className="auth-activity-empty">Loading...</div>}
               {activity && activity.length === 0 && (
-                <div className="auth-activity-empty">No activity yet -- try searching a company.</div>
+                <div className="auth-activity-empty">No activity yet. Look up a company in Research to start.</div>
               )}
               {activity && activity.length > 0 && (
                 <ul className="auth-activity-list">
@@ -146,7 +146,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               )}
             </div>
 
-            <button type="button" className="auth-signout" onClick={handleLogOut}>
+            <button type="button" className="btn btn-secondary btn-block" onClick={handleLogOut}>
               Sign out
             </button>
           </>
@@ -154,45 +154,57 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
           <ForgotPasswordForm initialEmail={email} onBack={() => setMode("signin")} />
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="auth-mode-toggle" role="group" aria-label="Sign in or create an account">
-              <button type="button" className={mode === "signin" ? "active" : ""} onClick={() => setMode("signin")}>
+            <div className="segmented segmented-full" role="group" aria-label="Sign in or create an account">
+              <button
+                type="button"
+                className={mode === "signin" ? "active" : ""}
+                aria-pressed={mode === "signin"}
+                onClick={() => setMode("signin")}
+              >
                 Sign in
               </button>
-              <button type="button" className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>
+              <button
+                type="button"
+                className={mode === "signup" ? "active" : ""}
+                aria-pressed={mode === "signup"}
+                onClick={() => setMode("signup")}
+              >
                 Sign up
               </button>
             </div>
 
             {mode === "signup" && (
-              <label className="auth-field">
-                <span>Name</span>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+              <label className="field">
+                <span className="field-label">Name</span>
+                <input className="input" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required />
               </label>
             )}
-            <label className="auth-field">
-              <span>Email</span>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label className="field">
+              <span className="field-label">Email</span>
+              <input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </label>
-            <label className="auth-field">
-              <span>Password</span>
+            <label className="field">
+              <span className="field-label">Password</span>
               <input
+                className="input"
                 type="password"
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
               />
-              {mode === "signup" && <span className="auth-field-hint">At least 8 characters</span>}
+              {mode === "signup" && <span className="field-hint">At least 8 characters.</span>}
             </label>
 
             {mode === "signin" && (
-              <button type="button" className="auth-forgot-link" onClick={() => setMode("forgot")}>
+              <button type="button" className="btn btn-tertiary auth-forgot" onClick={() => setMode("forgot")}>
                 Forgot password?
               </button>
             )}
 
             {mode === "signup" && (
-              <label className="market-status-dont-show">
+              <label className="checkbox-row">
                 <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
                 <span>
                   I agree to the{" "}
@@ -207,7 +219,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               </label>
             )}
 
-            {error && <div className="search-error">{error}</div>}
+            {error && <div className="form-error">{error}</div>}
 
             {/* Directly above the submit button, not after the Google
                 button/divider below -- it was easy to miss down there
@@ -215,14 +227,24 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
                 alternative rather than the form itself). This placement
                 means it's in the way of every submit path, password or
                 Google. */}
-            <p className="auth-disclaimer">
-              Stackly provides financial data and educational information only. Any financial
-              decisions you make using data from this site are your own responsibility -- the site and
-              its owner(s) accept no liability for outcomes resulting from its use.
+            <p className="footnote">
+              Stackly is for education only. Any financial decisions you make are your own responsibility, and Stackly
+              and its owner accept no liability for them.
             </p>
 
-            <button type="submit" className="search-button auth-submit" disabled={loading || (mode === "signup" && !agreed)}>
-              {loading ? "..." : mode === "signup" ? "Create account" : "Sign in"}
+            <button
+              type="submit"
+              className="btn btn-primary btn-block"
+              disabled={loading || (mode === "signup" && !agreed)}
+              aria-busy={loading}
+            >
+              {loading
+                ? mode === "signup"
+                  ? "Creating account..."
+                  : "Signing in..."
+                : mode === "signup"
+                  ? "Create account"
+                  : "Sign in"}
             </button>
 
             {/* Renders nothing if VITE_GOOGLE_CLIENT_ID isn't configured --
@@ -233,7 +255,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
             {/* Google creates the account on its first click, so on the
                 sign-up tab it only appears once the box is ticked. */}
             {mode === "signup" && !agreed ? (
-              isGoogleSignInConfigured() && <p className="auth-field-hint">Tick the box above to continue with Google.</p>
+              isGoogleSignInConfigured() && <p className="field-hint">Tick the box above to continue with Google.</p>
             ) : (
               <GoogleSignInButton onCredential={handleGoogleCredential} />
             )}

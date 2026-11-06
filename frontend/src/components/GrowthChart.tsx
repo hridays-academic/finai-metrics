@@ -34,7 +34,7 @@ export default function GrowthChart({ points, theme }: GrowthChartProps) {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: cssVar("--text-secondary"),
-        fontFamily: "Inter, sans-serif",
+        fontFamily: cssVar("--font-sans"),
         fontSize: 11,
       },
       // Rupee/lakh/crore formatting on the price axis and crosshair label --

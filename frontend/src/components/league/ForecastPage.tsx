@@ -48,18 +48,16 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
 
   if (error) {
     return (
-      <div className="calculator-page">
-        <div className="calculator-card">
-          <a href="#/league">← Home</a>
-          <div className="search-error">{error}</div>
-        </div>
+      <div className="page">
+        <a className="back-link" href="#/league">← Companies</a>
+        <div className="form-error">{error}</div>
       </div>
     );
   }
   if (!event || !config) {
     return (
-      <div className="calculator-page">
-        <div className="calculator-card calculator-empty-hint">Loading...</div>
+      <div className="page">
+        <p className="empty-note">Loading...</p>
       </div>
     );
   }
@@ -75,52 +73,59 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   }
 
   return (
-    <div className="league-page">
-      <div className="league-page-header">
-        <a href="#/league">← Home</a>
-        <h1>
-          {event.company.name} <span className="company-ticker">{event.company.ticker}</span>
+    <div className="page">
+      <header className="page-header">
+        <a className="back-link" href="#/league">← Companies</a>
+        <h1 className="page-title">
+          {event.company.name} <span className="page-title-sub">{event.company.ticker}</span>
         </h1>
-        <div className="company-meta">
-          {event.season_label} results (quarter ending{" "}
-          {new Date(`${event.period_end_date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
-          ), expected {new Date(`${event.results_date}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-        </div>
-        <LockCountdown lockAt={event.lock_at} serverNow={event.server_now} />
-        <a className="league-jump" href="#forecast" onClick={jumpToForm}>
-          Skip to the forecast form ↓
-        </a>
-      </div>
+        <p className="page-meta">
+          {event.season_label} results · quarter ending{" "}
+          {new Date(`${event.period_end_date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}{" "}
+          · expected{" "}
+          {new Date(`${event.results_date}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+        </p>
+        <p className="page-meta">
+          <LockCountdown lockAt={event.lock_at} serverNow={event.server_now} />
+        </p>
+        {event.status === "open" && (
+          <a className="btn btn-primary page-header-action" href="#forecast" onClick={jumpToForm}>
+            {forecast ? "Edit your forecast" : "Make your forecast"}
+          </a>
+        )}
+      </header>
 
-      <div className="league-company-flow">
-        {explainer && <SectorExplainer explainer={explainer} />}
+      {explainer && <SectorExplainer explainer={explainer} />}
 
-        <section className="calculator-card league-research-card" aria-label="Research">
-          <h2>Research</h2>
-          <ResearchPanel event={event} theme={theme} />
-        </section>
+      <section className="section" aria-labelledby="research-title">
+        <h2 className="section-title" id="research-title">
+          Research
+        </h2>
+        <ResearchPanel event={event} theme={theme} />
+      </section>
 
-        <section id="forecast" className="calculator-card league-form-card" aria-label="Your forecast">
-          <h2>Your forecast</h2>
-          {noDisclosedKpi && (
-            <p className="calculator-field-note">
-              This company doesn't disclose a sector KPI every quarter, so this event only has the two core numbers.
-            </p>
-          )}
-          {/* Remount when the loaded state changes so the form picks up the saved values. */}
-          <ForecastForm
-            key={loadedFor ?? "loading"}
-            event={event}
-            config={config}
-            user={user}
-            forecast={forecast}
-            onSaved={setForecast}
-            onNeedProfile={() => (user ? setProfileOpen(true) : onOpenAuth())}
-            onOpenAuth={onOpenAuth}
-            onLocked={load}
-          />
-        </section>
-      </div>
+      <section id="forecast" className="section forecast-section" aria-labelledby="forecast-title">
+        <h2 className="section-title" id="forecast-title">
+          Your forecast
+        </h2>
+        {noDisclosedKpi && (
+          <p className="section-text">
+            This company doesn't disclose a sector KPI every quarter, so this event only has the two core numbers.
+          </p>
+        )}
+        {/* Remount when the loaded state changes so the form picks up the saved values. */}
+        <ForecastForm
+          key={loadedFor ?? "loading"}
+          event={event}
+          config={config}
+          user={user}
+          forecast={forecast}
+          onSaved={setForecast}
+          onNeedProfile={() => (user ? setProfileOpen(true) : onOpenAuth())}
+          onOpenAuth={onOpenAuth}
+          onLocked={load}
+        />
+      </section>
 
       <SiteFooter />
 

@@ -2,11 +2,17 @@ import type { SectorExplainer as Explainer } from "../../lib/types";
 
 // "How this business makes money" for the company's sector, written for
 // complete beginners. The text lives in backend/app/league_config.py.
+// "Cement" -> "cement", but "IT services" stays as it is.
+function inSentence(name: string): string {
+  return name.length > 1 && name[1] === name[1].toLowerCase() ? name[0].toLowerCase() + name.slice(1) : name;
+}
+
 export default function SectorExplainer({ explainer }: { explainer: Explainer }) {
   return (
-    <section className="calculator-card league-explainer" aria-label="How this business makes money">
-      <h2>How this business makes money</h2>
-      <p className="calculator-subtitle">A quick guide to {explainer.display_name.toLowerCase()} companies.</p>
+    <section className="section league-explainer" aria-labelledby="explainer-title">
+      <h2 className="section-title" id="explainer-title">
+        How {inSentence(explainer.display_name)} companies make money
+      </h2>
       <div className="league-explainer-grid">
         <div>
           <h3>What it sells</h3>

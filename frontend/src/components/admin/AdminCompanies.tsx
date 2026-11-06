@@ -38,6 +38,17 @@ const STATUS_LABEL: Record<BoardStatus, string> = {
   rescore_needed: "Results changed: re-score",
 };
 
+// Amber = the admin has something to do; blue = ready for the next step.
+const STATUS_TONE: Record<BoardStatus, string> = {
+  needs_last_year: "caution",
+  hidden: "",
+  open: "accent",
+  results_due: "caution",
+  ready_to_score: "accent",
+  scored: "",
+  rescore_needed: "caution",
+};
+
 type Panel = { id: number; mode: "last_year" | "results" | "edit" } | null;
 
 // The admin page's main view: one list of companies, each with a plain
@@ -93,7 +104,7 @@ export default function AdminCompanies() {
   return (
     <div>
       <div className="admin-board-actions">
-        <button type="button" className="search-button" onClick={() => setAdding((v) => !v)}>
+        <button type="button" className="btn btn-primary" onClick={() => setAdding((v) => !v)}>
           {adding ? "Close" : "Add a company"}
         </button>
       </div>
@@ -108,25 +119,25 @@ export default function AdminCompanies() {
           }}
         />
       )}
-      {error && <div className="search-error">{error}</div>}
-      {message && <div className="calculator-field-note">{message}</div>}
+      {error && <div className="form-error">{error}</div>}
+      {message && <div className="field-hint">{message}</div>}
 
-      <div className="trading-section-header">Companies</div>
-      {rows === null && !error && <div className="calculator-empty-hint">Loading...</div>}
-      {rows && rows.length === 0 && <div className="calculator-empty-hint">No companies yet. Add one above.</div>}
+      <h3 className="subsection-title">Companies</h3>
+      {rows === null && !error && <div className="empty-note">Loading...</div>}
+      {rows && rows.length === 0 && <div className="empty-note">No companies yet. Add one above.</div>}
       {rows && rows.length > 0 && (
-        <ul className="admin-board">
+        <ul className="group admin-board">
           {rows.map((row) => (
             <li key={row.id} className="admin-board-row">
               <div className="admin-board-main">
                 <div className="admin-board-info">
-                  <div className="trading-table-stock-name">{row.company_name}</div>
-                  <div className="trading-table-stock-ticker">
+                  <div className="cell-primary">{row.company_name}</div>
+                  <div className="cell-secondary">
                     {row.ticker} · {row.season_label} · {row.sector} · results {formatDay(row.results_date)} ·{" "}
                     {row.forecasts} forecast{row.forecasts === 1 ? "" : "s"}
                   </div>
                 </div>
-                <span className={`admin-status admin-status-${row.status}`}>{STATUS_LABEL[row.status]}</span>
+                <span className={`status-text ${STATUS_TONE[row.status]}`}>{STATUS_LABEL[row.status]}</span>
                 <NextStep row={row} onPanel={setPanel} onOpen={openNow} onScore={score} />
               </div>
               {panel?.id === row.id && panel.mode !== "edit" && (
@@ -156,7 +167,7 @@ function NextStep({ row, onPanel, onOpen, onScore }: {
   onScore: (r: AdminBoardRow) => void;
 }) {
   const button = (label: string, onClick?: () => void) => (
-    <button type="button" className="settings-row-action admin-next" onClick={onClick} disabled={!onClick}>
+    <button type="button" className="btn btn-secondary admin-next" onClick={onClick} disabled={!onClick}>
       {label}
     </button>
   );
@@ -250,8 +261,8 @@ function NumbersPanel({ row, mode, onSwitch, onDone, onCancel }: {
   }
 
   return (
-    <form className="auth-form admin-panel" onSubmit={handleSubmit}>
-      <div className="calculator-field-note">
+    <form className="admin-panel" onSubmit={handleSubmit}>
+      <div className="field-hint">
         {mode === "last_year" ? "Last year's numbers" : "Reported results"}: {label} (quarter ending{" "}
         {formatDay(end, true)}).{" "}
         {mode === "last_year" && "Once every number is saved, the company opens for forecasts. "}
@@ -259,13 +270,13 @@ function NumbersPanel({ row, mode, onSwitch, onDone, onCancel }: {
         {mode === "last_year" && " These numbers are also the lazy guess each forecast is compared with."}
       </div>
       {onSwitch && (
-        <button type="button" className="auth-forgot-link" onClick={() => onSwitch(mode === "results" ? "last_year" : "results")}>
+        <button type="button" className="link-button" onClick={() => onSwitch(mode === "results" ? "last_year" : "results")}>
           {mode === "results" ? "Correct last year's numbers instead" : "Correct this quarter's results instead"}
         </button>
       )}
       {row.metrics.map((m) => (
-        <div className="calculator-field" key={m.key}>
-          <div className="calculator-field-header">
+        <div className="field" key={m.key}>
+          <div className="field-label">
             <span>
               {m.label} ({m.unit}) {missing.includes(m.key) ? "" : <span className="league-submitted">saved</span>}
             </span>
@@ -275,7 +286,7 @@ function NumbersPanel({ row, mode, onSwitch, onDone, onCancel }: {
             {m.definition}
           </details>
           {mode === "last_year" && m.key === "revenue_growth_yoy" && (
-            <span className="auth-field-hint">
+            <span className="field-hint">
               Q{row.fiscal_quarter} {row.year_ago_label} versus Q{row.fiscal_quarter} {yearBefore(row.year_ago_label)}: (Q
               {row.fiscal_quarter} {row.year_ago_label} revenue / Q{row.fiscal_quarter} {yearBefore(row.year_ago_label)}{" "}
               revenue - 1) x 100. The Q{row.fiscal_quarter} {row.year_ago_label} results filing shows both quarters.
@@ -302,12 +313,12 @@ function NumbersPanel({ row, mode, onSwitch, onDone, onCancel }: {
           </div>
         </div>
       ))}
-      {error && <div className="search-error">{error}</div>}
+      {error && <div className="form-error">{error}</div>}
       <div className="admin-inline-actions">
-        <button type="submit" className="search-button" disabled={saving}>
+        <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? "Saving..." : "Save"}
         </button>
-        <button type="button" className="modal-skip" onClick={onCancel}>
+        <button type="button" className="btn btn-tertiary" onClick={onCancel}>
           Cancel
         </button>
       </div>
@@ -332,31 +343,31 @@ function EditPanel({ row, onDone, onCancel }: { row: AdminBoardRow; onDone: (msg
 
   return (
     <div className="admin-inline-edit admin-panel">
-      <div className="calculator-field-note">Forecasts lock {formatIst(row.lock_at)}.</div>
+      <div className="field-hint">Forecasts lock {formatIst(row.lock_at)}.</div>
       {!row.lock_passed && (
-        <label className="auth-field">
+        <label className="field">
           <span>New lock time (IST)</span>
           <input type="datetime-local" value={lockLocal} onChange={(e) => setLockLocal(e.target.value)} />
         </label>
       )}
-      <label className="auth-field">
+      <label className="field">
         <span>Research notes (shown to forecasters)</span>
         <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
-      {error && <div className="search-error">{error}</div>}
+      {error && <div className="form-error">{error}</div>}
       <div className="admin-inline-actions">
         {lockLocal && (
-          <button type="button" className="settings-row-action" onClick={() => patch({ lock_at: istToIso(lockLocal) }, "Lock time saved.")}>
+          <button type="button" className="btn btn-secondary" onClick={() => patch({ lock_at: istToIso(lockLocal) }, "Lock time saved.")}>
             Save lock time
           </button>
         )}
-        <button type="button" className="settings-row-action" onClick={() => patch({ research_notes: notes }, "Notes saved.")}>
+        <button type="button" className="btn btn-secondary" onClick={() => patch({ research_notes: notes }, "Notes saved.")}>
           Save notes
         </button>
-        <button type="button" className="settings-row-action" onClick={() => patch({ status: "draft" }, `${row.company_name} is hidden.`)}>
+        <button type="button" className="btn btn-secondary" onClick={() => patch({ status: "draft" }, `${row.company_name} is hidden.`)}>
           Hide from players
         </button>
-        <button type="button" className="modal-skip" onClick={onCancel}>
+        <button type="button" className="btn btn-tertiary" onClick={onCancel}>
           Close
         </button>
       </div>
@@ -422,17 +433,17 @@ function AddCompanyForm({ config, onAdded }: { config: LeagueConfig; onAdded: (e
   }
 
   return (
-    <form className="auth-form admin-panel" onSubmit={handleSubmit}>
+    <form className="admin-panel" onSubmit={handleSubmit}>
       <div className="admin-grid">
-        <label className="auth-field">
+        <label className="field">
           <span>Company name</span>
           <input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} required />
         </label>
-        <label className="auth-field">
+        <label className="field">
           <span>NSE ticker</span>
           <input value={form.ticker} onChange={(e) => set("ticker", e.target.value.toUpperCase())} required />
         </label>
-        <label className="auth-field">
+        <label className="field">
           <span>Sector</span>
           <select value={form.sector} onChange={(e) => set("sector", e.target.value)} required>
             <option value="">Choose...</option>
@@ -443,12 +454,12 @@ function AddCompanyForm({ config, onAdded }: { config: LeagueConfig; onAdded: (e
             ))}
           </select>
         </label>
-        <label className="auth-field">
+        <label className="field">
           <span>Results date</span>
           <input type="date" value={form.results_date} onChange={(e) => set("results_date", e.target.value)} required />
         </label>
       </div>
-      <label className="auth-field">
+      <label className="field">
         <span>One-line description (home page card)</span>
         <input
           value={form.description}
@@ -473,18 +484,18 @@ function AddCompanyForm({ config, onAdded }: { config: LeagueConfig; onAdded: (e
       <details className="league-definition">
         <summary>More options</summary>
         <div className="admin-grid">
-          <label className="auth-field">
+          <label className="field">
             <span>Exchange</span>
             <select value={form.exchange} onChange={(e) => set("exchange", e.target.value)}>
               <option>NSE</option>
               <option>BSE</option>
             </select>
           </label>
-          <label className="auth-field">
+          <label className="field">
             <span>Fiscal year</span>
             <input value={form.fiscal_year_label} onChange={(e) => set("fiscal_year_label", e.target.value)} required />
           </label>
-          <label className="auth-field">
+          <label className="field">
             <span>Quarter</span>
             <select value={form.fiscal_quarter} onChange={(e) => set("fiscal_quarter", e.target.value)}>
               {[1, 2, 3, 4].map((n) => (
@@ -494,27 +505,27 @@ function AddCompanyForm({ config, onAdded }: { config: LeagueConfig; onAdded: (e
               ))}
             </select>
           </label>
-          <label className="auth-field">
+          <label className="field">
             <span>Lock time (IST)</span>
             <input type="datetime-local" value={form.lock_local} onChange={(e) => set("lock_local", e.target.value)} />
-            <span className="auth-field-hint">Default: 11:59 pm the day before results</span>
+            <span className="field-hint">Default: 11:59 pm the day before results</span>
           </label>
-          <label className="auth-field">
+          <label className="field">
             <span>Yahoo symbol</span>
             <input value={form.provider_symbol} placeholder={symbol} onChange={(e) => set("provider_symbol", e.target.value)} />
           </label>
         </div>
-        <label className="auth-field">
+        <label className="field">
           <span>Research notes (shown to forecasters)</span>
           <textarea rows={2} value={form.research_notes} onChange={(e) => set("research_notes", e.target.value)} />
         </label>
       </details>
-      <div className="calculator-field-note">
+      <div className="field-hint">
         Q{q} {form.fiscal_year_label.toUpperCase()}, quarter ending {end || "?"}. It stays hidden from players until
         last year's numbers are entered.
       </div>
-      {error && <div className="search-error">{error}</div>}
-      <button type="submit" className="search-button" disabled={saving}>
+      {error && <div className="form-error">{error}</div>}
+      <button type="submit" className="btn btn-primary" disabled={saving}>
         {saving ? "Adding..." : "Add company"}
       </button>
     </form>

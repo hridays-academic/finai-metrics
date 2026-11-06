@@ -1,123 +1,20 @@
 /* Layout & component styles. Reads color tokens from theme.css so both
    dark and light mode stay in sync automatically. */
 
-/* ---------- Global interaction primitives ----------
-   A shared easing curve + press/lift/entrance system applied across
-   buttons, cards, and panels app-wide, instead of each surface inventing
-   its own one-off hover treatment. Keeps every interactive element
-   feeling like part of the same system rather than a patchwork. */
-
-:root {
-  /* A slight overshoot ("back out") on entrances/hovers reads as far more
-     alive than plain ease/ease-out -- the standard "snappy UI" curve. */
-  --ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+/* ---------- Press feedback ----------
+   Every button scales down slightly while pressed (none under
+   prefers-reduced-motion: --press-scale is 1 there, see theme.css). */
+button:not(:disabled):active {
+  transform: scale(var(--press-scale));
 }
-
-@keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
-}
-
-@keyframes pop-in {
-  from { opacity: 0; transform: scale(0.94); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* Every real button in the app gets a satisfying press without each
-   component needing its own :active rule -- excludes the small icon-only
-   utility buttons (close/dismiss/arrow) via :not(), since a press-scale
-   on a 20px glyph button reads as jittery rather than tactile. */
-button:not(.icon-button):not(.modal-skip):active {
-  transform: scale(0.96);
-}
-
-.app-shell {
-  display: flex;
-  flex-direction: row;
-  height: 100vh;
-}
-
-/* ---------- Ambient background ----------
-   One fixed, full-viewport layer behind the whole app (header and sidebar
-   included -- they're translucent so it reads as one surface). Replaces a
-   background on .app-main that never moved: a later `background:`
-   shorthand reset its background-size to auto, so animating
-   background-position shifted it by 0px, and a second gradient on
-   .empty-state was hard-clipped into a visible rectangle on narrow screens.
-
-   Two rules keep this edge-free and cheap:
-   - The glow's gradient is `closest-side`, so it reaches fully
-     transparent before its own box's edge -- no box edge can ever carry
-     color, at any viewport size. Sized in vmax so it scales with the
-     screen.
-   - Only `transform` animates (compositor-only, no repaint per frame).
-     No filter: blur(), and nothing above it uses backdrop-filter, which
-     would force a re-blur every frame. */
-.app-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-/* One glow from the center of the screen -- the original look (a
-   --bg-hover wash in dark mode, an accent tint in light mode, where
-   --bg-hover is too close to --bg-app to show). */
-:root:not([data-mode="light"]) {
-  --glow: var(--bg-hover);
-}
-:root[data-mode="light"] {
-  --glow: color-mix(in srgb, var(--accent) 16%, transparent);
-}
-
-/* `closest-side` makes the ellipse match this box, so it's transparent at
-   every edge. Mid stop softens the falloff so there's no visible ring. */
-.app-backdrop-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 150vmax;
-  height: 100vmax;
-  margin: -50vmax 0 0 -75vmax;
-  background: radial-gradient(closest-side, var(--glow) 0%,
-    color-mix(in srgb, var(--glow) 45%, transparent) 40%, transparent 75%);
-  will-change: transform;
-  animation: glow-drift 16s ease-in-out infinite;
-}
-
-@keyframes glow-drift {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  33%  { transform: translate3d(6vmax, -3vmax, 0) scale(1.08); }
-  66%  { transform: translate3d(-5vmax, 3vmax, 0) scale(0.94); }
-  100% { transform: translate3d(0, 0, 0) scale(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-backdrop-glow {
-    animation: none;
-  }
-}
-
-/* Everything else paints above the backdrop. */
-.sidebar,
-.app-shell-content {
-  position: relative;
-  z-index: 1;
+button {
+  transition: background-color var(--duration-press) var(--ease-out), color var(--duration-press) var(--ease-out),
+    border-color var(--duration-press) var(--ease-out), transform var(--duration-press) var(--ease-out);
 }
 
 .app-shell-content {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
 }
 
 /* ---------- Sidebar (left icon rail: stock search / return calculator) ---------- */
@@ -128,8 +25,8 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.85rem 0;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
   border-right: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--bg-surface) 85%, transparent);
 }
@@ -140,17 +37,17 @@ button:not(.icon-button):not(.modal-skip):active {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease,
-    transform 0.25s var(--ease-snap), box-shadow 0.25s ease;
+    transform 0.25s var(--ease-out), box-shadow 0.25s ease;
 }
 
 .sidebar-icon-button svg {
-  transition: transform 0.25s var(--ease-snap);
+  transition: transform 0.25s var(--ease-out);
 }
 
 .sidebar-icon-button:hover {
@@ -159,7 +56,6 @@ button:not(.icon-button):not(.modal-skip):active {
   border-color: var(--border-subtle);
 }
 .sidebar-icon-button:hover svg {
-  transform: scale(1.12);
 }
 
 /* Same solid-accent treatment as .price-chart-period-btn.active -- the
@@ -170,7 +66,6 @@ button:not(.icon-button):not(.modal-skip):active {
   background: var(--accent);
   color: var(--accent-contrast);
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 /* ---------- Header ---------- */
@@ -179,7 +74,7 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.5rem;
+  padding: var(--space-3) var(--space-6);
   border-bottom: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--bg-surface) 85%, transparent);
   flex-shrink: 0;
@@ -188,7 +83,7 @@ button:not(.icon-button):not(.modal-skip):active {
 .logo-mark {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   border: none;
   background: none;
   padding: 0;
@@ -206,7 +101,7 @@ button:not(.icon-button):not(.modal-skip):active {
 
 .logo-wordmark {
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: var(--text-md);
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
@@ -218,7 +113,7 @@ button:not(.icon-button):not(.modal-skip):active {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-tertiary);
@@ -236,12 +131,12 @@ button:not(.icon-button):not(.modal-skip):active {
    signed out, the user's initial when signed in. */
 .header-signin {
   height: 34px;
-  padding: 0 0.95rem;
-  border-radius: 999px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: transparent;
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
@@ -258,13 +153,12 @@ button:not(.icon-button):not(.modal-skip):active {
   border: none;
   background: color-mix(in srgb, var(--accent) 22%, var(--bg-elevated));
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   transition: box-shadow 0.15s ease;
 }
 .header-avatar:hover {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .header-signin:focus-visible,
@@ -276,7 +170,7 @@ button:not(.icon-button):not(.modal-skip):active {
 .app-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 /* ---------- Main layout ---------- */
@@ -305,7 +199,7 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .search-bar-wrap {
-  padding: 1.25rem 1.5rem 0.5rem;
+  padding: var(--space-5) var(--space-6) var(--space-2);
   flex-shrink: 0;
 }
 
@@ -313,7 +207,7 @@ button:not(.icon-button):not(.modal-skip):active {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 0.75rem 1.5rem 1.5rem;
+  padding: var(--space-3) var(--space-6) var(--space-6);
   min-height: 0;
 }
 
@@ -336,11 +230,11 @@ button:not(.icon-button):not(.modal-skip):active {
   margin: 0 auto;
   /* Gap between the card content and the reserved scrollbar gutter, which
      otherwise renders flush against it. */
-  padding-right: 0.85rem;
+  padding-right: var(--space-3);
   /* Room for the last row's hover popover to open below it without
      growing the scrollable area (also just breathing room at the end of
      the page). */
-  padding-bottom: 3rem;
+  padding-bottom: var(--space-9);
   /* The scrollbar itself is hidden (not just thinned) on this page -- kept
      scrollable via wheel/trackpad/keyboard, just without the visible
      track/thumb. scrollbar-gutter: stable above still reserves the same
@@ -359,12 +253,12 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.9rem;
+  gap: var(--space-4);
 }
 
 .search-form {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--space-2);
   max-width: 640px;
   flex: 1;
   min-width: 280px;
@@ -375,9 +269,9 @@ button:not(.icon-button):not(.modal-skip):active {
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
-  border-radius: 10px;
-  padding: 0.65rem 0.9rem;
-  font-size: 0.95rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-md);
   outline: none;
   transition: border-color 0.15s ease;
 }
@@ -391,25 +285,18 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .search-button {
-  background: linear-gradient(155deg, var(--accent) 0%, var(--accent-strong) 100%);
+  background: var(--accent-fill);
   color: var(--accent-contrast);
   border: none;
-  border-radius: 10px;
-  padding: 0.65rem 1.2rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-5);
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s var(--ease-snap), box-shadow 0.2s ease, filter 0.15s ease;
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s ease, filter 0.15s ease;
 }
 
 .search-button:hover:not(:disabled) {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-  /* Glow uses the accent color itself (not a generic dark shadow) so the
-     lift reads as "this button is lit up," matching the gradient fill --
-     a plain drop shadow on a colored button just looks like it's floating,
-     not glowing. */
-  box-shadow: 0 6px 20px -4px color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--accent-fill-hover);
 }
 
 .search-button:disabled {
@@ -418,16 +305,16 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .search-error {
-  margin-top: 0.6rem;
+  margin-top: var(--space-2);
   color: var(--status-bad);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   max-width: 640px;
 }
 
 .search-hint {
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
   color: var(--text-tertiary);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
 }
 
 /* ---------- Empty state ---------- */
@@ -441,8 +328,8 @@ button:not(.icon-button):not(.modal-skip):active {
   text-align: center;
   height: 100%;
   color: var(--text-tertiary);
-  padding: 2rem;
-  gap: 0.5rem;
+  padding: var(--space-7);
+  gap: var(--space-2);
 }
 
 .empty-state-icon {
@@ -451,11 +338,11 @@ button:not(.icon-button):not(.modal-skip):active {
   justify-content: center;
   width: 56px;
   height: 56px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   color: var(--text-tertiary);
-  margin-bottom: 0.4rem;
+  margin-bottom: var(--space-2);
 }
 
 .empty-state h2 {
@@ -467,8 +354,7 @@ button:not(.icon-button):not(.modal-skip):active {
 /* ---------- Company header / highlights ---------- */
 
 .company-header {
-  margin-bottom: 1.25rem;
-  animation: fade-in-up 0.45s var(--ease-smooth) both;
+  margin-bottom: var(--space-5);
 }
 
 /* Staggered entrance for the two chart cards + the summary row below them --
@@ -476,15 +362,10 @@ button:not(.icon-button):not(.modal-skip):active {
    deliberate sequence on every search, instead of the whole dashboard just
    snapping into existence at once. */
 .charts-row .price-chart-card {
-  animation: fade-in-up 0.5s var(--ease-smooth) both;
-  animation-delay: 0.06s;
 }
 .charts-row .price-chart-card + .price-chart-card {
-  animation-delay: 0.14s;
 }
 .summary-row {
-  animation: fade-in-up 0.5s var(--ease-smooth) both;
-  animation-delay: 0.2s;
 }
 
 /* Same staggered reveal on Return Calculator/Market Simulator's own
@@ -502,16 +383,10 @@ button:not(.icon-button):not(.modal-skip):active {
    both pages, so one rule covers its stagger position on either. */
 .growth-chart-card,
 .price-chart-card.simulator-chart-card {
-  animation: fade-in-up 0.5s var(--ease-smooth) both;
-  animation-delay: 0.06s;
 }
 .calculator-results {
-  animation: fade-in-up 0.5s var(--ease-smooth) both;
-  animation-delay: 0.14s;
 }
 .calculator-risk-section {
-  animation: fade-in-up 0.5s var(--ease-smooth) both;
-  animation-delay: 0.22s;
 }
 
 /* ---------- Show more / less (collapsed detail) ---------- */
@@ -519,34 +394,32 @@ button:not(.icon-button):not(.modal-skip):active {
 .show-more-row {
   display: flex;
   justify-content: center;
-  margin: 0.25rem 0 1.5rem;
+  margin: var(--space-1) 0 var(--space-6);
 }
 
 .show-more-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 1.1rem;
-  border-radius: 999px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease,
-    transform 0.2s var(--ease-snap), box-shadow 0.2s ease;
+    transform 0.2s var(--ease-out), box-shadow 0.2s ease;
 }
 
 .show-more-pill:hover {
   border-color: var(--accent);
   color: var(--text-primary);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 .show-more-arrow {
-  transition: transform 0.25s var(--ease-snap);
+  transition: transform 0.25s var(--ease-out);
 }
 
 .show-more-arrow.open {
@@ -562,7 +435,7 @@ button:not(.icon-button):not(.modal-skip):active {
 .expanded-details-wrapper {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.35s var(--ease-smooth);
+  transition: grid-template-rows 0.35s var(--ease-out);
 }
 
 .expanded-details-wrapper.expanded {
@@ -587,12 +460,12 @@ button:not(.icon-button):not(.modal-skip):active {
 .company-title {
   display: flex;
   align-items: baseline;
-  gap: 0.6rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .company-title h1 {
-  font-size: 1.85rem;
+  font-size: var(--text-2xl);
   font-weight: 700;
   letter-spacing: -0.015em;
   margin: 0;
@@ -600,15 +473,15 @@ button:not(.icon-button):not(.modal-skip):active {
 
 .company-ticker {
   color: var(--text-tertiary);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   letter-spacing: 0.02em;
 }
 
 .company-meta {
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  margin-top: 0.2rem;
+  font-size: var(--text-sm);
+  margin-top: var(--space-1);
 }
 
 /* ---------- Price chart ---------- */
@@ -633,7 +506,7 @@ button:not(.icon-button):not(.modal-skip):active {
    nothing else depends on it. */
 .charts-row {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: stretch;
 }
 
@@ -651,12 +524,12 @@ button:not(.icon-button):not(.modal-skip):active {
 .price-chart-card {
   display: flex;
   flex-direction: column;
-  margin-top: 1rem;
-  padding: 1rem 1.1rem;
-  border-radius: 14px;
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
-  transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: transform 0.3s var(--ease-out), box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 /* A primary card (not a metric tile) gets real depth on hover -- lift +
@@ -664,7 +537,6 @@ button:not(.icon-button):not(.modal-skip):active {
    uses, rather than every card in the app being visually identical flat
    panels regardless of importance. */
 .price-chart-card:hover {
-  transform: translateY(-3px);
   border-color: var(--border-strong);
   box-shadow: var(--shadow-elevated);
 }
@@ -674,13 +546,13 @@ button:not(.icon-button):not(.modal-skip):active {
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.4rem 1rem;
-  margin-bottom: 0.6rem;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-2);
 }
 
 .price-chart-header h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -688,7 +560,7 @@ button:not(.icon-button):not(.modal-skip):active {
 .price-chart-readout {
   display: flex;
   align-items: baseline;
-  gap: 0.6rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -702,29 +574,29 @@ button:not(.icon-button):not(.modal-skip):active {
    just making the UI sans bigger), and gives the page an actual focal
    point instead of every number competing at the same size. */
 .price-chart-price {
-  font-family: "Lora", Georgia, "Times New Roman", serif;
-  font-size: 2.1rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl);
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
 .price-chart-change {
-  font-size: 0.92rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 .price-chart-change.good { color: var(--status-good); }
 .price-chart-change.bad { color: var(--status-bad); }
 
 .price-chart-date {
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
 /* The 30-day price delay label (PriceChart, the Valuation group). */
 .price-lag-note {
-  margin: 0.2rem 0 0.5rem;
-  font-size: 0.78rem;
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
@@ -765,31 +637,21 @@ button:not(.icon-button):not(.modal-skip):active {
   justify-content: center;
   background: var(--bg-surface);
   color: var(--text-tertiary);
-  font-size: 0.85rem;
-  border-radius: 10px;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
 }
 .price-chart-overlay.error {
   color: var(--status-bad);
 }
 
-/* Loading skeleton: a faint chart-silhouette line under a shimmering
-   gradient sweep, instead of plain "Loading..." text sitting in an empty
-   box -- gives the loading state the same visual shape as the thing it's
-   about to become, so the page doesn't blank out and then suddenly
-   populate. */
+/* Loading skeleton: a faint, static chart-silhouette line, so the page
+   doesn't blank out and then suddenly populate. */
 .price-chart-skeleton {
   position: absolute;
   inset: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: linear-gradient(
-    100deg,
-    var(--bg-surface) 40%,
-    var(--bg-hover) 50%,
-    var(--bg-surface) 60%
-  );
-  background-size: 250% 100%;
-  animation: shimmer 3.2s ease-in-out infinite;
+  background: var(--bg-surface);
 }
 
 /* Right edge stops well short of the container's own right edge -- the
@@ -814,26 +676,25 @@ button:not(.icon-button):not(.modal-skip):active {
 
 .price-chart-period-row {
   display: flex;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .price-chart-period-btn {
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0.3rem 0.65rem;
-  border-radius: 8px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   color: var(--text-secondary);
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease,
-    transform 0.25s var(--ease-snap);
+    transform 0.25s var(--ease-out);
 }
 .price-chart-period-btn:hover {
   border-color: var(--accent);
   color: var(--text-primary);
-  transform: translateY(-1px);
 }
 .price-chart-period-btn.active {
   background: var(--accent);
@@ -844,29 +705,24 @@ button:not(.icon-button):not(.modal-skip):active {
      than a linear color swap. animation (not just the transition above)
      so it re-triggers every time .active is freshly applied, including
      re-selecting after the chart's data finishes loading. */
-  animation: period-pop 0.3s var(--ease-snap);
-}
-@keyframes period-pop {
-  from { transform: scale(0.92); }
-  to { transform: scale(1); }
 }
 
 .price-chart-forecast-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.3rem 0.9rem;
-  margin-top: 0.7rem;
-  padding-top: 0.7rem;
+  gap: var(--space-1) var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
 .price-chart-forecast-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -889,15 +745,15 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.6rem;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 
 .price-chart-reset {
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0.3rem 0.65rem;
-  border-radius: 8px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   color: var(--text-secondary);
@@ -910,22 +766,21 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .price-chart-hint {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
 /* ---------- Analyst consensus ---------- */
 
 .analyst-card {
-  margin-top: 1rem;
-  padding: 1rem 1.1rem;
-  border-radius: 14px;
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
-  transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s ease;
+  transition: transform 0.3s var(--ease-out), box-shadow 0.3s ease;
 }
 .analyst-card:hover {
-  transform: translateY(-3px);
   box-shadow: var(--shadow-elevated);
 }
 
@@ -933,8 +788,8 @@ button:not(.icon-button):not(.modal-skip):active {
    smaller type and padding, no top margin (the row's own gap handles that). */
 .analyst-card.compact {
   margin-top: 0;
-  padding: 0.75rem 0.9rem;
-  border-radius: 12px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
 }
 /* Spans the full row -- this card is the row's only occupant now that
    HealthSnapshot has been removed from the page (2026-09). */
@@ -942,41 +797,41 @@ button:not(.icon-button):not(.modal-skip):active {
   grid-column: 1 / -1;
 }
 .analyst-card.compact .analyst-header {
-  margin-bottom: 0.55rem;
+  margin-bottom: var(--space-2);
 }
 .analyst-card.compact .analyst-header h3 {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 .analyst-card.compact .analyst-target-block {
-  margin-top: 0.75rem;
-  padding-top: 0.65rem;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
 }
 .analyst-card.compact .analyst-disclaimer {
-  margin-top: 0.65rem;
-  padding-top: 0.45rem;
-  font-size: 0.66rem;
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  font-size: var(--text-xs);
 }
 
 .analyst-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .analyst-header h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .analyst-badge {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -988,7 +843,7 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   width: 100%;
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--border-subtle);
 }
@@ -1003,9 +858,9 @@ button:not(.icon-button):not(.modal-skip):active {
 .analyst-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.9rem;
-  margin-top: 0.55rem;
-  font-size: 0.78rem;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 .analyst-legend .good { color: var(--status-good); }
@@ -1013,14 +868,14 @@ button:not(.icon-button):not(.modal-skip):active {
 .analyst-legend .bad { color: var(--status-bad); }
 
 .analyst-count {
-  margin-top: 0.4rem;
-  font-size: 0.76rem;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
 .analyst-target-block {
-  margin-top: 1rem;
-  padding-top: 0.9rem;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -1029,15 +884,15 @@ button:not(.icon-button):not(.modal-skip):active {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.4rem 0.9rem;
-  font-size: 0.8rem;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
   color: var(--text-secondary);
-  margin-bottom: 0.9rem;
+  margin-bottom: var(--space-4);
 }
 
 .analyst-target-upside {
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
 }
 .analyst-target-upside.good { color: var(--status-good); }
 .analyst-target-upside.bad { color: var(--status-bad); }
@@ -1045,16 +900,16 @@ button:not(.icon-button):not(.modal-skip):active {
 .analyst-target-track {
   position: relative;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--border-subtle);
-  margin: 0.5rem 0.5rem;
+  margin: var(--space-2) var(--space-2);
 }
 
 .analyst-target-range {
   position: absolute;
   top: 0;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--accent);
   opacity: 0.35;
 }
@@ -1080,16 +935,16 @@ button:not(.icon-button):not(.modal-skip):active {
 .analyst-target-labels {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 1rem;
-  margin-top: 0.8rem;
-  font-size: 0.76rem;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
 .analyst-target-label {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .analyst-target-label .dot {
@@ -1111,10 +966,10 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .analyst-disclaimer {
-  margin-top: 0.9rem;
-  padding-top: 0.6rem;
+  margin-top: var(--space-4);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--border-subtle);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
@@ -1131,43 +986,42 @@ button:not(.icon-button):not(.modal-skip):active {
   gap: 1px;
   background: var(--border-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  margin: 1rem 0 1.35rem;
+  border-radius: var(--radius-lg);
+  margin: var(--space-4) 0 var(--space-5);
 }
 
 .highlight-tile {
   background: var(--bg-surface);
-  padding: 0.75rem 0.9rem;
+  padding: var(--space-3) var(--space-4);
   position: relative;
-  transition: background-color 0.2s ease, transform 0.25s var(--ease-snap);
+  transition: background-color 0.2s ease, transform 0.25s var(--ease-out);
 }
 .highlight-tile:hover {
   background: var(--bg-elevated);
-  transform: translateY(-2px);
   z-index: 1;
 }
 
 .highlight-tile:first-child {
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
+  border-top-left-radius: var(--radius-lg);
+  border-bottom-left-radius: var(--radius-lg);
 }
 .highlight-tile:last-child {
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
+  border-top-right-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 
 .highlight-tile .label {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .highlight-tile .value {
-  font-size: 1.2rem;
+  font-size: var(--text-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
@@ -1182,8 +1036,8 @@ button:not(.icon-button):not(.modal-skip):active {
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 /* ---------- Metric groups & cards ----------
@@ -1203,21 +1057,21 @@ button:not(.icon-button):not(.modal-skip):active {
    spacing bug (confirmed live) rather than an intentional flush-top
    design. */
 .metric-group {
-  margin-bottom: 1.35rem;
-  padding-top: 0.9rem;
+  margin-bottom: var(--space-5);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-subtle);
 }
 
 .metric-group h3 {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin: 0 0 0.65rem;
+  margin: 0 0 var(--space-3);
   scroll-margin-top: 0.75rem;
 }
 .metric-group h3 svg {
@@ -1233,24 +1087,24 @@ button:not(.icon-button):not(.modal-skip):active {
 .group-jump-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0 0 1.5rem;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-6);
 }
 
 .group-jump-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 999px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease,
-    transform 0.2s var(--ease-snap);
+    transform 0.2s var(--ease-out);
 }
 .group-jump-pill svg {
   opacity: 0.75;
@@ -1259,13 +1113,12 @@ button:not(.icon-button):not(.modal-skip):active {
   border-color: var(--accent);
   color: var(--text-primary);
   background: var(--bg-elevated);
-  transform: translateY(-1px);
 }
 
 .metric-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 /* Each card is now a fully separate, individually-rounded tile with real
@@ -1281,12 +1134,12 @@ button:not(.icon-button):not(.modal-skip):active {
 .metric-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-3);
   border-left: 3px solid var(--status-neutral);
   position: relative;
   cursor: pointer;
-  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.2s var(--ease-snap),
+  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.2s var(--ease-out),
     box-shadow 0.2s ease;
 }
 /* A faint status-tinted wash across the whole card, not just the edge --
@@ -1306,8 +1159,6 @@ button:not(.icon-button):not(.modal-skip):active {
    away from its shared-border neighbors). */
 .metric-card:hover {
   border-color: var(--border-strong);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
   z-index: 1;
 }
 
@@ -1315,25 +1166,25 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .metric-label {
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .metric-value {
-  font-size: 1.05rem;
+  font-size: var(--text-md);
   font-weight: 600;
-  margin-top: 0.3rem;
+  margin-top: var(--space-1);
   color: var(--text-primary);
 }
 
 .metric-value.na {
   color: var(--text-tertiary);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 
@@ -1349,14 +1200,14 @@ button:not(.icon-button):not(.modal-skip):active {
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-elevated);
-  padding: 0.85rem 0.95rem;
+  padding: var(--space-3) var(--space-4);
   z-index: 30;
   text-align: left;
   cursor: default;
   transform-origin: top center;
-  animation: popover-in 0.18s var(--ease-snap);
+  animation: popover-in var(--duration-ui) var(--ease-out);
 }
 
 @keyframes popover-in {
@@ -1372,7 +1223,7 @@ button:not(.icon-button):not(.modal-skip):active {
   top: auto;
   bottom: calc(100% + 8px);
   transform-origin: bottom center;
-  animation: popover-in-above 0.18s var(--ease-snap);
+  animation: popover-in-above var(--duration-ui) var(--ease-out);
 }
 
 @keyframes popover-in-above {
@@ -1381,25 +1232,25 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .metric-popover-title {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.45rem;
+  margin-bottom: var(--space-2);
 }
 
 .metric-popover-definition {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   line-height: 1.5;
-  margin: 0 0 0.55rem;
+  margin: 0 0 var(--space-2);
 }
 
 .metric-popover-assessment {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
   margin: 0;
-  padding: 0.5rem 0.6rem;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
   background: var(--status-neutral-bg);
   color: var(--text-primary);
 }
@@ -1408,11 +1259,11 @@ button:not(.icon-button):not(.modal-skip):active {
 .metric-popover-assessment.bad { background: var(--status-bad-bg); }
 
 .metric-popover-formula {
-  margin-top: 0.55rem;
-  padding-top: 0.5rem;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--border-subtle);
-  font-size: 0.72rem;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
   color: var(--text-tertiary);
 }
 
@@ -1421,9 +1272,9 @@ button:not(.icon-button):not(.modal-skip):active {
 .settings-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--scrim);
   z-index: 40;
-  animation: fade-in 0.15s ease;
+  animation: fade-in var(--duration-ui) var(--ease-out);
 }
 
 .settings-panel {
@@ -1437,11 +1288,11 @@ button:not(.icon-button):not(.modal-skip):active {
   border-left: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-elevated);
   z-index: 50;
-  padding: 1.25rem;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  animation: slide-in 0.2s ease;
+  gap: var(--space-5);
+  animation: slide-in var(--duration-ui) var(--ease-out);
 }
 
 @keyframes fade-in {
@@ -1462,25 +1313,25 @@ button:not(.icon-button):not(.modal-skip):active {
 
 .settings-panel-header h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--text-md);
 }
 
 .settings-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .settings-row-label {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: var(--text-primary);
 }
 
 .settings-row-sub {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
-  margin-top: 0.15rem;
+  margin-top: var(--space-1);
 }
 
 /* Small action pill on a settings row (e.g. "Change") -- small pill,
@@ -1489,12 +1340,12 @@ button:not(.icon-button):not(.modal-skip):active {
    used for primary form submits elsewhere in this panel. */
 .settings-row-action {
   flex-shrink: 0;
-  padding: 0.4rem 0.85rem;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--bg-elevated);
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
@@ -1511,7 +1362,7 @@ button:not(.icon-button):not(.modal-skip):active {
   align-self: flex-start;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 2px;
 }
 
@@ -1519,10 +1370,10 @@ button:not(.icon-button):not(.modal-skip):active {
   border: none;
   background: none;
   color: var(--text-tertiary);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0.35rem 0.8rem;
-  border-radius: 6px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -1535,17 +1386,17 @@ button:not(.icon-button):not(.modal-skip):active {
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .auth-field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .auth-field > span {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -1554,9 +1405,9 @@ button:not(.icon-button):not(.modal-skip):active {
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
-  border-radius: 10px;
-  padding: 0.6rem 0.8rem;
-  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
   outline: none;
   transition: border-color 0.15s ease;
 }
@@ -1566,7 +1417,7 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .auth-field-hint {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
@@ -1577,12 +1428,12 @@ button:not(.icon-button):not(.modal-skip):active {
    real submit button for attention. */
 .auth-forgot-link {
   align-self: flex-end;
-  margin-top: -0.55rem;
+  margin-top: calc(-1 * var(--space-2));
   background: none;
   border: none;
   padding: 0;
   color: var(--text-tertiary);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
@@ -1604,10 +1455,10 @@ button:not(.icon-button):not(.modal-skip):active {
 .auth-divider {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 0.2rem 0;
+  gap: var(--space-3);
+  margin: var(--space-1) 0;
   color: var(--text-tertiary);
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1634,11 +1485,11 @@ button:not(.icon-button):not(.modal-skip):active {
 .auth-signout {
   margin-top: auto;
   height: 44px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
@@ -1660,12 +1511,12 @@ button:not(.icon-button):not(.modal-skip):active {
    plain-muted-text version, placed after the Google button, went
    unnoticed). */
 .auth-disclaimer {
-  margin: 0.1rem 0 0;
-  padding: 0.55rem 0.7rem;
-  border-radius: 8px;
+  margin: 0 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -1683,12 +1534,12 @@ button:not(.icon-button):not(.modal-skip):active {
    properly" the way real fintech fine print does, instead of an alarm --
    still clearly present and legible, just not shouting. */
 .page-disclaimer {
-  margin: 0.5rem 0 0;
-  padding: 0.55rem 0.7rem;
-  border-radius: 8px;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   font-weight: 400;
   color: var(--text-secondary);
   line-height: 1.5;
@@ -1696,19 +1547,19 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .auth-user-summary {
-  padding-bottom: 1rem;
+  padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .auth-user-name {
-  font-size: 1.05rem;
+  font-size: var(--text-md);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .auth-user-email {
-  margin-top: 0.15rem;
-  font-size: 0.82rem;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
@@ -1720,14 +1571,14 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .auth-activity-label {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 0.6rem;
+  margin-bottom: var(--space-2);
 }
 
 .auth-activity-empty {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
@@ -1738,14 +1589,14 @@ button:not(.icon-button):not(.modal-skip):active {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-1);
 }
 
 .auth-activity-item {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.55rem 0;
+  gap: 0;
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -1754,12 +1605,12 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .auth-activity-action {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-primary);
 }
 
 .auth-activity-time {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
@@ -1772,12 +1623,12 @@ button:not(.icon-button):not(.modal-skip):active {
 .settings-theme-section {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .theme-picker {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .theme-picker-option {
@@ -1785,9 +1636,9 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 0.4rem;
-  border-radius: 10px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   cursor: pointer;
@@ -1825,7 +1676,7 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .theme-picker-name {
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -1859,29 +1710,29 @@ button:not(.icon-button):not(.modal-skip):active {
      unbalanced dead zone below it on anything taller than a laptop
      screen. Capped at 6rem so a real, tall filled-in result view doesn't
      get pushed awkwardly far down on large monitors. */
-  padding: clamp(2.5rem, 12vh, 6rem) 1.5rem 2.5rem;
+  padding: clamp(var(--space-8), 12vh, calc(var(--space-10) * 1.5)) var(--space-6) var(--space-8);
 }
 
 .calculator-card {
   width: 100%;
   max-width: 480px;
   height: fit-content;
-  padding: 1.5rem 1.5rem 1.25rem;
-  border-radius: 14px;
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
 
 .calculator-card h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--text-lg);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .calculator-subtitle {
-  margin: 0.35rem 0 1.4rem;
-  font-size: 0.85rem;
+  margin: var(--space-1) 0 var(--space-6);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -1898,26 +1749,26 @@ button:not(.icon-button):not(.modal-skip):active {
    sits in a different layout entirely (last element, nothing below it) and
    was never part of this complaint. */
 .calculator-card .calculator-subtitle {
-  margin-bottom: 0.7rem;
+  margin-bottom: var(--space-3);
 }
 .calculator-card .page-disclaimer {
-  margin-top: 0.2rem;
-  margin-bottom: 0.9rem;
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-4);
 }
 
 .calculator-stock-picker {
-  margin-bottom: 1.2rem;
-  padding-bottom: 1.1rem;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .calculator-stock-picker .calculator-field-header {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .calculator-stock-form {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .calculator-stock-form input {
@@ -1926,9 +1777,9 @@ button:not(.icon-button):not(.modal-skip):active {
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
-  border-radius: 10px;
-  padding: 0.55rem 0.8rem;
-  font-size: 0.88rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
   outline: none;
   transition: border-color 0.15s ease;
 }
@@ -1942,10 +1793,10 @@ button:not(.icon-button):not(.modal-skip):active {
   background: var(--accent);
   color: var(--accent-contrast);
   border: none;
-  border-radius: 10px;
-  padding: 0 1rem;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-4);
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
@@ -1962,12 +1813,12 @@ button:not(.icon-button):not(.modal-skip):active {
 .calculator-stock-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   background: var(--status-good-bg);
   border: 1px solid var(--status-good);
-  border-radius: 999px;
-  padding: 0.4rem 0.5rem 0.4rem 0.9rem;
-  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--status-good);
 }
@@ -1997,13 +1848,13 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .calculator-stock-error {
-  margin-top: 0.6rem;
+  margin-top: var(--space-2);
   color: var(--status-bad);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 
 .calculator-field-note {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   line-height: 1.4;
 }
@@ -2013,26 +1864,26 @@ button:not(.icon-button):not(.modal-skip):active {
    only state before that happens. */
 .calculator-empty-hint {
   text-align: center;
-  padding: 1.5rem 0.5rem 0.5rem;
+  padding: var(--space-6) var(--space-2) var(--space-2);
   color: var(--text-tertiary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .calculator-form {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: var(--space-4);
 }
 
 .calculator-field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .calculator-field > span,
 .calculator-field-header > span {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -2045,14 +1896,14 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .calculator-mode-toggle {
   display: inline-flex;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 2px;
 }
 
@@ -2060,10 +1911,10 @@ button:not(.icon-button):not(.modal-skip):active {
   border: none;
   background: none;
   color: var(--text-tertiary);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0.25rem 0.55rem;
-  border-radius: 6px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -2074,7 +1925,6 @@ button:not(.icon-button):not(.modal-skip):active {
 .calculator-mode-toggle button.active {
   background: var(--accent);
   color: var(--accent-contrast);
-  animation: period-pop 0.3s var(--ease-snap);
 }
 
 .calculator-mode-toggle button:disabled {
@@ -2085,11 +1935,11 @@ button:not(.icon-button):not(.modal-skip):active {
 .calculator-input-wrap {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  padding: 0 0.9rem;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-4);
   transition: border-color 0.15s ease;
 }
 
@@ -2124,9 +1974,9 @@ button:not(.icon-button):not(.modal-skip):active {
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   font-weight: 600;
-  padding: 0.65rem 0;
+  padding: var(--space-3) 0;
   /* Remove native number-input spinners so it reads like a plain field --
      the label + suffix already communicate units. */
   -moz-appearance: textfield;
@@ -2140,7 +1990,7 @@ button:not(.icon-button):not(.modal-skip):active {
 .calculator-input-prefix,
 .calculator-input-suffix {
   flex-shrink: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-tertiary);
 }
@@ -2155,9 +2005,9 @@ button:not(.icon-button):not(.modal-skip):active {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  margin: 0 -0.4rem 0 0.2rem;
-  padding: 0.3rem 1.35rem 0.3rem 0.5rem;
-  border-radius: 8px;
+  margin: 0 calc(-1 * var(--space-2)) 0 var(--space-1);
+  padding: var(--space-1) var(--space-5) var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
@@ -2175,7 +2025,7 @@ button:not(.icon-button):not(.modal-skip):active {
   border: none;
   outline: none;
   color: var(--text-tertiary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -2203,7 +2053,7 @@ button:not(.icon-button):not(.modal-skip):active {
    breathing room on top of that gap, same margin .calculator-results uses
    above its own top border for a section-start feel. */
 .growth-chart-header {
-  margin-top: 0.6rem;
+  margin-top: var(--space-2);
 }
 
 /* The actual p*(1+r)^t curve behind the result tiles below -- this is
@@ -2212,9 +2062,9 @@ button:not(.icon-button):not(.modal-skip):active {
    deterministic data (see GrowthChart.tsx's --accent color choice), not
    the simulator's synthetic random walk one page over. */
 .growth-chart-card {
-  margin-top: 0.75rem;
-  padding: 0.9rem 1rem 0.5rem;
-  border-radius: 12px;
+  margin-top: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
 }
@@ -2227,36 +2077,34 @@ button:not(.icon-button):not(.modal-skip):active {
 .calculator-results {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-  margin-top: 1.4rem;
-  padding-top: 1.2rem;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
   border-top: 1px solid var(--border-subtle);
 }
 
 .calculator-result-tile {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 0.7rem 0.6rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-2);
   text-align: center;
-  transition: transform 0.25s var(--ease-snap), box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.25s var(--ease-out), box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .calculator-result-tile:hover {
-  transform: translateY(-2px);
   border-color: var(--border-strong);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
 .calculator-result-tile .label {
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .calculator-result-tile .value {
-  margin-top: 0.3rem;
-  font-size: 1rem;
+  margin-top: var(--space-1);
+  font-size: var(--text-md);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -2275,29 +2123,27 @@ button:not(.icon-button):not(.modal-skip):active {
    search page's metric cards -- deliberately never averaged into one
    combined score, and deliberately not styled to look uniformly positive. */
 .calculator-risk-section {
-  margin-top: 1.4rem;
-  padding-top: 1.2rem;
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
   border-top: 1px solid var(--border-subtle);
 }
 
 .calculator-risk-rows {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.7rem;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .calculator-risk-row {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-left: 3px solid var(--status-neutral);
-  border-radius: 10px;
-  padding: 0.65rem 0.8rem;
-  transition: transform 0.25s var(--ease-snap), box-shadow 0.2s ease;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-3);
+  transition: transform 0.25s var(--ease-out), box-shadow 0.2s ease;
 }
 .calculator-risk-row:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
 .calculator-risk-row.good { border-left-color: var(--status-good); background: var(--status-good-bg); }
@@ -2308,17 +2154,17 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .calculator-risk-row-label {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .calculator-risk-row-tier {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -2330,23 +2176,23 @@ button:not(.icon-button):not(.modal-skip):active {
 .calculator-risk-row.bad .calculator-risk-row-tier { color: var(--status-bad); }
 
 .calculator-risk-row-value {
-  margin-top: 0.15rem;
-  font-size: 0.76rem;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
 .calculator-risk-row-note {
-  margin: 0.35rem 0 0;
-  font-size: 0.76rem;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   line-height: 1.4;
 }
 
 .calculator-disclaimer {
-  margin-top: 1.1rem;
-  padding-top: 0.8rem;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   line-height: 1.4;
 }
@@ -2365,13 +2211,13 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   width: 100%;
-  margin: 0.9rem 0 1.3rem;
+  margin: var(--space-4) 0 var(--space-5);
 }
 
 .simulator-run-icon {
-  transition: transform 0.4s var(--ease-snap);
+  transition: transform 0.4s var(--ease-out);
 }
 /* A little roll on press, not on hover -- hovering constantly (which
    happens just moving toward the button) rolling the die would be
@@ -2381,7 +2227,7 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .simulator-chart-card {
-  margin-bottom: 1.3rem;
+  margin-bottom: var(--space-5);
 }
 
 /* ---------- Shared modal (overlay + card) ---------- */
@@ -2393,12 +2239,10 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: var(--space-7);
   overflow-y: auto;
-  background: rgba(10, 12, 16, 0.55);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  animation: fade-in 0.2s ease;
+  background: var(--scrim);
+  animation: fade-in var(--duration-ui) var(--ease-out);
 }
 
 .modal-card {
@@ -2406,20 +2250,20 @@ button:not(.icon-button):not(.modal-skip):active {
   max-width: 520px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-elevated);
-  padding: 2rem;
+  padding: var(--space-7);
 }
 
 .modal-card h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.3rem;
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
   color: var(--text-primary);
 }
 
 .modal-intro {
-  margin: 0 0 1.25rem;
-  font-size: 0.92rem;
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.55;
 }
@@ -2434,19 +2278,19 @@ button:not(.icon-button):not(.modal-skip):active {
 .modal-video {
   display: block;
   width: 100%;
-  margin: 0 0 1.25rem;
-  border-radius: 12px;
+  margin: 0 0 var(--space-5);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: #000;
 }
 
 .modal-steps {
-  margin: 0 0 1.5rem;
-  padding-left: 1.3rem;
+  margin: 0 0 var(--space-6);
+  padding-left: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  font-size: 0.9rem;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
   color: var(--text-primary);
   line-height: 1.5;
 }
@@ -2457,11 +2301,11 @@ button:not(.icon-button):not(.modal-skip):active {
 .modal-form {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  padding: 0.35rem 0.35rem 0.35rem 1.3rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-5);
   transition: border-color 0.15s ease;
 }
 
@@ -2476,8 +2320,8 @@ button:not(.icon-button):not(.modal-skip):active {
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 0.9rem;
-  padding: 0.5rem 0;
+  font-size: var(--text-sm);
+  padding: var(--space-2) 0;
 }
 
 .modal-form input::placeholder {
@@ -2489,9 +2333,9 @@ button:not(.icon-button):not(.modal-skip):active {
   background: var(--accent);
   color: var(--accent-contrast);
   border: none;
-  border-radius: 999px;
-  padding: 0.6rem 1.3rem;
-  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--text-sm);
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -2515,12 +2359,12 @@ button:not(.icon-button):not(.modal-skip):active {
 .modal-skip {
   display: block;
   width: 100%;
-  margin-top: 0.9rem;
-  padding: 0.5rem;
+  margin-top: var(--space-4);
+  padding: var(--space-2);
   background: none;
   border: none;
   color: var(--text-tertiary);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   text-align: center;
   cursor: pointer;
@@ -2545,7 +2389,7 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .trading-summary {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 /* Coin icon + number, rendered as one inline unit with real breathing room
@@ -2586,11 +2430,11 @@ button:not(.icon-button):not(.modal-skip):active {
 .trading-delayed-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   background: var(--status-warning-bg);
   color: var(--status-warning);
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -2605,8 +2449,8 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
   flex-wrap: wrap;
 }
 .trading-chart-controls .price-chart-period-row {
@@ -2617,17 +2461,17 @@ button:not(.icon-button):not(.modal-skip):active {
   display: inline-flex;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 2px;
 }
 .trading-series-toggle button {
   border: none;
   background: none;
   color: var(--text-tertiary);
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0.3rem 0.65rem;
-  border-radius: 6px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -2639,9 +2483,9 @@ button:not(.icon-button):not(.modal-skip):active {
 /* ---------- Trade panel (live price + buy/sell) ---------- */
 
 .trading-trade-panel {
-  margin-top: 1.1rem;
-  padding: 1rem 1.1rem;
-  border-radius: 12px;
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
 }
@@ -2649,20 +2493,20 @@ button:not(.icon-button):not(.modal-skip):active {
 .trading-live-price {
   display: flex;
   align-items: baseline;
-  gap: 0.65rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  margin-bottom: 0.9rem;
+  margin-bottom: var(--space-4);
 }
 
 .trading-live-price-value {
-  font-size: 1.4rem;
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .trading-held-note {
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   margin-left: auto;
 }
@@ -2670,7 +2514,7 @@ button:not(.icon-button):not(.modal-skip):active {
 .trading-trade-controls {
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -2681,18 +2525,18 @@ button:not(.icon-button):not(.modal-skip):active {
 
 .trading-trade-buttons {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .trading-buy-btn,
 .trading-sell-btn {
-  padding: 0.6rem 1.3rem;
-  border-radius: 10px;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-sm);
   border: none;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.2s var(--ease-snap);
+  transition: opacity 0.15s ease, transform 0.2s var(--ease-out);
 }
 .trading-buy-btn {
   background: var(--status-good);
@@ -2700,11 +2544,10 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 .trading-sell-btn {
   background: var(--status-bad);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 .trading-buy-btn:hover:not(:disabled),
 .trading-sell-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
 }
 .trading-buy-btn:disabled,
 .trading-sell-btn:disabled {
@@ -2713,8 +2556,8 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .trading-trade-success {
-  margin-top: 0.6rem;
-  font-size: 0.8rem;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--status-good);
 }
@@ -2722,26 +2565,26 @@ button:not(.icon-button):not(.modal-skip):active {
 /* ---------- Holdings table ---------- */
 
 .trading-section-header {
-  margin-top: 1.6rem;
-  padding-top: 1.1rem;
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-subtle);
 }
 
 .trading-table-wrap {
   overflow-x: auto;
-  margin-top: 0.7rem;
+  margin-top: var(--space-3);
 }
 
 .trading-holdings-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
 }
 
 .trading-holdings-table th {
   text-align: left;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.7rem;
+  padding: var(--space-2) var(--space-2);
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -2751,7 +2594,7 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .trading-holdings-table td {
-  padding: 0.55rem 0.6rem;
+  padding: var(--space-2) var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
   white-space: nowrap;
@@ -2763,7 +2606,7 @@ button:not(.icon-button):not(.modal-skip):active {
   font-weight: 600;
 }
 .trading-table-stock-ticker {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
@@ -2778,10 +2621,9 @@ button:not(.icon-button):not(.modal-skip):active {
    literal button in it. */
 .trading-holdings-row {
   cursor: pointer;
-  transition: transform 0.25s var(--ease-snap), background-color 0.15s ease;
+  transition: transform 0.25s var(--ease-out), background-color 0.15s ease;
 }
 .trading-holdings-row:hover {
-  transform: translateY(-2px);
   background: var(--bg-hover);
 }
 .trading-holdings-row:active {
@@ -2790,7 +2632,7 @@ button:not(.icon-button):not(.modal-skip):active {
 
 .trading-holdings-row-arrow {
   color: var(--text-tertiary);
-  transition: transform 0.25s var(--ease-snap), color 0.15s ease;
+  transition: transform 0.25s var(--ease-out), color 0.15s ease;
 }
 .trading-holdings-row:hover .trading-holdings-row-arrow {
   color: var(--accent);
@@ -2800,10 +2642,10 @@ button:not(.icon-button):not(.modal-skip):active {
 /* ---------- Transaction history ---------- */
 
 .trading-transactions-list {
-  margin-top: 0.7rem;
+  margin-top: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-2);
   max-height: 320px;
   overflow-y: auto;
 }
@@ -2811,20 +2653,20 @@ button:not(.icon-button):not(.modal-skip):active {
 .trading-transaction-row {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.55rem 0.7rem;
-  border-radius: 9px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   flex-wrap: wrap;
 }
 
 .trading-transaction-badge {
-  font-size: 0.66rem;
+  font-size: var(--text-xs);
   font-weight: 700;
-  padding: 0.15rem 0.4rem;
-  border-radius: 5px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   letter-spacing: 0.02em;
 }
 .trading-transaction-badge.buy {
@@ -2853,25 +2695,25 @@ button:not(.icon-button):not(.modal-skip):active {
 
 .trading-transaction-time {
   margin-left: auto;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
 /* ---------- Reset portfolio ---------- */
 
 .trading-reset-row {
-  margin-top: 1.6rem;
-  padding-top: 1.1rem;
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-subtle);
 }
 
 .trading-reset-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: none;
   color: var(--status-bad);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
@@ -2883,19 +2725,19 @@ button:not(.icon-button):not(.modal-skip):active {
 .trading-reset-confirm {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
 .trading-reset-confirm-btn {
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   border: none;
   background: var(--status-bad);
-  color: #fff;
-  font-size: 0.8rem;
+  color: var(--accent-contrast);
+  font-size: var(--text-xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -2906,12 +2748,12 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .trading-help-btn {
   flex-shrink: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -2920,7 +2762,7 @@ button:not(.icon-button):not(.modal-skip):active {
    between them when both are actually present, so Calculator/Simulator's
    chip-OR-form pages (which never show both at once) are unaffected. */
 .calculator-stock-chip + .calculator-stock-form {
-  margin-top: 0.6rem;
+  margin-top: var(--space-2);
 }
 
 /* ---------- Paper Trading: quantity stepper ----------
@@ -2932,13 +2774,13 @@ button:not(.icon-button):not(.modal-skip):active {
    replacing the native spinner (clearer than relying on scroll-wheel/
    arrow-key increment, which isn't obvious it exists at all). */
 .trading-qty-stepper {
-  padding: 0.15rem;
-  gap: 0.15rem;
+  padding: var(--space-1);
+  gap: var(--space-1);
 }
 
 .trading-qty-stepper input {
   text-align: center;
-  padding: 0.5rem 0;
+  padding: var(--space-2) 0;
 }
 
 .trading-qty-step-btn {
@@ -2949,10 +2791,10 @@ button:not(.icon-button):not(.modal-skip):active {
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-hover);
   color: var(--text-secondary);
-  font-size: 1.05rem;
+  font-size: var(--text-md);
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -2991,9 +2833,9 @@ button:not(.icon-button):not(.modal-skip):active {
 .market-status-dont-show {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: -0.4rem 0 1.1rem;
-  font-size: 0.82rem;
+  gap: var(--space-2);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -3014,22 +2856,22 @@ button:not(.icon-button):not(.modal-skip):active {
    needed a proportional breakdown like this before. */
 
 .trading-tab-toggle {
-  margin-bottom: 1.1rem;
+  margin-bottom: var(--space-4);
 }
 
 .portfolio-analysis-trade-rows {
-  margin-top: 1.3rem;
+  margin-top: var(--space-5);
 }
 
 .portfolio-allocation {
-  margin-top: 0.8rem;
+  margin-top: var(--space-3);
 }
 
 .portfolio-allocation-bar {
   display: flex;
   width: 100%;
   height: 14px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
@@ -3050,22 +2892,21 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 .portfolio-allocation-bar.has-hover .portfolio-allocation-segment.highlighted {
   opacity: 1;
-  filter: brightness(1.15);
 }
 
 .portfolio-allocation-legend {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin-top: 0.7rem;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
 }
 
 .portfolio-allocation-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: 8px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
   transition: background-color 0.15s ease;
 }
 
@@ -3088,7 +2929,7 @@ button:not(.icon-button):not(.modal-skip):active {
 .portfolio-allocation-name {
   flex: 1;
   min-width: 0;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -3097,7 +2938,7 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .portfolio-allocation-pct {
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   width: 3.2rem;
   text-align: right;
@@ -3105,14 +2946,14 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .portfolio-allocation-value {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .portfolio-value-chart-card {
-  margin-top: 0.6rem;
+  margin-top: var(--space-2);
 }
 
 /* ---------- Results League (Phase 2) ----------
@@ -3122,25 +2963,25 @@ button:not(.icon-button):not(.modal-skip):active {
 .league-page {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem 1.5rem 2.5rem;
+  padding: var(--space-6) var(--space-6) var(--space-8);
 }
 
 .league-page-header {
   max-width: 1300px;
-  margin: 0 auto 1rem;
+  margin: 0 auto var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 .league-page-header h1 {
-  margin: 0.2rem 0 0;
-  font-size: 1.6rem;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xl);
   letter-spacing: -0.015em;
 }
 
 .league-lock {
   display: inline-block;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--status-good);
 }
@@ -3163,7 +3004,7 @@ button:not(.icon-button):not(.modal-skip):active {
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.25rem;
+  gap: var(--space-5);
   align-items: start;
 }
 @media (min-width: 1100px) {
@@ -3189,22 +3030,22 @@ button:not(.icon-button):not(.modal-skip):active {
 .league-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .league-eighty {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--text-secondary);
-  padding: 0.6rem 0.75rem;
-  border-radius: 10px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   background: var(--status-neutral-bg);
 }
 
 .league-range-inputs {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .league-range-inputs .calculator-input-wrap {
   flex: 1;
@@ -3212,11 +3053,11 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 .league-range-to {
   color: var(--text-tertiary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .league-definition {
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   line-height: 1.45;
 }
@@ -3228,7 +3069,7 @@ button:not(.icon-button):not(.modal-skip):active {
 .league-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: var(--space-2);
 }
 .group-jump-pill.active {
   border-color: var(--accent);
@@ -3237,8 +3078,8 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .league-notes p {
-  margin: 0 0 1rem;
-  font-size: 0.9rem;
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   white-space: pre-line;
@@ -3255,29 +3096,29 @@ button:not(.icon-button):not(.modal-skip):active {
   margin: 0;
 }
 .league-fieldset legend {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 0.35rem;
+  margin-bottom: var(--space-1);
 }
 .league-radio {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  margin-right: 1rem;
-  font-size: 0.9rem;
+  gap: var(--space-1);
+  margin-right: var(--space-4);
+  font-size: var(--text-sm);
   min-height: 44px;
 }
 
 /* Admin page (Phase 2) */
 .admin-tabs {
-  margin: 0.75rem 0 1.25rem;
+  margin: var(--space-3) 0 var(--space-5);
   flex-wrap: wrap;
 }
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.6rem 0.9rem;
+  gap: var(--space-2) var(--space-4);
 }
 .admin-grid input,
 .admin-grid select,
@@ -3286,26 +3127,26 @@ button:not(.icon-button):not(.modal-skip):active {
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
-  border-radius: 10px;
-  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 .admin-inline-edit {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.5rem 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
 }
 .admin-inline-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .admin-audit-details {
   max-width: 420px;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   white-space: normal !important;
   word-break: break-word;
   color: var(--text-tertiary);
@@ -3313,10 +3154,10 @@ button:not(.icon-button):not(.modal-skip):active {
 
 @media (max-width: 640px) {
   .league-page {
-    padding: 1rem 0.9rem 2rem;
+    padding: var(--space-4) var(--space-4) var(--space-7);
   }
   .league-range-inputs input {
-    font-size: 16px;
+    font-size: var(--text-md);
   }
 }
 
@@ -3330,7 +3171,7 @@ button:not(.icon-button):not(.modal-skip):active {
 @media (max-width: 640px) {
   .sidebar {
     width: 48px;
-    padding: 0.65rem 0;
+    padding: var(--space-3) 0;
   }
   .sidebar-icon-button {
     width: 34px;
@@ -3338,10 +3179,10 @@ button:not(.icon-button):not(.modal-skip):active {
   }
 
   .app-header {
-    padding: 0.6rem 0.9rem;
+    padding: var(--space-2) var(--space-4);
   }
   .logo-wordmark {
-    font-size: 0.95rem;
+    font-size: var(--text-md);
   }
 
   /* Account/Settings slide-overs become a full-width sheet on phones --
@@ -3351,26 +3192,26 @@ button:not(.icon-button):not(.modal-skip):active {
     width: 100%;
     max-width: 100%;
     border-left: none;
-    padding: calc(1rem + env(safe-area-inset-top)) 1.1rem calc(1.25rem + env(safe-area-inset-bottom));
+    padding: calc(var(--space-4) + env(safe-area-inset-top)) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
     overflow-y: auto;
   }
   .settings-panel-header .icon-button {
     width: 44px;
     height: 44px;
-    margin-right: -0.5rem;
+    margin-right: calc(-1 * var(--space-2));
   }
   .auth-field input {
-    font-size: 16px;
+    font-size: var(--text-md);
   }
   .header-signin {
     height: 36px;
   }
 
   .search-bar-wrap {
-    padding: 1rem 0.9rem 0.4rem;
+    padding: var(--space-4) var(--space-4) var(--space-2);
   }
   .content-grid {
-    padding: 0.65rem 0.9rem 1rem;
+    padding: var(--space-3) var(--space-4) var(--space-4);
   }
   /* A 280px-min-width form barely fits phone width on its own, so let it
      take the full row. */
@@ -3386,14 +3227,14 @@ button:not(.icon-button):not(.modal-skip):active {
      individually here is a deliberate departure from that seamless look
      in exchange for correctness once rows wrap. */
   .highlight-tile {
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
   }
 
   .calculator-page {
-    padding: 1.5rem 1rem;
+    padding: var(--space-6) var(--space-4);
   }
   .calculator-card {
-    padding: 1.25rem 1rem 1rem;
+    padding: var(--space-5) var(--space-4) var(--space-4);
   }
   /* 3 equal columns leave ~85px per tile at phone width -- too narrow for
      currency/percentage values without wrapping. Full-width stacking. */
@@ -3402,10 +3243,10 @@ button:not(.icon-button):not(.modal-skip):active {
   }
 
   .modal-overlay {
-    padding: 1rem;
+    padding: var(--space-4);
   }
   .modal-card {
-    padding: 1.35rem;
+    padding: var(--space-5);
   }
 }
 
@@ -3432,15 +3273,15 @@ button:not(.icon-button):not(.modal-skip):active {
   color: var(--text-secondary);
 }
 .legal-page h2 {
-  margin: 1.5rem 0 0.4rem;
-  font-size: 1.05rem;
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: var(--text-md);
   color: var(--text-primary);
 }
 .legal-page ul {
-  padding-left: 1.25rem;
+  padding-left: var(--space-5);
 }
 .legal-page li + li {
-  margin-top: 0.35rem;
+  margin-top: var(--space-1);
 }
 
 .site-footer a {
@@ -3448,10 +3289,10 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .site-footer {
-  margin-top: 1.5rem;
-  padding-top: 0.75rem;
+  margin-top: var(--space-6);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
   color: var(--text-tertiary);
 }
@@ -3462,46 +3303,44 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 
 .picker-page h2 {
-  font-size: 1.35rem;
+  font-size: var(--text-xl);
 }
 
 .picker-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
-  gap: 0.8rem;
-  margin-top: 1.1rem;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
   align-items: start;
 }
 
 .picker-card {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.95rem 1rem;
-  border-radius: 12px;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   color: var(--text-primary);
   text-decoration: none;
-  transition: border-color 0.15s ease, transform 0.25s var(--ease-snap), box-shadow 0.25s ease;
+  transition: border-color 0.15s ease, transform 0.25s var(--ease-out), box-shadow 0.25s ease;
 }
 .picker-card:focus-visible,
 .picker-card.expanded {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 @media (hover: hover) and (pointer: fine) {
   .picker-card:hover {
     border-color: var(--accent);
-    transform: translateY(-2px);
   }
 }
 
 .picker-card-top {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.72rem;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 .picker-sector {
@@ -3514,13 +3353,13 @@ button:not(.icon-button):not(.modal-skip):active {
   white-space: nowrap;
 }
 .picker-name {
-  margin: 0.1rem 0 0;
-  font-size: 1rem;
+  margin: 0 0 0;
+  font-size: var(--text-md);
   line-height: 1.3;
 }
 .picker-desc {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -3548,50 +3387,50 @@ button:not(.icon-button):not(.modal-skip):active {
 .picker-figures {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  margin: 0.6rem 0 0.4rem;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-2);
 }
 .picker-figures dt {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 .picker-figures dd {
-  margin: 0.1rem 0 0;
-  font-size: 0.95rem;
+  margin: 0 0 0;
+  font-size: var(--text-md);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .picker-source {
-  margin: 0 0 0.3rem;
-  font-size: 0.7rem;
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xs);
   line-height: 1.45;
   color: var(--text-tertiary);
 }
 .picker-cta {
   display: inline-block;
-  margin-top: 0.3rem;
-  font-size: 0.82rem;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--accent);
 }
 
 .picker-shuffle {
-  margin-top: 0.9rem;
+  margin-top: var(--space-4);
 }
 
 .picker-empty {
-  margin-top: 1.1rem;
-  padding: 1.1rem 1.2rem;
-  border-radius: 12px;
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
   background: var(--status-neutral-bg);
 }
 .picker-empty h3 {
-  margin: 0 0 0.35rem;
-  font-size: 1rem;
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-md);
 }
 .picker-empty p {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -3605,16 +3444,16 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   min-height: 44px;
-  padding: 0.45rem 0;
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
   text-decoration: none;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
 }
 .picker-mine-status {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   text-align: right;
 }
@@ -3625,7 +3464,7 @@ button:not(.icon-button):not(.modal-skip):active {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--space-5);
 }
 .league-company-flow > .calculator-card {
   max-width: none;
@@ -3639,33 +3478,33 @@ button:not(.icon-button):not(.modal-skip):active {
   margin-right: auto;
 }
 .league-jump {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   width: fit-content;
 }
 
 .league-explainer-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 1rem 1.5rem;
-  margin-top: 0.9rem;
+  gap: var(--space-4) var(--space-6);
+  margin-top: var(--space-4);
 }
 .league-explainer h3 {
-  margin: 0 0 0.3rem;
-  font-size: 0.9rem;
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
 }
 .league-explainer p,
 .league-explainer li {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   line-height: 1.55;
   color: var(--text-secondary);
 }
 .league-explainer ul {
   margin: 0;
-  padding-left: 1.1rem;
+  padding-left: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 /* Phones: the icon rail becomes a labelled bottom bar. */
@@ -3680,7 +3519,7 @@ button:not(.icon-button):not(.modal-skip):active {
     flex-direction: row;
     justify-content: space-around;
     gap: 0;
-    padding: 0.3rem 0.5rem calc(0.3rem + env(safe-area-inset-bottom));
+    padding: var(--space-1) var(--space-2) calc(var(--space-1) + env(safe-area-inset-bottom));
     border-right: none;
     border-top: 1px solid var(--border-subtle);
     background: color-mix(in srgb, var(--bg-surface) 95%, transparent);
@@ -3690,18 +3529,18 @@ button:not(.icon-button):not(.modal-skip):active {
     max-width: 120px;
     height: 52px;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: var(--space-1);
   }
   .sidebar-icon-button.active {
     box-shadow: none;
   }
   .sidebar-label {
     display: block;
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     font-weight: 600;
   }
   .app-shell-content {
-    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--space-10) + env(safe-area-inset-bottom));
   }
 }
 .calculator-card.picker-page {
@@ -3720,7 +3559,7 @@ button:not(.icon-button):not(.modal-skip):active {
 
 /* Admin Companies board (2026-10) */
 .admin-board-actions {
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 .admin-board {
   list-style: none;
@@ -3729,23 +3568,23 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 .admin-board-row {
   border-bottom: 1px solid var(--border-subtle);
-  padding: 0.7rem 0;
+  padding: var(--space-3) 0;
 }
 .admin-board-main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 0.9rem;
+  gap: var(--space-2) var(--space-4);
 }
 .admin-board-info {
   flex: 1 1 260px;
   min-width: 0;
 }
 .admin-status {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   background: var(--status-neutral-bg);
   color: var(--text-secondary);
   white-space: nowrap;
@@ -3766,15 +3605,15 @@ button:not(.icon-button):not(.modal-skip):active {
   cursor: not-allowed;
 }
 .admin-panel {
-  margin-top: 0.75rem;
-  padding: 0.9rem;
-  border-radius: 12px;
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
 }
 .admin-more-section {
   border-bottom: 1px solid var(--border-subtle);
-  padding: 0.6rem 0;
+  padding: var(--space-2) 0;
 }
 .admin-more-section summary {
   cursor: pointer;
@@ -3789,42 +3628,42 @@ button:not(.icon-button):not(.modal-skip):active {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.5rem 1.75rem;
+  gap: var(--space-2) var(--space-6);
 }
 .picker-season-value {
-  font-size: 1.4rem;
+  font-size: var(--text-xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .picker-season-label {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 .picker-season .picker-source {
   flex-basis: 100%;
-  margin: 0.2rem 0 0;
+  margin: var(--space-1) 0 0;
 }
 
 /* Results page (2026-10) */
 .results-title {
-  margin-top: 0.6rem;
+  margin-top: var(--space-2);
 }
 .results-score-label {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-tertiary);
 }
 .results-score-value {
-  font-size: 2.4rem;
+  font-size: var(--text-2xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
-  margin: 0.15rem 0 0.4rem;
+  margin: var(--space-1) 0 var(--space-2);
 }
 .results-score p,
 .results-explain li {
-  margin: 0.25rem 0 0;
-  font-size: 0.88rem;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -3833,27 +3672,27 @@ button:not(.icon-button):not(.modal-skip):active {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem 1rem;
+  gap: var(--space-2) var(--space-4);
 }
 .results-chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 .results-points {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .results-explain {
-  margin: 0.8rem 0 0;
-  padding-left: 1.1rem;
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-4);
 }
 
 /* Number line: track with your range, markers, and labels stacked in lanes. */
 .nl {
   position: relative;
-  margin: 1.4rem 0 0.4rem;
+  margin: var(--space-6) 0 var(--space-2);
 }
 .nl-track {
   position: relative;
@@ -3900,12 +3739,12 @@ button:not(.icon-button):not(.modal-skip):active {
 }
 .nl-labels {
   position: relative;
-  margin-top: 0.7rem;
+  margin-top: var(--space-3);
 }
 .nl-label {
   position: absolute;
   white-space: nowrap;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   line-height: 18px;
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
@@ -3923,14 +3762,14 @@ button:not(.icon-button):not(.modal-skip):active {
 .nl-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem 1rem;
-  font-size: 0.76rem;
+  gap: var(--space-1) var(--space-4);
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 .nl-legend span {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 .nl-key {
   display: inline-block;
@@ -3960,4 +3799,1396 @@ button:not(.icon-button):not(.modal-skip):active {
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   border-top: 8px solid var(--text-tertiary);
+}
+
+/* =====================================================================
+   Design system (2026-11 design pass)
+   Last in the file on purpose: these rules define the shell, buttons,
+   forms, lists and sheets for every live screen, and win over the older
+   per-feature rules above. Tokens only (theme.css); no literal colours,
+   spacing or radii here.
+   ===================================================================== */
+
+/* ---------- Shell: one scroll area, glass bars on top ---------- */
+
+.app-shell {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* The content column is the scroller, so the page scrolls under the
+   sticky glass header (and the phone tab bar). scrollbar-gutter keeps the
+   width stable when content grows (it used to cause a hover/layout loop
+   on the metric popovers). */
+.app-shell-content {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
+.app-main {
+  flex: 1 0 auto;
+  overflow: visible;
+  min-height: auto;
+}
+
+.metrics-pane,
+.calculator-page,
+.league-page {
+  overflow: visible;
+  flex: none;
+}
+
+/* Liquid glass: only the navigation layer and sheets. */
+.app-header,
+.sidebar,
+.sheet {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+.sheet {
+  background: var(--glass-sheet-bg);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-header,
+  .sidebar,
+  .sheet {
+    background: var(--glass-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-header,
+  .sidebar,
+  .sheet {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: var(--header-height);
+  flex-shrink: 0;
+  padding: 0 var(--space-6);
+  border-bottom: 1px solid var(--glass-edge);
+  box-shadow: inset 0 -1px 0 var(--glass-highlight);
+}
+
+.app-header-actions {
+  gap: var(--space-2);
+}
+
+.logo-mark {
+  min-height: var(--control-height);
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.logo-mark:hover {
+  opacity: 1;
+}
+.logo-wordmark {
+  font-size: var(--text-lg);
+}
+
+.icon-button {
+  width: var(--control-height);
+  height: var(--control-height);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+.icon-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: transparent;
+}
+.icon-button:active {
+  background: var(--bg-pressed);
+}
+
+.header-avatar {
+  width: var(--control-height);
+  height: var(--control-height);
+  background: var(--bg-elevated);
+  font-size: var(--text-sm);
+}
+.header-avatar:hover {
+  background: var(--bg-hover);
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-2);
+  border-right: 1px solid var(--glass-edge);
+  box-shadow: inset -1px 0 0 var(--glass-highlight);
+}
+.sidebar-icon-button {
+  width: 100%;
+  height: auto;
+  min-height: 56px;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+.sidebar-icon-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: transparent;
+}
+.sidebar-icon-button.active {
+  background: var(--accent-tint);
+  color: var(--accent);
+  border-color: transparent;
+  box-shadow: none;
+}
+.sidebar-label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+/* ---------- Page structure ---------- */
+
+.page {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-10);
+}
+.page-wide {
+  max-width: var(--content-wide);
+}
+.page-wide .site-footer {
+  max-width: none;
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+}
+.page-title {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.page-title-sub {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+}
+.page-lede {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--text-lg);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+.page-meta,
+.page-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.page-header-action {
+  margin-top: var(--space-3);
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height);
+  margin-bottom: calc(-1 * var(--space-2));
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.section {
+  margin-bottom: var(--space-9);
+}
+.section-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+.subsection-title {
+  margin: var(--space-7) 0 var(--space-3);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.subsection-title:first-child {
+  margin-top: 0;
+}
+.section-text {
+  margin: 0 0 var(--space-4);
+  max-width: 65ch;
+  color: var(--text-secondary);
+}
+.empty-note {
+  margin: var(--space-2) 0;
+  color: var(--text-secondary);
+}
+.footnote {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+  color: var(--text-tertiary);
+}
+.notice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.site-footer {
+  max-width: var(--content-max);
+  margin: var(--space-10) auto 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.site-footer a {
+  color: var(--text-secondary);
+}
+
+/* ---------- Grouped lists (one calm surface, hairline dividers) ---------- */
+
+.group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+.group > li {
+  position: relative;
+}
+.group > li + li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: var(--space-5);
+  right: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ---------- Buttons ----------
+   One primary per screen; secondary (tinted), tertiary (text), destructive.
+   Hover changes the background, press darkens it and scales down a little
+   (no scale under reduced motion), focus shows a ring, busy shows a
+   spinner, disabled is grey rather than faded. */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-5);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.btn-block {
+  width: 100%;
+}
+.btn-compact {
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.btn-primary {
+  background: var(--accent-fill);
+  color: var(--accent-contrast);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-fill-hover);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-fill-pressed);
+}
+
+.btn-secondary {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--accent-tint-hover);
+}
+.btn-secondary:active:not(:disabled) {
+  background: var(--accent-tint-hover);
+  color: var(--text-primary);
+}
+
+.btn-tertiary {
+  background: transparent;
+  color: var(--accent);
+}
+.btn-tertiary:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+.btn-tertiary:active:not(:disabled) {
+  background: var(--bg-pressed);
+}
+
+.btn-destructive {
+  background: var(--negative-bg);
+  color: var(--negative);
+}
+.btn-destructive:hover:not(:disabled),
+.btn-destructive:active:not(:disabled) {
+  background: var(--negative-fill);
+  color: var(--accent-contrast);
+}
+.btn-destructive-filled {
+  background: var(--negative-fill);
+  color: var(--accent-contrast);
+}
+.btn-destructive-filled:hover:not(:disabled),
+.btn-destructive-filled:active:not(:disabled) {
+  background: var(--negative-fill-hover);
+}
+
+.btn:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+.btn-tertiary:disabled {
+  background: transparent;
+}
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
+.btn[aria-busy="true"]::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn[aria-busy="true"]::before {
+    animation: none;
+  }
+}
+
+.link-button {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.link-button:active:not(:disabled) {
+  transform: none;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Segmented control: theme, sign in/up, admin tabs, chart periods. */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--segment-track);
+  border: none;
+}
+.segmented-full {
+  display: flex;
+  width: 100%;
+}
+.segmented-full button {
+  flex: 1;
+}
+.segmented button {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  box-shadow: none;
+  cursor: pointer;
+}
+.segmented button:hover {
+  background: var(--segment-hover);
+  color: var(--text-primary);
+}
+.segmented button.active,
+.segmented button[aria-selected="true"] {
+  background: var(--segment-active);
+  color: var(--text-primary);
+  box-shadow: var(--segment-shadow);
+}
+.segmented button:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* Toggle chips (forecast reasons). */
+.chip {
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+.chip:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+.chip.active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+.chip:disabled {
+  color: var(--disabled-text);
+  cursor: default;
+}
+
+/* Status as a dot plus a word, never colour alone. */
+.status-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.status-text::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status-text.positive {
+  color: var(--positive);
+}
+.status-text.negative {
+  color: var(--negative);
+}
+.status-text.caution {
+  color: var(--caution);
+}
+.status-text.accent {
+  color: var(--accent);
+}
+
+/* ---------- Forms ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.field-label,
+.field > span:first-child {
+  padding: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+legend.field-label {
+  margin-bottom: var(--space-2);
+}
+.field-optional {
+  margin-left: var(--space-1);
+  font-weight: var(--weight-regular);
+  color: var(--text-tertiary);
+}
+
+.input,
+.field input:not([type="checkbox"]):not([type="radio"]),
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  outline: none;
+  transition: border-color var(--duration-ui) var(--ease-out), box-shadow var(--duration-ui) var(--ease-out);
+}
+textarea.input,
+.field textarea {
+  padding: var(--space-3);
+  min-height: calc(var(--control-height) * 2);
+  line-height: var(--leading-body);
+  resize: vertical;
+}
+.input::placeholder,
+.field input::placeholder {
+  color: var(--text-tertiary);
+}
+.input:focus,
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint-hover);
+}
+.input:disabled,
+.field input:disabled,
+.field textarea:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+.field-hint-error,
+.form-error {
+  color: var(--negative);
+}
+.form-error {
+  margin: var(--space-2) 0;
+  font-size: var(--text-sm);
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding: var(--space-2) 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.checkbox-row input {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  accent-color: var(--accent-fill);
+  cursor: pointer;
+}
+
+.input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.input-wrap .input {
+  padding-right: var(--space-8);
+}
+.input-suffix {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.input-wrap input[type="number"]::-webkit-outer-spin-button,
+.input-wrap input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input-wrap input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.inline-form .input {
+  flex: 1 1 240px;
+  width: auto;
+}
+
+/* ---------- Tables ---------- */
+
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.data-table th {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+  color: var(--text-primary);
+}
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+.cell-primary {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.cell-secondary {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* ---------- Sheets: settings/account slide-over and modals ---------- */
+
+.settings-backdrop,
+.modal-overlay {
+  background: var(--scrim);
+}
+
+.settings-panel {
+  width: 400px;
+  max-width: 100%;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  overflow-y: auto;
+  border-left: 1px solid var(--glass-edge);
+  box-shadow: var(--shadow-elevated), inset 1px 0 0 var(--glass-highlight);
+}
+.settings-panel-header h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+.settings-panel-header .icon-button {
+  margin-right: calc(-1 * var(--space-2));
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.settings-section + .settings-section {
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+}
+.settings-section-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+.settings-row-sub {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.settings-delete-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.modal-card.sheet {
+  max-width: 440px;
+  padding: var(--space-7);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated), inset 0 1px 0 var(--glass-highlight);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.modal-card.sheet h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+.modal-card.sheet .modal-intro {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.auth-forgot {
+  align-self: flex-end;
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-3)) 0 0;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+.auth-divider {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* ---------- Home: company list ---------- */
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--duration-press) var(--ease-out);
+}
+.picker-row:hover {
+  background: var(--bg-hover);
+}
+.picker-row:active {
+  background: var(--bg-pressed);
+}
+.picker-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.picker-row-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "meta meta"
+    "name figures"
+    "desc figures"
+    "source source";
+  column-gap: var(--space-7);
+}
+.picker-row-meta {
+  grid-area: meta;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.picker-row-name {
+  grid-area: name;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.picker-row-desc {
+  grid-area: desc;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.picker-figures {
+  grid-area: figures;
+  align-self: center;
+  display: flex;
+  gap: var(--space-6);
+  margin: 0;
+}
+.picker-figures dt {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.picker-figures dd {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+.picker-source {
+  grid-area: source;
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.picker-row-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.picker-shuffle {
+  margin-top: var(--space-4);
+}
+
+.picker-season {
+  gap: var(--space-2) var(--space-7);
+}
+.picker-season-value {
+  font-size: var(--text-xl);
+}
+.picker-season-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.picker-season .picker-source {
+  margin-top: var(--space-2);
+}
+
+.picker-mine a {
+  min-height: 56px;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: none;
+  font-size: var(--text-md);
+}
+.picker-mine a:hover {
+  background: var(--bg-hover);
+}
+.picker-mine-season {
+  margin-left: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+.picker-mine-status {
+  font-size: var(--text-sm);
+}
+
+.league-lock {
+  font-size: inherit;
+  font-weight: var(--weight-medium);
+  color: inherit;
+}
+.league-lock.soon {
+  color: var(--caution);
+}
+.league-lock.locked {
+  color: var(--text-tertiary);
+}
+.league-submitted {
+  color: var(--accent);
+}
+
+/* ---------- Company page ---------- */
+
+.league-explainer-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-6) var(--space-7);
+  margin-top: 0;
+}
+.league-explainer h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.league-explainer p,
+.league-explainer li {
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+.league-explainer ul {
+  gap: var(--space-2);
+}
+
+.league-notes p {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+}
+
+.forecast-section {
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+}
+.forecast-section .league-form {
+  max-width: 560px;
+  gap: var(--space-6);
+}
+.league-eighty {
+  margin: 0;
+  padding: 0;
+  background: none;
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+}
+.league-range-inputs {
+  gap: var(--space-3);
+}
+.league-range-to {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+.league-chips {
+  gap: var(--space-2);
+}
+.league-definition {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.league-definition summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height);
+  color: var(--accent);
+  font-weight: var(--weight-medium);
+}
+.league-definition p {
+  margin: 0 0 var(--space-2);
+}
+.league-radio {
+  font-size: var(--text-md);
+}
+.league-radio input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-fill);
+}
+
+/* ---------- Results ---------- */
+
+.results-score-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+}
+.results-score-value {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-display);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+}
+.results-score p,
+.results-explain li {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+}
+.results-metric {
+  padding: var(--space-5);
+}
+.results-metric-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+.results-chips {
+  gap: var(--space-4);
+}
+.results-points {
+  font-size: var(--text-md);
+}
+.results-explain {
+  margin-top: var(--space-4);
+}
+
+/* Number line: your range in the accent; the actual is green if it landed
+   in your range, red if not; reference marks (lazy, crowd) are grey. */
+.nl-range,
+.nl-key-range {
+  background: var(--accent-tint-hover);
+  border-color: var(--accent);
+}
+.nl-label-range {
+  color: var(--accent);
+}
+.nl-hit .nl-actual,
+.nl-key-actual.nl-hit {
+  background: var(--positive);
+}
+.nl-miss .nl-actual,
+.nl-key-actual.nl-miss {
+  background: var(--negative);
+}
+.nl-hit .nl-label-actual {
+  color: var(--positive);
+}
+.nl-miss .nl-label-actual {
+  color: var(--negative);
+}
+.nl-lazy,
+.nl-key-lazy {
+  background: var(--text-secondary);
+}
+.nl-label-lazy {
+  color: var(--text-secondary);
+}
+.nl-label {
+  font-size: var(--text-xs);
+}
+.nl-legend {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* ---------- Research ---------- */
+
+.search-bar-wrap {
+  width: 100%;
+  max-width: var(--content-wide);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) 0;
+}
+.search-form {
+  display: flex;
+  gap: var(--space-3);
+  max-width: 640px;
+  min-width: 0;
+  margin-top: var(--space-5);
+}
+.search-input {
+  flex: 1;
+  min-width: 0;
+}
+.search-bar-wrap .footnote {
+  max-width: 640px;
+}
+.content-grid {
+  padding: var(--space-7) var(--space-6) 0;
+}
+.metrics-pane {
+  max-width: calc(var(--content-wide) - 2 * var(--space-6));
+  padding: 0;
+  scrollbar-gutter: auto;
+}
+.metrics-pane .site-footer {
+  max-width: none;
+}
+
+.empty-state {
+  align-items: flex-start;
+  text-align: left;
+  padding: var(--space-6) 0;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+}
+.empty-state h2 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+.empty-state p {
+  margin: 0;
+}
+
+.price-chart-card,
+.metric-card,
+.highlight-tile {
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: none;
+}
+.price-chart-card {
+  padding: var(--space-5);
+}
+.price-chart-header h3,
+.metric-group h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.metric-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.metric-card .status-text {
+  font-size: var(--text-xs);
+}
+.metric-card.good,
+.metric-card.warning,
+.metric-card.bad,
+.metric-card.neutral {
+  border-left: none;
+  background: var(--bg-surface);
+}
+.metric-card:hover {
+  background: var(--bg-hover);
+}
+.metric-group h3,
+.highlight-tile .label {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.highlight-tile .label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.highlights-row {
+  gap: var(--space-2);
+  border: none;
+  background: none;
+}
+.highlight-tile,
+.highlight-tile:first-child,
+.highlight-tile:last-child {
+  border-radius: var(--radius-lg);
+}
+.group-jump-nav {
+  gap: var(--space-2);
+}
+.group-jump-pill {
+  border: none;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  padding: 0 var(--space-4);
+}
+.group-jump-pill:hover {
+  background: var(--accent-tint-hover);
+  border-color: transparent;
+}
+.price-chart-change.good {
+  color: var(--positive);
+}
+.price-chart-change.bad {
+  color: var(--negative);
+}
+.show-more-pill {
+  border: none;
+}
+.group-jump-pill {
+  min-height: var(--control-height);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Legal pages ---------- */
+
+.legal-page {
+  max-width: var(--reading-max);
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.legal-page h2 {
+  margin: var(--space-7) 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.legal-page p {
+  margin: 0 0 var(--space-4);
+}
+.legal-page ul {
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-5);
+}
+.legal-page li + li {
+  margin-top: var(--space-2);
+}
+
+/* ---------- Admin ---------- */
+
+.admin-tabs {
+  margin: 0 0 var(--space-7);
+}
+.admin-board-row {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: none;
+}
+.admin-board-main {
+  gap: var(--space-2) var(--space-4);
+}
+.admin-panel {
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--bg-app);
+}
+.admin-next {
+  min-height: var(--control-height);
+}
+.admin-grid {
+  gap: var(--space-4);
+}
+.admin-more-section {
+  padding: var(--space-3) 0;
+}
+.admin-more-section summary {
+  min-height: var(--control-height);
+}
+.consent-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  align-items: end;
+  padding: var(--space-2) 0 var(--space-3);
+}
+.consent-form .button-row {
+  grid-column: 1 / -1;
+}
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 640px) {
+  /* The sidebar becomes a glass tab bar the content scrolls under. */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    width: auto;
+    height: auto;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    padding: var(--space-1) var(--space-2) calc(var(--space-1) + env(safe-area-inset-bottom));
+    border-right: none;
+    border-top: 1px solid var(--glass-edge);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+  }
+  .sidebar-icon-button {
+    flex: 1;
+    max-width: 120px;
+    min-height: 52px;
+  }
+  .app-shell-content {
+    padding-bottom: 0;
+  }
+  .app-main {
+    padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  }
+
+  .app-header {
+    padding: 0 var(--space-4);
+  }
+  .page {
+    padding: var(--space-6) var(--space-4) var(--space-9);
+  }
+  .page-title {
+    font-size: var(--text-xl);
+  }
+  .page-lede {
+    font-size: var(--text-md);
+  }
+  .page-header {
+    margin-bottom: var(--space-7);
+  }
+
+  .picker-row {
+    align-items: flex-start;
+    padding: var(--space-4);
+  }
+  .picker-row-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "meta"
+      "name"
+      "desc"
+      "figures"
+      "source";
+  }
+  .picker-figures {
+    margin-top: var(--space-3);
+  }
+  .picker-row-action {
+    align-self: center;
+  }
+  .picker-row-action-label {
+    display: none;
+  }
+  .group > li + li::before {
+    left: var(--space-4);
+  }
+
+  .settings-panel {
+    width: 100%;
+    padding: calc(var(--space-4) + env(safe-area-inset-top)) var(--space-4)
+      calc(var(--space-5) + env(safe-area-inset-bottom));
+  }
+  .modal-card.sheet {
+    padding: var(--space-6);
+  }
+
+  .search-bar-wrap {
+    padding: var(--space-6) var(--space-4) 0;
+  }
+  .content-grid {
+    padding: var(--space-6) var(--space-4) 0;
+  }
+  .results-metric {
+    padding: var(--space-4);
+  }
+  .admin-board-row {
+    padding: var(--space-4);
+  }
+}
+
+.price-chart-card:hover {
+  box-shadow: none;
+}
+.segmented.price-chart-period-row {
+  display: inline-flex;
+  width: auto;
+  align-self: flex-start;
 }

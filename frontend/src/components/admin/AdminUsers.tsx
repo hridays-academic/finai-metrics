@@ -68,18 +68,26 @@ export default function AdminUsers() {
 
   return (
     <div>
-      <p className="calculator-subtitle">
+      <p className="section-text">
         Students under 18 can't submit forecasts until a parent or guardian has consented, by signed form or by
         email from the parent. Record it here with the parent's name and the date. Pending students are listed first.
       </p>
-      <form className="calculator-stock-form" onSubmit={handleSearch}>
-        <input placeholder="Search email, handle or name" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button type="submit">Search</button>
+      <form className="inline-form" onSubmit={handleSearch}>
+        <input
+          className="input"
+          placeholder="Search email, handle or name"
+          aria-label="Search students"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <button type="submit" className="btn btn-secondary">
+          Search
+        </button>
       </form>
-      {error && <div className="search-error">{error}</div>}
+      {error && <div className="form-error">{error}</div>}
       {users && (
-        <div className="trading-table-wrap">
-          <table className="trading-holdings-table">
+        <div className="table-wrap">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>User</th>
@@ -94,18 +102,18 @@ export default function AdminUsers() {
                 <Fragment key={u.id}>
                 <tr>
                   <td>
-                    <div className="trading-table-stock-name">{u.handle ?? "(no handle yet)"}</div>
-                    <div className="trading-table-stock-ticker">{u.email}</div>
+                    <div className="cell-primary">{u.handle ?? "(no handle yet)"}</div>
+                    <div className="cell-secondary">{u.email}</div>
                   </td>
-                  <td>{u.school_name ?? "--"}</td>
-                  <td>{u.age_band === "under_18" ? "Under 18" : u.age_band === "18_plus" ? "18+" : "--"}</td>
+                  <td>{u.school_name ?? "N/A"}</td>
+                  <td>{u.age_band === "under_18" ? "Under 18" : u.age_band === "18_plus" ? "18+" : "Not set"}</td>
                   <td>{consentSummary(u)}</td>
                   <td>
                     {u.age_band === "under_18" &&
                       (u.guardian_consent_status === "granted" ? (
                         <button
                           type="button"
-                          className="settings-row-action"
+                          className="btn btn-secondary"
                           disabled={saving}
                           onClick={() => setConsent(u, "pending")}
                         >
@@ -113,7 +121,7 @@ export default function AdminUsers() {
                         </button>
                       ) : (
                         recording !== u.id && (
-                          <button type="button" className="settings-row-action" onClick={() => startRecording(u)}>
+                          <button type="button" className="btn btn-secondary" onClick={() => startRecording(u)}>
                             Record consent
                           </button>
                         )
@@ -124,45 +132,60 @@ export default function AdminUsers() {
                   <tr>
                     <td colSpan={5}>
                       <form
-                        className="calculator-stock-form"
+                        className="consent-form"
                         onSubmit={(e) => {
                           e.preventDefault();
                           setConsent(u, "granted", details);
                         }}
                       >
-                        <input
-                          placeholder="Parent or guardian's name"
-                          aria-label="Parent or guardian's name"
-                          value={details.parent_name}
-                          maxLength={80}
-                          onChange={(e) => setDetails({ ...details, parent_name: e.target.value })}
-                          required
-                          autoFocus
-                        />
-                        <select
-                          aria-label="How consent was given"
-                          value={details.method}
-                          onChange={(e) =>
-                            setDetails({ ...details, method: e.target.value as ConsentDetails["method"] })
-                          }
-                        >
-                          <option value="signed_form">Signed form</option>
-                          <option value="parent_email">Email from the parent</option>
-                        </select>
-                        <input
-                          type="date"
-                          aria-label="Date consent was given"
-                          value={details.consent_date}
-                          max={todayInIndia().dateStr}
-                          onChange={(e) => setDetails({ ...details, consent_date: e.target.value })}
-                          required
-                        />
-                        <button type="submit" disabled={saving || !details.parent_name.trim()}>
-                          {saving ? "Saving..." : "Save consent"}
-                        </button>
-                        <button type="button" className="settings-row-action" onClick={() => setRecording(null)}>
-                          Cancel
-                        </button>
+                        <label className="field">
+                          <span className="field-label">Parent or guardian's name</span>
+                          <input
+                            className="input"
+                            value={details.parent_name}
+                            maxLength={80}
+                            onChange={(e) => setDetails({ ...details, parent_name: e.target.value })}
+                            required
+                            autoFocus
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field-label">How consent was given</span>
+                          <select
+                            className="input"
+                            value={details.method}
+                            onChange={(e) =>
+                              setDetails({ ...details, method: e.target.value as ConsentDetails["method"] })
+                            }
+                          >
+                            <option value="signed_form">Signed form</option>
+                            <option value="parent_email">Email from the parent</option>
+                          </select>
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Date given</span>
+                          <input
+                            className="input"
+                            type="date"
+                            value={details.consent_date}
+                            max={todayInIndia().dateStr}
+                            onChange={(e) => setDetails({ ...details, consent_date: e.target.value })}
+                            required
+                          />
+                        </label>
+                        <div className="button-row">
+                          <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={saving || !details.parent_name.trim()}
+                            aria-busy={saving}
+                          >
+                            {saving ? "Saving..." : "Save consent"}
+                          </button>
+                          <button type="button" className="btn btn-tertiary" onClick={() => setRecording(null)}>
+                            Cancel
+                          </button>
+                        </div>
                       </form>
                     </td>
                   </tr>

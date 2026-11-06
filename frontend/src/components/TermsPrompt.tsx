@@ -37,7 +37,7 @@ export default function TermsPrompt({ onAgreed, onSignedOut }: TermsPromptProps)
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Terms of Use and Privacy Policy">
-      <div className="modal-card market-status-card">
+      <div className="modal-card sheet">
         <h2>Terms of Use and Privacy Policy</h2>
         <p className="modal-intro">
           Stackly now has a{" "}
@@ -50,20 +50,21 @@ export default function TermsPrompt({ onAgreed, onSignedOut }: TermsPromptProps)
           </a>
           . Please read them and agree to keep using your account.
         </p>
-        <label className="market-status-dont-show">
-          <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />I agree to the
-          Terms of Use and Privacy Policy
+        <label className="checkbox-row">
+          <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+          <span>I agree to the Terms of Use and Privacy Policy</span>
         </label>
-        {error && <div className="search-error">{error}</div>}
+        {error && <div className="form-error">{error}</div>}
         <button
           type="button"
-          className="search-button trading-tutorial-close"
+          className="btn btn-primary btn-block"
           disabled={!checked || saving}
+          aria-busy={saving}
           onClick={handleAgree}
         >
           {saving ? "Saving..." : "Agree and continue"}
         </button>
-        <button type="button" className="modal-skip" onClick={handleSignOut}>
+        <button type="button" className="btn btn-tertiary btn-block" onClick={handleSignOut}>
           Sign out instead
         </button>
       </div>

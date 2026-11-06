@@ -32,6 +32,18 @@ function remaining(ms: number): string {
   return "under a minute";
 }
 
+function remainingLong(ms: number): string {
+  const mins = Math.floor(ms / 60_000);
+  const d = Math.floor(mins / 1440);
+  const h = Math.floor((mins % 1440) / 60);
+  const m = mins % 60;
+  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  if (d > 0) return `${unit(d, "day")} ${unit(h, "hour")}`;
+  if (h > 0) return `${unit(h, "hour")} ${unit(m, "minute")}`;
+  if (m > 0) return unit(m, "minute");
+  return "under a minute";
+}
+
 export default function LockCountdown({ lockAt, serverNow, compact }: LockCountdownProps) {
   const [offset] = useState(() => (serverNow ? new Date(serverNow).getTime() - Date.now() : 0));
   const [now, setNow] = useState(() => Date.now() + offset);
@@ -43,11 +55,11 @@ export default function LockCountdown({ lockAt, serverNow, compact }: LockCountd
   }, [offset, left < 3_600_000]);
 
   if (left <= 0) {
-    return <span className="league-lock locked">{compact ? "Locked" : `Locked at ${formatIst(lockAt)}`}</span>;
+    return <span className="league-lock locked">{compact ? "Locked" : `Forecasts locked ${formatIst(lockAt)}`}</span>;
   }
   return (
     <span className={`league-lock ${left < 86_400_000 ? "soon" : ""}`} title={`Locks at ${formatIst(lockAt)}`}>
-      {compact ? `Locks in ${remaining(left)}` : `Locks in ${remaining(left)} (${formatIst(lockAt)})`}
+      {compact ? `Locks in ${remaining(left)}` : `Forecasts lock ${formatIst(lockAt)} (in ${remainingLong(left)})`}
     </span>
   );
 }

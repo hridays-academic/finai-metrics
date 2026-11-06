@@ -36,19 +36,19 @@ export default function AdminVisits() {
 
   return (
     <div>
-      <p className="calculator-subtitle">
+      <p className="section-text">
         Page loads per day for the last {DAYS} days (India time). Counts only: no cookies, IP addresses or user
         information are recorded.
       </p>
-        {error && <div className="search-error">{error.message}</div>}
-        {!error && rows === null && <div className="calculator-empty-hint">Loading...</div>}
-        {rows && rows.length === 0 && <div className="calculator-empty-hint">No page loads recorded yet.</div>}
+        {error && <div className="form-error">{error.message}</div>}
+        {!error && rows === null && <div className="empty-note">Loading...</div>}
+        {rows && rows.length === 0 && <div className="empty-note">No page loads recorded yet.</div>}
 
         {rows && rows.length > 0 && (
           <>
-            <div className="trading-section-header">Totals</div>
-            <div className="trading-table-wrap">
-              <table className="trading-holdings-table">
+            <div className="subsection-title">Totals</div>
+            <div className="table-wrap">
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th>Page</th>
@@ -66,9 +66,9 @@ export default function AdminVisits() {
               </table>
             </div>
 
-            <div className="trading-section-header">By day</div>
-            <div className="trading-table-wrap">
-              <table className="trading-holdings-table">
+            <div className="subsection-title">By day</div>
+            <div className="table-wrap">
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th>Day</th>

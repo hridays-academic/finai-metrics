@@ -75,7 +75,7 @@ function NumberLine({ m }: { m: MetricResult }) {
   const lanes = Math.max(...placed.map((p) => p.lane)) + 1;
 
   return (
-    <div className="nl" ref={ref} role="img" aria-label={`Your range ${n(m.low)} to ${n(m.high)}${u}; actual ${n(m.actual)}${u}`}>
+    <div className={`nl ${m.hit ? "nl-hit" : "nl-miss"}`} ref={ref} role="img" aria-label={`Your range ${n(m.low)} to ${n(m.high)}${u}; actual ${n(m.actual)}${u}`}>
       <div className="nl-track">
         <div className="nl-range" style={{ left: `${pos(m.low)}%`, width: `${Math.max(pos(m.high) - pos(m.low), 0.6)}%` }} />
         {m.crowd_median !== null && <span className="nl-mark nl-crowd" style={{ left: `${pos(m.crowd_median)}%` }} />}
@@ -97,13 +97,13 @@ function MetricCard({ m }: { m: MetricResult }) {
   const lazyText = m.beat_lazy === null ? "No lazy guess" : m.beat_lazy ? "Beat the lazy guess" : "Didn't beat the lazy guess";
   const u = m.unit;
   return (
-    <section className="calculator-card results-metric">
+    <li className="results-metric">
       <div className="results-metric-head">
-        <h2>{m.label}</h2>
+        <h3 className="results-metric-title">{m.label}</h3>
         <div className="results-chips">
           <span className="results-points">{n(m.points)} points</span>
-          <span className={`admin-status ${m.hit ? "admin-status-open" : "admin-status-results_due"}`}>{m.hit ? "Hit" : "Miss"}</span>
-          <span className="admin-status">{lazyText}</span>
+          <span className={`status-text ${m.hit ? "positive" : "negative"}`}>{m.hit ? "Hit" : "Miss"}</span>
+          <span className="status-text">{lazyText}</span>
         </div>
       </div>
       <NumberLine m={m} />
@@ -113,7 +113,7 @@ function MetricCard({ m }: { m: MetricResult }) {
           {u}
         </span>
         <span>
-          <i className="nl-key nl-key-actual" /> Actual {n(m.actual)}
+          <i className={`nl-key nl-key-actual ${m.hit ? "nl-hit" : "nl-miss"}`} /> Actual {n(m.actual)}
           {u}
         </span>
         <span>
@@ -131,7 +131,7 @@ function MetricCard({ m }: { m: MetricResult }) {
           <li key={line}>{line}</li>
         ))}
       </ul>
-    </section>
+    </li>
   );
 }
 
@@ -171,58 +171,56 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
 
   if (!user || !result) {
     return (
-      <div className="calculator-page">
-        <div className="calculator-card trading-card">
-          <a href="#/league">← Home</a>
-          {event && <h2 className="results-title">{event.company.name}</h2>}
-          {!user ? (
-            <div className="calculator-empty-hint">
-              <p>Sign in to see your results.</p>
-              <button type="button" className="search-button" onClick={onOpenAuth}>
-                Sign in
-              </button>
-            </div>
-          ) : (
-            <div className="calculator-empty-hint">
-              {notice ?? "Loading..."}
-              {notice && event && (
-                <p>
-                  <a href={`#/event/${event.id}`}>Go to the company page</a>
-                </p>
-              )}
-            </div>
-          )}
-          <SiteFooter />
-        </div>
+      <div className="page">
+        <header className="page-header">
+          <a className="back-link" href="#/league">← Companies</a>
+          {event && <h1 className="page-title">{event.company.name}</h1>}
+        </header>
+        {!user ? (
+          <section className="section">
+            <p className="section-text">Sign in to see your results.</p>
+            <button type="button" className="btn btn-primary" onClick={onOpenAuth}>
+              Sign in
+            </button>
+          </section>
+        ) : (
+          <section className="section">
+            <p className="section-text">{notice ?? "Loading..."}</p>
+            {notice && event && <a href={`#/event/${event.id}`}>Go to the company page</a>}
+          </section>
+        )}
+        <SiteFooter />
       </div>
     );
   }
 
   const ev = result.event;
   return (
-    <div className="league-page">
-      <div className="league-page-header">
-        <a href="#/league">← Home</a>
-        <h1>
-          {ev.company.name} <span className="company-ticker">{ev.company.ticker}</span>
+    <div className="page">
+      <header className="page-header">
+        <a className="back-link" href="#/league">← Companies</a>
+        <h1 className="page-title">
+          {ev.company.name} <span className="page-title-sub">{ev.company.ticker}</span>
         </h1>
-        <div className="company-meta">{ev.season_label} results</div>
-        <div className="calculator-field-note">
-          This forecast was locked before results were announced (locked {formatIst(result.lock_at)}).
-        </div>
-      </div>
+        <p className="page-meta">
+          {ev.season_label} results. Your forecast was locked before they were announced ({formatIst(result.lock_at)}).
+        </p>
+      </header>
 
-      <div className="league-company-flow">
-        <section className="calculator-card results-score">
-          <div className="results-score-label">Your score</div>
-          <div className="results-score-value">{n(result.event_score)}</div>
-          <p>{result.event_score_explanation}</p>
-          <p>{result.crowd_explanation}</p>
-        </section>
-        {result.metrics.map((m) => (
-          <MetricCard key={m.metric_key} m={m} />
-        ))}
-      </div>
+      <section className="section results-score" aria-label="Your score">
+        <div className="results-score-label">Your score</div>
+        <div className="results-score-value">{n(result.event_score)}</div>
+        <p>{result.event_score_explanation}</p>
+        <p>{result.crowd_explanation}</p>
+      </section>
+
+      <section className="section" aria-label="Score by number">
+        <ul className="group results-list">
+          {result.metrics.map((m) => (
+            <MetricCard key={m.metric_key} m={m} />
+          ))}
+        </ul>
+      </section>
 
       <SiteFooter />
     </div>

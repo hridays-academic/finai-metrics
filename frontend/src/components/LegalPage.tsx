@@ -5,7 +5,7 @@ import SiteFooter from "./SiteFooter";
 // either page changes materially, bump auth_service.TERMS_VERSION so every
 // account is asked to agree again. Never add a claim of legal compliance.
 
-export const LEGAL_UPDATED = "5 November 2026";
+export const LEGAL_UPDATED = "6 November 2026";
 
 type Block = string | { list: string[] };
 interface Section {
@@ -17,7 +17,7 @@ const PRIVACY: Section[] = [
   {
     heading: "",
     body: [
-      "Stackly is an educational forecasting game run by [YOUR NAME]. This page explains what we collect, why we collect it, and what you can do about it.",
+      "Stackly is an educational forecasting game run by Hriday Sharma. This page explains what we collect, why we collect it, and what you can do about it.",
     ],
   },
   {
@@ -52,7 +52,7 @@ const PRIVACY: Section[] = [
           "Our database: Neon, in the United States.",
           "The website and server: Vercel, in the United States. Vercel keeps short-lived technical logs, such as IP addresses and the pages requested, as part of hosting the site.",
           "Password-reset emails: sent through Gmail.",
-          "Google: every page loads fonts and the Sign in with Google button from Google, so Google receives your IP address and browser details, and may set its own cookies. Google's privacy policy covers that.",
+          "Google: only when you open sign-in or use Sign in with Google, your browser loads Google's sign-in button, so Google receives your IP address and browser details and may set its own cookies. Google's privacy policy covers that. Other pages load nothing from Google.",
         ],
       },
       "This means your data is stored and processed outside India.",
@@ -103,7 +103,7 @@ const PRIVACY: Section[] = [
         list: [
           "You choose your age band once, when you join the league.",
           "You can browse and research, but you can't submit league forecasts until we have a parent or guardian's consent, by signed form or by email from the parent, recorded by us.",
-          "A parent or guardian can withdraw consent at any time by emailing [CONTACT EMAIL]. We'll then stop forecast submissions and, if they ask, delete the account.",
+          "A parent or guardian can withdraw consent at any time by emailing stackly.user.support@gmail.com. We'll then stop forecast submissions and, if they ask, delete the account.",
         ],
       },
     ],
@@ -116,7 +116,7 @@ const PRIVACY: Section[] = [
           "See your data: your account panel shows it, or you can email us for a copy.",
           "Correct your data: email us.",
           "Delete your account: Settings, then Delete my account.",
-          "Questions or complaints: email [CONTACT EMAIL]. We aim to reply within 14 days.",
+          "Questions or complaints: email stackly.user.support@gmail.com. We aim to reply within 14 days.",
         ],
       },
     ],
@@ -192,20 +192,20 @@ const TERMS: Section[] = [
   },
   {
     heading: "10. Law",
-    body: ["These terms are governed by the laws of India, and the courts in [CITY] have jurisdiction."],
+    body: ["These terms are governed by the laws of India, and the courts in Bengaluru, India have jurisdiction."],
   },
-  { heading: "11. Contact", body: ["[CONTACT EMAIL]"] },
+  { heading: "11. Contact", body: ["stackly.user.support@gmail.com"] },
 ];
 
 export default function LegalPage({ kind }: { kind: "privacy" | "terms" }) {
   const title = kind === "privacy" ? "Privacy Policy" : "Terms of Use";
   const sections = kind === "privacy" ? PRIVACY : TERMS;
   return (
-    <div className="league-page">
+    <div className="page">
       <article className="legal-page">
-        <header className="league-page-header">
-          <h1>{title}</h1>
-          <p className="calculator-subtitle">Last updated {LEGAL_UPDATED}</p>
+        <header className="page-header">
+          <h1 className="page-title">{title}</h1>
+          <p className="page-meta">Last updated {LEGAL_UPDATED}</p>
         </header>
         {sections.map((section, i) => (
           <section key={i}>

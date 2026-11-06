@@ -6,48 +6,14 @@ import MetricCard from "./MetricCard";
 import PriceChart from "./PriceChart";
 import type { Theme } from "../hooks/useTheme";
 
-// One small glyph per metric-group category -- purely for faster visual
-// scanning of a dense, 5-group page (matches the sidebar/header icon
-// family: 1.6-1.8 stroke, currentColor, no fill). Falls back to no icon
-// for a group key this map doesn't recognize, rather than guessing.
-const GROUP_ICONS: Record<string, JSX.Element> = {
-  liquidity: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 3C12 3 6 10.5 6 15a6 6 0 0 0 12 0c0-4.5-6-12-6-12z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-    </svg>
-  ),
-  profitability: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M4 19h16M7 19V10M12 19V5M17 19v7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  ),
-  leverage: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 3v18M6 7l6-4 6 4M4 7h4l-2 6a2 2 0 0 1-4 0l2-6zM16 7h4l-2 6a2 2 0 0 1-4 0l2-6z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  efficiency: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="1.6" />
-    </svg>
-  ),
-  valuation: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M12 7.5v9M9.5 9.8c0-1 1-1.8 2.5-1.8s2.5.7 2.5 1.7c0 2.3-5 1.3-5 3.6 0 1 1 1.7 2.5 1.7s2.5-.8 2.5-1.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
-};
-
 // Reused above (top of the collapsed section) and below (end of the
 // expanded section) -- so collapsing back doesn't require scrolling all
 // the way back up past every metric group first.
 function ShowMoreToggle({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
   return (
     <div className="show-more-row">
-      <button type="button" className="show-more-pill" onClick={onToggle} aria-expanded={expanded}>
-        {expanded ? "Show less" : "Show more"}
+      <button type="button" className="btn btn-secondary show-more-pill" onClick={onToggle} aria-expanded={expanded}>
+        {expanded ? "Hide ratios" : "Show all ratios"}
         <svg
           className={`show-more-arrow ${expanded ? "open" : ""}`}
           width="12"
@@ -159,7 +125,6 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
                 key={group.key}
                 onClick={() => jumpToGroup(group.key)}
               >
-                {GROUP_ICONS[group.key]}
                 {group.label}
               </button>
             ))}
@@ -184,8 +149,7 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
                 }}
               >
                 <h3>
-                  {GROUP_ICONS[group.key]}
-                  {group.label}
+                    {group.label}
                 </h3>
                 {group.key === "valuation" && (
                   <p className="price-lag-note">

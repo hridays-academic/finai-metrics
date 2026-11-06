@@ -70,7 +70,7 @@ export default function PortfolioValueChart({
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: cssVar("--text-secondary"),
-        fontFamily: "Inter, sans-serif",
+        fontFamily: cssVar("--font-sans"),
         fontSize: 11,
       },
       grid: { vertLines: { visible: false }, horzLines: { color: cssVar("--border-subtle") } },
