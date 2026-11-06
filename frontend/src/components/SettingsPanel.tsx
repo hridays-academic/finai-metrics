@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import type { ThemeMode } from "../hooks/useTheme";
+import type { Palette, ThemeMode } from "../hooks/useTheme";
 import { deleteAccount, ApiError } from "../lib/api";
 import { clearAuthToken } from "../lib/auth";
 import type { UserPublic } from "../lib/types";
@@ -11,9 +11,16 @@ interface SettingsPanelProps {
   user: UserPublic | null;
   onAccountDeleted: () => void;
   mode: ThemeMode;
+  palette: Palette;
+  onSetPalette: (palette: Palette) => void;
   onSetMode: (mode: ThemeMode) => void;
   onClose: () => void;
 }
+
+const PALETTE_OPTIONS: { value: Palette; label: string }[] = [
+  { value: "aurora", label: "Aurora" },
+  { value: "graphite", label: "Graphite" },
+];
 
 const MODE_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: "light", label: "Light" },
@@ -24,6 +31,8 @@ export default function SettingsPanel({
   user,
   onAccountDeleted,
   mode,
+  palette,
+  onSetPalette,
   onSetMode,
   onClose,
 }: SettingsPanelProps) {
@@ -77,7 +86,22 @@ export default function SettingsPanel({
 
         <section className="settings-section">
           <h3 className="settings-section-title">Appearance</h3>
-          <div className="segmented" role="group" aria-label="Appearance">
+          <span className="field-label">Theme</span>
+          <div className="segmented" role="group" aria-label="Theme">
+            {PALETTE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={palette === opt.value ? "active" : ""}
+                aria-pressed={palette === opt.value}
+                onClick={() => onSetPalette(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <span className="field-label">Mode</span>
+          <div className="segmented" role="group" aria-label="Light or dark">
             {MODE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

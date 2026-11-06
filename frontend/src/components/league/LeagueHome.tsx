@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMySeason, fetchResearchHistory } from "../../lib/api";
-import { formatCrore, formatDay } from "../../lib/leagueFormat";
+import { daysUntil, formatDay } from "../../lib/leagueFormat";
 import type { EventSummary, LeagueConfig, ResearchHistory, Season, UserPublic } from "../../lib/types";
 import SiteFooter from "../SiteFooter";
+import CountUp from "../CountUp";
 import LockCountdown from "./LockCountdown";
 
 interface LeagueHomeProps {
@@ -48,46 +49,88 @@ interface PickerRowProps {
   history: HistoryState;
 }
 
-function PickerRow({ event, sectorName, history }: PickerRowProps) {
-  const latest = history && history !== "error" ? history.provider_rows[0] : undefined;
+// A locked event is waiting for its results (or, once the results date has
+// passed, for an admin to enter and score them).
+function waitingLabel(event: EventSummary): string {
+  return daysUntil(event.results_date) > 0
+    ? `Results due ${formatDay(event.results_date)}`
+    : "Results out, scoring soon";
+}
 
-  let source: string;
-  if (history === undefined) source = "Loading the latest quarter...";
-  else if (!latest) source = "Latest quarter not available from Yahoo Finance.";
-  else
-    source =
-      `Quarter ending ${formatDay(latest.period_end_date, true)}. Yahoo Finance` +
-      (history !== "error" && history.provider_as_of ? `, fetched ${formatDay(history.provider_as_of)}.` : ".");
+function PickerRow({ event, sectorName, history }: PickerRowProps) {
+  const isOpen = event.status === "open";
+  const latest = history && history !== "error" ? history.provider_rows[0] : undefined;
+  const figure = (v: number | null | undefined) =>
+    history === undefined ? "..." : v === null || v === undefined ? "N/A" : <CountUp value={v / 1e7} format={crore} />;
 
   return (
-    <li>
+    <li className="reveal-row">
       <a className="picker-row" href={`#/event/${event.id}`}>
-        <div className="picker-row-body">
-          <div className="picker-row-meta">
-            {sectorName} · Results {formatDay(event.results_date)} · <LockCountdown lockAt={event.lock_at} compact />
-          </div>
+        <div className="picker-row-main">
           <h3 className="picker-row-name">{event.company.name}</h3>
+          <div className="picker-row-meta">
+            {sectorName} ·{" "}
+            {isOpen ? (
+              <>
+                Results {formatDay(event.results_date)} · <LockCountdown lockAt={event.lock_at} compact />
+              </>
+            ) : (
+              <span className="picker-row-waiting">{waitingLabel(event)}</span>
+            )}
+          </div>
           {event.company.description && <p className="picker-row-desc">{event.company.description}</p>}
-          <dl className="picker-figures">
-            <div>
-              <dt>Revenue</dt>
-              <dd>{formatCrore(latest?.revenue) ?? "N/A"}</dd>
-            </div>
-            <div>
-              <dt>Profit</dt>
-              <dd>{formatCrore(latest?.net_income) ?? "N/A"}</dd>
-            </div>
-          </dl>
-          <p className="picker-source">{source}</p>
         </div>
+        <dl className="picker-figures">
+          <div>
+            <dt>Revenue</dt>
+            <dd>{figure(latest?.revenue)}</dd>
+          </div>
+          <div>
+            <dt>Profit</dt>
+            <dd>{figure(latest?.net_income)}</dd>
+          </div>
+        </dl>
         <span className="picker-row-action">
-          <span className="picker-row-action-label">{event.submitted ? "View forecast" : "Forecast"}</span>
-          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true">
-            <path d="M1 1l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          {isOpen && !event.submitted ? "Forecast" : "View"}
+          <svg width="7" height="12" viewBox="0 0 8 14" fill="none" aria-hidden="true">
+            <path d="M1 1l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       </a>
     </li>
+  );
+}
+
+function crore(n: number): string {
+  return `₹${Math.round(n).toLocaleString("en-IN")} cr`;
+}
+
+// Column labels for the figures, shown once per list on wide screens.
+function ListHead() {
+  return (
+    <div className="picker-list-head" aria-hidden="true">
+      <span />
+      <span>Revenue</span>
+      <span>Profit</span>
+      <span />
+    </div>
+  );
+}
+
+// One source line per panel instead of one per row.
+function SourceNote({ events, histories }: { events: EventSummary[]; histories: Record<number, HistoryState> }) {
+  const loaded = events
+    .map((e) => histories[e.company.id])
+    .filter((h): h is ResearchHistory => h !== undefined && h !== "error");
+  const ends = new Set(loaded.map((h) => h.provider_rows[0]?.period_end_date).filter(Boolean));
+  const fetched = loaded.map((h) => h.provider_as_of).filter((d): d is string => !!d).sort();
+  const quarter = ends.size === 1 ? ` (quarter ending ${formatDay([...ends][0]!, true)})` : "";
+  const when = fetched.length ? `, fetched ${formatDay(fetched[fetched.length - 1])}` : "";
+  return (
+    <p className="panel-footnote">
+      Revenue and profit are each company's latest quarter{quarter}, from Yahoo Finance{when}. N/A means Yahoo
+      doesn't have it.
+    </p>
   );
 }
 
@@ -174,6 +217,16 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
   }, [user?.id]);
 
   const open = useMemo(() => (upcoming ?? []).filter((e) => e.status === "open"), [upcoming]);
+  // Shown when nothing is open, so the page never looks empty between seasons.
+  const waiting = useMemo(
+    () =>
+      open.length > 0
+        ? []
+        : (upcoming ?? [])
+            .filter((e) => e.status === "locked")
+            .sort((a, b) => a.results_date.localeCompare(b.results_date)),
+    [upcoming, open]
+  );
 
   // Deal the first hand once the events arrive (and again if the open set changes).
   useEffect(() => {
@@ -182,16 +235,16 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
     setSeen(new Set(first.map((e) => e.id)));
   }, [open]);
 
-  // Latest-quarter figures for the visible cards (cached server-side for a week).
+  // Latest-quarter figures for the visible rows (cached server-side for a week).
   useEffect(() => {
-    for (const e of cards) {
+    for (const e of [...cards, ...waiting]) {
       const id = e.company.id;
       if (histories[id] !== undefined) continue;
       fetchResearchHistory(id)
         .then((h) => setHistories((s) => ({ ...s, [id]: h })))
         .catch(() => setHistories((s) => ({ ...s, [id]: "error" })));
     }
-  }, [cards]);
+  }, [cards, waiting]);
 
   function showOthers() {
     const current = new Set(cards.map((e) => e.id));
@@ -209,10 +262,10 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
   const mine = [...(upcoming ?? []), ...scored].filter((e) => e.submitted);
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <h1 className="page-title">Forecast a company's results</h1>
-        <p className="page-lede">
+    <div className="page home">
+      <header className="glass hero">
+        <h1 className="hero-title">Forecast a company's results</h1>
+        <p className="hero-lede">
           Pick a company that reports soon. For each number, give a range you're 80% sure of. It's scored when the
           results come out.
         </p>
@@ -230,22 +283,18 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
       {error && <div className="form-error">{error}</div>}
       {upcoming === null && !error && <p className="empty-note">Loading companies...</p>}
 
-      {upcoming !== null && open.length === 0 && (
-        <section className="section">
-          <h2 className="section-title">No companies are open right now</h2>
-          <p className="section-text">
-            Companies open a week or two before they report. Look up any company in Research meanwhile.
-          </p>
-        </section>
-      )}
-
       {cards.length > 0 && (
-        <section className="section">
+        <section className="glass panel reveal" aria-labelledby="open-title">
+          <h2 className="panel-title" id="open-title">
+            Open for forecasts
+          </h2>
+          <ListHead />
           <ul className="group">
             {cards.map((e) => (
               <PickerRow key={e.id} event={e} sectorName={sectorName(e.company.sector)} history={histories[e.company.id]} />
             ))}
           </ul>
+          <SourceNote events={cards} histories={histories} />
           {open.length > CARD_COUNT && (
             <button type="button" className="btn btn-secondary picker-shuffle" onClick={showOthers}>
               Show different companies
@@ -254,16 +303,66 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
         </section>
       )}
 
+      {upcoming !== null && open.length === 0 && (
+        <section className="glass panel reveal" aria-labelledby="waiting-title">
+          <h2 className="panel-title" id="waiting-title">
+            No companies are open right now
+          </h2>
+          <p className="panel-text">
+            Each company opens for forecasts a week or two before it reports. The next results season starts with the
+            companies that report first.
+            {waiting.length > 0 && " These forecasts have locked and are waiting for results."}
+          </p>
+          {waiting.length > 0 && <ListHead />}
+          {waiting.length > 0 && (
+            <ul className="group">
+              {waiting.map((e) => (
+                <PickerRow
+                  key={e.id}
+                  event={e}
+                  sectorName={sectorName(e.company.sector)}
+                  history={histories[e.company.id]}
+                />
+              ))}
+            </ul>
+          )}
+          {waiting.length > 0 && <SourceNote events={waiting} histories={histories} />}
+        </section>
+      )}
+
+      <section className="glass panel reveal how-it-works" aria-labelledby="how-title">
+        <h2 className="panel-title" id="how-title">
+          How it works
+        </h2>
+        <ol className="how-steps">
+          <li>
+            <span className="how-step-number">1</span>
+            <h3>Pick a company</h3>
+            <p>Choose one that reports its quarterly results soon. The page explains how its business makes money.</p>
+          </li>
+          <li>
+            <span className="how-step-number">2</span>
+            <h3>Forecast a range</h3>
+            <p>For revenue growth, operating margin and sometimes one sector number, give a range you're 80% sure of.</p>
+          </li>
+          <li>
+            <span className="how-step-number">3</span>
+            <h3>Get scored</h3>
+            <p>When the results come out, narrow ranges that contain the real number score the most points.</p>
+          </li>
+        </ol>
+      </section>
+
       {user && season && (
-        <section className="section">
-          <h2 className="section-title">Your season so far</h2>
+        <section className="glass panel reveal">
+          <h2 className="panel-title">Your season so far</h2>
           <SeasonSoFar season={season} />
         </section>
       )}
 
       {user && upcoming !== null && (
-        <section className="section">
-          <h2 className="section-title">My forecasts</h2>
+        <section className="glass panel reveal">
+          <h2 className="panel-title">My forecasts</h2>
           <MyForecasts events={mine} />
         </section>
       )}

@@ -57,8 +57,17 @@ export default function LockCountdown({ lockAt, serverNow, compact }: LockCountd
   if (left <= 0) {
     return <span className="league-lock locked">{compact ? "Locked" : `Forecasts locked ${formatIst(lockAt)}`}</span>;
   }
+  const soon = left < 86_400_000;
   return (
-    <span className={`league-lock ${left < 86_400_000 ? "soon" : ""}`} title={`Locks at ${formatIst(lockAt)}`}>
+    <span className={`league-lock ${soon ? "soon" : ""}`} title={`Locks at ${formatIst(lockAt)}`}>
+      {/* Under a day left: a tinted badge with a clock, so it reads as a
+          warning by shape and icon, not by colour alone. */}
+      {soon && (
+        <svg className="league-lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2" />
+          <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        </svg>
+      )}
       {compact ? `Locks in ${remaining(left)}` : `Forecasts lock ${formatIst(lockAt)} (in ${remainingLong(left)})`}
     </span>
   );

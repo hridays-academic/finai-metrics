@@ -74,7 +74,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
 
   return (
     <div className="page">
-      <header className="page-header">
+      <header className="page-header glass page-hero">
         <a className="back-link" href="#/league">← Companies</a>
         <h1 className="page-title">
           {event.company.name} <span className="page-title-sub">{event.company.ticker}</span>
@@ -97,14 +97,14 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
 
       {explainer && <SectorExplainer explainer={explainer} />}
 
-      <section className="section" aria-labelledby="research-title">
+      <section className="section glass panel reveal" aria-labelledby="research-title">
         <h2 className="section-title" id="research-title">
           Research
         </h2>
         <ResearchPanel event={event} theme={theme} />
       </section>
 
-      <section id="forecast" className="section forecast-section" aria-labelledby="forecast-title">
+      <section id="forecast" className="section glass panel reveal forecast-section" aria-labelledby="forecast-title">
         <h2 className="section-title" id="forecast-title">
           Your forecast
         </h2>

@@ -14,7 +14,7 @@ interface SidebarProps {
 // Header.tsx's gear icon: 1.6-1.8 stroke width, currentColor, no fill.
 export default function Sidebar({ view, onChange }: SidebarProps) {
   return (
-    <nav className="sidebar" aria-label="Primary">
+    <nav className="sidebar glass" aria-label="Primary">
       <button
         type="button"
         className={`sidebar-icon-button ${view === "home" ? "active" : ""}`}

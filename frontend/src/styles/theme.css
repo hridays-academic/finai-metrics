@@ -263,3 +263,139 @@ textarea {
   background: var(--border-strong);
   border-radius: var(--radius-sm);
 }
+
+/* ---------- Liquid Glass (2026-11, second pass) ----------
+   App-wide since 2026-11-06. These override the base values above. Text
+   colours are retuned so every token stays >= 4.5:1 on the worst case: a
+   glass panel (up to 16% white in dark, 58% white in light) over the
+   brightest point of the wallpaper (checked by script, 2026-11-06).
+
+   Two palettes, picked in Settings (useTheme.ts, `data-palette` on <html>):
+   Aurora (default) and Graphite. A palette sets the wallpaper fields, the
+   scroll tint, the accent text colour, the primary button fill and the
+   "locks soon" badge tint. Palette blocks must repeat every variable they
+   change in both modes (the light Graphite block outranks the rest). */
+:root {
+  --text-secondary: #c7c7cc;
+  --text-tertiary: #c4c4cb;
+  --accent: #9ccbff;
+  --positive: #4be37a;
+  --negative: #ffb3ae;
+
+  --lg-fill: rgba(255, 255, 255, 0.08);
+  --lg-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 45%);
+  --lg-inset: rgba(255, 255, 255, 0.05);
+  --lg-row-hover: rgba(255, 255, 255, 0.06);
+  --lg-btn-fill: rgba(255, 255, 255, 0.1);
+  --lg-btn-fill-hover: rgba(255, 255, 255, 0.16);
+  --lg-edge: rgba(255, 255, 255, 0.12);
+  --lg-edge-top: rgba(255, 255, 255, 0.26);
+  --lg-divider: rgba(255, 255, 255, 0.1);
+  --lg-shadow: 0 1px 1px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.25), 0 28px 64px rgba(0, 0, 0, 0.35);
+  --lg-solid: #17201f;
+  --lg-sheet: rgba(24, 30, 32, 0.82);
+  --lg-light: rgba(255, 255, 255, 0.1);
+  --lg-blur: blur(28px) saturate(180%);
+  --lg-primary-glow: rgba(10, 111, 216, 0.55);
+  --lg-primary-highlight: rgba(255, 255, 255, 0.35);
+
+  --radius-panel: 24px;
+  --radius-inner: 16px;
+  --radius-pill: 999px;
+  --lg-gap: 12px;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-spring: 380ms;
+  --press-scale: 0.96;
+
+  /* Aurora, dark */
+  --wall-base: #041011;
+  --wall-1: rgba(12, 105, 88, 0.43);
+  --wall-2: rgba(26, 72, 150, 0.38);
+  --wall-3: rgba(92, 62, 150, 0.27);
+  --wall-4: rgba(16, 92, 104, 0.38);
+  --wall-tint: rgba(30, 24, 70, 0.55);
+  --soon-bg: rgba(255, 214, 10, 0.2);
+}
+
+:root[data-mode="light"] {
+  --text-secondary: #48484c;
+  --text-tertiary: #5b5b60;
+  --accent: #0060c0;
+  --caution: #7d5200;
+  --positive: #11702d;
+  --negative: #b3221a;
+
+  --lg-fill: rgba(255, 255, 255, 0.58);
+  --lg-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 45%);
+  --lg-inset: rgba(255, 255, 255, 0.55);
+  --lg-row-hover: rgba(0, 0, 0, 0.04);
+  --lg-btn-fill: rgba(255, 255, 255, 0.6);
+  --lg-btn-fill-hover: rgba(255, 255, 255, 0.85);
+  --lg-edge: rgba(255, 255, 255, 0.7);
+  --lg-edge-top: rgba(255, 255, 255, 0.95);
+  --lg-divider: rgba(0, 0, 0, 0.08);
+  --lg-shadow: 0 0 0 1px rgba(30, 50, 90, 0.06), 0 1px 1px rgba(30, 50, 90, 0.05), 0 8px 24px rgba(30, 50, 90, 0.08),
+    0 28px 60px rgba(30, 50, 90, 0.1);
+  --lg-solid: #f7faf9;
+  --lg-sheet: rgba(250, 252, 252, 0.86);
+  --lg-light: rgba(255, 255, 255, 0.6);
+  --lg-primary-glow: rgba(0, 113, 227, 0.4);
+  --accent-fill: #0067c8;
+  --accent-fill-pressed: #0057ad;
+
+  /* Aurora, light */
+  --wall-base: #e9f3f0;
+  --wall-1: rgba(150, 215, 195, 0.55);
+  --wall-2: rgba(160, 190, 240, 0.5);
+  --wall-3: rgba(200, 185, 240, 0.4);
+  --wall-4: rgba(150, 210, 215, 0.45);
+  --wall-tint: rgba(205, 195, 240, 0.45);
+  --soon-bg: rgba(150, 110, 0, 0.14);
+}
+
+/* Graphite: warm graphite with amber/copper light. Copper buttons (white
+   text 5.8:1). "Locks soon" gets a coral-tinted badge with a clock icon so
+   it can't be mistaken for an amber link. */
+:root[data-palette="graphite"] {
+  --wall-base: #100e0d;
+  --wall-1: rgba(66, 60, 56, 0.51);
+  --wall-2: rgba(165, 100, 32, 0.32);
+  --wall-3: rgba(150, 72, 42, 0.29);
+  --wall-4: rgba(168, 82, 72, 0.22);
+  --wall-tint: rgba(40, 22, 14, 0.55);
+  --accent: #ffc085;
+  --accent-fill: #a64b17;
+  --accent-fill-hover: #a64b17;
+  --accent-fill-pressed: #8a3e13;
+  --accent-tint: rgba(255, 192, 133, 0.16);
+  --accent-tint-hover: rgba(255, 192, 133, 0.24);
+  --lg-primary-glow: rgba(200, 100, 40, 0.5);
+  --lg-solid: #1e1a17;
+  --lg-sheet: rgba(34, 29, 26, 0.84);
+  --soon-bg: rgba(255, 110, 80, 0.28);
+}
+:root[data-mode="light"][data-palette="graphite"] {
+  --wall-base: #f4f1ee;
+  --wall-1: rgba(225, 205, 180, 0.55);
+  --wall-2: rgba(235, 190, 160, 0.45);
+  --wall-3: rgba(236, 196, 190, 0.4);
+  --wall-4: rgba(215, 205, 195, 0.45);
+  --wall-tint: rgba(235, 200, 175, 0.45);
+  --accent: #8a3e10;
+  --accent-fill: #a64b17;
+  --accent-fill-hover: #a64b17;
+  --accent-fill-pressed: #8a3e13;
+  --accent-tint: rgba(166, 75, 23, 0.1);
+  --accent-tint-hover: rgba(166, 75, 23, 0.16);
+  --lg-primary-glow: rgba(166, 75, 23, 0.35);
+  --lg-solid: #faf8f6;
+  --lg-sheet: rgba(252, 250, 248, 0.88);
+  --soon-bg: rgba(200, 60, 40, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --press-scale: 1;
+    --duration-spring: 0ms;
+  }
+}

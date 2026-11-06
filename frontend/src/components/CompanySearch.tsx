@@ -17,6 +17,7 @@ export default function CompanySearch({ onSearch, loading, error }: CompanySearc
 
   return (
     <div className="search-bar-wrap">
+      <div className="glass panel research-search">
       <h1 className="page-title">Research</h1>
       <form className="search-form" onSubmit={handleSubmit}>
         <input
@@ -37,6 +38,7 @@ export default function CompanySearch({ onSearch, loading, error }: CompanySearc
         only. Any financial decisions you make are your own responsibility, and Stackly and its owner accept no liability
         for them.
       </p>
+      </div>
     </div>
   );
 }

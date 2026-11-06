@@ -9,7 +9,7 @@ function inSentence(name: string): string {
 
 export default function SectorExplainer({ explainer }: { explainer: Explainer }) {
   return (
-    <section className="section league-explainer" aria-labelledby="explainer-title">
+    <section className="section glass panel reveal league-explainer" aria-labelledby="explainer-title">
       <h2 className="section-title" id="explainer-title">
         How {inSentence(explainer.display_name)} companies make money
       </h2>

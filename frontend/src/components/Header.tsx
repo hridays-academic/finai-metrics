@@ -10,7 +10,9 @@ interface HeaderProps {
 
 export default function Header({ onOpenSettings, onOpenAuth, onGoHome, user }: HeaderProps) {
   return (
-    <header className="app-header">
+    <header className="app-header glass">
+      {/* Scroll progress (Liquid Glass pages only; driven by CSS scroll timeline). */}
+      <span className="scroll-progress" aria-hidden="true" />
       <Logo onClick={onGoHome} />
       <div className="app-header-actions">
         {/* Signing in is optional (every feature works signed-out), so this

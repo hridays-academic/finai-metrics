@@ -202,7 +202,7 @@ export default function LegalPage({ kind }: { kind: "privacy" | "terms" }) {
   const sections = kind === "privacy" ? PRIVACY : TERMS;
   return (
     <div className="page">
-      <article className="legal-page">
+      <article className="legal-page glass panel">
         <header className="page-header">
           <h1 className="page-title">{title}</h1>
           <p className="page-meta">Last updated {LEGAL_UPDATED}</p>

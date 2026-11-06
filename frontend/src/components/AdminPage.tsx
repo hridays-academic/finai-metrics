@@ -28,11 +28,11 @@ export default function AdminPage({ user, onOpenAuth }: AdminPageProps) {
 
   return (
     <div className="page page-wide">
-      <header className="page-header">
+      <header className="page-header glass page-hero">
         <h1 className="page-title">Admin</h1>
       </header>
       {!user && (
-        <section className="section">
+        <section className="section glass panel">
           <p className="section-text">Sign in with an administrator account to see this page.</p>
           <button type="button" className="btn btn-primary" onClick={onOpenAuth}>
             Sign in
@@ -41,7 +41,7 @@ export default function AdminPage({ user, onOpenAuth }: AdminPageProps) {
       )}
       {user && !user.is_admin && <p className="section-text">This page is for administrators only.</p>}
       {user?.is_admin && (
-        <>
+        <section className="glass panel admin-panel-wrap">
           <div className="segmented admin-tabs" role="tablist">
             {TABS.map((t) => (
               <button
@@ -57,7 +57,7 @@ export default function AdminPage({ user, onOpenAuth }: AdminPageProps) {
             ))}
           </div>
           <Active />
-        </>
+        </section>
       )}
       <SiteFooter />
     </div>

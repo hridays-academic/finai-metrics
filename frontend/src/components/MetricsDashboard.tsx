@@ -71,7 +71,7 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
 
   return (
     <div>
-      <div className="company-header">
+      <div className="company-header glass panel">
         <div className="company-title">
           <h1>{info.company_name}</h1>
           <span className="company-ticker">
@@ -130,7 +130,7 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
             ))}
           </div>
 
-          <div className="highlights-row">
+          <div className="highlights-row glass panel">
             {highlights.map(([label, value]) => (
               <div className="highlight-tile" key={label}>
                 <div className="label">{label}</div>
@@ -142,7 +142,7 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
           <div className="metric-groups-grid">
             {metric_groups.map((group) => (
               <div
-                className="metric-group"
+                className="metric-group glass panel"
                 key={group.key}
                 ref={(el) => {
                   groupRefs.current[group.key] = el;

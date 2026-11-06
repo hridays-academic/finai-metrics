@@ -557,6 +557,58 @@ Apple-quality, not "vibe coded". Rules to keep:
   Playwright script that mocks open events/admin user/a scored result was
   used for the 2026-11-06 pass (scratchpad only, not committed).
 
+### Liquid Glass (2026-11-06, second pass; replaces parts of the above)
+
+Approved by Hriday after a home-page trial. Where this conflicts with the
+bullets above, this wins.
+
+- **Always on**: `.app-shell` carries `lg`; every rule lives under `.lg` in
+  the "Liquid Glass" sections at the end of `app.css`. Tokens are in the
+  "Liquid Glass" block at the end of `theme.css` (`:root` level, so the
+  charts' `getComputedStyle(document.documentElement)` reads them too).
+- **Palettes**: Aurora (default) and Graphite, chosen in Settings (Theme +
+  Mode), saved per browser (`finai-metrics-palette`, try/catch, falls back to
+  Aurora), set as `data-palette` on `<html>`. Deep ocean was tried and
+  removed. A palette block must repeat every variable it changes in both
+  modes (the light Graphite block outranks the rest).
+- **Radii**: `--radius-panel` 24px (glass panels, bars, sheets),
+  `--radius-inner` 16px (anything inside a panel), `--radius-pill` (buttons,
+  segmented, chips). This supersedes the 8/14 pair for live screens.
+- **Wallpaper** (`Wallpaper.tsx`): four pre-blurred radial-gradient fields
+  on two parallax layers, 21-29s flow/morph loops (transform + opacity only),
+  mouse parallax eased in rAF (writes only `--px/--py`), a tint that fades
+  in on scroll, paused while the tab is hidden, static under reduced motion.
+  The content column must stay `position: relative; z-index: 1` or the fixed
+  wallpaper paints over non-positioned content (a real bug, hid the footer).
+- **Glass**: `.glass` = translucent fill + sheen + `blur(28px) saturate(180%)`
+  + inner edge highlight + layered shadow. `.glass .glass` drops the blur
+  (no nested blur, the main phone cost) and becomes an inset surface. Solid
+  fallback without backdrop-filter or with reduced transparency.
+- **Contrast**: text tokens are retuned for glass and checked against the
+  worst case (glass over the brightest wallpaper field) per palette and
+  mode. Re-run that check if you change a wallpaper or text colour.
+- **Cursor light** (`useCursorLight.ts`): one pointermove listener, one rAF
+  per frame, reads rects then writes `--mx/--my/--light` on the hovered
+  `.btn` and its `.glass` panel. Mouse only; off under reduced motion.
+- **Scroll motion**: CSS scroll-driven animations on the `--page` scroll
+  timeline (content column; `timeline-scope` on `.lg`) and `view()`: hero
+  recedes, top bar turns solid + progress line, panels (`.reveal`) and rows
+  (`.reveal-row`) glide in, wallpaper tint. Fallback: `useRevealFallback.ts`
+  (global IntersectionObserver + MutationObserver) for browsers without
+  `animation-timeline`. Ranges are fixed lengths (`entry 0px entry 240px`),
+  not percentages, so a tall panel isn't left blurred half on screen.
+  `CountUp.tsx` counts revenue/profit up once on first view.
+- **"Locks soon"** (<24h): a tinted pill badge with a clock icon and
+  primary-colour text (`--soon-bg`, coral in Graphite, amber in Aurora), so
+  it can't be confused with Graphite's amber links and doesn't rely on
+  colour. A coral text colour was rejected: same hue as the negative red and
+  under 4.5:1 on dark glass.
+- **Home between seasons**: when nothing is open it lists the locked
+  companies ("Results due 27 Oct" / "Results out, scoring soon") plus "How
+  it works". Rows: name, one status line, description, Revenue/Profit in
+  aligned columns (labels once per list), one action; one source footnote
+  per panel.
+
 **Responsive breakpoints (`app.css`).** (Since 2026-11 the live screens' phone
 rules are in the design-system layer's "Phones" block at the end of `app.css`;
 the history below still explains the older rules.) Built 2026-07 after a live phone-width

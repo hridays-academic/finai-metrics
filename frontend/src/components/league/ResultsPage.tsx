@@ -97,7 +97,7 @@ function MetricCard({ m }: { m: MetricResult }) {
   const lazyText = m.beat_lazy === null ? "No lazy guess" : m.beat_lazy ? "Beat the lazy guess" : "Didn't beat the lazy guess";
   const u = m.unit;
   return (
-    <li className="results-metric">
+    <li className="results-metric reveal-row">
       <div className="results-metric-head">
         <h3 className="results-metric-title">{m.label}</h3>
         <div className="results-chips">
@@ -172,19 +172,19 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
   if (!user || !result) {
     return (
       <div className="page">
-        <header className="page-header">
+        <header className="page-header glass page-hero">
           <a className="back-link" href="#/league">← Companies</a>
           {event && <h1 className="page-title">{event.company.name}</h1>}
         </header>
         {!user ? (
-          <section className="section">
+          <section className="section glass panel">
             <p className="section-text">Sign in to see your results.</p>
             <button type="button" className="btn btn-primary" onClick={onOpenAuth}>
               Sign in
             </button>
           </section>
         ) : (
-          <section className="section">
+          <section className="section glass panel">
             <p className="section-text">{notice ?? "Loading..."}</p>
             {notice && event && <a href={`#/event/${event.id}`}>Go to the company page</a>}
           </section>
@@ -197,7 +197,7 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
   const ev = result.event;
   return (
     <div className="page">
-      <header className="page-header">
+      <header className="page-header glass page-hero">
         <a className="back-link" href="#/league">← Companies</a>
         <h1 className="page-title">
           {ev.company.name} <span className="page-title-sub">{ev.company.ticker}</span>
@@ -207,14 +207,14 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
         </p>
       </header>
 
-      <section className="section results-score" aria-label="Your score">
+      <section className="section glass panel reveal results-score" aria-label="Your score">
         <div className="results-score-label">Your score</div>
         <div className="results-score-value">{n(result.event_score)}</div>
         <p>{result.event_score_explanation}</p>
         <p>{result.crowd_explanation}</p>
       </section>
 
-      <section className="section" aria-label="Score by number">
+      <section className="section glass panel reveal results-list-panel" aria-label="Score by number">
         <ul className="group results-list">
           {result.metrics.map((m) => (
             <MetricCard key={m.metric_key} m={m} />

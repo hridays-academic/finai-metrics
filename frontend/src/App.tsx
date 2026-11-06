@@ -11,6 +11,7 @@ import PaperTrading from "./components/PaperTrading";
 import ResetPasswordPanel from "./components/ResetPasswordPanel";
 import AdminPage from "./components/AdminPage";
 import SiteFooter from "./components/SiteFooter";
+import Wallpaper from "./components/Wallpaper";
 import LegalPage from "./components/LegalPage";
 import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
@@ -18,6 +19,8 @@ import ForecastPage from "./components/league/ForecastPage";
 import ResultsPage from "./components/league/ResultsPage";
 import { clearRoute, useHashRoute } from "./lib/router";
 import { useTheme } from "./hooks/useTheme";
+import { useCursorLight } from "./hooks/useCursorLight";
+import { useRevealFallback } from "./hooks/useRevealFallback";
 import { SHOW_EXTRA_TOOLS } from "./lib/features";
 import { fetchCompany, fetchMe, recordVisit, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
@@ -28,7 +31,9 @@ import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
 let visitRecorded = false;
 
 export default function App() {
-  const { theme, mode, setMode } = useTheme();
+  const { theme, mode, palette, setMode, setPalette } = useTheme();
+  useCursorLight();
+  useRevealFallback();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   // Sign-in is purely for activity tracking, not a gate on using the app --
@@ -103,7 +108,10 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    // `lg` = the Liquid Glass layer (2026-11), on every page.
+    <div className="app-shell lg">
+      <Wallpaper />
+
       <Sidebar view={navView} onChange={handleChangeView} />
 
       <div className="app-shell-content">
@@ -150,7 +158,7 @@ export default function App() {
                 {company ? (
                   <MetricsDashboard data={company} theme={theme} />
                 ) : (
-                  <div className="empty-state">
+                  <div className="empty-state glass panel">
                     <h2>Look up any listed company</h2>
                     <p>Search for an NSE or BSE company to see its financial ratios and price history.</p>
                   </div>
@@ -217,6 +225,8 @@ export default function App() {
             setSettingsOpen(false);
           }}
           mode={mode}
+          palette={palette}
+          onSetPalette={setPalette}
           onSetMode={setMode}
           onClose={() => setSettingsOpen(false)}
         />
