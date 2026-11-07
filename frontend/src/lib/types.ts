@@ -209,13 +209,22 @@ export interface LeagueConfig {
   sector_explainers: SectorExplainer[];
 }
 
+export interface EquationTerm {
+  op: string; // "" for the first term, else "x", "-", "+" or "="
+  label: string;
+  note: string;
+}
+
 export interface SectorExplainer {
   sector: string;
   display_name: string;
+  lead: string;
   sells: string;
   sales_drivers: string;
   cost_drivers: string;
   checklist: string[];
+  equation: EquationTerm[];
+  key_insight: string;
 }
 
 export interface LeagueCompany {

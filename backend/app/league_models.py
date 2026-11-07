@@ -36,13 +36,22 @@ class KpiTemplateOut(BaseModel):
     non_disclosing_tickers: list[str]
 
 
+class EquationTermOut(BaseModel):
+    op: str
+    label: str
+    note: str
+
+
 class SectorExplainerOut(BaseModel):
     sector: str
     display_name: str
+    lead: str
     sells: str
     sales_drivers: str
     cost_drivers: str
     checklist: list[str]
+    equation: list[EquationTermOut]
+    key_insight: str
 
 
 class LeagueConfigOut(BaseModel):

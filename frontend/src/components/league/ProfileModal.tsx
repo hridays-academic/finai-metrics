@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { FormEvent, useState } from "react";
 import { ApiError, updateLeagueProfile } from "../../lib/api";
 import type { UserPublic } from "../../lib/types";
@@ -31,7 +32,10 @@ export default function ProfileModal({ user, onSaved, onClose }: ProfileModalPro
     }
   }
 
-  return (
+  // Portalled to the app shell: the page it opens from has CSS perspective
+  // (3D scroll motion), which would otherwise trap this fixed overlay inside
+  // the page instead of covering the viewport.
+  return createPortal(
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Set up your league profile">
       <div className="modal-card sheet">
         <h2>Join the Results League</h2>
@@ -47,7 +51,6 @@ export default function ProfileModal({ user, onSaved, onClose }: ProfileModalPro
               minLength={3}
               maxLength={20}
               pattern="[A-Za-z0-9_]+"
-              title="Letters, numbers and underscores"
               required
               autoFocus
             />
@@ -89,6 +92,7 @@ export default function ProfileModal({ user, onSaved, onClose }: ProfileModalPro
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.querySelector(".app-shell") ?? document.body
   );
 }

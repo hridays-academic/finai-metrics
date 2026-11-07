@@ -4,6 +4,7 @@ import { daysUntil, formatDay } from "../../lib/leagueFormat";
 import type { EventSummary, LeagueConfig, ResearchHistory, Season, UserPublic } from "../../lib/types";
 import SiteFooter from "../SiteFooter";
 import CountUp from "../CountUp";
+import ArrowChip from "../ArrowChip";
 import LockCountdown from "./LockCountdown";
 
 interface LeagueHomeProps {
@@ -92,9 +93,7 @@ function PickerRow({ event, sectorName, history }: PickerRowProps) {
         </dl>
         <span className="picker-row-action">
           {isOpen && !event.submitted ? "Forecast" : "View"}
-          <svg width="7" height="12" viewBox="0 0 8 14" fill="none" aria-hidden="true">
-            <path d="M1 1l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <ArrowChip />
         </span>
       </a>
     </li>

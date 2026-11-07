@@ -42,16 +42,32 @@ class KpiTemplate:
 
 
 @dataclass(frozen=True)
+class EquationTerm:
+    """One chip in the sector's business equation. `op` is the operator
+    before it ("" for the first term); `note` is a short hint under it."""
+
+    op: str
+    label: str
+    note: str = ""
+
+
+@dataclass(frozen=True)
 class SectorExplainer:
     """'How this business makes money', shown at the top of a company page.
-    Written for complete beginners."""
+    Written for complete beginners. `lead` is the opening sentence of what
+    the sector sells (shown large), `sells` the rest of it. `equation` is
+    built only from terms the text itself uses, and `key_insight` must quote
+    one of the sentences above word for word (a test checks it)."""
 
     sector: str
     display_name: str
+    lead: str
     sells: str
     sales_drivers: str
     cost_drivers: str
     checklist: tuple[str, ...]
+    equation: tuple[EquationTerm, ...] = ()
+    key_insight: str = ""
 
 
 @dataclass(frozen=True)
@@ -188,9 +204,9 @@ _IN_SECTOR_EXPLAINERS = {
     "cement": SectorExplainer(
         sector="cement",
         display_name="Cement",
+        lead="Cement: the grey powder that holds concrete together.",
         sells=(
-            "Cement: the grey powder that holds concrete together. It's sold by the tonne to builders, "
-            "contractors and local dealers. Cement is heavy and costly to move, so most of it is sold "
+            "It's sold by the tonne to builders, contractors and local dealers. Cement is heavy and costly to move, so most of it is sold "
             "within a few hundred kilometres of the plant that made it."
         ),
         sales_drivers=(
@@ -209,13 +225,23 @@ _IN_SECTOR_EXPLAINERS = {
             "Are coal and petcoke prices up or down? That's the biggest swing in margin.",
             "Look at the same quarter last year in the table. Was it unusually strong or weak?",
         ),
+        equation=(
+            EquationTerm("", "Tonnes sold"),
+            EquationTerm("x", "Price per tonne"),
+            EquationTerm("-", "Costs", "Mostly energy and transport"),
+            EquationTerm("=", "Profit"),
+        ),
+        key_insight=(
+            "Building slows in the monsoon (July to September), so that quarter is usually weaker "
+            "than the ones around it."
+        ),
     ),
     "autos": SectorExplainer(
         sector="autos",
         display_name="Autos",
+        lead="Vehicles: cars, motorcycles, scooters, tractors or trucks, depending on the company.",
         sells=(
-            "Vehicles: cars, motorcycles, scooters, tractors or trucks, depending on the company. It "
-            "also sells spare parts. Most vehicles are sold through dealers in India, and some are exported."
+            "It also sells spare parts. Most vehicles are sold through dealers in India, and some are exported."
         ),
         sales_drivers=(
             "Sales = units sold x average price per vehicle. Units depend on demand: the festive season, "
@@ -235,13 +261,26 @@ _IN_SECTOR_EXPLAINERS = {
             "Are steel and aluminium prices up or down since last year?",
             "How did exports do? Weak export markets can drag total units down.",
         ),
+        equation=(
+            EquationTerm("", "Units sold"),
+            EquationTerm("x", "Average price per vehicle"),
+            EquationTerm("-", "Costs", "Mostly raw materials"),
+            EquationTerm("=", "Profit"),
+        ),
+        key_insight=(
+            "Companies publish units sold every month, so most of the quarter's unit count is public "
+            "before results day."
+        ),
     ),
     "fmcg": SectorExplainer(
         sector="fmcg",
         display_name="Everyday goods (FMCG)",
-        sells=(
+        lead=(
             "Things people buy again and again: soap, shampoo, toothpaste, biscuits, tea and packaged "
-            "food. They're sold through millions of small neighbourhood shops, supermarkets and online."
+            "food."
+        ),
+        sells=(
+            "They're sold through millions of small neighbourhood shops, supermarkets and online."
         ),
         sales_drivers=(
             "Sales = how many packs people buy (volume) x price per pack. Companies raise prices when "
@@ -259,14 +298,23 @@ _IN_SECTOR_EXPLAINERS = {
             "Are palm oil and packaging costs up or down?",
             "The volume KPI only appears if the company discloses it. If it doesn't, this event has no sector KPI.",
         ),
+        equation=(
+            EquationTerm("", "Packs sold", "Volume"),
+            EquationTerm("x", "Price per pack"),
+            EquationTerm("-", "Costs", "Raw materials, packaging, advertising"),
+            EquationTerm("=", "Profit"),
+        ),
+        key_insight="Revenue growth is roughly volume growth plus price increases.",
     ),
     "it": SectorExplainer(
         sector="it",
         display_name="IT services",
-        sells=(
+        lead=(
             "Technology work for other businesses: building and running software and systems for banks, "
-            "shops, airlines and manufacturers, mostly in the US and Europe. Clients pay per project, "
-            "per hour, or through contracts lasting several years."
+            "shops, airlines and manufacturers, mostly in the US and Europe."
+        ),
+        sells=(
+            "Clients pay per project, per hour, or through contracts lasting several years."
         ),
         sales_drivers=(
             "Sales depend on how many deals the company wins and how much its clients spend on "
@@ -284,6 +332,16 @@ _IN_SECTOR_EXPLAINERS = {
             "Has it announced any big deal wins recently?",
             "Is the rupee weaker or stronger against the dollar than a year ago? A weaker rupee lifts revenue growth in rupees.",
             "Is this the quarter it usually gives pay rises? That pulls the margin down.",
+        ),
+        equation=(
+            EquationTerm("", "Revenue in dollars, euros and pounds"),
+            EquationTerm("x", "Exchange rate", "Rupees per dollar, euro or pound"),
+            EquationTerm("-", "Costs", "Mostly salaries"),
+            EquationTerm("=", "Profit"),
+        ),
+        key_insight=(
+            "Most revenue is earned in dollars, euros and pounds, so when the rupee weakens, revenue "
+            "in rupees goes up even with no extra work."
         ),
     ),
 }

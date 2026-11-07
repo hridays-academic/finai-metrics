@@ -1188,85 +1188,6 @@ button {
   font-weight: 500;
 }
 
-.metric-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  /* Exactly the hovered box's own width -- not wider. A wider popover
-     would visually spill into a neighboring card, and since the popover is
-     a DOM child of the hovered card, hovering that spilled-over area kept
-     registering as "still hovering the original card" instead of the one
-     underneath, so the pop-up range effectively bled past its own box. */
-  left: 0;
-  width: 100%;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-elevated);
-  padding: var(--space-3) var(--space-4);
-  z-index: 30;
-  text-align: left;
-  cursor: default;
-  transform-origin: top center;
-  animation: popover-in var(--duration-ui) var(--ease-out);
-}
-
-@keyframes popover-in {
-  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* Flipped upward when there isn't room below in the viewport (see
-   MetricCard.tsx's openAbove logic) -- otherwise a bottom-row popover runs
-   past the viewport edge and forces the scrollable area to grow every time
-   it opens. */
-.metric-popover.above {
-  top: auto;
-  bottom: calc(100% + 8px);
-  transform-origin: bottom center;
-  animation: popover-in-above var(--duration-ui) var(--ease-out);
-}
-
-@keyframes popover-in-above {
-  from { opacity: 0; transform: translateY(6px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.metric-popover-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.metric-popover-definition {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin: 0 0 var(--space-2);
-}
-
-.metric-popover-assessment {
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  margin: 0;
-  padding: var(--space-2) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--status-neutral-bg);
-  color: var(--text-primary);
-}
-.metric-popover-assessment.good { background: var(--status-good-bg); }
-.metric-popover-assessment.warning { background: var(--status-warning-bg); }
-.metric-popover-assessment.bad { background: var(--status-bad-bg); }
-
-.metric-popover-formula {
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-subtle);
-  font-size: var(--text-xs);
-  font-family: var(--font-mono);
-  color: var(--text-tertiary);
-}
-
 /* ---------- Settings panel ---------- */
 
 .settings-backdrop {
@@ -5340,7 +5261,7 @@ textarea.input,
   z-index: -1;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 0), var(--lg-light), transparent 65%);
+  background: radial-gradient(var(--lg-light-radius) circle at var(--mx, 50%) var(--my, 0), var(--lg-light), transparent 70%);
   opacity: var(--light, 0);
   transition: opacity 400ms var(--ease-out);
 }
@@ -5400,18 +5321,24 @@ textarea.input,
   overflow: hidden;
   border-radius: var(--radius-pill);
   padding: 0 var(--space-6);
-  transition: transform var(--duration-spring) var(--ease-spring), background-color var(--duration-ui) var(--ease-out),
+  transform-origin: 50% 50%;
+  transition: transform 150ms var(--ease-out), background-color var(--duration-ui) var(--ease-out),
     box-shadow var(--duration-ui) var(--ease-out), color var(--duration-ui) var(--ease-out);
 }
-.lg .btn:hover:not(:disabled) {
-  transform: translateY(-1px);
+/* Buttons stay exactly in place: a very slight magnify and a deeper shadow
+   on hover (mouse only), 0.97 on press, never tilted. */
+@media (hover: hover) {
+  .lg .btn:hover:not(:disabled) {
+    transform: scale(1.02);
+  }
 }
 .lg .btn:active:not(:disabled) {
   transform: scale(var(--press-scale));
   transition-duration: 80ms;
 }
 @media (prefers-reduced-motion: reduce) {
-  .lg .btn:hover:not(:disabled) {
+  .lg .btn:hover:not(:disabled),
+  .lg .btn:active:not(:disabled) {
     transform: none;
   }
 }
@@ -5604,7 +5531,8 @@ textarea.input,
   color: var(--text-primary);
   transition: background-color var(--duration-ui) var(--ease-out);
 }
-.lg .picker-row:hover .picker-row-action {
+.lg .picker-row-action:hover,
+.lg .picker-row:focus-visible .picker-row-action {
   background: var(--lg-btn-fill-hover);
 }
 .lg .panel-footnote {
@@ -5761,15 +5689,12 @@ textarea.input,
       animation-timeline: --page;
       animation-range: 0 420px;
     }
+    /* Done once the panel is fully on screen, or 200px in if it's taller
+       than that, so nothing is still fading at the end of a short page. */
     .lg .reveal {
       animation: lg-panel-in linear both;
       animation-timeline: view();
-      animation-range: entry 0px entry 240px;
-    }
-    .lg .reveal-row {
-      animation: lg-row-in linear both;
-      animation-timeline: view();
-      animation-range: entry 0px entry 120px;
+      animation-range: entry 0% entry min(100%, 200px);
     }
   }
 }
@@ -5783,23 +5708,14 @@ textarea.input,
 @keyframes lg-tint {
   to { opacity: 1; }
 }
+/* The hero drifts up a little as the page scrolls; it never fades. */
 @keyframes lg-hero-recede {
-  to { transform: translate3d(0, -20px, 0) scale(0.94); opacity: 0.6; }
+  to { transform: translate3d(0, -16px, 0); }
 }
+/* Panels only rise into place: no tilt, scale or blur. */
 @keyframes lg-panel-in {
-  from { opacity: 0; transform: translate3d(0, 48px, 0) scale(0.96); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
-}
-@keyframes lg-row-in {
-  from { opacity: 0; transform: translate3d(0, 20px, 0); }
+  from { opacity: 0; transform: translate3d(0, 32px, 0); }
   to { opacity: 1; transform: none; }
-}
-/* Phones: no entry blur (a filter on a large blurred panel costs frames). */
-@media (max-width: 640px) {
-  @keyframes lg-panel-in {
-    from { opacity: 0; transform: translate3d(0, 32px, 0) scale(0.97); }
-    to { opacity: 1; transform: none; }
-  }
 }
 
 /* Fallback for browsers without scroll-driven animations. */
@@ -5811,7 +5727,7 @@ textarea.input,
     }
     .lg .reveal:not(.is-visible) {
       opacity: 0;
-      transform: translate3d(0, 40px, 0) scale(0.96);
+      transform: translate3d(0, 32px, 0);
     }
     .lg .reveal-row:not(.is-visible) {
       opacity: 0;
@@ -6126,4 +6042,744 @@ textarea.input,
     width: calc(100vw - 2 * var(--space-3) - 2 * var(--space-4) - 2 * var(--space-4));
     grid-template-columns: 1fr;
   }
+}
+
+/* =====================================================================
+   Liquid Glass polish (2026-11-07)
+   Clearer glass, one spacing rhythm, balanced tile grids, glass tooltips,
+   the motion rules and the company page. Wins over everything above.
+   Motion rules: panels and the page never tilt, rotate or scale; they only
+   rise into place. 3D is for small things (ratio tiles, company rows,
+   chips). Buttons stay put: a 1.02 magnify on hover, 0.97 on press.
+   ===================================================================== */
+
+/* Text on clearer glass: a faint shadow in dark mode keeps light text
+   crisp where the wallpaper behind is busiest (none in light mode). */
+.lg .glass {
+  text-shadow: var(--lg-text-shadow);
+}
+
+/* ---------- One spacing rhythm on every page ---------- */
+
+.lg {
+  --panel-gap: 24px;
+  --panel-pad: 32px;
+  --tile-gap: 12px;
+  --title-gap: 16px;
+}
+@media (max-width: 640px) {
+  .lg {
+    --panel-gap: 16px;
+    --panel-pad: 20px;
+  }
+}
+.lg .page,
+.lg .page.home,
+.lg .metrics-pane > div,
+.lg .expanded-details,
+.lg .metric-groups-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap);
+}
+.lg .page,
+.lg .page.home {
+  padding-top: var(--panel-gap);
+}
+/* Spacing between stacked items comes from the gap alone. */
+.lg .metrics-pane > div > *,
+.lg .expanded-details > *,
+.lg .metric-groups-grid > * {
+  margin: 0;
+}
+.lg .content-grid {
+  padding-top: var(--panel-gap);
+}
+.lg .panel,
+.lg .hero,
+.lg .page-hero,
+.lg .empty-state,
+.lg .legal-page,
+.lg .admin-panel-wrap,
+.lg .results-list-panel,
+.lg .search-bar-wrap > .glass {
+  padding: var(--panel-pad);
+}
+/* Titles sit the same distance above whatever follows them. */
+.lg .panel > .section-title,
+.lg .panel > .panel-title,
+.lg .metric-group > h3 {
+  margin: 0 0 var(--title-gap);
+}
+.lg .metric-group > h3 + .price-lag-note {
+  margin: calc(var(--space-2) - var(--title-gap)) 0 var(--title-gap);
+}
+.lg .panel-title + .panel-text {
+  margin-top: calc(var(--space-2) - var(--title-gap));
+}
+
+/* The Research ratios used to sit in containers that clip with
+   overflow: hidden / auto. Those count as scroll containers, so every
+   scroll animation inside them was timed against a box that never scrolls,
+   and the last panels stayed half faded. clip/visible are not scroll
+   containers, so the animations follow the page. */
+.lg .metrics-pane {
+  overflow: visible;
+}
+.lg .expanded-details {
+  overflow: clip;
+}
+
+/* ---------- Tiles: balanced grids of equal tiles ---------- */
+
+/* useBalancedGrid.ts sets --half-cols and, for a short last row, the start
+   column of its first tile, so the row is centred. Every row is as tall as
+   the tallest tile. */
+.lg .tile-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--half-cols, 2), minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: var(--tile-gap);
+  margin: 0;
+  border: none;
+  background: none;
+}
+.lg .tile-grid > * {
+  grid-column: span 2;
+}
+.lg .highlights-row {
+  display: block;
+}
+.lg .metric-card,
+.lg .highlight-tile,
+.lg .stat {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: none;
+  border-radius: var(--radius-tile);
+  background: var(--lg-inset);
+  box-shadow: inset 0 1px 0 var(--lg-edge-top), inset 0 0 0 1px var(--lg-edge);
+  cursor: default;
+}
+.lg .highlight-tile:first-child,
+.lg .highlight-tile:last-child {
+  border-radius: var(--radius-tile);
+}
+.lg .metric-label,
+.lg .highlight-tile .label,
+.lg .stat-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.lg .metric-value,
+.lg .highlight-tile .value {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+/* Value and status sit at the bottom of every tile, so they line up across
+   a row even when a neighbour's label wraps onto two lines. */
+.lg .metric-card .metric-value {
+  margin-top: auto;
+}
+.lg .metric-card .status-text {
+  padding-top: var(--space-1);
+  font-size: var(--text-xs);
+}
+.status-text.neutral {
+  color: var(--text-secondary);
+}
+.status-text.neutral::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+@media (hover: hover) {
+  .lg .metric-card:hover {
+    background: var(--lg-btn-fill);
+  }
+}
+.lg .metric-card:focus-visible {
+  background: var(--lg-btn-fill);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.lg .tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(var(--lg-light-radius) circle at var(--mx, 50%) var(--my, 0), var(--lg-light), transparent 70%);
+  opacity: var(--light, 0);
+  transition: opacity 300ms var(--ease-out);
+}
+@media (max-width: 640px) {
+  .lg .metric-card,
+  .lg .highlight-tile,
+  .lg .stat {
+    padding: var(--space-3);
+  }
+  .lg .metric-value,
+  .lg .highlight-tile .value {
+    font-size: var(--text-md);
+  }
+  .lg .stat-value {
+    font-size: var(--text-lg);
+    white-space: normal;
+  }
+}
+
+/* ---------- Tooltip (Tooltip.tsx, portalled to <body>) ----------
+   The same glass as the panels, clearer than a sheet: --lg-tooltip is a 55%
+   fill (text stays above 4.7:1 even over a mid-grey backdrop, checked per
+   palette and mode), with a slightly stronger blur than the panels behind
+   the text. */
+
+.tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-inner);
+  background: var(--lg-sheen), var(--lg-tooltip);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--lg-edge-top), inset 0 0 0 1px var(--lg-edge), var(--lg-tooltip-shadow);
+  color: var(--text-primary);
+  text-shadow: var(--lg-text-shadow);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  pointer-events: none;
+  visibility: hidden;
+}
+.tooltip.is-placed {
+  visibility: visible;
+  animation: tooltip-in 160ms var(--ease-out);
+}
+.tooltip-top {
+  transform-origin: var(--arrow-x) 100%;
+}
+.tooltip-bottom {
+  transform-origin: var(--arrow-x) 0;
+}
+@keyframes tooltip-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+/* Only the half of the arrow outside the tooltip is drawn, so it doesn't
+   double the tint where it overlaps the body. */
+.tooltip-arrow {
+  position: absolute;
+  left: var(--arrow-x);
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: var(--lg-sheet);
+  transform: rotate(45deg);
+}
+.tooltip-top .tooltip-arrow {
+  bottom: -6px;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  box-shadow: inset -1px -1px 0 var(--lg-edge);
+}
+.tooltip-bottom .tooltip-arrow {
+  top: -6px;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  box-shadow: inset 1px 1px 0 var(--lg-edge-top);
+}
+.tooltip-title {
+  margin-bottom: var(--space-1);
+  font-weight: var(--weight-semibold);
+}
+.tooltip-text {
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary);
+}
+.tooltip-emphasis {
+  color: var(--text-primary);
+}
+.tooltip-formula {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--lg-divider);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tooltip,
+  .tooltip-arrow {
+    background: var(--lg-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .tooltip,
+  .tooltip-arrow {
+    background: var(--lg-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tooltip.is-placed {
+    animation: none;
+  }
+}
+
+/* ---------- Motion: small things in 3D, panels never ---------- */
+
+/* Perspective only on containers of small elements. */
+.lg .tile-grid,
+.lg .group,
+.lg .reveal-row,
+.lg .how-steps,
+.lg .explainer-equation,
+.lg .checklist,
+.lg .quarters-trends,
+.lg .league-research,
+.lg .league-explainer {
+  perspective: 1200px;
+}
+.lg .panel,
+.lg .hero,
+.lg .page-hero,
+.lg .glass {
+  rotate: none;
+}
+
+/* Hover lean (useCursorLight.ts sets --tilt as "x y z angle" on tiles and
+   company rows, mouse only). `rotate` composes with the scroll entry's
+   `transform`, so the two never fight. Springs back on leave. */
+.lg .tile,
+.lg .picker-row {
+  rotate: var(--tilt, 0 0 1 0deg);
+  transition: rotate 700ms var(--ease-spring), background-color var(--duration-ui) var(--ease-out);
+}
+.lg .tile[data-tilting],
+.lg .picker-row[data-tilting] {
+  transition: rotate 120ms var(--ease-out), background-color var(--duration-ui) var(--ease-out);
+}
+
+/* Scroll entry for small things: tilt up into place, staggered by column
+   (--col, set by useBalancedGrid or below), and always finished by the
+   time the element is fully on screen. */
+.lg .equation-step:nth-child(2),
+.lg .how-steps > li:nth-child(2),
+.lg .quarters-trends > :nth-child(2) {
+  --col: 1;
+}
+.lg .equation-step:nth-child(3),
+.lg .how-steps > li:nth-child(3) {
+  --col: 2;
+}
+.lg .equation-step:nth-child(4) {
+  --col: 3;
+}
+.lg .equation-step:nth-child(n + 5) {
+  --col: 4;
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .lg .tile,
+    .lg .reveal-row,
+    .lg .reveal-item,
+    .lg .how-steps > li {
+      transform-origin: 50% 0;
+      animation: lg-tilt-in linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--col, 0) * 12%) entry 100%;
+    }
+  }
+}
+@keyframes lg-tilt-in {
+  from { opacity: 0; transform: translate3d(0, 28px, 0) rotateX(26deg) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+/* Set by useRevealFallback.ts on anything still mid-entrance when the page
+   can't scroll any further: it snaps to its final state. */
+.lg .is-settled {
+  animation: none !important;
+}
+
+/* ---------- Buttons and the arrow chip ---------- */
+
+@media (hover: hover) {
+  .lg .btn-primary:hover:not(:disabled) {
+    box-shadow: inset 0 1px 0 var(--lg-primary-highlight), inset 0 0 0 1px var(--lg-primary-highlight),
+      0 4px 8px rgba(0, 0, 0, 0.22), 0 16px 32px -10px var(--lg-primary-glow);
+  }
+  .lg .btn-secondary:hover:not(:disabled),
+  .lg .btn-tertiary:hover:not(:disabled) {
+    box-shadow: inset 0 1px 0 var(--lg-edge-top), inset 0 0 0 1px var(--lg-edge), 0 10px 24px -10px rgba(0, 0, 0, 0.45);
+  }
+}
+.lg .btn:has(.arrow-chip) {
+  padding-right: var(--space-2);
+}
+
+/* → turns to ↗ while the pointer is on the button itself, or it has
+   keyboard focus. On a company row that means the action pill only, never
+   the rest of the row. */
+.arrow-chip {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.btn-secondary .arrow-chip,
+.picker-row-action .arrow-chip {
+  background: var(--lg-btn-fill-hover);
+  box-shadow: inset 0 1px 0 var(--lg-edge-top);
+}
+.arrow-chip svg {
+  transition: transform 150ms var(--ease-out);
+}
+.btn:focus-visible .arrow-chip svg,
+.picker-row:focus-visible .arrow-chip svg {
+  transform: rotate(-45deg);
+}
+@media (hover: hover) {
+  .btn:hover:not(:disabled) .arrow-chip svg,
+  .picker-row-action:hover .arrow-chip svg {
+    transform: rotate(-45deg);
+  }
+}
+.btn[aria-busy="true"] .arrow-chip {
+  display: none;
+}
+
+/* The row's action pill behaves like a button: magnify and shadow only
+   while it's hovered itself. */
+.lg .picker-row-action {
+  min-height: 40px;
+  padding: 0 var(--space-1) 0 var(--space-4);
+  transform-origin: 50% 50%;
+  transition: transform 150ms var(--ease-out), background-color var(--duration-ui) var(--ease-out),
+    box-shadow var(--duration-ui) var(--ease-out);
+}
+@media (hover: hover) {
+  .lg .picker-row-action:hover {
+    transform: scale(1.02);
+    box-shadow: inset 0 1px 0 var(--lg-edge-top), inset 0 0 0 1px var(--lg-edge), 0 10px 24px -10px rgba(0, 0, 0, 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg .picker-row-action:hover,
+  .lg .tile,
+  .lg .picker-row {
+    transform: none;
+    rotate: none;
+    transition: none;
+  }
+  .arrow-chip svg {
+    transition: none;
+  }
+}
+
+/* ---------- Company page ---------- */
+
+/* Key figures in the header. */
+.lg .key-stats {
+  align-self: stretch;
+  width: 100%;
+  margin-top: var(--space-5);
+}
+.lg .stat-value {
+  white-space: nowrap;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+.lg .stat-value .league-lock {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+.lg .stat-value .league-lock.soon {
+  font-size: var(--text-md);
+}
+.lg .stat-sub {
+  margin-top: auto;
+  padding-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.lg .key-stats .footnote {
+  margin: var(--space-3) 0 0;
+}
+
+/* "How this business makes money": lead, equation, drivers, insight,
+   checklist. Body text keeps a comfortable measure (~65 characters). */
+.lg .explainer-lead {
+  margin: 0 0 var(--space-6);
+  max-width: 40ch;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.lg .explainer-equation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-2);
+  margin: 0 0 var(--space-7);
+}
+.lg .equation-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.lg .equation-op {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  color: var(--text-secondary);
+}
+.lg .equation-term {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 52px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-inner);
+  background: var(--lg-inset);
+  box-shadow: inset 0 1px 0 var(--lg-edge-top), inset 0 0 0 1px var(--lg-edge);
+}
+.lg .equation-term.is-result {
+  background: var(--accent-tint);
+  box-shadow: inset 0 1px 0 var(--lg-edge-top), inset 0 0 0 1px var(--accent);
+}
+.lg .equation-label {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.lg .equation-note {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.lg .explainer-blocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: var(--space-6);
+}
+.lg .explainer-block h3,
+.lg .explainer-check h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.lg .explainer-block p {
+  margin: 0;
+  max-width: 65ch;
+  font-size: var(--text-md);
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+.explainer-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.lg .callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: var(--space-7) 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-inner);
+  background: var(--accent-tint);
+  box-shadow: inset 0 1px 0 var(--lg-edge-top), inset 0 0 0 1px var(--lg-edge);
+}
+.lg .callout .explainer-icon {
+  margin-top: 3px;
+}
+.lg .callout-label {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.lg .callout blockquote,
+.lg .callout p {
+  margin: 0;
+  max-width: 65ch;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.lg .callout-insight blockquote {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  line-height: 1.45;
+}
+.lg .callout-tip {
+  margin: 0 0 var(--space-6);
+}
+.lg .checklist {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: var(--tile-gap);
+}
+.lg .checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-inner);
+  background: var(--lg-inset);
+  box-shadow: inset 0 0 0 1px var(--lg-edge);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.lg .checklist-mark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-tint);
+}
+.lg .checklist-mark .explainer-icon {
+  width: 15px;
+  height: 15px;
+}
+
+/* Research: trends beside the quarters table on wide screens. */
+.lg .league-research {
+  container-type: inline-size;
+}
+.lg .quarters-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--tile-gap);
+}
+.lg .quarters-trends {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tile-gap);
+}
+@container (min-width: 1000px) {
+  .lg .quarters-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .lg .quarters-trends {
+    grid-template-columns: 1fr;
+    align-content: start;
+  }
+}
+@container (max-width: 480px) {
+  .lg .quarters-trends {
+    grid-template-columns: 1fr;
+  }
+}
+.lg .sparkline {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-inner);
+  background: var(--lg-inset);
+  box-shadow: inset 0 0 0 1px var(--lg-edge);
+}
+.lg .sparkline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+}
+.lg .sparkline-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.lg .sparkline-value {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.lg .sparkline-when {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
+}
+.lg .sparkline-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.lg .sparkline-base {
+  stroke: var(--lg-divider);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.lg .sparkline-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.lg .sparkline-dot {
+  fill: var(--accent);
+}
+.lg .sparkline-dot.is-last {
+  stroke: var(--lg-solid);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.lg .sparkline-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.lg .sparkline-empty {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.lg .cell-na {
+  color: var(--text-secondary);
+}
+
+/* Research: the ratio groups are separate floating panels. */
+.lg .metric-group {
+  margin: 0;
 }

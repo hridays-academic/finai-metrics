@@ -609,6 +609,50 @@ bullets above, this wins.
   aligned columns (labels once per list), one action; one source footnote
   per panel.
 
+### Liquid Glass polish (2026-11-07, third pass; wins over the above)
+
+Specified by Hriday; the CSS is the "Liquid Glass polish (2026-11-07)" block
+at the end of `app.css`.
+
+- **Spacing**: `--panel-gap` 24px (16px phone) between panels on every page,
+  `--panel-pad` 32px (20px) inside every panel, `--tile-gap` 12px,
+  `--title-gap` 16px under every panel/section title. Stacked children get
+  their spacing from the gap only (margins zeroed).
+- **Tiles** (`TileGrid.tsx` + `hooks/useBalancedGrid.ts`): equal-height rows,
+  column count chosen per section so no tile sits alone (5 tiles: 5 across,
+  else 3 + 2 centred; two columns on phones, an odd last tile spans the row).
+  Every ratio tile has a status line: Healthy/Watch/Weak, or "No benchmark"
+  / "No data" (hollow dot) for neutral metrics.
+- **Tooltips** (`Tooltip.tsx`, portalled to `<body>`): glass, `--lg-tooltip`
+  55% fill + `blur(40px) saturate(180%)`. Text checked >= 4.7:1 per palette
+  and mode even over a mid-grey backdrop; re-check if you lower the fill.
+- **Motion rules**: panels and the page never tilt, rotate or scale; they
+  only rise in (translateY + opacity). 3D only on small things: `.tile`
+  (ratio tiles, stat callouts, equation chips) and company rows tilt in on
+  scroll, staggered by `--col`, and lean toward the pointer on hover
+  (`useCursorLight.ts`). `.reveal-item` = the same scroll entry without the
+  hover lean (callouts, checklist rows, sparklines). Buttons: scale 1.02 on
+  hover (mouse only), 0.97 on press, never tilted. The arrow chip turns
+  → to ↗ only when its own button (or a row's action pill) is hovered or the
+  control has keyboard focus, never on row hover. Hover effects sit in
+  `@media (hover: hover)`; everything is off under reduced motion.
+- **Every scroll entrance finishes once its element is fully on screen**
+  (`entry 0% entry 100%`; panels `entry min(100%, 200px)`), and
+  `useRevealFallback.ts` snaps anything still mid-entrance to its final state
+  (`.is-settled`) once the page can't scroll further. **Never put
+  `overflow: hidden/auto` on an ancestor of animated elements**: it becomes
+  their scroll container and their `view()` timeline stops following the
+  page. That was the cause of the faded Valuation panel
+  (`.expanded-details` now uses `overflow: clip`, `.metrics-pane` visible).
+- **Company page**: header stat callouts (latest revenue, profit, margin from
+  the research history, results date, lock) with source and fetch date;
+  the explainer is lead sentence, equation chips, three drivers, a "Key
+  insight" callout and a checklist; research notes are a "Tip" callout;
+  revenue and margin sparklines (`QuarterSparkline.tsx`, real values only,
+  gaps for missing quarters, two separate charts, never a dual axis) sit
+  with the quarters table. `ForecastPage` fetches the research history once
+  and passes it down.
+
 **Responsive breakpoints (`app.css`).** (Since 2026-11 the live screens' phone
 rules are in the design-system layer's "Phones" block at the end of `app.css`;
 the history below still explains the older rules.) Built 2026-07 after a live phone-width
@@ -2332,6 +2376,10 @@ nav switch is Phase 5 and not urgent.
   for signed-in users. Mounted only while shown, so it refetches each visit.
 - **Company page** (`#/event/<id>`) is one column: "How this business makes
   money" (`league/SectorExplainer.tsx`), research, then the forecast form.
+- **Explainer layout fields (2026-11-07):** `lead` is the first sentence of
+  the approved "what it sells" text, moved out of `sells` (not copied);
+  `equation` uses only terms the text itself uses; `key_insight` must quote
+  an approved sentence word for word (`test_league_config.py` checks it).
 - **Explainers and default card descriptions live in `league_config.py`**
   (`sector_explainers`, `company_descriptions` by ticker), both approved by
   Hriday 2026-10-19. `companies.description` (schema v6, set from the admin

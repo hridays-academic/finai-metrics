@@ -1,13 +1,67 @@
 import { type MouseEvent, useCallback, useEffect, useState } from "react";
-import { ApiError, fetchLeagueConfig, fetchLeagueEvent, fetchMyForecast } from "../../lib/api";
+import { ApiError, fetchLeagueConfig, fetchLeagueEvent, fetchMyForecast, fetchResearchHistory } from "../../lib/api";
 import type { Theme } from "../../hooks/useTheme";
-import type { EventDetail, Forecast, LeagueConfig, UserPublic } from "../../lib/types";
+import type { EventDetail, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
+import { formatCrore, formatDay } from "../../lib/leagueFormat";
+import TileGrid from "../TileGrid";
 import ForecastForm from "./ForecastForm";
-import LockCountdown from "./LockCountdown";
+import LockCountdown, { formatIst } from "./LockCountdown";
 import ProfileModal from "./ProfileModal";
 import ResearchPanel from "./ResearchPanel";
 import SectorExplainer from "./SectorExplainer";
 import SiteFooter from "../SiteFooter";
+
+function quarterName(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+}
+
+// The numbers a forecaster wants first, as big figures with their source.
+function KeyStats({ event, history, historyError }: { event: EventDetail; history: ResearchHistory | null; historyError: string | null }) {
+  const loading = !history && !historyError;
+  const latest = history?.provider_rows[0];
+  const when = latest ? `Quarter to ${quarterName(latest.period_end_date)}` : loading ? "Loading" : "Not available";
+  const show = (text: string | null) => (loading ? "..." : text ?? "N/A");
+  const margin = latest?.operating_margin_pct;
+  return (
+    <div className="key-stats">
+      <TileGrid className="key-stats-grid" minTile={170}>
+        <div className="stat tile">
+          <div className="stat-label">Revenue*</div>
+          <div className="stat-value">{show(formatCrore(latest?.revenue))}</div>
+          <div className="stat-sub">{when}</div>
+        </div>
+        <div className="stat tile">
+          <div className="stat-label">Profit*</div>
+          <div className="stat-value">{show(formatCrore(latest?.net_income))}</div>
+          <div className="stat-sub">{when}</div>
+        </div>
+        <div className="stat tile">
+          <div className="stat-label">Op. margin*</div>
+          <div className="stat-value">{show(margin === null || margin === undefined ? null : `${margin.toFixed(1)}%`)}</div>
+          <div className="stat-sub">{when}</div>
+        </div>
+        <div className="stat tile">
+          <div className="stat-label">Results expected</div>
+          <div className="stat-value">{formatDay(event.results_date)}</div>
+          <div className="stat-sub">{event.season_label} results</div>
+        </div>
+        <div className="stat tile">
+          <div className="stat-label">Forecasts</div>
+          <div className="stat-value">
+            <LockCountdown lockAt={event.lock_at} serverNow={event.server_now} compact />
+          </div>
+          <div className="stat-sub">{formatIst(event.lock_at)}</div>
+        </div>
+      </TileGrid>
+      {history && (
+        <p className="footnote">
+          * {history.provider_source}. Latest quarter available
+          {history.provider_as_of ? `, fetched ${formatDay(history.provider_as_of, true)}` : ""}. Definitions are in Research below.
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface ForecastPageProps {
   eventId: number;
@@ -24,6 +78,8 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [history, setHistory] = useState<ResearchHistory | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -45,6 +101,21 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Shared by the key figures in the header and the research section.
+  const companyId = event?.company.id;
+  useEffect(() => {
+    if (companyId === undefined) return;
+    let cancelled = false;
+    setHistory(null);
+    setHistoryError(null);
+    fetchResearchHistory(companyId)
+      .then((h) => !cancelled && setHistory(h))
+      .catch((err) => !cancelled && setHistoryError(err instanceof ApiError ? err.message : "Couldn't load history."));
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId]);
 
   if (error) {
     return (
@@ -81,13 +152,9 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
         </h1>
         <p className="page-meta">
           {event.season_label} results · quarter ending{" "}
-          {new Date(`${event.period_end_date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}{" "}
-          · expected{" "}
-          {new Date(`${event.results_date}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+          {new Date(`${event.period_end_date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
         </p>
-        <p className="page-meta">
-          <LockCountdown lockAt={event.lock_at} serverNow={event.server_now} />
-        </p>
+        <KeyStats event={event} history={history} historyError={historyError} />
         {event.status === "open" && (
           <a className="btn btn-primary page-header-action" href="#forecast" onClick={jumpToForm}>
             {forecast ? "Edit your forecast" : "Make your forecast"}
@@ -101,7 +168,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
         <h2 className="section-title" id="research-title">
           Research
         </h2>
-        <ResearchPanel event={event} theme={theme} />
+        <ResearchPanel event={event} theme={theme} history={history} historyError={historyError} />
       </section>
 
       <section id="forecast" className="section glass panel reveal forecast-section" aria-labelledby="forecast-title">

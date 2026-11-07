@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import ArrowChip from "./ArrowChip";
 
 interface CompanySearchProps {
   onSearch: (query: string) => void;
@@ -30,6 +31,7 @@ export default function CompanySearch({ onSearch, loading, error }: CompanySearc
         />
         <button className="btn btn-primary" type="submit" disabled={loading || !query.trim()} aria-busy={loading}>
           {loading ? "Searching..." : "Search"}
+          {!loading && <ArrowChip />}
         </button>
       </form>
       {error && <div className="form-error">{error}</div>}

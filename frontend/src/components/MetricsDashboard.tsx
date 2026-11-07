@@ -3,6 +3,7 @@ import type { CompanyFinancialsResponse } from "../lib/types";
 import { formatRawValue } from "../lib/format";
 import { formatDay } from "../lib/leagueFormat";
 import MetricCard from "./MetricCard";
+import TileGrid from "./TileGrid";
 import PriceChart from "./PriceChart";
 import type { Theme } from "../hooks/useTheme";
 
@@ -131,12 +132,14 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
           </div>
 
           <div className="highlights-row glass panel">
-            {highlights.map(([label, value]) => (
-              <div className="highlight-tile" key={label}>
-                <div className="label">{label}</div>
-                <div className="value">{formatRawValue(value, raw.currency)}</div>
-              </div>
-            ))}
+            <TileGrid>
+              {highlights.map(([label, value]) => (
+                <div className="highlight-tile tile" key={label}>
+                  <div className="label">{label}</div>
+                  <div className="value">{formatRawValue(value, raw.currency)}</div>
+                </div>
+              ))}
+            </TileGrid>
           </div>
 
           <div className="metric-groups-grid">
@@ -158,11 +161,11 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
                       : "No share price at least 30 days old is available, so the price-based figures show N/A."}
                   </p>
                 )}
-                <div className="metric-cards">
+                <TileGrid className="metric-cards">
                   {group.metrics.map((metric) => (
                     <MetricCard metric={metric} key={metric.key} />
                   ))}
-                </div>
+                </TileGrid>
               </div>
             ))}
           </div>

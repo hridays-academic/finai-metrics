@@ -37,7 +37,19 @@ def test_every_kpi_sector_has_a_beginner_explainer():
         assert set(cfg.kpi_templates) <= set(cfg.sector_explainers)
         for sector, e in cfg.sector_explainers.items():
             assert e.sector == sector
-            assert e.sells and e.sales_drivers and e.cost_drivers and e.checklist
+            assert e.lead and e.sells and e.sales_drivers and e.cost_drivers and e.checklist
+
+
+def test_explainer_extras_only_reuse_approved_text():
+    # The pull-out line quotes an approved sentence word for word, and the
+    # equation reads left to right as terms joined by operators.
+    for cfg in MARKETS.values():
+        for e in cfg.sector_explainers.values():
+            body = " ".join([e.lead, e.sells, e.sales_drivers, e.cost_drivers, *e.checklist])
+            assert e.key_insight and e.key_insight in body
+            assert e.equation and e.equation[0].op == ""
+            assert all(t.op in {"x", "-", "+", "="} for t in e.equation[1:])
+            assert e.equation[-1].op == "="
 
 
 def test_company_descriptions_fit_one_card_line():

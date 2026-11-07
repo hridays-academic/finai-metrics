@@ -59,7 +59,7 @@ export default function LockCountdown({ lockAt, serverNow, compact }: LockCountd
   }
   const soon = left < 86_400_000;
   return (
-    <span className={`league-lock ${soon ? "soon" : ""}`} title={`Locks at ${formatIst(lockAt)}`}>
+    <span className={`league-lock ${soon ? "soon" : ""}`}>
       {/* Under a day left: a tinted badge with a clock, so it reads as a
           warning by shape and icon, not by colour alone. */}
       {soon && (

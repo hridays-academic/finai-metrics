@@ -20,6 +20,7 @@ import psycopg
 from app.league_config import MarketConfig, market_config
 from app.league_models import (
     CompanyOut,
+    EquationTermOut,
     SectorExplainerOut,
     EventDetail,
     EventSummary,
@@ -72,9 +73,11 @@ def config_out(code: str = "IN") -> LeagueConfigOut:
         excluded_sectors=sorted(cfg.excluded_sectors),
         note_max_chars=NOTE_MAX_CHARS,
         sector_explainers=[
-            SectorExplainerOut(sector=e.sector, display_name=e.display_name, sells=e.sells,
+            SectorExplainerOut(sector=e.sector, display_name=e.display_name, lead=e.lead, sells=e.sells,
                                sales_drivers=e.sales_drivers, cost_drivers=e.cost_drivers,
-                               checklist=list(e.checklist))
+                               checklist=list(e.checklist),
+                               equation=[EquationTermOut(op=t.op, label=t.label, note=t.note) for t in e.equation],
+                               key_insight=e.key_insight)
             for e in cfg.sector_explainers.values()
         ],
     )

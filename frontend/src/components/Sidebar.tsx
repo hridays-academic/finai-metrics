@@ -20,7 +20,6 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
         className={`sidebar-icon-button ${view === "home" ? "active" : ""}`}
         aria-label="Home"
         aria-current={view === "home"}
-        title="Home: pick a company to forecast"
         onClick={() => onChange("home")}
       >
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -39,7 +38,6 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
         className={`sidebar-icon-button ${view === "search" ? "active" : ""}`}
         aria-label="Research"
         aria-current={view === "search"}
-        title="Research: look up any company"
         onClick={() => onChange("search")}
       >
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -56,7 +54,6 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
         className={`sidebar-icon-button ${view === "calculator" ? "active" : ""}`}
         aria-label="Return calculator"
         aria-current={view === "calculator"}
-        title="Return calculator"
         onClick={() => onChange("calculator")}
       >
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -76,7 +73,6 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
         className={`sidebar-icon-button ${view === "simulator" ? "active" : ""}`}
         aria-label="Market simulator"
         aria-current={view === "simulator"}
-        title="Market simulator"
         onClick={() => onChange("simulator")}
       >
         {/* Solid bars (real past history) crossed by a dashed rising line
@@ -101,7 +97,6 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
         className={`sidebar-icon-button ${view === "trading" ? "active" : ""}`}
         aria-label="Paper trading"
         aria-current={view === "trading"}
-        title="Paper trading"
         onClick={() => onChange("trading")}
       >
         {/* A candlestick pair -- the most unambiguous "trading" glyph,

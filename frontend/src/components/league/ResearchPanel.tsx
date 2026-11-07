@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { ApiError, fetchCompany, fetchResearchHistory } from "../../lib/api";
+import { ApiError, fetchCompany } from "../../lib/api";
 import type { Theme } from "../../hooks/useTheme";
 import type { ActualRow, CompanyFinancialsResponse, EventDetail, ResearchHistory } from "../../lib/types";
 import MetricsDashboard from "../MetricsDashboard";
+import QuarterSparkline from "./QuarterSparkline";
 
 interface ResearchPanelProps {
   event: EventDetail;
   theme: Theme;
+  history: ResearchHistory | null;
+  historyError: string | null;
 }
 
 const QUARTER_ENDS = ["03-31", "06-30", "09-30", "12-31"];
@@ -33,7 +36,7 @@ function quarterLabel(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 }
 
-const NA = <span className="metric-value na">N/A</span>;
+const NA = <span className="cell-na">N/A</span>;
 
 function crore(value: number | null) {
   return value === null ? NA : `₹${(value / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 })} cr`;
@@ -46,24 +49,23 @@ function pct(value: number | null | undefined) {
 function ActualCell({ actual }: { actual: ActualRow | undefined }) {
   if (!actual) return NA;
   return (
-    <a href={actual.source_url} target="_blank" rel="noopener noreferrer" title={`Source: ${actual.source_url}`}>
-      {actual.value.toFixed(1)}%
+    <a href={actual.source_url} target="_blank" rel="noopener noreferrer">
+      {actual.value.toFixed(1)}%<span className="visually-hidden"> (opens the source filing)</span>
     </a>
   );
 }
 
-export default function ResearchPanel({ event, theme }: ResearchPanelProps) {
-  const [history, setHistory] = useState<ResearchHistory | null>(null);
-  const [historyError, setHistoryError] = useState<string | null>(null);
+function crorePlain(value: number): string {
+  return `₹${(value / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 })} cr`;
+}
+
+export default function ResearchPanel({ event, theme, history, historyError }: ResearchPanelProps) {
   const [analysis, setAnalysis] = useState<CompanyFinancialsResponse | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const symbol = event.company.provider_symbol;
 
   useEffect(() => {
     let cancelled = false;
-    fetchResearchHistory(event.company.id)
-      .then((h) => !cancelled && setHistory(h))
-      .catch((err) => !cancelled && setHistoryError(err instanceof ApiError ? err.message : "Couldn't load history."));
     if (symbol) {
       fetchCompany(symbol)
         .then((a) => !cancelled && setAnalysis(a))
@@ -72,21 +74,34 @@ export default function ResearchPanel({ event, theme }: ResearchPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [event.company.id, symbol]);
+  }, [symbol]);
 
   const quarters = previousQuarterEnds(event.period_end_date, 8);
   const byEnd = new Map(history?.provider_rows.map((r) => [r.period_end_date, r]));
   const actual = (end: string, key: string) =>
     history?.actuals.find((a) => a.period_end_date === end && a.metric_key === key);
   const kpiLabel = event.metrics.find((m) => m.key === "sector_kpi")?.label;
+  const oldestFirst = [...quarters].reverse();
+  const shortLabels = oldestFirst.map(quarterLabel);
 
   return (
     <div className="league-research">
       {event.research_notes && (
-        <div className="league-notes">
-          <h3 className="subsection-title">Notes from Stackly</h3>
-          <p>{event.research_notes}</p>
-        </div>
+        <aside className="callout callout-tip reveal-item" aria-label="Tip from Stackly">
+          <svg className="explainer-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <div>
+            <div className="callout-label">Tip</div>
+            <p>{event.research_notes}</p>
+          </div>
+        </aside>
       )}
 
       <h3 className="subsection-title">Last 8 quarters</h3>
@@ -94,42 +109,58 @@ export default function ResearchPanel({ event, theme }: ResearchPanelProps) {
       {!history && !historyError && <p className="empty-note">Loading...</p>}
       {history && (
         <>
-          <div className="table-wrap">
-            <table className="data-table league-history-table">
-              <thead>
-                <tr>
-                  <th>Quarter</th>
-                  <th>Revenue*</th>
-                  <th>Op. margin*</th>
-                  <th>Revenue growth YoY†</th>
-                  <th>Op. margin†</th>
-                  {kpiLabel && <th>{kpiLabel}†</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {quarters.map((end) => {
-                  const row = byEnd.get(end);
-                  return (
-                    <tr key={end}>
-                      <td>{quarterLabel(end)}</td>
-                      <td>{crore(row?.revenue ?? null)}</td>
-                      <td>{pct(row?.operating_margin_pct)}</td>
-                      <td>
-                        <ActualCell actual={actual(end, "revenue_growth_yoy")} />
-                      </td>
-                      <td>
-                        <ActualCell actual={actual(end, "operating_margin")} />
-                      </td>
-                      {kpiLabel && (
+          <div className="quarters-layout">
+            <div className="quarters-trends">
+              <QuarterSparkline
+                label="Revenue*"
+                values={oldestFirst.map((end) => byEnd.get(end)?.revenue ?? null)}
+                quarterLabels={shortLabels}
+                format={crorePlain}
+              />
+              <QuarterSparkline
+                label="Op. margin*"
+                values={oldestFirst.map((end) => byEnd.get(end)?.operating_margin_pct ?? null)}
+                quarterLabels={shortLabels}
+                format={(v) => `${v.toFixed(1)}%`}
+              />
+            </div>
+            <div className="table-wrap">
+              <table className="data-table league-history-table">
+                <thead>
+                  <tr>
+                    <th>Quarter</th>
+                    <th>Revenue*</th>
+                    <th>Op. margin*</th>
+                    <th>Revenue growth YoY†</th>
+                    <th>Op. margin†</th>
+                    {kpiLabel && <th>{kpiLabel}†</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {quarters.map((end) => {
+                    const row = byEnd.get(end);
+                    return (
+                      <tr key={end}>
+                        <td>{quarterLabel(end)}</td>
+                        <td>{crore(row?.revenue ?? null)}</td>
+                        <td>{pct(row?.operating_margin_pct)}</td>
                         <td>
-                          <ActualCell actual={actual(end, "sector_kpi")} />
+                          <ActualCell actual={actual(end, "revenue_growth_yoy")} />
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td>
+                          <ActualCell actual={actual(end, "operating_margin")} />
+                        </td>
+                        {kpiLabel && (
+                          <td>
+                            <ActualCell actual={actual(end, "sector_kpi")} />
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
           <p className="footnote">
             * {history.provider_source}.{" "}

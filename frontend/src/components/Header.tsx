@@ -23,7 +23,6 @@ export default function Header({ onOpenSettings, onOpenAuth, onGoHome, user }: H
             type="button"
             className="header-avatar"
             aria-label={`Account, signed in as ${user.name}`}
-            title={`Signed in as ${user.name}`}
             onClick={onOpenAuth}
           >
             {(user.name.trim()[0] ?? user.email[0] ?? "?").toUpperCase()}
@@ -37,7 +36,6 @@ export default function Header({ onOpenSettings, onOpenAuth, onGoHome, user }: H
           type="button"
           className="icon-button"
           aria-label="Settings"
-          title="Settings"
           onClick={onOpenSettings}
         >
           {/* Filled Material-style gear (currentColor, --text-tertiary) --
