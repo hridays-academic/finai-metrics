@@ -2376,6 +2376,14 @@ nav switch is Phase 5 and not urgent.
   for signed-in users. Mounted only while shown, so it refetches each visit.
 - **Company page** (`#/event/<id>`) is one column: "How this business makes
   money" (`league/SectorExplainer.tsx`), research, then the forecast form.
+  **No ratio tiles on the company page (2026-11-07).** Its research section
+  shows the Tip, the quarters table + sparklines and the lagged price chart
+  (`PriceChart` from `event.company.provider_symbol`, so the page makes no
+  `/api/company` call), then a callout "Open in Research". That calls
+  `App.tsx`'s `openInResearch`: `leaveRoute()` (a real history entry, so the
+  browser's Back returns), switch to Research, prefill and load the symbol,
+  and show "← Back to forecast: <name>" on the Research panel until the
+  visitor uses it or picks another sidebar view. Research itself is unchanged.
 - **Explainer layout fields (2026-11-07):** `lead` is the first sentence of
   the approved "what it sells" text, moved out of `sells` (not copied);
   `equation` uses only terms the text itself uses; `key_insight` must quote

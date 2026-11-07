@@ -6783,3 +6783,25 @@ textarea.input,
 .lg .metric-group {
   margin: 0;
 }
+
+/* Company page: the pointer to the full analysis on Research, where the
+   ratio tiles used to be (2026-11-07). */
+.lg .callout-research {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-6) 0 0;
+}
+.lg .callout-research p {
+  flex: 1 1 280px;
+}
+.lg .callout-research .btn {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .lg .callout-research .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

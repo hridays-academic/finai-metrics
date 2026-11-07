@@ -39,6 +39,15 @@ export function navigate(hash: string): void {
   window.location.hash = hash;
 }
 
+// Leaves the current route for the sidebar views as a new history entry, so
+// the browser's Back button returns to the page you came from.
+export function leaveRoute(): void {
+  if (window.location.hash) {
+    window.history.pushState(null, "", window.location.pathname + window.location.search);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  }
+}
+
 // Clears the hash (back to the sidebar views) without adding a history entry.
 export function clearRoute(): void {
   if (window.location.hash) {

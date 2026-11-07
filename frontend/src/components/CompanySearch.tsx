@@ -1,14 +1,23 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import ArrowChip from "./ArrowChip";
 
 interface CompanySearchProps {
   onSearch: (query: string) => void;
   loading: boolean;
   error: string | null;
+  // Set when a company page opened Research: fills the box with its symbol.
+  prefill?: string;
+  // Set when the visitor arrived from a company page, for the way back.
+  backTo?: { eventId: number; name: string } | null;
+  onBack?: () => void;
 }
 
-export default function CompanySearch({ onSearch, loading, error }: CompanySearchProps) {
-  const [query, setQuery] = useState("");
+export default function CompanySearch({ onSearch, loading, error, prefill, backTo, onBack }: CompanySearchProps) {
+  const [query, setQuery] = useState(prefill ?? "");
+
+  useEffect(() => {
+    if (prefill) setQuery(prefill);
+  }, [prefill]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -19,6 +28,15 @@ export default function CompanySearch({ onSearch, loading, error }: CompanySearc
   return (
     <div className="search-bar-wrap">
       <div className="glass panel research-search">
+      {backTo && (
+        <a
+          className="back-link"
+          href={`#/event/${backTo.eventId}`}
+          onClick={onBack}
+        >
+          ← Back to forecast: {backTo.name}
+        </a>
+      )}
       <h1 className="page-title">Research</h1>
       <form className="search-form" onSubmit={handleSubmit}>
         <input

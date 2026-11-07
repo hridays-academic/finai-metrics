@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
-import { ApiError, fetchCompany } from "../../lib/api";
 import type { Theme } from "../../hooks/useTheme";
-import type { ActualRow, CompanyFinancialsResponse, EventDetail, ResearchHistory } from "../../lib/types";
-import MetricsDashboard from "../MetricsDashboard";
+import type { ActualRow, EventDetail, ResearchHistory } from "../../lib/types";
+import ArrowChip from "../ArrowChip";
+import PriceChart from "../PriceChart";
 import QuarterSparkline from "./QuarterSparkline";
 
 interface ResearchPanelProps {
@@ -10,6 +9,8 @@ interface ResearchPanelProps {
   theme: Theme;
   history: ResearchHistory | null;
   historyError: string | null;
+  // Opens the Research page with this company loaded (App.tsx).
+  onOpenInResearch: (symbol: string) => void;
 }
 
 const QUARTER_ENDS = ["03-31", "06-30", "09-30", "12-31"];
@@ -59,22 +60,10 @@ function crorePlain(value: number): string {
   return `₹${(value / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 })} cr`;
 }
 
-export default function ResearchPanel({ event, theme, history, historyError }: ResearchPanelProps) {
-  const [analysis, setAnalysis] = useState<CompanyFinancialsResponse | null>(null);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
+// The company page keeps only what a forecaster needs; the full ratio
+// analysis lives on the Research page, one click away.
+export default function ResearchPanel({ event, theme, history, historyError, onOpenInResearch }: ResearchPanelProps) {
   const symbol = event.company.provider_symbol;
-
-  useEffect(() => {
-    let cancelled = false;
-    if (symbol) {
-      fetchCompany(symbol)
-        .then((a) => !cancelled && setAnalysis(a))
-        .catch((err) => !cancelled && setAnalysisError(err instanceof ApiError ? err.message : "Couldn't load analysis."));
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [symbol]);
 
   const quarters = previousQuarterEnds(event.period_end_date, 8);
   const byEnd = new Map(history?.provider_rows.map((r) => [r.period_end_date, r]));
@@ -178,10 +167,19 @@ export default function ResearchPanel({ event, theme, history, historyError }: R
 
       {symbol && (
         <>
-          <h3 className="subsection-title">Company analysis</h3>
-          {analysisError && <div className="form-error">{analysisError}</div>}
-          {!analysis && !analysisError && <p className="empty-note">Loading...</p>}
-          {analysis && <MetricsDashboard data={analysis} theme={theme} />}
+          <h3 className="subsection-title">Share price</h3>
+          <div className="league-price-chart">
+            <PriceChart symbol={symbol} currency={event.company.currency} theme={theme} />
+          </div>
+          <aside className="callout callout-research reveal-item" aria-label="Full analysis on the Research page">
+            <p>
+              Want the full picture? See all ratios, charts and details for {event.company.name} on the Research page.
+            </p>
+            <button type="button" className="btn btn-secondary" onClick={() => onOpenInResearch(symbol)}>
+              Open in Research
+              <ArrowChip />
+            </button>
+          </aside>
         </>
       )}
     </div>

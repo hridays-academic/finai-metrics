@@ -17,7 +17,7 @@ import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
 import ForecastPage from "./components/league/ForecastPage";
 import ResultsPage from "./components/league/ResultsPage";
-import { clearRoute, useHashRoute } from "./lib/router";
+import { clearRoute, leaveRoute, useHashRoute } from "./lib/router";
 import { useTheme } from "./hooks/useTheme";
 import { useCursorLight } from "./hooks/useCursorLight";
 import { useRevealFallback } from "./hooks/useRevealFallback";
@@ -83,6 +83,19 @@ export default function App() {
     }
   }, []);
 
+  // A company page's "Open in Research": load that company on Research and
+  // remember the page, for "Back to forecast".
+  const [researchFrom, setResearchFrom] = useState<{ eventId: number; name: string } | null>(null);
+  const [researchPrefill, setResearchPrefill] = useState<string | undefined>(undefined);
+  function openInResearch(symbol: string, from: { eventId: number; name: string }) {
+    setResearchFrom(from);
+    setResearchPrefill(symbol);
+    leaveRoute();
+    setView("search");
+    document.querySelector(".app-shell-content")?.scrollTo({ top: 0 });
+    handleSearch(symbol);
+  }
+
   async function handleSearch(query: string) {
     setLoading(true);
     setError(null);
@@ -98,6 +111,7 @@ export default function App() {
   }
 
   function handleChangeView(next: View) {
+    setResearchFrom(null);
     clearRoute();
     setView(next);
   }
@@ -151,6 +165,9 @@ export default function App() {
               onSearch={handleSearch}
               loading={loading}
               error={error}
+              prefill={researchPrefill}
+              backTo={researchFrom}
+              onBack={() => setResearchFrom(null)}
             />
 
             <div className="content-grid">
@@ -211,6 +228,7 @@ export default function App() {
                 onUserChange={setUser}
                 onOpenAuth={() => setAuthOpen(true)}
                 theme={theme}
+                onOpenInResearch={openInResearch}
               />
             </div>
           )}

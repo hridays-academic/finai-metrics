@@ -69,9 +69,10 @@ interface ForecastPageProps {
   onUserChange: (u: UserPublic) => void;
   onOpenAuth: () => void;
   theme: Theme;
+  onOpenInResearch: (symbol: string, from: { eventId: number; name: string }) => void;
 }
 
-export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, theme }: ForecastPageProps) {
+export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, theme, onOpenInResearch }: ForecastPageProps) {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [config, setConfig] = useState<LeagueConfig | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
@@ -168,7 +169,13 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
         <h2 className="section-title" id="research-title">
           Research
         </h2>
-        <ResearchPanel event={event} theme={theme} history={history} historyError={historyError} />
+        <ResearchPanel
+          event={event}
+          theme={theme}
+          history={history}
+          historyError={historyError}
+          onOpenInResearch={(symbol) => onOpenInResearch(symbol, { eventId: event.id, name: event.company.name })}
+        />
       </section>
 
       <section id="forecast" className="section glass panel reveal forecast-section" aria-labelledby="forecast-title">
