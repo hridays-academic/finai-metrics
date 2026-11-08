@@ -61,6 +61,71 @@ class RawFinancials(BaseModel):
     prior_receivables: Optional[float] = None
 
 
+class FinancialYear(BaseModel):
+    """One fiscal year's statement lines, as Yahoo reports them (consolidated).
+
+    Every field can be None. capital_expenditure and dividends_paid are
+    stored as positive spends (Yahoo reports cash outflows as negatives).
+    cash_and_short_term_investments includes liquid investments such as
+    mutual-fund holdings, which Indian companies park a lot of cash in."""
+
+    period_end_date: str  # "YYYY-MM-DD"
+    revenue: Optional[float] = None
+    operating_income: Optional[float] = None
+    depreciation: Optional[float] = None
+    net_income: Optional[float] = None
+    eps_diluted: Optional[float] = None
+    pretax_income: Optional[float] = None
+    tax_provision: Optional[float] = None
+    total_assets: Optional[float] = None
+    total_equity: Optional[float] = None
+    total_debt: Optional[float] = None
+    cash_and_short_term_investments: Optional[float] = None
+    receivables: Optional[float] = None
+    # Yahoo's "Other Receivables". Large next to receivables usually means
+    # Yahoo moved part of the company's trade receivables (e.g. unbilled
+    # revenue) here; metrics.py then shows debtor days as N/A.
+    other_receivables: Optional[float] = None
+    inventory: Optional[float] = None
+    payables: Optional[float] = None
+    operating_cash_flow: Optional[float] = None
+    capital_expenditure: Optional[float] = None
+    free_cash_flow: Optional[float] = None
+    dividends_paid: Optional[float] = None
+
+
+class FinancialQuarter(BaseModel):
+    period_end_date: str
+    revenue: Optional[float] = None
+    operating_income: Optional[float] = None
+    depreciation: Optional[float] = None
+    net_income: Optional[float] = None
+
+
+class FinancialHistory(BaseModel):
+    """Years and quarters newest first, only the periods Yahoo returned
+    (never padded or filled; see metrics.history_table for the display)."""
+
+    annual: list[FinancialYear] = Field(default_factory=list)
+    quarterly: list[FinancialQuarter] = Field(default_factory=list)
+
+
+class HistoryRow(BaseModel):
+    """One column of the Research page's history tables. All None when Yahoo
+    has nothing for that period."""
+
+    period_end_date: str
+    revenue: Optional[float] = None
+    ebitda: Optional[float] = None
+    ebitda_margin_pct: Optional[float] = None
+    net_income: Optional[float] = None
+
+
+class HistoryTable(BaseModel):
+    annual: list[HistoryRow]  # five fiscal years, newest first
+    quarterly: list[HistoryRow]  # eight quarter-ends, newest first
+
+
 class CompanyInfo(BaseModel):
     ticker: str
     resolved_symbol: str  # the yfinance symbol actually queried, e.g. RELIANCE.NS
@@ -86,6 +151,14 @@ class DataSourceName(str, Enum):
     YFINANCE = "yfinance"
 
 
+class MetricPart(BaseModel):
+    """A component shown inside a tile, e.g. the three DuPont factors."""
+
+    label: str
+    value: Optional[float] = None
+    unit: str = ""
+
+
 class Metric(BaseModel):
     key: str
     label: str
@@ -96,6 +169,7 @@ class Metric(BaseModel):
     formula: str = ""  # short human-readable formula
     definition: str = ""  # plain-English explanation of what the metric measures
     assessment: str = ""  # value-aware "is this company's number good or bad, and why"
+    parts: Optional[list[MetricPart]] = None
 
 
 class MetricGroup(BaseModel):
@@ -165,6 +239,12 @@ class CompanyFinancialsResponse(BaseModel):
     # services/price_lag.py). None when no old-enough price was available,
     # in which case those fields are None too.
     price_as_of: Optional[str] = None
+    # (2026-11) Five fiscal years and eight quarters for the Research page's
+    # tables, padded with empty rows where Yahoo has nothing. None when the
+    # history couldn't be fetched (e.g. an old cache row served stale).
+    history: Optional[HistoryTable] = None
+    # The fiscal year the ratios are computed from ("YYYY-MM-DD").
+    ratios_period_end: Optional[str] = None
 
 
 class PricePoint(BaseModel):

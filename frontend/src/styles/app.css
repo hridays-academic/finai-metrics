@@ -6805,3 +6805,22 @@ textarea.input,
     justify-content: center;
   }
 }
+
+/* Research page phase 1 (2026-11-08): DuPont parts inside a ratio tile, and
+   the financial history panel (reuses the company page's quarters layout). */
+.lg .metric-parts {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+.lg .metric-parts-times {
+  color: var(--text-tertiary);
+}
+.lg .metric-parts-legend {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.lg .financial-history .subsection-title + .quarters-layout {
+  margin-top: 0;
+}

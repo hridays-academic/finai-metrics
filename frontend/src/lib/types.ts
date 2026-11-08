@@ -5,6 +5,13 @@ export type MetricStatus = "good" | "warning" | "bad" | "neutral";
 // Which provider served a response. yfinance is the only data provider.
 export type DataSourceName = "yfinance";
 
+// A component shown inside a tile, e.g. the three DuPont factors.
+export interface MetricPart {
+  label: string;
+  value: number | null;
+  unit: string;
+}
+
 export interface Metric {
   key: string;
   label: string;
@@ -15,6 +22,22 @@ export interface Metric {
   formula: string;
   definition: string;
   assessment: string;
+  parts?: MetricPart[] | null;
+}
+
+// One period of the Research page's history tables; all null when Yahoo has
+// nothing for it. EBITDA = operating profit + depreciation.
+export interface HistoryRow {
+  period_end_date: string;
+  revenue: number | null;
+  ebitda: number | null;
+  ebitda_margin_pct: number | null;
+  net_income: number | null;
+}
+
+export interface HistoryTable {
+  annual: HistoryRow[]; // five fiscal years, newest first
+  quarterly: HistoryRow[]; // eight quarter-ends, newest first
 }
 
 export interface MetricGroup {
@@ -93,6 +116,11 @@ export interface CompanyFinancialsResponse {
   // Date of the share price behind raw.current_price/market_cap and the
   // valuation ratios: always at least 30 days old (backend price_lag.py).
   price_as_of: string | null;
+  // When the statements were fetched from Yahoo; null means just now.
+  fundamentals_as_of?: string | null;
+  history?: HistoryTable | null;
+  // The fiscal year-end the ratios are computed from.
+  ratios_period_end?: string | null;
 }
 
 export interface PricePoint {

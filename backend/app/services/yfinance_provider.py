@@ -29,7 +29,16 @@ from typing import Optional
 import pandas as pd
 import yfinance as yf
 
-from app.models import AnalystConsensus, CompanyInfo, LiveQuote, PricePoint, RawFinancials
+from app.models import (
+    AnalystConsensus,
+    CompanyInfo,
+    FinancialHistory,
+    FinancialQuarter,
+    FinancialYear,
+    LiveQuote,
+    PricePoint,
+    RawFinancials,
+)
 from app.services.data_provider import (
     CompanyNotFoundError,
     DataProviderError,
@@ -141,6 +150,73 @@ def _row(df: Optional[pd.DataFrame], *names: str, col: int = 0) -> Optional[floa
     return None
 
 
+def _by_date(df: Optional[pd.DataFrame]) -> dict[str, int]:
+    """Column index for each period-end date in a statement frame."""
+    if df is None or df.empty:
+        return {}
+    return {pd.Timestamp(c).date().isoformat(): i for i, c in enumerate(df.columns)}
+
+
+def _spend(value: Optional[float]) -> Optional[float]:
+    # Yahoo reports cash outflows (capex, dividends) as negatives.
+    return abs(value) if value is not None else None
+
+
+# Row aliases, checked live against 16 NSE tickers (2026-11). Deliberately
+# NOT Yahoo's own "EBITDA" (it includes other income) or "Other Non
+# Operating Income Expenses" (not Indian other income): see metrics.py.
+_DEPRECIATION = ("Reconciled Depreciation", "Depreciation And Amortization In Income Statement",
+                 "Depreciation Amortization Depletion Income Statement")
+_EQUITY = ("Stockholders Equity", "Common Stock Equity", "Total Equity Gross Minority Interest")
+
+
+def _history_from(income, balance, cashflow, quarterly) -> FinancialHistory:
+    """Every fiscal year in the income statement, newest first, with the
+    balance sheet and cash flow lines of the same period-end date. A year
+    whose revenue is missing is still kept (yfinance often returns an
+    all-empty oldest column); the display shows it as N/A."""
+    bal, cf = _by_date(balance), _by_date(cashflow)
+    years = []
+    for end, i in _by_date(income).items():
+        b, c = bal.get(end), cf.get(end)
+        bv = (lambda *n: _row(balance, *n, col=b)) if b is not None else (lambda *n: None)
+        cv = (lambda *n: _row(cashflow, *n, col=c)) if c is not None else (lambda *n: None)
+        years.append(FinancialYear(
+            period_end_date=end,
+            revenue=_row(income, "Total Revenue", "Operating Revenue", col=i),
+            operating_income=_row(income, "Operating Income", col=i),
+            depreciation=_row(income, *_DEPRECIATION, col=i),
+            net_income=_row(income, "Net Income", "Net Income Common Stockholders", col=i),
+            eps_diluted=_row(income, "Diluted EPS", "Basic EPS", col=i),
+            pretax_income=_row(income, "Pretax Income", col=i),
+            tax_provision=_row(income, "Tax Provision", col=i),
+            total_assets=bv("Total Assets"),
+            total_equity=bv(*_EQUITY),
+            total_debt=bv("Total Debt"),
+            cash_and_short_term_investments=bv(
+                "Cash Cash Equivalents And Short Term Investments", "Cash And Cash Equivalents"),
+            receivables=bv("Accounts Receivable", "Receivables"),
+            other_receivables=bv("Other Receivables"),
+            inventory=bv("Inventory"),
+            payables=bv("Accounts Payable"),
+            operating_cash_flow=cv("Operating Cash Flow"),
+            capital_expenditure=_spend(cv("Capital Expenditure")),
+            free_cash_flow=cv("Free Cash Flow"),
+            dividends_paid=_spend(cv("Cash Dividends Paid", "Common Stock Dividend Paid")),
+        ))
+    quarters = [
+        FinancialQuarter(
+            period_end_date=end,
+            revenue=_row(quarterly, "Total Revenue", "Operating Revenue", col=i),
+            operating_income=_row(quarterly, "Operating Income", col=i),
+            depreciation=_row(quarterly, *_DEPRECIATION, col=i),
+            net_income=_row(quarterly, "Net Income", "Net Income Common Stockholders", col=i),
+        )
+        for end, i in _by_date(quarterly).items()
+    ]
+    return FinancialHistory(annual=years, quarterly=quarters)
+
+
 class YFinanceProvider(FinancialDataProvider):
     """Default data provider. Free, no API key required -- see module docstring
     for the accuracy/availability tradeoffs that come with that."""
@@ -228,17 +304,29 @@ class YFinanceProvider(FinancialDataProvider):
         )
 
     def get_raw_financials(self, symbol: str) -> RawFinancials:
+        return self.get_financials_with_history(symbol)[0]
+
+    def get_financials_with_history(self, symbol: str) -> tuple[RawFinancials, FinancialHistory]:
+        """The latest-year snapshot plus every year and quarter Yahoo has, from
+        one set of statement downloads. Not on the ABC: a provider without
+        multi-year history would have nothing to return."""
         ticker = yf.Ticker(symbol)
         try:
             info = ticker.info or {}
             income = ticker.financials
             balance = ticker.balance_sheet
+            cashflow = ticker.cashflow
+            quarterly = ticker.quarterly_income_stmt
         except Exception as exc:
             raise DataProviderError(
                 f"Couldn't fetch financials for '{symbol}'. The data provider "
                 "may be rate-limited or temporarily down -- please try again shortly."
             ) from exc
+        raw = self._raw_from(info, income, balance)
+        return raw, _history_from(income, balance, cashflow, quarterly)
 
+    @staticmethod
+    def _raw_from(info: dict, income: pd.DataFrame, balance: pd.DataFrame) -> RawFinancials:
         return RawFinancials(
             currency=info.get("financialCurrency") or "INR",
             # Income statement

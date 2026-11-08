@@ -912,6 +912,45 @@ Price Target block on the main search page (a different card entirely,
 Low/Mean/High plus current price on one axis) is unaffected -- this
 removal was Return Calculator-only.
 
+## Research page expansion (2026-11, phase 1 of 4: ratios + history)
+
+Plan approved by Hriday 2026-11-08: (1) ratios + financial history, (2) profile,
+peers, documents, NSE announcements feed, (3) rule-based analysis (wording
+approved first), (4) news, world events, macro charts. No AI in any of them.
+
+- **Seven ratio sections** in `metrics.compute_metric_groups(raw, name, history,
+  sector, industry)`: Growth, Profitability, Cash Flow, Working Capital
+  (includes the old liquidity ratios), Returns (incl. a DuPont tile whose
+  `parts` multiply back to ROE), Leverage, Valuation. 47 tiles. The old
+  inventory/receivables turnover tiles were replaced by days figures.
+- **`FinancialHistory`** (every year and quarter Yahoo returns) comes from the
+  same download as `RawFinancials` (`YFinanceProvider.get_financials_with_history`)
+  and is cached in `company_fundamentals_cache.history_json` (schema v9). Rows
+  without it count as stale and are refetched once. `metrics.history_table`
+  pads to five years and eight quarter-ends (N/A rows, never filled).
+- **EBITDA = operating income + depreciation**, never Yahoo's own EBITDA row
+  (it adds other income). Other income as % of PBT is always N/A: Yahoo's
+  nearest row isn't Indian other income.
+- **Days are "days of revenue"** (approved): Yahoo's cost of revenue is often
+  materials only. **Payable days and the cash conversion cycle are withheld
+  (N/A) for every company**, and debtor days when Yahoo's "Other Receivables"
+  exceed its trade receivables. Reason: the 2026-11-08 check against the 7
+  pilot companies' audited FY26 filings (vault: `Ratio check FY26 pilot
+  companies.md`) found Yahoo's payables 75% off for Sagar Cements and 14% for
+  Escorts, and Mphasis' receivables 77% off (unbilled revenue moved), with no
+  way to spot the payables cases from the data. Yahoo's revenue runs 0-3.4%
+  below filed revenue from operations; disclosed in the history footnote.
+- **Dividend yield** = dividends paid in the last fiscal year / shares / the
+  30-day-old price. Yahoo's per-share dividend fields are wrong for most
+  Indian stocks (trailing rate 0; "dividend rate" = the latest single payment).
+- **Cash ratio** includes short-term investments (liquid funds), as in the
+  textbook definition.
+- Sector-aware benchmarks (`_SECTOR_BENCHMARKS`: EBITDA margin, debtor and
+  inventory days) use Yahoo's sector/industry via `sector_group`; banks and
+  lenders get "Not meaningful" for the EBITDA, cash-flow, days and EV tiles.
+- Known, not fixed: some companies' Yahoo statements are in USD (Infosys
+  looked like it); the Research page formats every figure as rupees.
+
 ## Market Simulator
 
 (2026-08) The app's third top-level page (`StockMarketSimulator.tsx`, via

@@ -24,6 +24,16 @@ export function formatINR(value: number): string {
   return `${sign}₹${Math.round(abs).toLocaleString("en-IN")}`;
 }
 
+// A statement amount in its reporting currency. Yahoo reports a few Indian
+// companies' accounts in US dollars (e.g. Infosys), so not everything is rupees.
+export function formatAmount(value: number, currency: string): string {
+  if (currency === "INR") return formatINR(value);
+  const sign = value < 0 ? "-" : "";
+  const millions = Math.abs(value) / 1e6;
+  const symbol = currency === "USD" ? "$" : `${currency} `;
+  return `${sign}${symbol}${millions.toLocaleString("en-US", { maximumFractionDigits: millions >= 100 ? 0 : 1 })} m`;
+}
+
 export function formatMetricValue(metric: Metric): string {
   if (metric.value === null || metric.value === undefined) return "N/A";
   switch (metric.unit) {
@@ -33,6 +43,10 @@ export function formatMetricValue(metric: Metric): string {
       return `${metric.value.toFixed(2)}x`;
     case "INR":
       return formatINR(metric.value);
+    case "days":
+      return `${Math.round(metric.value)} days`;
+    case "USD":
+      return formatAmount(metric.value, "USD");
     default:
       return metric.value.toFixed(2);
   }

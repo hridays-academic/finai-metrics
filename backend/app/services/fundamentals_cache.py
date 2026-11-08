@@ -43,7 +43,7 @@ from typing import Iterator, Optional
 
 import psycopg
 
-from app.models import AnalystConsensus, CompanyInfo, PricePoint, RawFinancials
+from app.models import AnalystConsensus, CompanyInfo, FinancialHistory, PricePoint, RawFinancials
 from app.services.db import get_conn
 
 logger = logging.getLogger("finai")
@@ -115,10 +115,13 @@ class CachedFundamentals:
     consensus: Optional[AnalystConsensus]
     fetched_at: datetime
     price_fetched_at: Optional[datetime]
+    history: Optional[FinancialHistory] = None
 
     @property
     def statements_fresh(self) -> bool:
-        return _now() - self.fetched_at < STATEMENTS_TTL
+        # Rows cached before the history column (2026-11) count as stale, so
+        # they're refetched once rather than showing N/A ratios for a week.
+        return self.history is not None and _now() - self.fetched_at < STATEMENTS_TTL
 
     @property
     def price_fresh(self) -> bool:
@@ -154,7 +157,7 @@ def get_fundamentals(
             row = c.execute(
                 """
                 SELECT symbol, source, info_json, raw_json, consensus_json,
-                       fetched_at, price_json, price_fetched_at
+                       fetched_at, price_json, price_fetched_at, history_json
                 FROM company_fundamentals_cache WHERE symbol = %s
                 """,
                 (symbol,),
@@ -177,6 +180,9 @@ def get_fundamentals(
             AnalystConsensus.model_validate_json(row["consensus_json"])
             if row["consensus_json"]
             else None
+        )
+        history = (
+            FinancialHistory.model_validate_json(row["history_json"]) if row["history_json"] else None
         )
     except Exception:  # noqa: BLE001 -- a corrupt/old-shaped row is a miss, not a 500
         logger.warning("Fundamentals cache row failed to parse for symbol=%s", symbol, exc_info=True)
@@ -209,6 +215,7 @@ def get_fundamentals(
         consensus=consensus,
         fetched_at=_aware(row["fetched_at"]),
         price_fetched_at=_aware(row["price_fetched_at"]),
+        history=history,
     )
 
 
@@ -219,6 +226,7 @@ def put_fundamentals(
     raw: RawFinancials,
     consensus: Optional[AnalystConsensus],
     *,
+    history: Optional[FinancialHistory] = None,
     conn: Optional[psycopg.Connection] = None,
 ) -> None:
     """Writes/refreshes the statement half of the row. Deliberately does NOT
@@ -237,13 +245,14 @@ def put_fundamentals(
             c.execute(
                 """
                 INSERT INTO company_fundamentals_cache
-                    (symbol, source, info_json, raw_json, consensus_json, fetched_at)
-                VALUES (%s, %s, %s, %s, %s, NOW())
+                    (symbol, source, info_json, raw_json, consensus_json, history_json, fetched_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
                 ON CONFLICT (symbol) DO UPDATE SET
                     source = EXCLUDED.source,
                     info_json = EXCLUDED.info_json,
                     raw_json = EXCLUDED.raw_json,
                     consensus_json = EXCLUDED.consensus_json,
+                    history_json = EXCLUDED.history_json,
                     fetched_at = EXCLUDED.fetched_at
                 """,
                 (
@@ -252,6 +261,7 @@ def put_fundamentals(
                     info.model_dump_json(),
                     raw.model_dump_json(),
                     consensus.model_dump_json() if consensus is not None else None,
+                    history.model_dump_json() if history is not None else None,
                 ),
             )
     except Exception:  # noqa: BLE001 -- failing to cache must never fail the request

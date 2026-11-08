@@ -29,6 +29,7 @@ from app.models import (
     CompanyInfo,
     DataSourceName,
     DeleteAccountRequest,
+    FinancialHistory,
     ForgotPasswordRequest,
     GoogleAuthRequest,
     IntradayHistoryResponse,
@@ -49,7 +50,7 @@ from app.services.data_provider import (
     FinancialDataProvider,
     resolves_via_former_name,
 )
-from app.services.metrics import compute_health_snapshot, compute_metric_groups
+from app.services.metrics import compute_health_snapshot, compute_metric_groups, history_table
 from app.services import gmail_service
 from app.services.providers import provider as shared_provider
 from app.services import auth_service, fundamentals_cache, price_lag, rate_limit
@@ -210,6 +211,7 @@ class _Fundamentals:
     source: DataSourceName
     as_of: Optional[str] = None
     is_stale: bool = False
+    history: Optional[FinancialHistory] = None
 
 
 def _yfinance_consensus(symbol: str) -> Optional[AnalystConsensus]:
@@ -240,6 +242,7 @@ def _serve_cached(query: str, cached, *, is_stale: bool) -> _Fundamentals:
         raw=cached.raw,
         consensus=cached.consensus,
         source=DataSourceName.YFINANCE,
+        history=cached.history,
         # Deliberately the STATEMENTS timestamp, not CachedFundamentals.as_of
         # (which is the newer of the two clocks). This field answers "how old
         # are these financials?"; the price has its own date, price_as_of.
@@ -293,14 +296,14 @@ def _fetch_company_yfinance_cached(query: str) -> _Fundamentals:
         info = provider.get_company_info(symbol)
         if not _looks_like_the_query(query, info):
             raise _not_found(query)
-        raw = provider.get_raw_financials(symbol)
+        raw, history = provider.get_financials_with_history(symbol)
         consensus = _yfinance_consensus(symbol)
         with get_conn() as conn:
             fundamentals_cache.put_fundamentals(
-                symbol, "yfinance", info, raw, consensus, conn=conn)
+                symbol, "yfinance", info, raw, consensus, history=history, conn=conn)
         return _Fundamentals(
             symbol=symbol, info=info, raw=raw, consensus=consensus,
-            source=DataSourceName.YFINANCE,
+            source=DataSourceName.YFINANCE, history=history,
         )
     except CompanyNotFoundError:
         # A symbol resolved from cache can go dead (a delisting or rename --
@@ -378,8 +381,10 @@ def get_company(
     # numbers and still returns None (rendered "N/A") for anything missing,
     # whether that came from a live fetch or the cache -- the cache
     # round-trips nulls as nulls precisely so this behaviour is identical.
-    metric_groups = compute_metric_groups(raw, info.company_name)
+    metric_groups = compute_metric_groups(
+        raw, info.company_name, bundle.history, info.sector, info.industry)
     health_snapshot = compute_health_snapshot(metric_groups)
+    history = bundle.history
     response = CompanyFinancialsResponse(
         info=info,
         raw=raw,
@@ -392,6 +397,8 @@ def get_company(
         fundamentals_as_of=bundle.as_of,
         is_stale=bundle.is_stale,
         price_as_of=price_as_of,
+        history=history_table(history, price_lag.today_in_india()) if history is not None else None,
+        ratios_period_end=history.annual[0].period_end_date if history and history.annual else None,
     )
     _last_company_by_ticker[info.resolved_symbol] = response
     # No-op if current_user is None (anonymous search) -- see

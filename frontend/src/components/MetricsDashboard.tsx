@@ -5,6 +5,7 @@ import { formatDay } from "../lib/leagueFormat";
 import MetricCard from "./MetricCard";
 import TileGrid from "./TileGrid";
 import PriceChart from "./PriceChart";
+import FinancialHistory from "./FinancialHistory";
 import type { Theme } from "../hooks/useTheme";
 
 // Reused above (top of the collapsed section) and below (end of the
@@ -38,6 +39,12 @@ interface MetricsDashboardProps {
 
 export default function MetricsDashboard({ data, theme }: MetricsDashboardProps) {
   const { info, raw, metric_groups } = data;
+  const fetched = formatDay(data.fundamentals_as_of ?? new Date().toISOString(), true);
+  const period = data.ratios_period_end
+    ? data.ratios_period_end.slice(5, 7) === "03"
+      ? `FY${data.ratios_period_end.slice(2, 4)} (year to ${formatDay(data.ratios_period_end, true)})`
+      : `the year to ${formatDay(data.ratios_period_end, true)}`
+    : "the latest year Yahoo has";
   // Collapsed by default -- the two charts + the summary row below are the
   // whole story most of the time; every grouped ratio card (and the raw
   // revenue/assets/etc. figures) are a deliberate "more detail" step behind
@@ -100,6 +107,8 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
         </div>
 
       </div>
+
+      {data.history && <FinancialHistory history={data.history} fetchedAt={data.fundamentals_as_of} currency={raw.currency} />}
 
       <ShowMoreToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
 
@@ -166,6 +175,12 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
                     <MetricCard metric={metric} key={metric.key} />
                   ))}
                 </TileGrid>
+                <p className="footnote">
+                  {group.key === "growth"
+                    ? `Compares ${period} with earlier years.`
+                    : `From ${period}.`}{" "}
+                  Yahoo Finance, fetched {fetched}. Hover or tap a tile for its formula.
+                </p>
               </div>
             ))}
           </div>

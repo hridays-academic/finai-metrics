@@ -23,6 +23,17 @@ export default function MetricCard({ metric }: { metric: Metric }) {
     <div {...triggerProps} className={`metric-card tile ${metric.status}`} aria-label={`${metric.label}: ${formatMetricValue(metric)}`}>
       <div className="metric-label">{metric.label}</div>
       <div className={`metric-value ${na ? "na" : ""}`}>{formatMetricValue(metric)}</div>
+      {metric.parts && (
+        <div className="metric-parts">
+          {metric.parts.map((p, i) => (
+            <span key={p.label}>
+              {i > 0 && <span className="metric-parts-times"> × </span>}
+              <span title={p.label}>{formatMetricValue({ ...metric, value: p.value, unit: p.unit })}</span>
+            </span>
+          ))}
+          <div className="metric-parts-legend">{metric.parts.map((p) => p.label.toLowerCase()).join(" × ")}</div>
+        </div>
+      )}
       {/* Every tile has a status line in the same spot, so tiles line up:
           metrics with no conventional benchmark (P/E, EPS...) say so. */}
       <span className={`status-text ${STATUS_TONE[metric.status] ?? "neutral"}`}>
