@@ -1,4 +1,4 @@
-import { type MouseEvent, useCallback, useEffect, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, fetchLeagueConfig, fetchLeagueEvent, fetchMyForecast, fetchResearchHistory } from "../../lib/api";
 import type { Theme } from "../../hooks/useTheme";
 import type { EventDetail, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
@@ -70,9 +70,11 @@ interface ForecastPageProps {
   onOpenAuth: () => void;
   theme: Theme;
   onOpenInResearch: (symbol: string, from: { eventId: number; name: string }) => void;
+  // False while another tab is showing; the page stays mounted so its place and inputs survive.
+  visible: boolean;
 }
 
-export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, theme, onOpenInResearch }: ForecastPageProps) {
+export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, theme, onOpenInResearch, visible }: ForecastPageProps) {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [config, setConfig] = useState<LeagueConfig | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
@@ -103,6 +105,14 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
     load();
   }, [load]);
 
+  // Refresh on coming back (the lock may have passed meanwhile). The form
+  // only remounts if the event's status changed, so typed inputs stay.
+  const wasVisible = useRef(visible);
+  useEffect(() => {
+    if (visible && !wasVisible.current) load();
+    wasVisible.current = visible;
+  }, [visible, load]);
+
   // Shared by the key figures in the header and the research section.
   const companyId = event?.company.id;
   useEffect(() => {
@@ -121,7 +131,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   if (error) {
     return (
       <div className="page">
-        <a className="back-link" href="#/league">← Companies</a>
+        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
         <div className="form-error">{error}</div>
       </div>
     );
@@ -147,7 +157,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   return (
     <div className="page">
       <header className="page-header glass page-hero">
-        <a className="back-link" href="#/league">← Companies</a>
+        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
         <h1 className="page-title">
           {event.company.name} <span className="page-title-sub">{event.company.ticker}</span>
         </h1>

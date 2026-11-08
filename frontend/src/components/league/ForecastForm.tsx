@@ -1,5 +1,6 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { ApiError, saveForecast } from "../../lib/api";
+import { clearForecastDraft, getForecastDraft, setForecastDraft, type Range } from "../../lib/forecastDrafts";
 import { formatDay } from "../../lib/leagueFormat";
 import type { EventDetail, Forecast, LeagueConfig, UserPublic } from "../../lib/types";
 
@@ -14,35 +15,54 @@ interface ForecastFormProps {
   onLocked: () => void;
 }
 
-type Range = { low: string; high: string };
-
-function initialRanges(event: EventDetail, forecast: Forecast | null): Record<string, Range> {
+// The saved forecast's values, with any unsaved draft from earlier in this tab on top.
+function initialRanges(event: EventDetail, forecast: Forecast | null, draft?: Record<string, Range>): Record<string, Range> {
   const out: Record<string, Range> = {};
   for (const m of event.metrics) {
     const v = forecast?.values.find((x) => x.metric_key === m.key);
-    out[m.key] = { low: v ? String(v.low) : "", high: v ? String(v.high) : "" };
+    out[m.key] = draft?.[m.key] ?? { low: v ? String(v.low) : "", high: v ? String(v.high) : "" };
   }
   return out;
 }
 
 export default function ForecastForm(props: ForecastFormProps) {
   const { event, config, user, forecast, onSaved, onNeedProfile, onOpenAuth, onLocked } = props;
-  const [ranges, setRanges] = useState(() => initialRanges(event, forecast));
-  const [tags, setTags] = useState<string[]>(forecast?.reason_tags ?? []);
-  const [note, setNote] = useState(forecast?.note ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState<string | null>(forecast?.updated_at ?? null);
-
   const readOnly = event.status !== "open" || forecast?.locked === true;
   const needsConsent = user?.age_band === "under_18" && user.guardian_consent_status !== "granted";
 
+  const [draft] = useState(() => (readOnly ? undefined : getForecastDraft(event.id)));
+  const [ranges, setRanges] = useState(() => initialRanges(event, forecast, draft?.ranges));
+  const [tags, setTags] = useState<string[]>(draft?.tags ?? forecast?.reason_tags ?? []);
+  const [note, setNote] = useState(draft?.note ?? forecast?.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(forecast?.updated_at ?? null);
+  const [unsaved, setUnsaved] = useState(draft !== undefined);
+  // Only the visitor's own edits become a draft, never the loaded values.
+  const edited = useRef(draft !== undefined);
+
+  useEffect(() => {
+    if (edited.current) setForecastDraft(event.id, { ranges, tags, note });
+  }, [event.id, ranges, tags, note]);
+
+  function markEdited() {
+    edited.current = true;
+    setUnsaved(true);
+  }
+
   function setRange(key: string, side: "low" | "high", value: string) {
+    markEdited();
     setRanges((r) => ({ ...r, [key]: { ...r[key], [side]: value } }));
   }
 
   function toggleTag(key: string) {
+    markEdited();
     setTags((t) => (t.includes(key) ? t.filter((x) => x !== key) : [...t, key]));
+  }
+
+  function editNote(value: string) {
+    markEdited();
+    setNote(value);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -64,6 +84,9 @@ export default function ForecastForm(props: ForecastFormProps) {
     try {
       const saved = await saveForecast(event.id, { values, reason_tags: tags, note: note.trim() || null });
       setSavedAt(saved.updated_at);
+      clearForecastDraft(event.id);
+      edited.current = false;
+      setUnsaved(false);
       onSaved(saved);
     } catch (err) {
       if (err instanceof ApiError && err.code === "profile_required") onNeedProfile();
@@ -167,7 +190,7 @@ export default function ForecastForm(props: ForecastFormProps) {
           maxLength={config.note_max_chars}
           rows={2}
           disabled={readOnly}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => editNote(e.target.value)}
         />
         <span className="field-hint">
           {note.length}/{config.note_max_chars}
@@ -204,6 +227,7 @@ export default function ForecastForm(props: ForecastFormProps) {
           >
             {saving ? "Saving..." : !user ? "Sign in to forecast" : forecast ? "Update forecast" : "Submit forecast"}
           </button>
+          {unsaved && <p className="field-hint">Not submitted yet. Your entries are kept until you close or reload this tab.</p>}
           {savedAt && (
             <p className="field-hint">
               Saved {new Date(savedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST. You can edit it

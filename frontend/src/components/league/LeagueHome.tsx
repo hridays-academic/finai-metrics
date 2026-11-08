@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMySeason, fetchResearchHistory } from "../../lib/api";
 import { daysUntil, formatDay } from "../../lib/leagueFormat";
 import type { EventSummary, LeagueConfig, ResearchHistory, Season, UserPublic } from "../../lib/types";
@@ -10,6 +10,9 @@ import LockCountdown from "./LockCountdown";
 interface LeagueHomeProps {
   user: UserPublic | null;
   onOpenAuth: () => void;
+  // False while a company page or another tab is showing. Home stays
+  // mounted so its scroll position and the companies shown survive.
+  visible: boolean;
 }
 
 const CARD_COUNT = 4;
@@ -189,15 +192,24 @@ function SeasonSoFar({ season }: { season: Season }) {
 }
 
 // The default landing page: a stock picker over the open forecast events.
-export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
+export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProps) {
   const [upcoming, setUpcoming] = useState<EventSummary[] | null>(null);
   const [scored, setScored] = useState<EventSummary[]>([]);
   const [config, setConfig] = useState<LeagueConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cards, setCards] = useState<EventSummary[]>([]);
+  const [cardIds, setCardIds] = useState<number[]>([]);
   const [seen, setSeen] = useState<Set<number>>(new Set());
   const [histories, setHistories] = useState<Record<number, HistoryState>>({});
   const [season, setSeason] = useState<Season | null>(null);
+
+  // Refetch on coming back, so e.g. a forecast just saved on a company page
+  // shows up at once.
+  const [refresh, setRefresh] = useState(0);
+  const wasVisible = useRef(visible);
+  useEffect(() => {
+    if (visible && !wasVisible.current) setRefresh((n) => n + 1);
+    wasVisible.current = visible;
+  }, [visible]);
 
   useEffect(() => {
     let cancelled = false;
@@ -213,7 +225,7 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, refresh]);
 
   const open = useMemo(() => (upcoming ?? []).filter((e) => e.status === "open"), [upcoming]);
   // Shown when nothing is open, so the page never looks empty between seasons.
@@ -227,12 +239,21 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
     [upcoming, open]
   );
 
-  // Deal the first hand once the events arrive (and again if the open set changes).
+  // Deal the first hand once the events arrive. A refresh keeps the same
+  // companies unless one of them has closed (or a new one fills a gap).
+  const openKey = open.map((e) => e.id).join(",");
   useEffect(() => {
+    const ids = new Set(open.map((e) => e.id));
+    if (cardIds.length === Math.min(CARD_COUNT, open.length) && cardIds.every((id) => ids.has(id))) return;
     const first = pickCards(open, new Set());
-    setCards(first);
+    setCardIds(first.map((e) => e.id));
     setSeen(new Set(first.map((e) => e.id)));
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openKey]);
+  const cards = useMemo(
+    () => cardIds.map((id) => open.find((e) => e.id === id)).filter((e): e is EventSummary => e !== undefined),
+    [cardIds, open]
+  );
 
   // Latest-quarter figures for the visible rows (cached server-side for a week).
   useEffect(() => {
@@ -250,7 +271,7 @@ export default function LeagueHome({ user, onOpenAuth }: LeagueHomeProps) {
     const exhausted = open.every((e) => seen.has(e.id));
     const exclude = exhausted ? current : new Set([...seen, ...current]);
     const next = pickCards(open, exclude);
-    setCards(next);
+    setCardIds(next.map((e) => e.id));
     setSeen(exhausted ? new Set(next.map((e) => e.id)) : new Set([...seen, ...next.map((e) => e.id)]));
   }
 

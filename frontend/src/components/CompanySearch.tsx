@@ -33,6 +33,7 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
           className="back-link"
           href={`#/event/${backTo.eventId}`}
           onClick={onBack}
+          data-keep-scroll
         >
           ← Back to forecast: {backTo.name}
         </a>

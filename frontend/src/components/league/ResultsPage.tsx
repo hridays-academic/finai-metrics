@@ -173,7 +173,7 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
     return (
       <div className="page">
         <header className="page-header glass page-hero">
-          <a className="back-link" href="#/league">← Companies</a>
+          <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
           {event && <h1 className="page-title">{event.company.name}</h1>}
         </header>
         {!user ? (
@@ -198,7 +198,7 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
   return (
     <div className="page">
       <header className="page-header glass page-hero">
-        <a className="back-link" href="#/league">← Companies</a>
+        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
         <h1 className="page-title">
           {ev.company.name} <span className="page-title-sub">{ev.company.ticker}</span>
         </h1>

@@ -48,6 +48,12 @@ export function leaveRoute(): void {
   }
 }
 
+// Switches route without adding a history entry (a tab switch, like clearRoute).
+export function replaceRoute(hash: string): void {
+  window.history.replaceState(null, "", window.location.pathname + window.location.search + hash);
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+}
+
 // Clears the hash (back to the sidebar views) without adding a history entry.
 export function clearRoute(): void {
   if (window.location.hash) {

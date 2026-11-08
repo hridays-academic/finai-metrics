@@ -494,6 +494,19 @@ on a user action, that effect will now keep running in the background for
 every OTHER view too, the whole time it's mounted -- guard it or lift it,
 don't assume "not currently selected" means "not running."
 
+**Home keeps its place too (2026-11-08).** The Home list (`LeagueHome`)
+stays mounted once seen, and the last company/results page opened from Home
+(`keptPage` in `App.tsx`) stays mounted, hidden, even under the list. The
+Home tab returns to wherever Home was (`homeAt`); tapping it while on a
+company page goes to the list, and on the list scrolls to the top. Both pages
+refetch when shown again (`visible` prop) without re-dealing the four cards
+or remounting the form. `hooks/useScrollMemory.ts` remembers the content
+column's scroll per page (the column, not the window, scrolls, so the
+browser can't); links start a page at the top unless marked
+`data-keep-scroll` (the "← Companies" and "Back to forecast" links).
+Unsaved forecast inputs live in `lib/forecastDrafts.ts`: memory only, never
+stored or sent, gone on reload, cleared on sign-out.
+
 ## Design system (2026-11 design pass)
 
 Approved by Hriday 2026-11-06 after a screenshot audit. Goal: calm,
