@@ -3,6 +3,7 @@ import type { UserPublic } from "../lib/types";
 import AdminCompanies from "./admin/AdminCompanies";
 import AdminMore from "./admin/AdminMore";
 import AdminUsers from "./admin/AdminUsers";
+import AdminWorldEvents from "./admin/AdminWorldEvents";
 import SiteFooter from "./SiteFooter";
 
 interface AdminPageProps {
@@ -16,6 +17,7 @@ interface AdminPageProps {
 const TABS = [
   { key: "companies", label: "Companies", Component: AdminCompanies },
   { key: "students", label: "Students", Component: AdminUsers },
+  { key: "world", label: "World events", Component: AdminWorldEvents },
   { key: "more", label: "More", Component: AdminMore },
 ] as const;
 

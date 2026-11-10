@@ -1,4 +1,10 @@
 import type {
+  CompanyNews,
+  MacroSeries,
+  NewsList,
+  NewsView,
+  WorldEvent,
+  WorldEventIn,
   AdminBoardRow,
   AdminUser,
   AuditEntry,
@@ -358,3 +364,25 @@ export interface ConsentDetails {
 export const adminSetConsent = (userId: number, status: "pending" | "granted", details?: ConsentDetails) =>
   leagueRequest<void>("PUT", `/admin/users/${userId}/guardian-consent`, { status, ...details });
 export const adminAudit = (limit = 100) => leagueRequest<AuditEntry[]>("GET", `/admin/audit?limit=${limit}`);
+
+// ---------- News, world events and macro context ----------
+
+export const fetchNews = (view: NewsView, offset = 0, limit = 20) =>
+  leagueRequest<NewsList>("GET", `/news?view=${view}&offset=${offset}&limit=${limit}`);
+export const fetchWorldEvents = () => leagueRequest<WorldEvent[]>("GET", "/world-events");
+export const fetchMacro = () => leagueRequest<MacroSeries[]>("GET", "/macro");
+export const fetchCompanyNews = (symbol: string) =>
+  leagueRequest<CompanyNews>("GET", `/news/company/${encodeURIComponent(symbol)}`);
+export const adminListWorldEvents = () => leagueRequest<WorldEvent[]>("GET", "/admin/world-events");
+export const adminCreateWorldEvent = (body: WorldEventIn) => leagueRequest<WorldEvent>("POST", "/admin/world-events", body);
+export const adminUpdateWorldEvent = (id: number, body: WorldEventIn) =>
+  leagueRequest<WorldEvent>("PUT", `/admin/world-events/${id}`, body);
+export const adminDeleteWorldEvent = (id: number) => leagueRequest<void>("DELETE", `/admin/world-events/${id}`);
+export interface JobRun {
+  job: string;
+  first_ok_at: string | null;
+  last_run_at: string | null;
+  last_ok_at: string | null;
+  last_error: string | null;
+}
+export const adminJobs = () => leagueRequest<JobRun[]>("GET", "/admin/jobs");

@@ -228,6 +228,74 @@ _SCHEMA_STATEMENTS = [
 ]
 
 
+# Added 2026-11 (v10) -- news, exchange filings, world events and macro
+# series (services/news.py), filled by scheduled jobs (routes/cron.py).
+# Headline, source, date and link only: never article text. Run after the
+# league tables because they reference companies.
+NEWS_SCHEMA_STATEMENTS = [
+    """
+    CREATE TABLE IF NOT EXISTS news_items (
+        id BIGSERIAL PRIMARY KEY,
+        url TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        publisher TEXT NOT NULL,
+        published_at TIMESTAMPTZ NOT NULL,
+        source TEXT NOT NULL,
+        theme TEXT NOT NULL,
+        company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS news_items_recent ON news_items (published_at DESC)",
+    "CREATE INDEX IF NOT EXISTS news_items_company ON news_items (company_id, published_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS exchange_filings (
+        id BIGSERIAL PRIMARY KEY,
+        url TEXT NOT NULL UNIQUE,
+        company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        subject TEXT NOT NULL,
+        event_type TEXT,
+        filed_at TIMESTAMPTZ NOT NULL,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS exchange_filings_company ON exchange_filings (company_id, filed_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS world_events (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        event_date DATE NOT NULL,
+        sectors TEXT[] NOT NULL DEFAULT '{}',
+        why TEXT NOT NULL,
+        source_url TEXT,
+        pinned BOOLEAN NOT NULL DEFAULT FALSE,
+        show_until DATE,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS macro_series_cache (
+        series_key TEXT PRIMARY KEY,
+        points_json TEXT NOT NULL,
+        source TEXT NOT NULL,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS job_runs (
+        job TEXT PRIMARY KEY,
+        first_ok_at TIMESTAMPTZ,
+        last_run_at TIMESTAMPTZ,
+        last_ok_at TIMESTAMPTZ,
+        cursor INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT
+    )
+    """,
+]
+
+
 # How long personal records are kept (Privacy Policy, 2026-11).
 ACTIVITY_RETENTION = "12 months"
 
@@ -258,7 +326,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001
@@ -357,7 +425,7 @@ def init_db() -> None:
 
         conn.execute("SELECT pg_advisory_xact_lock(%s)", (_SCHEMA_LOCK_KEY,))
         before = _tapetide_storage_present(conn)
-        for statement in _SCHEMA_STATEMENTS + LEAGUE_SCHEMA_STATEMENTS:
+        for statement in _SCHEMA_STATEMENTS + LEAGUE_SCHEMA_STATEMENTS + NEWS_SCHEMA_STATEMENTS:
             conn.execute(statement)
         conn.execute(
             """

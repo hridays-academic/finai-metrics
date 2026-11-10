@@ -3,11 +3,24 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" }
+    {
+      "source": "/api/cron/gdelt",
+      "destination": "/api/gdelt"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    }
   ],
   "functions": {
     "api/index.py": {
       "maxDuration": 60
+    },
+    "api/gdelt.py": {
+      "maxDuration": 60,
+      "regions": [
+        "sin1"
+      ]
     }
   },
   "headers": [
@@ -18,12 +31,45 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; font-src 'self'; img-src 'self' data: https://*.googleusercontent.com; connect-src 'self' https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/nse",
+      "schedule": "*/15 3-16 * * 1-6"
+    },
+    {
+      "path": "/api/cron/gdelt",
+      "schedule": "5 * * * *"
+    },
+    {
+      "path": "/api/cron/rbi",
+      "schedule": "20 */6 * * *"
+    },
+    {
+      "path": "/api/cron/macro",
+      "schedule": "40 1 * * *"
     }
   ]
 }

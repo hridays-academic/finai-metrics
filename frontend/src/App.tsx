@@ -17,6 +17,7 @@ import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
 import ForecastPage from "./components/league/ForecastPage";
 import ResultsPage from "./components/league/ResultsPage";
+import ResearchLanding from "./components/news/ResearchLanding";
 import { clearRoute, leaveRoute, replaceRoute, useHashRoute } from "./lib/router";
 import { clearForecastDrafts } from "./lib/forecastDrafts";
 import { useTheme } from "./hooks/useTheme";
@@ -225,14 +226,7 @@ export default function App() {
 
             <div className="content-grid">
               <div className="metrics-pane">
-                {company ? (
-                  <MetricsDashboard data={company} theme={theme} />
-                ) : (
-                  <div className="empty-state glass panel">
-                    <h2>Look up any listed company</h2>
-                    <p>Search for an NSE or BSE company to see its financial ratios and price history.</p>
-                  </div>
-                )}
+                {company ? <MetricsDashboard data={company} theme={theme} /> : <ResearchLanding />}
                 <SiteFooter />
               </div>
             </div>

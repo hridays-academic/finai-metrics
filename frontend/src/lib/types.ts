@@ -426,3 +426,85 @@ export interface Season {
   calibration: number | null;
   min_metrics_for_calibration: number;
 }
+
+// ---------- News, world events and macro context (2026-11) ----------
+
+export type NewsView = "all" | "economy" | "cement" | "autos" | "fmcg" | "it";
+
+export interface NewsItem {
+  title: string;
+  url: string;
+  publisher: string;
+  published_at: string;
+  theme: string;
+  theme_label: string;
+  why: string;
+  sector_label?: string | null;
+}
+
+export interface NewsList {
+  items: NewsItem[];
+  has_more: boolean;
+  updated_at: string | null;
+}
+
+export type WorldEventSector = "economy" | "cement" | "autos" | "fmcg" | "it";
+
+export interface WorldEvent {
+  id: number;
+  title: string;
+  event_date: string;
+  sectors: WorldEventSector[];
+  sector_labels: string[];
+  why: string;
+  source_url: string | null;
+  pinned: boolean;
+  show_until: string | null;
+}
+
+export interface WorldEventIn {
+  title: string;
+  event_date: string;
+  sectors: WorldEventSector[];
+  why: string;
+  source_url: string | null;
+  pinned: boolean;
+  show_until: string | null;
+}
+
+export interface MacroSeries {
+  key: string;
+  label: string;
+  unit: string;
+  source: string;
+  source_url: string;
+  frequency: "monthly" | "daily";
+  sectors: string[];
+  status: "ok" | "coming_soon" | "unavailable";
+  points: { date: string; value: number }[];
+  data_to: string | null;
+  fetched_at: string | null;
+}
+
+export interface Filing {
+  url: string;
+  subject: string;
+  filed_at: string;
+  type_label: string | null;
+  why: string | null;
+}
+
+export interface CompanyNews {
+  tracked: boolean;
+  company_name: string | null;
+  sector: string | null;
+  sector_label: string;
+  filings: Filing[];
+  filings_since: string | null;
+  nse_url: string;
+  company_news: NewsItem[];
+  sector_news: NewsItem[];
+  world_events: WorldEvent[];
+  macro: MacroSeries[];
+  updated_at: string | null;
+}

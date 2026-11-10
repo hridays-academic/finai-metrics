@@ -37,3 +37,4 @@ curl_cffi==0.16.3
 # (see app/services/bharat_sm_provider.py) -- fundamentals only, no price
 # history/analyst data, see that file's docstring for why.
 Bharat-sm-data==4.0.1
+openpyxl==3.1.5

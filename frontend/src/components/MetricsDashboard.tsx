@@ -6,6 +6,7 @@ import MetricCard from "./MetricCard";
 import TileGrid from "./TileGrid";
 import PriceChart from "./PriceChart";
 import FinancialHistory from "./FinancialHistory";
+import CompanyNewsPanel from "./news/CompanyNewsPanel";
 import type { Theme } from "../hooks/useTheme";
 
 // Reused above (top of the collapsed section) and below (end of the
@@ -109,6 +110,8 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
       </div>
 
       {data.history && <FinancialHistory history={data.history} fetchedAt={data.fundamentals_as_of} currency={raw.currency} />}
+
+      <CompanyNewsPanel symbol={info.resolved_symbol} name={info.company_name} />
 
       <ShowMoreToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
 

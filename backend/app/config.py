@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     alpha_vantage_api_key: Optional[str] = None
     fmp_api_key: Optional[str] = None
 
+    # USD/INR for the macro charts (FRED, free key). Without it that chart
+    # says "Coming soon"; the World Bank series need no key.
+    fred_api_key: Optional[str] = None
+    # Vercel Cron sends "Authorization: Bearer <CRON_SECRET>"; the /api/cron/*
+    # endpoints refuse every request when it isn't set.
+    cron_secret: Optional[str] = None
+
     # Comma-separated emails allowed to use /api/admin/* (see
     # routes/deps.require_admin). Set in Vercel's env vars, never in code.
     admin_emails: str = ""

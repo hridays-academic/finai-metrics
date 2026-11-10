@@ -1,4 +1,5 @@
 import AdminAudit from "./AdminAudit";
+import AdminJobs from "./AdminJobs";
 import AdminVisits from "./AdminVisits";
 
 // Rarely needed tools, collapsed so they don't crowd the main jobs.
@@ -8,6 +9,10 @@ export default function AdminMore() {
       <details className="admin-more-section">
         <summary>Visit counts</summary>
         <AdminVisits />
+      </details>
+      <details className="admin-more-section">
+        <summary>Scheduled jobs</summary>
+        <AdminJobs />
       </details>
       <details className="admin-more-section">
         <summary>Audit log</summary>

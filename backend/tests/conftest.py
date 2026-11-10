@@ -44,6 +44,7 @@ _WIPE_TABLES = (
     "diagnoses", "scores", "baselines", "actuals", "forecast_values", "forecasts",
     "forecast_events", "fiscal_periods", "companies", "activity_log", "sessions",
     "password_reset_tokens", "users", "page_visits_daily", "rate_limit_buckets",
+    "news_items", "exchange_filings", "world_events", "macro_series_cache", "job_runs",
 )
 
 

@@ -951,6 +951,52 @@ approved first), (4) news, world events, macro charts. No AI in any of them.
 - Known, not fixed: some companies' Yahoo statements are in USD (Infosys
   looked like it); the Research page formats every figure as rupees.
 
+## News, world events and macro context (2026-11, Research phase 2 of 4)
+
+Built before profile/peers/documents and the analysis, per Hriday 2026-11-08.
+All wording (theme sentences, event-type lines) approved as written; change it
+only with approval. Config in `app/news_config.py`, logic in `services/news.py`,
+routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEMENTS`
+(schema v10, run after the league tables because they reference companies).
+
+- **Pages read Postgres only.** Scheduled jobs fill it (Vercel Cron in
+  `vercel.json`, ~2,300 runs/month): NSE filings every 15 min 08:30-22:15 IST
+  Mon-Sat, GDELT hourly (7 queries, 6 s apart), RBI every 6 h, macro daily.
+  `/api/cron/*` needs `Authorization: Bearer $CRON_SECRET` (set by Hriday in
+  Vercel Production) and returns 503 when it isn't set. `job_runs` records each
+  job's last run/success/error; admins see it under More > Scheduled jobs.
+- **GDELT runs as its own function in Singapore** (`api/gdelt.py` ->
+  `app/gdelt_app.py`, `regions: ["sin1"]`): from Vercel's default US region
+  GDELT returned 429 on 4 of 4 requests; sin1/fra1 got 200 on 2 of 2, but later
+  sin1 also got 429 on 3 of 3 (shared outbound addresses). So headlines arrive
+  intermittently; the job stops at the first 429 and retries next hour. Spreading
+  requests across regions to dodge GDELT's limit was NOT done; ask Hriday first.
+  Queries are `<topic> sourcecountry:IN sourcelang:english`; the 12-publisher
+  allowlist is applied after the fetch.
+- **Headline rules:** headline, publisher, date and link only, never article
+  text or images; GDELT credited on every list. Advice-style headlines (buy,
+  sell, target, ratings, brokerage...) are dropped; headlines matching no theme
+  (company news: no event type) are hidden, not shown without a line. Company
+  headlines only for companies in the `companies` table (league companies).
+- **NSE filings** come from NSE's official announcements RSS (latest ~40 filings
+  only, so it is lossy at peaks; the panel says "filings we captured since" and
+  links to NSE). Reachable from Vercel (tested). The job sends an honest
+  "StacklyNews" user agent; locally that timed out once. Never switch to a
+  browser user agent to get past a block (that is bot-check circumvention); if
+  NSE keeps refusing, the panel's NSE link is the fallback Hriday approved.
+- **RBI** press-release RSS, themed items only, minus routine notices
+  (`RBI_ROUTINE`: auctions, money-market data, T-bills). RBI and NSE times
+  without a zone are IST.
+- **Macro:** World Bank Pink Sheet (monthly, CC BY 4.0, no key, read with
+  `openpyxl`) for Brent, Australian coal, aluminium, iron ore, palm oil; FRED
+  DEXINUS for USD/INR (public domain), "Coming soon" until `FRED_API_KEY` is set.
+  FRED's Brent series is third-party copyrighted, so crude is the World Bank's.
+  The 30-day lag applies: a daily value once its date is 30 days past, a monthly
+  average once the month's last day is (`news.lag_points`). Gold left out.
+- **World event cards** are admin-written (Admin > World events: title, date,
+  sectors, "why it may matter" up to 200 characters, source link, pinned, show
+  until), audited, with soft warnings for "will" or advice words.
+
 ## Market Simulator
 
 (2026-08) The app's third top-level page (`StockMarketSimulator.tsx`, via
