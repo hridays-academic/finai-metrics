@@ -121,6 +121,39 @@ export interface CompanyFinancialsResponse {
   history?: HistoryTable | null;
   // The fiscal year-end the ratios are computed from.
   ratios_period_end?: string | null;
+  profile?: CompanyProfile | null;
+}
+
+export interface CompanyProfile {
+  description: string | null;
+  description_source: string | null;
+  headquarters: string | null;
+  website: string | null;
+  employees: number | null;
+  next_results_date: string | null;
+  single_business: boolean;
+  segments: { label: string; revenue_cr: number; share_pct: number }[];
+  segment_note: string | null;
+  segment_period: string | null;
+  segment_source_url: string | null;
+  documents: { label: string; url: string; date: string | null; source: string }[];
+  peers: string[];
+}
+
+export interface PeerSummary {
+  symbol: string;
+  name: string;
+  revenue_growth: number | null;
+  ebitda_margin: number | null;
+  net_margin: number | null;
+  roe: number | null;
+  roce: number | null;
+  debt_to_equity: number | null;
+  pe_ratio: number | null;
+  ev_to_ebitda: number | null;
+  latest_quarter: string | null;
+  reported_latest_quarter: boolean;
+  fundamentals_as_of: string | null;
 }
 
 export interface PricePoint {

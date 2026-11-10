@@ -4,8 +4,8 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
-      "source": "/api/cron/gdelt",
-      "destination": "/api/gdelt"
+      "source": "/api/cron/(.*)",
+      "destination": "/api/cron"
     },
     {
       "source": "/api/(.*)",
@@ -16,11 +16,8 @@
     "api/index.py": {
       "maxDuration": 60
     },
-    "api/gdelt.py": {
-      "maxDuration": 60,
-      "regions": [
-        "sin1"
-      ]
+    "api/cron.py": {
+      "maxDuration": 60
     }
   },
   "headers": [

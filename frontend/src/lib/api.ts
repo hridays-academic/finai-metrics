@@ -1,4 +1,5 @@
 import type {
+  PeerSummary,
   CompanyNews,
   MacroSeries,
   NewsList,
@@ -380,9 +381,12 @@ export const adminUpdateWorldEvent = (id: number, body: WorldEventIn) =>
 export const adminDeleteWorldEvent = (id: number) => leagueRequest<void>("DELETE", `/admin/world-events/${id}`);
 export interface JobRun {
   job: string;
-  first_ok_at: string | null;
   last_run_at: string | null;
   last_ok_at: string | null;
   last_error: string | null;
+  last_items: number | null;
+  stored: number;
 }
 export const adminJobs = () => leagueRequest<JobRun[]>("GET", "/admin/jobs");
+
+export const fetchPeer = (symbol: string) => leagueRequest<PeerSummary>("GET", `/peer/${encodeURIComponent(symbol)}`);

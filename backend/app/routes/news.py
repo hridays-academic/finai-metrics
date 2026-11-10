@@ -98,11 +98,22 @@ def delete_world_event(event_id: int, admin: dict = Depends(require_admin)) -> N
 
 @router.get("/api/admin/jobs")
 def admin_jobs(_admin: dict = Depends(require_admin)) -> list[dict]:
-    """When each scheduled job last ran and succeeded, and its last error."""
+    """Each scheduled job's last run, last success, last error, items stored
+    on its last run and items held now, including jobs that never ran."""
+    totals_sql = {
+        "gdelt": "SELECT count(*) AS n FROM news_items WHERE source = 'gdelt'",
+        "nse": "SELECT count(*) AS n FROM exchange_filings",
+        "rbi": "SELECT count(*) AS n FROM news_items WHERE source = 'rbi'",
+        "macro": "SELECT count(*) AS n FROM macro_series_cache",
+    }
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM job_runs ORDER BY job").fetchall()
-    return [
-        {"job": r["job"], "first_ok_at": r["first_ok_at"], "last_run_at": r["last_run_at"],
-         "last_ok_at": r["last_ok_at"], "last_error": r["last_error"]}
-        for r in rows
-    ]
+        runs = {r["job"]: dict(r) for r in conn.execute("SELECT * FROM job_runs").fetchall()}
+        out = []
+        for job, sql in totals_sql.items():
+            r = runs.get(job, {})
+            out.append({
+                "job": job, "last_run_at": r.get("last_run_at"), "last_ok_at": r.get("last_ok_at"),
+                "last_error": r.get("last_error"), "last_items": r.get("last_items"),
+                "stored": conn.execute(sql).fetchone()["n"],
+            })
+    return out

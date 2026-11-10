@@ -26,6 +26,8 @@ ADMIN = "admin@example.com"
     ("Company appoints new CEO", True, "management"),
     ("Cement maker to commission new plant in Odisha", True, "capacity"),
     ("Celebrity attends film premiere", False, None),
+    ("Mumbai redevelopment turf war: BMC and SRA clash", False, None),
+    ("Iran sets conditions as the war may not resume", False, "supply"),
 ])
 def test_classify(title, company, expected):
     assert nc.classify(title, company=company) == expected
@@ -60,20 +62,59 @@ def test_clean_title():
 
 # ---------- Parsers ----------
 
-def test_parse_gdelt_keeps_allowlisted_themed_non_advice():
-    payload = {"articles": [
-        {"url": "https://www.livemint.com/a", "title": "Brent crude jumps on Red Sea worries - Mint",
-         "domain": "livemint.com", "seendate": "20261107T173000Z"},
-        {"url": "https://example.com/b", "title": "Brent crude jumps", "domain": "example.com", "seendate": "20261107T173000Z"},
-        {"url": "https://www.moneycontrol.com/c", "title": "Neutral Dabur, target of Rs 425",
-         "domain": "moneycontrol.com", "seendate": "20261107T173000Z"},
-        {"url": "https://www.thehindu.com/d", "title": "Cricket team wins series", "domain": "thehindu.com",
-         "seendate": "20261107T173000Z"},
-    ]}
-    rows = news.parse_gdelt(payload, company=False)
-    assert [r["url"] for r in rows] == ["https://www.livemint.com/a"]
-    assert rows[0]["publisher"] == "Mint" and rows[0]["theme"] == "crude"
-    assert rows[0]["published_at"] == datetime(2026, 11, 7, 17, 30, tzinfo=timezone.utc)
+def _gkg_line(url, domain, title, date="20261110060000"):
+    f = [""] * 27
+    f[0], f[1], f[3], f[4] = "id", date, domain, url
+    f[26] = f"<PAGE_TITLE>{title}</PAGE_TITLE>"
+    return "\t".join(f)
+
+
+COMPANIES = news.company_patterns([
+    {"id": 3, "ticker": "MARUTI", "name": "Maruti Suzuki India"},
+    {"id": 6, "ticker": "ITC", "name": "ITC"},
+    {"id": 9, "ticker": "ESCORTS", "name": "Escorts Kubota"},
+])
+
+
+def test_parse_gkg_filters_publishers_sections_advice_and_themes():
+    text = "\n".join([
+        _gkg_line("https://www.livemint.com/economy/a", "livemint.com", "Brent crude jumps on Red Sea worries"),
+        _gkg_line("https://www.livemint.com/sports/b", "livemint.com", "Brent crude jumps again"),  # wrong section
+        _gkg_line("https://example.com/c", "example.com", "Brent crude jumps"),  # not a publisher
+        _gkg_line("https://www.moneycontrol.com/news/business/d", "moneycontrol.com", "Neutral Dabur, target of Rs 425"),
+        _gkg_line("https://www.thehindu.com/business/e", "thehindu.com", "Crude bomb blasts rock Dhaka"),  # no theme now
+        _gkg_line("https://www.thehindubusinessline.com/f", "thehindubusinessline.com",
+                  "Tasmac&#x27;s sales touch &#x20B9;441 crore amid GST change"),
+    ])
+    rows = news.parse_gkg(text, COMPANIES)
+    assert [r["url"] for r in rows] == ["https://www.livemint.com/economy/a", "https://www.thehindubusinessline.com/f"]
+    assert rows[0]["theme"] == "crude" and rows[0]["publisher"] == "Mint" and rows[0]["company_id"] is None
+    assert rows[1]["title"] == "Tasmac's sales touch \u20b9441 crore amid GST change"
+    assert rows[0]["published_at"] == datetime(2026, 11, 10, 6, 0, tzinfo=timezone.utc)
+
+
+def test_parse_gkg_company_news_needs_an_event_type():
+    text = "\n".join([
+        _gkg_line("https://www.livemint.com/companies/a", "livemint.com", "Maruti hikes prices across models"),
+        _gkg_line("https://www.livemint.com/companies/b", "livemint.com", "Maruti Suzuki unveils a new colour"),
+        _gkg_line("https://www.livemint.com/companies/c", "livemint.com", "Escorts held at the airport"),
+        _gkg_line("https://www.livemint.com/companies/d", "livemint.com", "ITC Q2 results: net profit rises 6%"),
+        _gkg_line("https://www.livemint.com/companies/e", "livemint.com", "Mitch says the itc rumour is false, results soon"),
+    ])
+    rows = {r["url"][-1]: r for r in news.parse_gkg(text, COMPANIES)}
+    assert rows["a"]["company_id"] == 3 and rows["a"]["theme"] == "price_change"
+    assert "b" not in rows and "c" not in rows
+    assert rows["d"]["company_id"] == 6 and rows["d"]["theme"] == "results"
+    assert "e" not in rows  # lower-case "itc" is not ITC, and no theme matches
+
+
+def test_gkg_slots_catch_up_and_resume():
+    now = datetime(2026, 11, 10, 6, 40, tzinfo=timezone.utc)
+    first = news.gkg_slots(None, now)
+    assert first[0] == datetime(2026, 11, 10, 0, 30, tzinfo=timezone.utc) and len(first) == news.GKG_FILES_PER_RUN
+    resume = news.gkg_slots("20261110054500", now)
+    assert resume == [datetime(2026, 11, 10, 6, 0, tzinfo=timezone.utc), datetime(2026, 11, 10, 6, 15, tzinfo=timezone.utc)]
+    assert news.gkg_slots("20261110061500", now) == []
 
 
 NSE_RSS = """<rss version="2.0"><channel>
@@ -195,12 +236,41 @@ def test_news_list_shows_sector_lines(conn, client):
     assert client.get("/api/news?view=nope").status_code == 404
 
 
+def test_same_story_on_two_sites_is_stored_once(conn):
+    from app.services.db import get_conn
+
+    row = {"title": "Gold edges lower as focus shifts to US inflation data", "publisher": "Mint",
+           "published_at": datetime.now(timezone.utc), "theme": "rates"}
+    with get_conn() as c:
+        assert news._store_news(c, [{**row, "url": "https://www.livemint.com/a"}], source="gdelt") == 1
+        assert news._store_news(c, [{**row, "url": "https://www.moneycontrol.com/b", "publisher": "Moneycontrol"}],
+                                source="gdelt") == 0
+
+
 def test_macro_waits_for_fred_key(conn, client, monkeypatch):
     monkeypatch.delenv("FRED_API_KEY", raising=False)
     get_settings.cache_clear()
     series = {s["key"]: s for s in client.get("/api/macro").json()}
     assert series["usd_inr"]["status"] == "coming_soon"
     assert series["brent"]["status"] == "unavailable"  # nothing fetched yet
+
+
+def test_failed_job_answers_502(client, monkeypatch):
+    monkeypatch.setenv("CRON_SECRET", "s3cret")
+    get_settings.cache_clear()
+    monkeypatch.setattr(news, "run_rbi", lambda _f: {"added": 0, "error": "boom"})
+    res = client.get("/api/cron/rbi", headers={"Authorization": "Bearer s3cret"})
+    assert res.status_code == 502 and res.json()["error"] == "boom"
+    get_settings.cache_clear()
+
+
+def test_cron_app_does_not_load_the_main_app():
+    import subprocess
+    import sys
+
+    code = "import sys, app.cron_app; print('app.main' in sys.modules, 'yfinance' in sys.modules)"
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True).stdout.split()
+    assert out == ["False", "False"]
 
 
 def test_cron_refuses_without_secret(client, monkeypatch):

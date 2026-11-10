@@ -11,7 +11,7 @@ export default function AdminMore() {
         <AdminVisits />
       </details>
       <details className="admin-more-section">
-        <summary>Scheduled jobs</summary>
+        <summary>Data jobs</summary>
         <AdminJobs />
       </details>
       <details className="admin-more-section">

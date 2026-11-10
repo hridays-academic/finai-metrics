@@ -293,6 +293,9 @@ NEWS_SCHEMA_STATEMENTS = [
         last_error TEXT
     )
     """,
+    # v11: where the GDELT file reader stopped, and items stored per run.
+    "ALTER TABLE job_runs ADD COLUMN IF NOT EXISTS state TEXT",
+    "ALTER TABLE job_runs ADD COLUMN IF NOT EXISTS last_items INTEGER",
 ]
 
 
@@ -326,7 +329,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001

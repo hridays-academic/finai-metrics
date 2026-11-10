@@ -30,6 +30,43 @@ PUBLISHERS = {
 }
 
 
+# Sections of each publisher's site whose headlines may appear: business,
+# economy, markets and world news. GDELT's raw files carry every section, and
+# city, lifestyle and sports stories otherwise match themes by accident
+# ("crude bomb", "tyre inflation"). Matched on the URL path's first segment
+# (first two for "news/..." and "article/..." paths). None = all sections
+# (business-only publications).
+PUBLISHER_SECTIONS: dict[str, frozenset[str] | None] = {
+    "economictimes.indiatimes.com": frozenset({"markets", "industry", "news/economy", "news/international", "tech"}),
+    "livemint.com": frozenset({"economy", "market", "companies", "industry", "news/world", "technology"}),
+    "business-standard.com": frozenset({"economy", "markets", "companies", "industry", "world-news", "technology"}),
+    "thehindubusinessline.com": None,
+    "financialexpress.com": frozenset({"business", "market", "economy", "world-news"}),
+    "moneycontrol.com": frozenset({"news/business", "world"}),
+    "thehindu.com": frozenset({"business", "news/international"}),
+    "indianexpress.com": frozenset({"article/business", "article/world"}),
+    "reuters.com": frozenset({"business", "markets", "world"}),
+    "ndtvprofit.com": None,
+    "cnbctv18.com": frozenset({"business", "economy", "market", "world"}),
+    "hindustantimes.com": frozenset({"business", "world-news"}),
+}
+
+
+def allowed_section(domain: str, path: str) -> bool:
+    domain = domain.lower().removeprefix("www.")
+    key = next((d for d in PUBLISHER_SECTIONS if domain == d or domain.endswith("." + d)), None)
+    if key is None:
+        return False
+    sections = PUBLISHER_SECTIONS[key]
+    if sections is None:
+        return True
+    parts = [p for p in path.split("/") if p]
+    if not parts:
+        return False
+    first = "/".join(parts[:2]) if parts[0] in ("news", "article") else parts[0]
+    return first in sections
+
+
 def publisher_for(domain: str) -> str | None:
     domain = domain.lower().removeprefix("www.")
     for d, name in PUBLISHERS.items():
@@ -68,7 +105,7 @@ THEMES: tuple[Theme, ...] = (
         "cement": "Interest rates may change the cost of home loans and building projects, which drive cement demand.",
         "fmcg": "Inflation may change how much households have left for everyday purchases.",
     }),
-    Theme("crude", "Crude oil", _rx(r"crude|brent|oil prices?|opec"), {
+    Theme("crude", "Crude oil", _rx(r"crude oil|brent|oil prices?|opec"), {
         "economy": "Oil prices may affect India's import bill, inflation and the rupee, since India imports most of its crude.",
         "cement": "Higher oil prices may raise cement makers' diesel and freight costs, which can squeeze margins.",
         "autos": "Fuel prices may affect demand for petrol and diesel vehicles, and oil also feeds into plastics and freight costs.",
@@ -93,7 +130,9 @@ THEMES: tuple[Theme, ...] = (
         "autos": "Tariffs may change export demand and the cost of imported components.",
         "fmcg": "Import duties on edible oils and other inputs may change raw material costs.",
     }),
-    Theme("supply", "War and supply", _rx(r"war|conflict|sanctions?|red sea|shipping|chip shortage|supply chain"), {
+    # "war" but not a figurative one ("turf war", "price war").
+    Theme("supply", "War and supply",
+          _rx(r"(?<!turf )(?<!price )(?<!talent )(?<!bidding )war|conflict|sanctions?|red sea|shipping|chip shortage|supply chain"), {
         "economy": "Conflicts and shipping disruptions may raise freight costs and commodity prices worldwide.",
         "autos": "Supply disruptions may delay parts such as chips, which can slow vehicle production.",
         "cement": "Disruptions may raise freight and raw material costs.",
@@ -192,26 +231,6 @@ def views_for(key: str) -> tuple[str, ...]:
     if key in EVENT_TYPES_BY_KEY:
         return ()
     return tuple(THEMES_BY_KEY[key].sentences)
-
-
-# GDELT DOC API queries for the scheduled sweep. Company queries are added
-# from the companies table. All are restricted to the publishers above.
-THEME_QUERIES = {
-    "crude": '(crude OR brent OR "oil prices")',
-    "monsoon": "(monsoon OR rainfall)",
-    "rupee": "(rupee dollar)",
-    "rates": '("repo rate" OR "monetary policy" OR inflation)',
-    "tariffs": '(tariff OR "trade deal" OR "import duty" OR "anti-dumping")',
-    "supply": '("Red Sea" OR shipping OR sanctions OR "supply chain")',
-    "gst": "(GST OR excise)",
-    "inputs": '("steel prices" OR "aluminium prices" OR "coal prices" OR "palm oil")',
-}
-SECTOR_QUERIES = {
-    "cement": "cement",
-    "autos": '("car sales" OR "auto sales" OR "two-wheeler" OR tractor)',
-    "fmcg": '(FMCG OR "consumer goods")',
-    "it": '("IT services" OR "IT spending" OR "tech spending")',
-}
 
 
 # Exchange filings: NSE's own RSS (official, meant for syndication).

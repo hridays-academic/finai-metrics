@@ -961,23 +961,42 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
 
 - **Pages read Postgres only.** Scheduled jobs fill it (Vercel Cron in
   `vercel.json`, ~2,300 runs/month): NSE filings every 15 min 08:30-22:15 IST
-  Mon-Sat, GDELT hourly (7 queries, 6 s apart), RBI every 6 h, macro daily.
-  `/api/cron/*` needs `Authorization: Bearer $CRON_SECRET` (set by Hriday in
-  Vercel Production) and returns 503 when it isn't set. `job_runs` records each
-  job's last run/success/error; admins see it under More > Scheduled jobs.
-- **GDELT runs as its own function in Singapore** (`api/gdelt.py` ->
-  `app/gdelt_app.py`, `regions: ["sin1"]`): from Vercel's default US region
-  GDELT returned 429 on 4 of 4 requests; sin1/fra1 got 200 on 2 of 2, but later
-  sin1 also got 429 on 3 of 3 (shared outbound addresses). So headlines arrive
-  intermittently; the job stops at the first 429 and retries next hour. Spreading
-  requests across regions to dodge GDELT's limit was NOT done; ask Hriday first.
-  Queries are `<topic> sourcecountry:IN sourcelang:english`; the 12-publisher
-  allowlist is applied after the fetch.
+  Mon-Sat, GDELT hourly, RBI every 6 h, macro daily. `/api/cron/*` needs
+  `Authorization: Bearer $CRON_SECRET` (set by Hriday in Vercel Production)
+  and returns 503 when it isn't set.
+- **Cron runs in its own function** (`api/cron.py` -> `app/cron_app.py`), which
+  imports only the job code: no `main.py`, no yfinance/pandas, no schema check
+  (<1 s to start; a test enforces it). Reason: on 2026-11-10 an NSE run was
+  SIGKILLed while the main app started. So **schema changes for job tables only
+  take effect after the main app's first request post-deploy**: hit
+  `/api/health` right after deploying, before the next cron. A failed job
+  answers 502 and logs `Job <name> failed`, so Vercel's logs show it.
+- **Data jobs** (Admin > More): each job's last success, last error (cleared
+  by the next success), items added on the last run and items stored
+  (`job_runs.last_items`, schema v11).
+- **GDELT headlines come from GDELT's raw 15-minute GKG files**
+  (data.gdeltproject.org), not its search API: the API rate-limited Vercel's
+  shared addresses in every region tried (2026-11-08/10), and rotating
+  regions to dodge that was ruled out by Hriday. The files have no limit
+  (24/24 fetched in a test). The job reads the files after the last one it
+  finished (`job_runs.state`), up to 6 per run, 6 hours back at most; a file
+  still missing after 3 hours is skipped. Measured: ~1,700 articles/day from
+  6 of the 12 publishers (Economic Times, Reuters, FE, NDTV Profit, CNBC-TV18
+  and Indian Express aren't in GDELT's crawl); after the section allowlist
+  (`PUBLISHER_SECTIONS`: business, economy, markets, world) and themes, ~75
+  headlines/day. BigQuery holds the same data (same gaps) and needs an
+  account, so it wasn't used. The same story on two sites is stored once
+  (matching title within 2 days). Company matching: name, name without
+  "India"/"Limited", a distinctive first word, and the ticker; acronyms and
+  tickers only in capitals.
 - **Headline rules:** headline, publisher, date and link only, never article
   text or images; GDELT credited on every list. Advice-style headlines (buy,
   sell, target, ratings, brokerage...) are dropped; headlines matching no theme
   (company news: no event type) are hidden, not shown without a line. Company
   headlines only for companies in the `companies` table (league companies).
+- **BSE** has an announcements RSS, but it returns 403 to our honest user
+  agent and BSE's terms forbid reproducing its material without written
+  permission (checked 2026-11-10), so it isn't used.
 - **NSE filings** come from NSE's official announcements RSS (latest ~40 filings
   only, so it is lossy at peaks; the panel says "filings we captured since" and
   links to NSE). Reachable from Vercel (tested). The job sends an honest

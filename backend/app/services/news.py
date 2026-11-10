@@ -9,16 +9,17 @@ We keep headline, source, date and link only: never article text or images.
 A headline matching no theme is not stored (hidden), and advice-style
 headlines are dropped. Classification is keyword rules (news_config.py).
 """
+import html
 import io
 import json
 import logging
 import re
-import time
 import xml.etree.ElementTree as ET
+import zipfile
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import psycopg
 import requests
@@ -32,9 +33,6 @@ logger = logging.getLogger("finai")
 
 IST = timezone(timedelta(hours=5, minutes=30))
 UA = {"User-Agent": "Mozilla/5.0 (compatible; StacklyNews/1.0; +https://stackslymetrics.com)"}
-GDELT_API = "https://api.gdeltproject.org/api/v2/doc/doc"
-GDELT_SPACING_SECONDS = 6  # GDELT asks for at most one request every 5 seconds
-GDELT_QUERIES_PER_RUN = 7  # 7 x 6s fits the 60s function limit with room to spare
 NEWS_RETENTION = timedelta(days=90)
 FILINGS_RETENTION = timedelta(days=400)
 WORLD_BANK_FALLBACK_XLSX = (
@@ -45,26 +43,24 @@ WORLD_BANK_FALLBACK_XLSX = (
 
 # ---------- Job bookkeeping ----------
 
-def _job_cursor(conn: psycopg.Connection, job: str) -> int:
-    row = conn.execute("SELECT cursor FROM job_runs WHERE job = %s", (job,)).fetchone()
-    return row["cursor"] if row else 0
-
-
-def _job_done(conn: psycopg.Connection, job: str, *, ok: bool, cursor: Optional[int] = None,
-              error: Optional[str] = None) -> None:
+def _job_done(conn: psycopg.Connection, job: str, *, ok: bool, state: Optional[str] = None,
+              error: Optional[str] = None, items: Optional[int] = None) -> None:
+    """Records a run. last_error keeps the most recent failure (cleared by
+    a later success) so the admin panel shows what went wrong."""
     conn.execute(
         """
-        INSERT INTO job_runs (job, first_ok_at, last_run_at, last_ok_at, cursor, last_error)
+        INSERT INTO job_runs (job, first_ok_at, last_run_at, last_ok_at, state, last_error, last_items)
         VALUES (%(job)s, CASE WHEN %(ok)s THEN now() END, now(), CASE WHEN %(ok)s THEN now() END,
-                COALESCE(%(cursor)s, 0), %(error)s)
+                %(state)s, %(error)s, %(items)s)
         ON CONFLICT (job) DO UPDATE SET
             first_ok_at = COALESCE(job_runs.first_ok_at, CASE WHEN %(ok)s THEN now() END),
             last_run_at = now(),
             last_ok_at = CASE WHEN %(ok)s THEN now() ELSE job_runs.last_ok_at END,
-            cursor = COALESCE(%(cursor)s, job_runs.cursor),
-            last_error = %(error)s
+            state = COALESCE(%(state)s, job_runs.state),
+            last_error = %(error)s,
+            last_items = COALESCE(%(items)s, job_runs.last_items)
         """,
-        {"job": job, "ok": ok, "cursor": cursor, "error": (error or "")[:500] or None},
+        {"job": job, "ok": ok, "state": state, "error": (error or "")[:500] or None, "items": items},
     )
 
 
@@ -79,98 +75,170 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9 ]", "", s.lower().replace("&", "and")).strip()
 
 
-# ---------- GDELT (company, sector and theme headlines) ----------
+# ---------- GDELT raw files (company, sector and theme headlines) ----------
+#
+# GDELT publishes a "GKG" file every 15 minutes listing the articles it has
+# crawled (URL, publisher domain, page title). These static files have no
+# rate limit, unlike GDELT's search API, which refused Vercel's shared
+# addresses (2026-11-08/10). Each run reads the files since the last one it
+# finished, so nothing is skipped and nothing is read twice.
 
-def gdelt_queries(companies: list[dict]) -> list[dict]:
-    """The sweep's rotation: themes, sectors, then each tracked company."""
-    qs = [{"kind": "theme", "key": k, "q": q} for k, q in nc.THEME_QUERIES.items()]
-    qs += [{"kind": "sector", "key": k, "q": q} for k, q in nc.SECTOR_QUERIES.items()]
-    qs += [{"kind": "company", "key": str(c["id"]), "q": f'"{c["name"]}"'} for c in companies]
-    return qs
+GKG_BASE = "http://data.gdeltproject.org/gdeltv2/"
+GKG_STEP = timedelta(minutes=15)
+GKG_MIN_AGE = timedelta(minutes=20)  # a new file can take a few minutes to appear
+GKG_LOOKBACK = timedelta(hours=6)  # catch up at most this far after an outage
+GKG_GIVE_UP = timedelta(hours=3)  # a file still missing after this is skipped
+GKG_FILES_PER_RUN = 6
+_PAGE_TITLE = re.compile(r"<PAGE_TITLE>(.*?)</PAGE_TITLE>", re.S)
+# Single words too common to identify a company on their own.
+_NOT_A_NAME = frozenset({"india", "indian", "hindustan", "shree", "sagar", "escorts", "tech", "state", "bharat"})
 
 
-def _gdelt_url(q: str) -> str:
-    # Publishers are filtered after the fetch (parse_gdelt), not in the query:
-    # one OR group per query is the form GDELT reliably accepts.
-    query = f"{q} sourcecountry:IN sourcelang:english"
-    return f"{GDELT_API}?query={quote(query)}&mode=artlist&maxrecords=250&format=json&timespan=3d&sort=datedesc"
+def _floor_slot(t: datetime) -> datetime:
+    return t.replace(minute=t.minute - t.minute % 15, second=0, microsecond=0)
 
 
-def parse_gdelt(payload: dict, *, company: bool) -> list[dict]:
-    """Articles -> stored rows, keeping only allowlisted publishers, dropping
-    advice and anything that matches no theme/event type."""
-    out = []
-    for a in payload.get("articles", []):
-        publisher = nc.publisher_for(a.get("domain", ""))
-        title = nc.clean_title(a.get("title") or "")
-        if not publisher or not title or nc.is_advice(title):
-            continue
-        key = nc.classify(title, company=company)
-        if key is None:
-            continue
-        try:
-            seen = datetime.strptime(a["seendate"], "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
-        except (KeyError, ValueError):
-            continue
-        out.append({"url": a["url"], "title": title, "publisher": publisher, "published_at": seen, "theme": key})
+def _stamp(t: datetime) -> str:
+    return t.strftime("%Y%m%d%H%M%S")
+
+
+def gkg_slots(state: Optional[str], now: datetime) -> list[datetime]:
+    """The 15-minute files to read this run, oldest first: the ones after the
+    last file finished (or the last few hours on a first run), up to the
+    newest that should exist by now."""
+    latest = _floor_slot(now - GKG_MIN_AGE)
+    earliest = _floor_slot(now - GKG_LOOKBACK)
+    start = earliest
+    if state:
+        done = datetime.strptime(state, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+        start = max(done + GKG_STEP, earliest)
+    out, t = [], start
+    while t <= latest and len(out) < GKG_FILES_PER_RUN:
+        out.append(t)
+        t += GKG_STEP
     return out
 
 
-def _store_news(conn: psycopg.Connection, rows: list[dict], *, source: str, company_id: Optional[int]) -> int:
+def company_patterns(companies: list[dict]) -> list[tuple[int, re.Pattern]]:
+    """Word-boundary patterns per company: its name, its name without a
+    trailing "India"/"Limited", a distinctive first word, and the ticker in
+    capitals ("ITC", never the word "itc")."""
+    out = []
+    for c in companies:
+        name = c["name"].strip()
+        short = re.sub(r"\s+(India|Limited|Ltd\.?)$", "", name, flags=re.I)
+        first = name.split()[0]
+        names = {name, short}
+        if len(first) >= 5 and first.lower() not in _NOT_A_NAME:
+            names.add(first)
+        # Acronyms (ITC, HUL) and the ticker only count in capitals.
+        exact = {n for n in names if n.isupper()}
+        if len(c["ticker"]) >= 3:
+            exact.add(c["ticker"].upper())
+        loose = sorted(names - exact, key=len, reverse=True)
+        parts = [rf"(?i:\b({'|'.join(re.escape(n) for n in loose)})\b)"] if loose else []
+        parts += [rf"\b{re.escape(n)}\b" for n in sorted(exact)]
+        out.append((c["id"], re.compile("|".join(parts))))
+    return out
+
+
+def parse_gkg(text: str, companies: list[tuple[int, re.Pattern]]) -> list[dict]:
+    """One GKG file -> headline rows. Allowlisted publishers and sections
+    only; advice dropped; a company headline needs an event type, anything
+    else a theme, or it isn't kept."""
+    out, seen = [], set()
+    for line in text.split("\n"):
+        f = line.split("\t")
+        if len(f) < 27:
+            continue
+        domain, url = f[3], f[4]
+        publisher = nc.publisher_for(domain)
+        if not publisher or url in seen or not nc.allowed_section(domain, urlparse(url).path):
+            continue
+        m = _PAGE_TITLE.search(f[26])
+        if not m:
+            continue
+        title = nc.clean_title(html.unescape(m.group(1)))
+        if not title or nc.is_advice(title):
+            continue
+        try:
+            when = datetime.strptime(f[1], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        company_id = next((cid for cid, rx in companies if rx.search(title)), None)
+        key = None
+        if company_id is not None:
+            key = next((e.key for e in nc.EVENT_TYPES if e.pattern.search(title)), None)
+            if key is None:
+                company_id = None  # not company news; may still be a themed headline
+        if key is None:
+            key = nc.classify(title, company=False)
+        if key is None:
+            continue
+        seen.add(url)
+        out.append({"url": url, "title": title, "publisher": publisher, "published_at": when,
+                    "theme": key, "company_id": company_id})
+    return out
+
+
+def _store_news(conn: psycopg.Connection, rows: list[dict], *, source: str) -> int:
     n = 0
     for r in rows:
+        # The same agency story often runs on several sites: keep the first.
         cur = conn.execute(
             """
             INSERT INTO news_items (url, title, publisher, published_at, source, theme, company_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            SELECT %s, %s, %s, %s, %s, %s, %s
+            WHERE NOT EXISTS (
+                SELECT 1 FROM news_items
+                WHERE lower(title) = lower(%s) AND published_at > now() - interval '2 days'
+            )
             ON CONFLICT (url) DO NOTHING
             """,
-            (r["url"], r["title"], r["publisher"], r["published_at"], source, r["theme"], company_id),
+            (r["url"], r["title"], r["publisher"], r["published_at"], source, r["theme"], r.get("company_id"),
+             r["title"]),
         )
         n += cur.rowcount
     return n
 
 
-def run_gdelt_sweep(conn_factory, *, show_demo: bool, budget_seconds: float = 50.0) -> dict:
-    """One scheduled run: the next few queries in the rotation, 6s apart.
-    Stops early on a 429 (the cursor stays, so the next run retries)."""
-    started = time.monotonic()
+def run_gdelt_files(conn_factory, *, show_demo: bool, now: Optional[datetime] = None) -> dict:
+    now = now or datetime.now(timezone.utc)
     with conn_factory() as conn:
-        companies = _tracked_companies(conn, show_demo)
-        cursor = _job_cursor(conn, "gdelt")
-    queries = gdelt_queries(companies)
-    done, added, error = 0, 0, None
-    for i in range(min(GDELT_QUERIES_PER_RUN, len(queries))):
-        if time.monotonic() - started > budget_seconds - GDELT_SPACING_SECONDS:
-            break
-        if i:
-            time.sleep(GDELT_SPACING_SECONDS)
-        item = queries[(cursor + i) % len(queries)]
+        companies = company_patterns(_tracked_companies(conn, show_demo))
+        row = conn.execute("SELECT state FROM job_runs WHERE job = 'gdelt'").fetchone()
+    state = row["state"] if row else None
+    added, files, error = 0, 0, None
+    for slot in gkg_slots(state, now):
+        name = f"{_stamp(slot)}.gkg.csv.zip"
         try:
-            r = requests.get(_gdelt_url(item["q"]), headers=UA, timeout=20)
-            if r.status_code == 429:
-                error = "GDELT rate limit (429)"
-                break
-            r.raise_for_status()
-            try:
-                payload = r.json()
-            except ValueError:
-                # GDELT answers a query it can't run with plain text.
-                raise ValueError(f"not JSON: {r.text[:200]!r}") from None
-            rows = parse_gdelt(payload, company=item["kind"] == "company")
-        except (requests.RequestException, ValueError) as exc:
-            error = f"{item['kind']} {item['key']}: {exc}"
-            logger.warning("GDELT query failed: %s", error)
-            done += 1
-            continue
+            r = requests.get(GKG_BASE + name, headers=UA, timeout=40)
+        except requests.RequestException as exc:
+            error = f"{name}: {exc}"
+            break
+        if r.status_code == 404:
+            if now - slot > GKG_GIVE_UP:
+                state = _stamp(slot)  # never published; move past it
+                continue
+            break  # not out yet: the next run picks it up
+        if r.status_code != 200:
+            error = f"{name}: HTTP {r.status_code}"
+            break
+        try:
+            z = zipfile.ZipFile(io.BytesIO(r.content))
+            text = z.read(z.namelist()[0]).decode("utf-8", "ignore")
+        except (zipfile.BadZipFile, IndexError) as exc:
+            error = f"{name}: {exc}"
+            break
+        rows = parse_gkg(text, companies)
         with conn_factory() as conn:
-            added += _store_news(conn, rows, source="gdelt",
-                                 company_id=int(item["key"]) if item["kind"] == "company" else None)
-        done += 1
+            added += _store_news(conn, rows, source="gdelt")
+        state = _stamp(slot)
+        files += 1
     with conn_factory() as conn:
         conn.execute("DELETE FROM news_items WHERE published_at < now() - %s::interval", (NEWS_RETENTION,))
-        _job_done(conn, "gdelt", ok=error is None, cursor=(cursor + done) % max(1, len(queries)), error=error)
-    return {"queries": done, "added": added, "error": error}
+        _job_done(conn, "gdelt", ok=error is None, state=state, error=error, items=added)
+    return {"files": files, "added": added, "up_to": state, "error": error}
 
 
 # ---------- RBI press releases ----------
@@ -224,8 +292,8 @@ def run_rbi(conn_factory) -> dict:
             _job_done(conn, "rbi", ok=False, error=str(exc))
         return {"added": 0, "error": str(exc)}
     with conn_factory() as conn:
-        added = _store_news(conn, rows, source="rbi", company_id=None)
-        _job_done(conn, "rbi", ok=True)
+        added = _store_news(conn, rows, source="rbi")
+        _job_done(conn, "rbi", ok=True, items=added)
     return {"added": added}
 
 
@@ -281,7 +349,7 @@ def run_nse(conn_factory, *, show_demo: bool) -> dict:
             )
             added += cur.rowcount
         conn.execute("DELETE FROM exchange_filings WHERE filed_at < now() - %s::interval", (FILINGS_RETENTION,))
-        _job_done(conn, "nse", ok=True)
+        _job_done(conn, "nse", ok=True, items=added)
     return {"added": added}
 
 
@@ -389,8 +457,12 @@ def run_macro(conn_factory, today: Optional[date] = None) -> dict:
         except Exception as exc:  # noqa: BLE001
             logger.warning("FRED macro fetch failed", exc_info=True)
             result["fred_error"] = str(exc)[:200]
+    errors = {k: v for k, v in result.items() if k.endswith("_error")}
+    stored = sum(result.get("worldbank", {}).values()) + result.get("fred", 0)
     with conn_factory() as conn:
-        _job_done(conn, "macro", ok=not any(k.endswith("_error") for k in result), error=json.dumps(result)[:500])
+        _job_done(conn, "macro", ok=not errors, error=json.dumps(errors) if errors else None, items=stored)
+    if errors:
+        result["error"] = json.dumps(errors)[:300]
     return result
 
 
