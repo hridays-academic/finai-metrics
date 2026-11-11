@@ -1,15 +1,16 @@
-import { type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 // "Why it matters" for news, video, filing and world-event cards. A 2-line
-// summary is always visible; the full approved paragraph and its
-// cause-and-effect chain open in a glass popover on hover or focus (desktop)
-// or a bottom sheet on tap (phones). Portalled to <body>, so nothing can
-// clip it; flipped and shifted to stay on screen. Escape closes either.
+// summary is always visible; the "Why it matters" button opens the full
+// approved paragraph and its cause-and-effect chain, in a glass popover
+// (mouse and trackpad) or a bottom sheet (touch). Click only, never hover.
+// Portalled to <body>, so nothing can clip it; flipped and shifted to stay on
+// screen. Closes on a second click, a click outside, Escape or ×; opening
+// one closes any other.
 
 const GAP = 10;
 const EDGE = 8;
-const CLOSE_DELAY = 160; // lets the pointer travel from the card to the popover
 const SWIPE_CLOSE = 80;
 
 export interface WhyContent {
@@ -17,6 +18,9 @@ export interface WhyContent {
   chain?: string | null;
   explanation?: string | null;
 }
+
+// The one open popover or sheet on the page, so opening another closes it.
+let closeOpen: (() => void) | null = null;
 
 function Chain({ chain }: { chain: string }) {
   const steps = chain.split("→").map((s) => s.trim()).filter(Boolean);
@@ -39,7 +43,6 @@ function Chain({ chain }: { chain: string }) {
 function Body({ content }: { content: WhyContent }) {
   return (
     <>
-      <div className="tooltip-title">{content.title}</div>
       {content.chain && <Chain chain={content.chain} />}
       {content.explanation && <p className="why-explanation">{content.explanation}</p>}
     </>
@@ -51,14 +54,9 @@ type Place = { top: number; left: number; arrowX: number; side: "top" | "bottom"
 export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
   const id = useId();
   const has = Boolean(content.explanation || content.chain);
-  const canHover = useMemo(
-    () => typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches,
-    []
-  );
   const anchorRef = useRef<T>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
-  const timer = useRef<number | undefined>(undefined);
   const [mode, setMode] = useState<null | "popover" | "sheet">(null);
   const [place, setPlace] = useState<Place | null>(null);
   const [drag, setDrag] = useState(0);
@@ -66,26 +64,32 @@ export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
   const touchY = useRef<number | null>(null);
   const dragRef = useRef(0); // read on touchend, which can run before a re-render
 
-  const cancelClose = () => window.clearTimeout(timer.current);
-  const close = useCallback(() => {
-    window.clearTimeout(timer.current);
-    setMode((m) => {
-      if (m === "sheet") anchorRef.current?.focus();
-      return null;
-    });
+  // refocus: return focus to the button (Escape, ×, a second click, Close).
+  const close = useCallback((refocus = false) => {
+    setMode(null);
     setPlace(null);
     dragRef.current = 0;
     setDrag(0);
+    if (refocus) anchorRef.current?.focus();
   }, []);
-  const scheduleClose = () => {
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(close, CLOSE_DELAY);
-  };
-  const openPopover = () => {
+  const quietClose = useCallback(() => close(false), [close]);
+
+  const open = () => {
     if (!has) return;
-    cancelClose();
-    setMode("popover");
+    if (closeOpen && closeOpen !== quietClose) closeOpen();
+    closeOpen = quietClose;
+    setMode(window.matchMedia("(hover: hover) and (pointer: fine)").matches ? "popover" : "sheet");
   };
+
+  useEffect(() => {
+    if (!mode && closeOpen === quietClose) closeOpen = null;
+  }, [mode, quietClose]);
+  useEffect(
+    () => () => {
+      if (closeOpen === quietClose) closeOpen = null;
+    },
+    [quietClose]
+  );
 
   useLayoutEffect(() => {
     if (mode !== "popover" || !anchorRef.current || !popRef.current) return;
@@ -104,31 +108,42 @@ export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
     setPlace({ top: Math.max(top, EDGE), left, arrowX: Math.min(Math.max(centre - left, 16), p.width - 16), side });
   }, [mode, tick]);
 
+  // Focus moves into the popover (once placed) or the sheet.
+  const placed = place !== null;
+  useEffect(() => {
+    if (mode === "popover" && placed) popRef.current?.focus({ preventScroll: true });
+    if (mode === "sheet") sheetRef.current?.focus();
+  }, [mode, placed]);
+
   useEffect(() => {
     if (!mode) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    window.addEventListener("keydown", onKey);
-    if (mode === "sheet") sheetRef.current?.focus();
-    // Follow the anchor (focusing an off-screen label scrolls it into view);
-    // close only once the anchor has left the screen.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close(true);
+    };
+    // A click outside the popover and its button closes it (the sheet's
+    // backdrop handles its own).
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (mode === "popover" && !popRef.current?.contains(t) && !anchorRef.current?.contains(t)) close(false);
+    };
+    // Follow the button while the page scrolls; close once it leaves the screen.
     const onMove = () => {
       if (mode !== "popover") return;
       const a = anchorRef.current?.getBoundingClientRect();
-      if (!a || a.bottom < 0 || a.top > window.innerHeight) close();
+      if (!a || a.bottom < 0 || a.top > window.innerHeight) close(false);
       else setTick((t) => t + 1);
     };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown, true);
     window.addEventListener("resize", onMove);
     window.addEventListener("scroll", onMove, { capture: true, passive: true });
     return () => {
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown, true);
       window.removeEventListener("resize", onMove);
       window.removeEventListener("scroll", onMove, { capture: true });
     };
   }, [mode, close]);
-
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  const cardProps = has && canHover ? { onMouseEnter: openPopover, onMouseLeave: scheduleClose } : {};
 
   const triggerProps = {
     ref: anchorRef,
@@ -136,17 +151,7 @@ export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
     "aria-expanded": mode !== null,
     "aria-controls": mode ? id : undefined,
     "aria-haspopup": "dialog" as const,
-    onFocus: () => canHover && openPopover(),
-    onBlur: () => mode === "popover" && scheduleClose(),
-    onClick: () => {
-      if (!has) return;
-      if (canHover) {
-        if (mode) close();
-        else openPopover();
-      } else {
-        setMode("sheet");
-      }
-    },
+    onClick: () => (mode ? close(true) : open()),
   };
 
   let overlay: ReactNode = null;
@@ -157,11 +162,26 @@ export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
         id={id}
         role="dialog"
         aria-label={content.title}
+        tabIndex={-1}
         className={`tooltip why-popover ${place ? `tooltip-${place.side} is-placed` : ""}`}
         style={place ? { top: place.top, left: place.left, ["--arrow-x" as string]: `${place.arrowX}px` } : undefined}
-        onMouseEnter={cancelClose}
-        onMouseLeave={scheduleClose}
+        onKeyDown={(e) => {
+          // Tabbing out of the popover goes back to its button, so keyboard
+          // users carry on through the page from where they were.
+          if (e.key === "Tab" && (e.shiftKey || e.target !== popRef.current)) {
+            e.preventDefault();
+            close(true);
+          }
+        }}
       >
+        <div className="why-popover-head">
+          <div className="tooltip-title">{content.title}</div>
+          <button type="button" className="why-close" aria-label="Close" onClick={() => close(true)}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
         <Body content={content} />
         <span className="tooltip-arrow" aria-hidden="true" />
       </div>,
@@ -169,7 +189,7 @@ export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
     );
   } else if (mode === "sheet") {
     overlay = createPortal(
-      <div className="why-sheet-backdrop" onClick={close}>
+      <div className="why-sheet-backdrop" onClick={() => close(true)}>
         <div
           ref={sheetRef}
           id={id}
@@ -188,7 +208,7 @@ export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
           }}
           onTouchEnd={() => {
             touchY.current = null;
-            if (dragRef.current > SWIPE_CLOSE) close();
+            if (dragRef.current > SWIPE_CLOSE) close(true);
             else {
               dragRef.current = 0;
               setDrag(0);
@@ -196,8 +216,9 @@ export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
           }}
         >
           <span className="why-sheet-handle" aria-hidden="true" />
+          <div className="tooltip-title">{content.title}</div>
           <Body content={content} />
-          <button type="button" className="btn btn-secondary btn-block" onClick={close}>
+          <button type="button" className="btn btn-secondary btn-block" onClick={() => close(true)}>
             Close
           </button>
         </div>
@@ -206,10 +227,10 @@ export function useWhyItMatters<T extends HTMLElement>(content: WhyContent) {
     );
   }
 
-  return { cardProps, triggerProps, overlay, has };
+  return { triggerProps, overlay, has };
 }
 
-// The always-visible part: a 2-line summary and the "Why it matters" label.
+// The always-visible part: a 2-line summary and the "Why it matters" button.
 export function WhySummary({
   summary,
   triggerProps,

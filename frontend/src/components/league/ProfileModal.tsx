@@ -32,9 +32,9 @@ export default function ProfileModal({ user, onSaved, onClose }: ProfileModalPro
     }
   }
 
-  // Portalled to the app shell: the page it opens from has CSS perspective
-  // (3D scroll motion), which would otherwise trap this fixed overlay inside
-  // the page instead of covering the viewport.
+  // Portalled to the app shell: the page it opens from has transforms (scroll
+  // motion), which would otherwise trap this fixed overlay inside the page
+  // instead of covering the viewport.
   return createPortal(
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Set up your league profile">
       <div className="modal-card sheet">

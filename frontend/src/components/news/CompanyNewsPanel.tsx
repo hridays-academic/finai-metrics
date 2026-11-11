@@ -12,7 +12,7 @@ import { useWhyItMatters, WhySummary } from "./WhyItMatters";
 function FilingRow({ f }: { f: Filing }) {
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it matters", chain: f.chain, explanation: f.explanation });
   return (
-    <li className="news-row reveal-row" {...why.cardProps}>
+    <li className="news-row reveal-row">
       <a className="news-headline" href={f.url} target="_blank" rel="noopener noreferrer">
         {f.subject}
         <span className="visually-hidden"> (opens the filing on NSE)</span>

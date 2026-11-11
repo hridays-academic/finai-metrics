@@ -38,7 +38,7 @@ function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
     explanation: item.explanation,
   });
   return (
-    <article className={`news-card tile theme-${item.theme} ${top ? "news-card-top" : ""}`} {...why.cardProps}>
+    <article className={`news-card tile theme-${item.theme} ${top ? "news-card-top" : ""}`}>
       {top && (
         <div className="news-card-art" aria-hidden="true">
           <ThemeIcon theme={item.theme} size={56} />

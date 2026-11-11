@@ -1,30 +1,12 @@
 import { useEffect } from "react";
 
-// Pointer effects on glass, tiles and buttons (app.css):
-// - a soft specular light that follows the pointer (--mx, --my, --light);
-// - a gentle 3D tilt toward the pointer on small elements only (ratio tiles
-//   and company rows; never panels or buttons), as a `rotate` axis + angle
-//   in --tilt, springing back on leave.
-// One shared listener; work is batched into one requestAnimationFrame per
-// frame, which reads the hovered elements' rects first and then only writes
-// CSS variables, so it never forces layout between writes. Mouse/trackpad
-// only (off for touch and pen) and off under prefers-reduced-motion.
+// A soft specular light on glass, tiles and buttons that follows the
+// pointer (--mx, --my, --light; app.css). One shared listener; work is
+// batched into one requestAnimationFrame per frame, which reads the hovered
+// elements' rects first and then only writes CSS variables, so it never
+// forces layout between writes. Mouse/trackpad only (off for touch and pen)
+// and off under prefers-reduced-motion.
 const LIT = ".btn, .tile, .picker-row, .glass";
-const TILE = ".tile";
-const ROW = ".picker-row";
-
-function tiltValue(el: HTMLElement, x: number, y: number, rect: DOMRect): string | null {
-  const max = el.matches(TILE) ? 5 : el.matches(ROW) ? 2.5 : 0;
-  if (!max || !rect.width || !rect.height) return null;
-  const dx = Math.max(-1, Math.min(1, ((x - rect.left) / rect.width) * 2 - 1));
-  const dy = Math.max(-1, Math.min(1, ((y - rect.top) / rect.height) * 2 - 1));
-  const angle = (max * Math.min(1, Math.hypot(dx, dy))) / Math.SQRT2;
-  if (angle < 0.05) return null;
-  // Rotate about the axis perpendicular to the pointer direction so the side
-  // under the pointer rises toward the viewer. (Dipping it away would shrink
-  // the hit area under the pointer and flicker hover on and off at edges.)
-  return `${dy.toFixed(3)} ${(-dx).toFixed(3)} 0 ${angle.toFixed(2)}deg`;
-}
 
 export function useCursorLight(): void {
   useEffect(() => {
@@ -36,8 +18,6 @@ export function useCursorLight(): void {
 
     function reset(el: HTMLElement) {
       el.style.removeProperty("--light");
-      el.style.removeProperty("--tilt");
-      delete el.dataset.tilting;
     }
 
     function clear() {
@@ -63,11 +43,6 @@ export function useCursorLight(): void {
         n.style.setProperty("--mx", `${clientX - rects[i].left}px`);
         n.style.setProperty("--my", `${clientY - rects[i].top}px`);
         n.style.setProperty("--light", "1");
-        const tilt = tiltValue(n, clientX, clientY, rects[i]);
-        if (tilt) {
-          n.style.setProperty("--tilt", tilt);
-          n.dataset.tilting = "";
-        }
       });
       lit = next;
     }

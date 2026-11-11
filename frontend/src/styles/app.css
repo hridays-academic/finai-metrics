@@ -6339,41 +6339,14 @@ textarea.input,
   }
 }
 
-/* ---------- Motion: small things in 3D, panels never ---------- */
+/* ---------- Motion: small things rise in, nothing tilts ---------- */
 
-/* Perspective only on containers of small elements. */
-.lg .tile-grid,
-.lg .group,
-.lg .reveal-row,
-.lg .how-steps,
-.lg .explainer-equation,
-.lg .checklist,
-.lg .quarters-trends,
-.lg .league-research,
-.lg .league-explainer {
-  perspective: 1200px;
-}
-.lg .panel,
-.lg .hero,
-.lg .page-hero,
-.lg .glass {
-  rotate: none;
-}
-
-/* Hover lean (useCursorLight.ts sets --tilt as "x y z angle" on tiles and
-   company rows, mouse only). `rotate` composes with the scroll entry's
-   `transform`, so the two never fight. Springs back on leave. */
 .lg .tile,
 .lg .picker-row {
-  rotate: var(--tilt, 0 0 1 0deg);
-  transition: rotate 700ms var(--ease-spring), background-color var(--duration-ui) var(--ease-out);
-}
-.lg .tile[data-tilting],
-.lg .picker-row[data-tilting] {
-  transition: rotate 120ms var(--ease-out), background-color var(--duration-ui) var(--ease-out);
+  transition: background-color var(--duration-ui) var(--ease-out);
 }
 
-/* Scroll entry for small things: tilt up into place, staggered by column
+/* Scroll entry for small things: rise into place, staggered by column
    (--col, set by useBalancedGrid or below), and always finished by the
    time the element is fully on screen. */
 .lg .equation-step:nth-child(2),
@@ -6398,14 +6371,14 @@ textarea.input,
     .lg .reveal-item,
     .lg .how-steps > li {
       transform-origin: 50% 0;
-      animation: lg-tilt-in linear both;
+      animation: lg-rise-in-small linear both;
       animation-timeline: view();
       animation-range: entry calc(var(--col, 0) * 12%) entry 100%;
     }
   }
 }
-@keyframes lg-tilt-in {
-  from { opacity: 0; transform: translate3d(0, 28px, 0) rotateX(26deg) scale(0.94); }
+@keyframes lg-rise-in-small {
+  from { opacity: 0; transform: translate3d(0, 28px, 0) scale(0.94); }
   to { opacity: 1; transform: none; }
 }
 /* Set by useRevealFallback.ts on anything still mid-entrance when the page
@@ -7301,6 +7274,37 @@ textarea.input,
 .why-popover {
   max-width: min(420px, calc(100vw - 16px));
   pointer-events: auto;
+}
+.why-popover:focus {
+  outline: none;
+}
+.why-popover-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.why-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.why-close:hover {
+  color: var(--text-primary);
+  background: var(--lg-btn-fill);
+}
+.why-close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .why-chain {
   display: flex;

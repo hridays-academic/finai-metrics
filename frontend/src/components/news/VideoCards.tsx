@@ -22,7 +22,7 @@ function VideoCard({ v }: { v: Video }) {
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it matters", chain: v.chain, explanation: v.explanation });
   const len = duration(v.duration_seconds);
   return (
-    <article className={`video-card tile theme-${v.theme}`} {...why.cardProps}>
+    <article className={`video-card tile theme-${v.theme}`}>
       <div className="video-card-inner">
       {playing ? (
         <div className="video-frame">

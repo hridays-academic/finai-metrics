@@ -7,7 +7,7 @@ import { CARD_MIN } from "./NewsCards";
 function WorldEventCard({ e }: { e: WorldEvent }) {
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it may matter", chain: e.chain, explanation: e.why_long });
   return (
-    <article className="news-card world-event tile theme-event" {...why.cardProps}>
+    <article className="news-card world-event tile theme-event">
       <div className="news-card-body">
         <div className="news-card-meta">
           <time dateTime={e.event_date}>{formatDay(e.event_date, true)}</time>

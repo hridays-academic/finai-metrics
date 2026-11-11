@@ -639,13 +639,13 @@ at the end of `app.css`.
 - **Tooltips** (`Tooltip.tsx`, portalled to `<body>`): glass, `--lg-tooltip`
   55% fill + `blur(40px) saturate(180%)`. Text checked >= 4.7:1 per palette
   and mode even over a mid-grey backdrop; re-check if you lower the fill.
-- **Motion rules**: panels and the page never tilt, rotate or scale; they
-  only rise in (translateY + opacity). 3D only on small things: `.tile`
-  (ratio tiles, stat callouts, equation chips) and company rows tilt in on
-  scroll, staggered by `--col`, and lean toward the pointer on hover
-  (`useCursorLight.ts`). `.reveal-item` = the same scroll entry without the
-  hover lean (callouts, checklist rows, sparklines). Buttons: scale 1.02 on
-  hover (mouse only), 0.97 on press, never tilted. The arrow chip turns
+- **Motion rules**: nothing tilts (the 3D tilt and pointer lean on tiles,
+  cards and rows were removed 2026-11-11 at Hriday's request; don't bring
+  them back). Panels only rise in (translateY + opacity); small things
+  (`.tile`, `.reveal-row`, `.reveal-item`) rise in on scroll
+  (`lg-rise-in-small`: translateY, opacity, slight scale), staggered by
+  `--col`. The cursor spotlight stays (`useCursorLight.ts`, `--mx/--my/--light`).
+  Buttons: scale 1.02 on hover (mouse only), 0.97 on press. The arrow chip turns
   → to ↗ only when its own button (or a row's action pill) is hovered or the
   control has keyboard focus, never on row hover. Hover effects sit in
   `@media (hover: hover)`; everything is off under reduced motion.
@@ -1081,16 +1081,18 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
   live in `app/news_explanations.py`, copied word for word: 33 theme x sector
   pairs and 8 event types, the same coverage as the one-line sentences
   (`news_config.explanation_for`). Change wording only with approval.
-- **Interaction** (`components/news/WhyItMatters.tsx`): the one-line text is
-  always shown, clamped to 2 lines. With a mouse, hovering the card or
-  focusing the "Why it matters" label opens a glass popover (tooltip style,
-  portalled to `<body>`, above the label, flips below near the top, shifted
-  to stay on screen) with the chain and paragraph; it stays open while the
-  pointer is over it and follows its anchor on scroll (focusing an off-screen
-  label scrolls it into view, so closing on scroll broke keyboard use).
-  Without hover, tapping the label opens a bottom sheet; tap outside, swipe
-  down (80px, distance kept in a ref because touchend can run before a
-  re-render) or Close. Escape closes both. No expand-in-place.
+- **Interaction** (`components/news/WhyItMatters.tsx`, click only since
+  2026-11-11; hover was removed at Hriday's request): the one-line text is
+  always shown, clamped to 2 lines. The "Why it matters" button
+  (`aria-expanded`/`aria-controls`) opens, on click, Enter or Space, a glass
+  popover with a ×, the chain and the paragraph (tooltip style and
+  animation, portalled to `<body>`, above the button, flips below near the
+  top, shifted to stay on screen, follows the button on scroll). Phones
+  (no fine pointer) get a bottom sheet instead (tap outside, swipe down 80px
+  with the distance kept in a ref, or Close). It closes on a second click,
+  a click outside, Escape or ×; only one is open at a time (module-level
+  `closeOpen`). Focus moves into it and returns to the button on Escape, ×,
+  a second click or Tab out. No hover, no expand-in-place.
 - **Phase 4 analysis** (`services/analysis.py`, `AnalysisPanel.tsx`, "What
   the numbers show"): the approved templates (`Areas/Analysis templates`)
   over figures already on the page, 7 sections plus up to 4 questions.
