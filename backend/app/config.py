@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # USD/INR for the macro charts (FRED, free key). Without it that chart
     # says "Coming soon"; the World Bank series need no key.
     fred_api_key: Optional[str] = None
+    # News videos (YouTube Data API v3, free quota). Without it the videos
+    # job skips and no video section shows.
+    youtube_api_key: Optional[str] = None
     # Vercel Cron sends "Authorization: Bearer <CRON_SECRET>"; the /api/cron/*
     # endpoints refuse every request when it isn't set.
     cron_secret: Optional[str] = None

@@ -7,6 +7,9 @@ import TileGrid from "./TileGrid";
 import PriceChart from "./PriceChart";
 import FinancialHistory from "./FinancialHistory";
 import CompanyNewsPanel from "./news/CompanyNewsPanel";
+import CompanyProfilePanel from "./CompanyProfilePanel";
+import PeersPanel from "./PeersPanel";
+import type { PeerSummary } from "../lib/types";
 import type { Theme } from "../hooks/useTheme";
 
 // Reused above (top of the collapsed section) and below (end of the
@@ -31,6 +34,28 @@ function ShowMoreToggle({ expanded, onToggle }: { expanded: boolean; onToggle: (
       </button>
     </div>
   );
+}
+
+// This company's row for the peers table, from the ratios already loaded.
+function selfSummary(data: CompanyFinancialsResponse): PeerSummary {
+  const m = Object.fromEntries(data.metric_groups.flatMap((g) => g.metrics).map((x) => [x.key, x.value]));
+  const quarters = data.history?.quarterly ?? [];
+  const latest = quarters.find((q) => q.revenue !== null)?.period_end_date ?? null;
+  return {
+    symbol: data.info.resolved_symbol,
+    name: data.info.company_name,
+    revenue_growth: m.revenue_growth ?? null,
+    ebitda_margin: m.ebitda_margin ?? null,
+    net_margin: m.net_margin ?? null,
+    roe: m.roe ?? null,
+    roce: m.roce ?? null,
+    debt_to_equity: m.debt_to_equity ?? null,
+    pe_ratio: m.pe_ratio ?? null,
+    ev_to_ebitda: m.ev_to_ebitda ?? null,
+    latest_quarter: latest,
+    reported_latest_quarter: latest !== null && latest === quarters[0]?.period_end_date,
+    fundamentals_as_of: data.fundamentals_as_of ?? null,
+  };
 }
 
 interface MetricsDashboardProps {
@@ -109,7 +134,11 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
 
       </div>
 
+      {data.profile && <CompanyProfilePanel profile={data.profile} name={info.company_name} />}
+
       {data.history && <FinancialHistory history={data.history} fetchedAt={data.fundamentals_as_of} currency={raw.currency} />}
+
+      {data.profile && data.profile.peers.length > 0 && <PeersPanel self={selfSummary(data)} peers={data.profile.peers} />}
 
       <CompanyNewsPanel symbol={info.resolved_symbol} name={info.company_name} />
 

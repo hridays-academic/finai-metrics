@@ -282,3 +282,26 @@ def test_cron_refuses_without_secret(client, monkeypatch):
     assert client.get("/api/cron/rbi").status_code == 401
     assert client.get("/api/cron/rbi", headers={"Authorization": "Bearer wrong"}).status_code == 401
     get_settings.cache_clear()
+
+
+def test_video_duration_and_classification():
+    from app.services import videos
+
+    assert videos.parse_duration("PT4M13S") == 253 and videos.parse_duration("PT1H2M") == 3720
+    assert videos.parse_duration("") is None
+    companies = news.company_patterns([{"id": 3, "ticker": "MARUTI", "name": "Maruti Suzuki India"}])
+    assert videos.classify_video("Oil prices surge as Iran war escalates | DW News", companies) == ("crude", None)
+    assert videos.classify_video("Maruti Suzuki Q2 results: profit falls", companies) == ("results", 3)
+    assert videos.classify_video("Buy these 3 stocks now", companies) is None
+    assert videos.classify_video("Cricket highlights", companies) is None
+    assert videos.classify_video("Iran unveils secret missile city as war fears grow", companies) is None
+    assert videos.classify_video("Red Sea attacks push up shipping costs", companies) == ("supply", None)
+
+
+def test_videos_job_skips_without_a_key(monkeypatch):
+    from app.services import videos
+
+    monkeypatch.delenv("YOUTUBE_API_KEY", raising=False)
+    get_settings.cache_clear()
+    assert videos.run_videos(lambda: None, show_demo=True) == {"skipped": "YOUTUBE_API_KEY isn't set"}
+    get_settings.cache_clear()

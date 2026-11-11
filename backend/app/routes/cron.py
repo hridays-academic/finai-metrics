@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.services import news
+from app.services import news, videos
 from app.services.db import get_conn
 
 logger = logging.getLogger("finai")
@@ -50,6 +50,11 @@ def _run(job: str, fn: Callable[[], dict]) -> JSONResponse:
 @router.get("/gdelt", dependencies=[Depends(require_cron)])
 def cron_gdelt() -> JSONResponse:
     return _run("gdelt", lambda: news.run_gdelt_files(get_conn, show_demo=show_demo()))
+
+
+@router.get("/videos", dependencies=[Depends(require_cron)])
+def cron_videos() -> JSONResponse:
+    return _run("videos", lambda: videos.run_videos(get_conn, show_demo=show_demo()))
 
 
 @router.get("/nse", dependencies=[Depends(require_cron)])

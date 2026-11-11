@@ -960,7 +960,7 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
 (schema v10, run after the league tables because they reference companies).
 
 - **Pages read Postgres only.** Scheduled jobs fill it (Vercel Cron in
-  `vercel.json`, ~2,300 runs/month): NSE filings every 15 min 08:30-22:15 IST
+  `vercel.json`, ~1,950 runs/month): NSE filings hourly 08:30-22:30 IST
   Mon-Sat, GDELT hourly, RBI every 6 h, macro daily. `/api/cron/*` needs
   `Authorization: Bearer $CRON_SECRET` (set by Hriday in Vercel Production)
   and returns 503 when it isn't set.
@@ -1003,6 +1003,8 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
   "StacklyNews" user agent; locally that timed out once. Never switch to a
   browser user agent to get past a block (that is bot-check circumvention); if
   NSE keeps refusing, the panel's NSE link is the fallback Hriday approved.
+  Confirmed 2026-11-11: from Vercel too, NSE times out for the honest agent
+  (502 logged every run), so the job was cut from every 15 min to hourly.
 - **RBI** press-release RSS, themed items only, minus routine notices
   (`RBI_ROUTINE`: auctions, money-market data, T-bills). RBI and NSE times
   without a zone are IST.
@@ -1015,6 +1017,56 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
 - **World event cards** are admin-written (Admin > World events: title, date,
   sectors, "why it may matter" up to 200 characters, source link, pinned, show
   until), audited, with soft warnings for "will" or advice words.
+
+## Research phase 3: profile, segments, peers, documents (2026-11)
+
+- **Approved data lives in `app/company_profiles.py`** (segments with filed
+  FY26 figures, single-business notes, IR and annual-report links, peers),
+  approved by Hriday 2026-11-10 from `Areas/Pilot Companies.md`. Tests check
+  that segments add up to filed revenue and that no profile links
+  `marico.com/investorspdf/Annual_Report_2025-26.pdf`, which is **Marico
+  Bangladesh's** report, not Marico Limited's. Maruti, Marico and Escorts have
+  no reliable annual-report link (NSE archive file names can't be derived), so
+  they show the IR page only. Jyothy's annual-report page didn't load when
+  checked; left out.
+- `services/company_profile.build_profile` assembles `CompanyFinancialsResponse.profile`:
+  the approved card description (or Yahoo's `longBusinessSummary`, labelled
+  "from Yahoo Finance"), headquarters/website/employees from Yahoo
+  (`CompanyInfo.has_profile`; older cache rows refetch once), the next
+  results date from our non-draft events, segments with shares, documents
+  (IR, annual report, newest captured NSE results/commentary filings, all-filings link) and peers.
+- **Peers**: per pilot company, else per sector (`SECTOR_PEERS`); every symbol
+  checked live (LTIM.NS was dead). Each peer loads separately from
+  `GET /api/peer/{symbol}` (rate-limited; same cache and 30-day price), eight
+  ratios plus "Reported" when Yahoo already has the latest quarter-end.
+
+## News cards and videos (2026-11)
+
+- **Cards** (`components/news/NewsCards.tsx`): top story + grid, theme filter
+  chips, our own theme icons (`ThemeIcon.tsx`) and colours (`--th-*` tokens,
+  icons and tints only, text stays in text tokens), sector chips, relative
+  time, and a "Why it matters" button. **The longer paragraphs and chains are
+  awaiting Hriday's approval** (`Areas/News explanations (for approval).md`);
+  until then the button shows the approved one-line text.
+- **Publisher icons are self-hosted** in `frontend/public/publishers/`
+  (downloaded once, 2026-11-10), on a white plate (`--icon-plate`). No page
+  makes a request to a publisher. Business Standard, Moneycontrol and NDTV
+  Profit didn't serve one: lettered badge.
+- **Videos** (`services/videos.py`, cron `/api/cron/videos`): eight
+  allowlisted channels (`news_config.YOUTUBE_CHANNELS`, IDs verified against
+  each channel's own feed; the NDTV main channel was a near miss for NDTV
+  Profit) via the official YouTube Data API: uploads playlist (1 unit) + one
+  durations call (1 unit) per run. Same theme/advice rules as headlines, plus
+  war-and-supply videos need an economic word. Live streams skipped. Rows
+  deleted after 30 days (YouTube developer policy). Skips without
+  `YOUTUBE_API_KEY`. Measured yield is low (1 of ~120 recent videos matched):
+  expect a few a day.
+- **Privacy:** a video card shows our own illustration; nothing loads from
+  YouTube or Google until the visitor presses play, then the
+  youtube-nocookie.com player loads (CSP `frame-src` allows only that). The
+  Privacy Policy says so (LEGAL_UPDATED 11 Nov 2026, TERMS_VERSION 2026-11-11,
+  so signed-in users agree once more). Checked in a browser: 0 requests to
+  Google/YouTube before the click.
 
 ## Market Simulator
 

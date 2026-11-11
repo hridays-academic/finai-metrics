@@ -17,6 +17,8 @@ class NewsItem(BaseModel):
     theme: str
     theme_label: str
     why: str
+    publisher_domain: Optional[str] = None
+    sectors: list[str] = []
     # Set in the "All" view when the line is a sector's (not the economy's).
     sector_label: Optional[str] = None
 
@@ -84,6 +86,17 @@ class Filing(BaseModel):
     why: Optional[str] = None
 
 
+class Video(BaseModel):
+    video_id: str
+    title: str
+    channel: str
+    published_at: str
+    duration_seconds: Optional[int] = None
+    theme: str
+    theme_label: str
+    why: str
+
+
 class CompanyNews(BaseModel):
     tracked: bool
     company_name: Optional[str] = None
@@ -96,6 +109,7 @@ class CompanyNews(BaseModel):
     sector_news: list[NewsItem]
     world_events: list[WorldEvent]
     macro: list[MacroSeriesOut]
+    videos: list[Video] = []
     updated_at: Optional[str] = None
 
 

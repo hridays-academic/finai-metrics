@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { ApiError, fetchCompanyNews } from "../../lib/api";
 import type { CompanyNews } from "../../lib/types";
 import { formatDay } from "../../lib/leagueFormat";
-import NewsRows, { NewsSourceNote } from "./NewsRows";
+import NewsSourceNote from "./NewsSourceNote";
+import NewsCards from "./NewsCards";
 import WorldEvents from "./WorldEvents";
 import MacroCharts from "./MacroCharts";
+import VideoCards from "./VideoCards";
 
 // A company's exchange filings and news on the Research page. Filings and
 // company headlines exist only for the league's companies for now.
@@ -79,7 +81,7 @@ export default function CompanyNewsPanel({ symbol, name }: { symbol: string; nam
           <>
             <h3 className="subsection-title">In the news</h3>
             {data.company_news.length > 0 ? (
-              <NewsRows items={data.company_news} />
+              <NewsCards items={data.company_news} topStory={false} />
             ) : (
               <p className="empty-note">No recent headlines about {name} on results, orders, prices, plants or management.</p>
             )}
@@ -88,13 +90,14 @@ export default function CompanyNewsPanel({ symbol, name }: { symbol: string; nam
 
         <h3 className="subsection-title">{data.sector ? `${data.sector_label} and the economy` : "The economy"}</h3>
         {data.sector_news.length > 0 ? (
-          <NewsRows items={data.sector_news} />
+          <NewsCards items={data.sector_news} topStory={false} />
         ) : (
           <p className="empty-note">No recent headlines on these topics yet.</p>
         )}
         <NewsSourceNote updatedAt={data.updated_at} />
       </section>
 
+      <VideoCards videos={data.videos ?? []} />
       <WorldEvents events={data.world_events} title={`World events for ${data.sector ? data.sector_label : "the economy"}`} />
       {data.macro.length > 0 && <MacroCharts series={data.macro} title={`Macro context for ${data.sector_label}`} />}
     </>

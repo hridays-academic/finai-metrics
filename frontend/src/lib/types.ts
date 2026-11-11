@@ -473,6 +473,8 @@ export interface NewsItem {
   theme_label: string;
   why: string;
   sector_label?: string | null;
+  publisher_domain?: string | null;
+  sectors?: string[];
 }
 
 export interface NewsList {
@@ -527,6 +529,17 @@ export interface Filing {
   why: string | null;
 }
 
+export interface Video {
+  video_id: string;
+  title: string;
+  channel: string;
+  published_at: string;
+  duration_seconds: number | null;
+  theme: string;
+  theme_label: string;
+  why: string;
+}
+
 export interface CompanyNews {
   tracked: boolean;
   company_name: string | null;
@@ -539,5 +552,6 @@ export interface CompanyNews {
   sector_news: NewsItem[];
   world_events: WorldEvent[];
   macro: MacroSeries[];
+  videos?: Video[];
   updated_at: string | null;
 }

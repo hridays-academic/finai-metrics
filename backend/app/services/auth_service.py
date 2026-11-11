@@ -53,7 +53,7 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # The Terms of Use / Privacy Policy version a user agrees to (the date the
 # pages were last changed). Bump it when either page changes materially:
 # every account whose terms_version differs is asked to agree again.
-TERMS_VERSION = "2026-11-05"
+TERMS_VERSION = "2026-11-11"
 _TERMS_REQUIRED = "Please agree to the Terms of Use and Privacy Policy to create an account."
 
 

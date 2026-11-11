@@ -412,3 +412,37 @@ textarea {
     --duration-spring: 0ms;
   }
 }
+
+/* News theme colours (2026-11-10). Used for icons and light tints only;
+   text on cards stays in the text tokens, so contrast is unchanged. */
+:root {
+  --th-crude: #e3a35b;
+  --th-monsoon: #6cb6ff;
+  --th-rupee: #5fd08a;
+  --th-tariffs: #4fc9c0;
+  --th-supply: #ff7b72;
+  --th-gst: #c49bff;
+  --th-rates: #8fa3ff;
+  --th-inputs: #b7c0cc;
+  --th-tech: #56d4e8;
+  --th-event: var(--accent);
+}
+:root[data-mode="light"] {
+  --th-crude: #9a5b12;
+  --th-monsoon: #0b63b8;
+  --th-rupee: #1c7c43;
+  --th-tariffs: #0f7a73;
+  --th-supply: #b42318;
+  --th-gst: #6b3fb5;
+  --th-rates: #3949ab;
+  --th-inputs: #55606e;
+  --th-tech: #0e7490;
+}
+:root {
+  /* Publishers' icons are drawn for white backgrounds: give them one in both modes. */
+  --icon-plate: #ffffff;
+}
+:root {
+  /* Behind white text on video posters, in both modes. */
+  --video-scrim: rgba(0, 0, 0, 0.62);
+}

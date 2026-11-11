@@ -88,7 +88,7 @@ GKG_STEP = timedelta(minutes=15)
 GKG_MIN_AGE = timedelta(minutes=20)  # a new file can take a few minutes to appear
 GKG_LOOKBACK = timedelta(hours=6)  # catch up at most this far after an outage
 GKG_GIVE_UP = timedelta(hours=3)  # a file still missing after this is skipped
-GKG_FILES_PER_RUN = 6
+GKG_FILES_PER_RUN = 8
 _PAGE_TITLE = re.compile(r"<PAGE_TITLE>(.*?)</PAGE_TITLE>", re.S)
 # Single words too common to identify a company on their own.
 _NOT_A_NAME = frozenset({"india", "indian", "hindustan", "shree", "sagar", "escorts", "tech", "state", "bharat"})
@@ -474,8 +474,10 @@ def _item_out(row: dict, view: str) -> Optional[dict]:
         return None
     return {
         "title": row["title"], "url": row["url"], "publisher": row["publisher"],
+        "publisher_domain": nc.domain_for(row["publisher"]),
         "published_at": row["published_at"].isoformat(), "theme": row["theme"],
         "theme_label": nc.label_for(row["theme"]), "why": why,
+        "sectors": [nc.SECTOR_LABELS[v] for v in nc.views_for(row["theme"]) if v != "economy"],
     }
 
 
@@ -607,5 +609,13 @@ def company_news(conn: psycopg.Connection, symbol: str, today: date) -> dict:
         "company_news": headlines, "sector_news": sector_items,
         "world_events": world_events(conn, sector or "economy", today),
         "macro": macro(conn, today, sector) if sector else [],
+        "videos": _company_videos(conn, company, view),
         "updated_at": _updated(conn, ("gdelt", "rbi", "nse")),
     }
+
+
+def _company_videos(conn: psycopg.Connection, company: Optional[dict], view: str) -> list[dict]:
+    from app.services.videos import videos_for  # videos imports this module
+
+    out = videos_for(conn, view, 4, company["id"]) if company else []
+    return out + videos_for(conn, view, 6 - len(out))

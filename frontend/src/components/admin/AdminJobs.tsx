@@ -6,6 +6,7 @@ const NAMES: Record<string, string> = {
   nse: "NSE filings (every 15 min, Mon-Sat)",
   rbi: "RBI press releases (every 6 hours)",
   macro: "Macro series (daily)",
+  videos: "News videos (YouTube, hourly)",
 };
 
 const STORED: Record<string, string> = {
@@ -13,6 +14,7 @@ const STORED: Record<string, string> = {
   nse: "filings",
   rbi: "releases",
   macro: "series",
+  videos: "videos",
 };
 
 function when(iso: string | null): string {

@@ -30,6 +30,7 @@ from app.models import (
     DataSourceName,
     DeleteAccountRequest,
     FinancialHistory,
+    PeerSummary,
     ForgotPasswordRequest,
     GoogleAuthRequest,
     IntradayHistoryResponse,
@@ -51,6 +52,7 @@ from app.services.data_provider import (
     resolves_via_former_name,
 )
 from app.services.metrics import compute_health_snapshot, compute_metric_groups, history_table
+from app.services.company_profile import build_profile
 from app.services import gmail_service
 from app.services.providers import provider as shared_provider
 from app.services import auth_service, fundamentals_cache, price_lag, rate_limit
@@ -387,6 +389,12 @@ def get_company(
         raw, info.company_name, bundle.history, info.sector, info.industry)
     health_snapshot = compute_health_snapshot(metric_groups)
     history = bundle.history
+    profile = None
+    try:
+        with get_conn() as conn:
+            profile = build_profile(conn, info, price_lag.today_in_india())
+    except Exception:  # noqa: BLE001 -- the profile is a bonus; never fail the page for it
+        logger.warning("Profile failed for %s", info.resolved_symbol, exc_info=True)
     response = CompanyFinancialsResponse(
         info=info,
         raw=raw,
@@ -401,6 +409,7 @@ def get_company(
         price_as_of=price_as_of,
         history=history_table(history, price_lag.today_in_india()) if history is not None else None,
         ratios_period_end=history.annual[0].period_end_date if history and history.annual else None,
+        profile=profile,
     )
     _last_company_by_ticker[info.resolved_symbol] = response
     # No-op if current_user is None (anonymous search) -- see
@@ -408,6 +417,33 @@ def get_company(
     # no-guard-needed call site, not an oversight.
     auth_service.log_activity(current_user, "searched", info.company_name)
     return response
+
+
+_PEER_KEYS = ("revenue_growth", "ebitda_margin", "net_margin", "roe", "roce", "debt_to_equity",
+              "pe_ratio", "ev_to_ebitda")
+
+
+@app.get("/api/peer/{symbol}", response_model=PeerSummary)
+def get_peer(symbol: str, _rl: None = Depends(_rate_limited)) -> PeerSummary:
+    """Eight key ratios for one peer, from the same cache and the same
+    30-day-old price as a full Research page."""
+    try:
+        bundle = _fetch_company_yfinance_cached(symbol)
+    except CompanyNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except DataProviderError as exc:
+        raise HTTPException(status_code=502, detail="Couldn't fetch this peer right now.") from exc
+    raw, _ = _with_lagged_price(bundle.symbol, bundle.raw)
+    groups = compute_metric_groups(raw, bundle.info.company_name, bundle.history, bundle.info.sector,
+                                   bundle.info.industry)
+    values = {m.key: m.value for g in groups for m in g.metrics if m.key in _PEER_KEYS}
+    quarters = bundle.history.quarterly if bundle.history else []
+    latest = max((q.period_end_date for q in quarters if q.revenue is not None), default=None)
+    expected = history_table(None, price_lag.today_in_india()).quarterly[0].period_end_date
+    return PeerSummary(
+        symbol=bundle.symbol, name=bundle.info.company_name, latest_quarter=latest,
+        reported_latest_quarter=latest == expected, fundamentals_as_of=bundle.as_of, **values,
+    )
 
 
 @dataclass

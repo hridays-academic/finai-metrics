@@ -2,9 +2,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.news_models import NEWS_VIEWS, CompanyNews, MacroSeriesOut, NewsList, WorldEvent, WorldEventIn
+from app.news_models import NEWS_VIEWS, CompanyNews, MacroSeriesOut, NewsList, Video, WorldEvent, WorldEventIn
 from app.routes.deps import require_admin
-from app.services import audit, news, price_lag
+from app.services import audit, news, price_lag, videos
 from app.services.db import get_conn
 
 router = APIRouter()
@@ -18,6 +18,14 @@ def list_news(
         raise HTTPException(status_code=404, detail="No such news view.")
     with get_conn() as conn:
         return NewsList(**news.news_list(conn, view, limit, offset))
+
+
+@router.get("/api/videos", response_model=list[Video])
+def list_videos(view: str = Query("all"), limit: int = Query(8, ge=1, le=24)) -> list[Video]:
+    if view not in NEWS_VIEWS:
+        raise HTTPException(status_code=404, detail="No such news view.")
+    with get_conn() as conn:
+        return [Video(**v) for v in videos.videos_for(conn, view, limit)]
 
 
 @router.get("/api/world-events", response_model=list[WorldEvent])
@@ -103,6 +111,7 @@ def admin_jobs(_admin: dict = Depends(require_admin)) -> list[dict]:
     totals_sql = {
         "gdelt": "SELECT count(*) AS n FROM news_items WHERE source = 'gdelt'",
         "nse": "SELECT count(*) AS n FROM exchange_filings",
+        "videos": "SELECT count(*) AS n FROM news_videos",
         "rbi": "SELECT count(*) AS n FROM news_items WHERE source = 'rbi'",
         "macro": "SELECT count(*) AS n FROM macro_series_cache",
     }

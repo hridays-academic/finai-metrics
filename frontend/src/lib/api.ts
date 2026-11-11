@@ -1,4 +1,5 @@
 import type {
+  Video,
   PeerSummary,
   CompanyNews,
   MacroSeries,
@@ -390,3 +391,4 @@ export interface JobRun {
 export const adminJobs = () => leagueRequest<JobRun[]>("GET", "/admin/jobs");
 
 export const fetchPeer = (symbol: string) => leagueRequest<PeerSummary>("GET", `/peer/${encodeURIComponent(symbol)}`);
+export const fetchVideos = (view: NewsView) => leagueRequest<Video[]>("GET", `/videos?view=${view}`);

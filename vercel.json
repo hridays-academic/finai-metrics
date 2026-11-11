@@ -26,7 +26,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; font-src 'self'; img-src 'self' data: https://*.googleusercontent.com; connect-src 'self' https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; font-src 'self'; img-src 'self' data: https://*.googleusercontent.com; connect-src 'self' https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/ https://www.youtube-nocookie.com; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         },
         {
           "key": "X-Frame-Options",
@@ -54,7 +54,7 @@
   "crons": [
     {
       "path": "/api/cron/nse",
-      "schedule": "*/15 3-16 * * 1-6"
+      "schedule": "0 3-16 * * 1-6"
     },
     {
       "path": "/api/cron/gdelt",
@@ -67,6 +67,10 @@
     {
       "path": "/api/cron/macro",
       "schedule": "40 1 * * *"
+    },
+    {
+      "path": "/api/cron/videos",
+      "schedule": "25 * * * *"
     }
   ]
 }

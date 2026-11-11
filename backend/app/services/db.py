@@ -296,6 +296,21 @@ NEWS_SCHEMA_STATEMENTS = [
     # v11: where the GDELT file reader stopped, and items stored per run.
     "ALTER TABLE job_runs ADD COLUMN IF NOT EXISTS state TEXT",
     "ALTER TABLE job_runs ADD COLUMN IF NOT EXISTS last_items INTEGER",
+    # v12: news videos from allowlisted YouTube channels (services/videos.py).
+    """
+    CREATE TABLE IF NOT EXISTS news_videos (
+        video_id TEXT PRIMARY KEY,
+        channel_id TEXT NOT NULL,
+        channel_title TEXT NOT NULL,
+        title TEXT NOT NULL,
+        published_at TIMESTAMPTZ NOT NULL,
+        duration_seconds INTEGER,
+        theme TEXT NOT NULL,
+        company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS news_videos_recent ON news_videos (published_at DESC)",
 ]
 
 
@@ -329,7 +344,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001

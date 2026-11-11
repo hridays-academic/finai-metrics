@@ -5,7 +5,7 @@ import SiteFooter from "./SiteFooter";
 // either page changes materially, bump auth_service.TERMS_VERSION so every
 // account is asked to agree again. Never add a claim of legal compliance.
 
-export const LEGAL_UPDATED = "6 November 2026";
+export const LEGAL_UPDATED = "11 November 2026";
 
 type Block = string | { list: string[] };
 interface Section {
@@ -52,7 +52,9 @@ const PRIVACY: Section[] = [
           "Our database: Neon, in the United States.",
           "The website and server: Vercel, in the United States. Vercel keeps short-lived technical logs, such as IP addresses and the pages requested, as part of hosting the site.",
           "Password-reset emails: sent through Gmail.",
-          "Google: only when you open sign-in or use Sign in with Google, your browser loads Google's sign-in button, so Google receives your IP address and browser details and may set its own cookies. Google's privacy policy covers that. Other pages load nothing from Google.",
+          "Google: only when you open sign-in or use Sign in with Google, your browser loads Google's sign-in button, so Google receives your IP address and browser details and may set its own cookies. Google's privacy policy covers that.",
+          "YouTube (owned by Google): news videos on the Research page show Stackly's own picture first, and nothing loads from YouTube until you press play. When you do, your browser loads YouTube's player in its privacy-enhanced mode (youtube-nocookie.com), so YouTube receives your IP address and browser details and may store information in your browser. YouTube's and Google's privacy policies cover that. To find the videos, our server asks YouTube's data service for recent videos from a few news channels; it sends nothing about you.",
+          "Apart from sign-in and videos you choose to play, pages load nothing from Google or YouTube.",
         ],
       },
       "This means your data is stored and processed outside India.",

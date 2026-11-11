@@ -67,6 +67,13 @@ def allowed_section(domain: str, path: str) -> bool:
     return first in sections
 
 
+def domain_for(publisher: str) -> str | None:
+    """The site a stored publisher name came from (for its self-hosted icon)."""
+    if publisher == "RBI":
+        return "rbi.org.in"
+    return next((d for d, name in PUBLISHERS.items() if name == publisher), None)
+
+
 def publisher_for(domain: str) -> str | None:
     domain = domain.lower().removeprefix("www.")
     for d, name in PUBLISHERS.items():
@@ -232,6 +239,19 @@ def views_for(key: str) -> tuple[str, ...]:
         return ()
     return tuple(THEMES_BY_KEY[key].sentences)
 
+
+# News videos: allowlisted channels only, read through the official YouTube
+# Data API. IDs checked 2026-11-10 against each channel's own YouTube feed.
+YOUTUBE_CHANNELS: dict[str, str] = {
+    "UC16niRr50-MSBwiO3YDb3RA": "BBC News",
+    "UChqUTb7kYRX8-EiaN3XFrSQ": "Reuters",
+    "UCknLrEdhRCp1aegoMqRaCZg": "DW News",
+    "UCNye-wNBqNL5ZzHSJj3l8Bg": "Al Jazeera English",
+    "UCmRbHAgG2k2vDUvb3xsEunQ": "CNBC-TV18",
+    "UCI_mwTKUhicNzFrhm33MzBQ": "ET Now",
+    "UC3uJIdRFTGgLWrUziaHbzrg": "NDTV Profit",
+    "UC_gUM8rL-Lrg6O3adPW9K1g": "WION",
+}
 
 # Exchange filings: NSE's own RSS (official, meant for syndication).
 NSE_ANNOUNCEMENTS_RSS = "https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml"

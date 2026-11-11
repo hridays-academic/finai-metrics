@@ -121,7 +121,9 @@ class CachedFundamentals:
     def statements_fresh(self) -> bool:
         # Rows cached before the history column (2026-11) count as stale, so
         # they're refetched once rather than showing N/A ratios for a week.
-        return self.history is not None and _now() - self.fetched_at < STATEMENTS_TTL
+        # Same for rows cached before the profile fields (2026-11).
+        return (self.history is not None and self.info.has_profile
+                and _now() - self.fetched_at < STATEMENTS_TTL)
 
     @property
     def price_fresh(self) -> bool:

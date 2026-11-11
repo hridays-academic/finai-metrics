@@ -133,6 +133,59 @@ class CompanyInfo(BaseModel):
     company_name: str
     sector: Optional[str] = None
     industry: Optional[str] = None
+    # (2026-11) Profile facts from Yahoo for the Research page. has_profile
+    # marks a fetch that asked for them, so older cached rows are refetched.
+    summary: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    website: Optional[str] = None
+    employees: Optional[int] = None
+    has_profile: bool = False
+
+
+class SegmentOut(BaseModel):
+    label: str
+    revenue_cr: float
+    share_pct: float
+
+
+class DocumentLink(BaseModel):
+    label: str
+    url: str
+    date: Optional[str] = None
+    source: str
+
+
+class CompanyProfileOut(BaseModel):
+    description: Optional[str] = None
+    description_source: Optional[str] = None  # "Stackly" | "Yahoo Finance"
+    headquarters: Optional[str] = None
+    website: Optional[str] = None
+    employees: Optional[int] = None
+    next_results_date: Optional[str] = None
+    single_business: bool = False
+    segments: list[SegmentOut] = Field(default_factory=list)
+    segment_note: Optional[str] = None
+    segment_period: Optional[str] = None
+    segment_source_url: Optional[str] = None
+    documents: list[DocumentLink] = Field(default_factory=list)
+    peers: list[str] = Field(default_factory=list)
+
+
+class PeerSummary(BaseModel):
+    symbol: str
+    name: str
+    revenue_growth: Optional[float] = None
+    ebitda_margin: Optional[float] = None
+    net_margin: Optional[float] = None
+    roe: Optional[float] = None
+    roce: Optional[float] = None
+    debt_to_equity: Optional[float] = None
+    pe_ratio: Optional[float] = None
+    ev_to_ebitda: Optional[float] = None
+    latest_quarter: Optional[str] = None
+    reported_latest_quarter: bool = False
+    fundamentals_as_of: Optional[str] = None
 
 
 class MetricStatus(str, Enum):
@@ -245,6 +298,7 @@ class CompanyFinancialsResponse(BaseModel):
     history: Optional[HistoryTable] = None
     # The fiscal year the ratios are computed from ("YYYY-MM-DD").
     ratios_period_end: Optional[str] = None
+    profile: Optional["CompanyProfileOut"] = None
 
 
 class PricePoint(BaseModel):

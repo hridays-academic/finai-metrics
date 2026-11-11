@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { ApiError, fetchMacro, fetchNews, fetchWorldEvents } from "../../lib/api";
-import type { MacroSeries, NewsItem, NewsView, WorldEvent } from "../../lib/types";
-import NewsRows, { NewsSourceNote } from "./NewsRows";
+import { ApiError, fetchMacro, fetchNews, fetchVideos, fetchWorldEvents } from "../../lib/api";
+import type { MacroSeries, NewsItem, NewsView, Video, WorldEvent } from "../../lib/types";
+import VideoCards from "./VideoCards";
+import NewsSourceNote from "./NewsSourceNote";
+import NewsCards from "./NewsCards";
 import WorldEvents from "./WorldEvents";
 import MacroCharts from "./MacroCharts";
 
@@ -24,6 +26,7 @@ export default function ResearchLanding() {
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [macro, setMacro] = useState<MacroSeries[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
 
   useEffect(() => {
     fetchWorldEvents().then(setEvents).catch(() => {});
@@ -34,6 +37,9 @@ export default function ResearchLanding() {
     let cancelled = false;
     setItems(null);
     setError(null);
+    fetchVideos(view)
+      .then((v) => !cancelled && setVideos(v))
+      .catch(() => !cancelled && setVideos([]));
     fetchNews(view)
       .then((r) => {
         if (cancelled) return;
@@ -84,7 +90,7 @@ export default function ResearchLanding() {
         {items && items.length === 0 && (
           <p className="empty-note">No recent headlines on these topics yet. They're checked every hour.</p>
         )}
-        {items && items.length > 0 && <NewsRows items={items} />}
+        {items && items.length > 0 && <NewsCards items={items} />}
         {hasMore && (
           <button type="button" className="btn btn-secondary" onClick={showMore}>
             Show more
@@ -92,6 +98,8 @@ export default function ResearchLanding() {
         )}
         <NewsSourceNote updatedAt={updatedAt} />
       </section>
+
+      <VideoCards videos={videos} />
 
       <MacroCharts series={macro} />
     </>

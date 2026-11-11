@@ -301,6 +301,12 @@ class YFinanceProvider(FinancialDataProvider):
             company_name=info.get("longName") or info.get("shortName") or symbol,
             sector=info.get("sector"),
             industry=info.get("industry"),
+            summary=info.get("longBusinessSummary"),
+            city=info.get("city"),
+            country=info.get("country"),
+            website=info.get("website"),
+            employees=info.get("fullTimeEmployees"),
+            has_profile=True,
         )
 
     def get_raw_financials(self, symbol: str) -> RawFinancials:
