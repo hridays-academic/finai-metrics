@@ -7090,19 +7090,13 @@ textarea.input,
 .lg .theme-filter .chip .theme-icon {
   color: var(--th);
 }
-.lg .news-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--tile-gap);
-}
 .lg .news-card {
   display: flex;
   gap: var(--space-4);
-  padding: var(--space-5);
+  padding: var(--card-pad);
   border-top: 3px solid color-mix(in srgb, var(--th) 70%, transparent);
 }
 .lg .news-card-top {
-  grid-column: 1 / -1;
   align-items: flex-start;
 }
 .lg .news-card-art {
@@ -7116,6 +7110,7 @@ textarea.input,
   background: color-mix(in srgb, var(--th) 16%, transparent);
 }
 .lg .news-card-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -7146,10 +7141,11 @@ textarea.input,
   background: color-mix(in srgb, var(--text-tertiary) 30%, transparent);
 }
 .lg .news-card-headline {
+  margin: 0;
   color: var(--text-primary);
   font-size: var(--text-md);
-  font-weight: var(--weight-bold);
-  line-height: 1.35;
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight-card);
   text-decoration: none;
 }
 .lg .news-card-top .news-card-headline {
@@ -7179,38 +7175,6 @@ textarea.input,
 .lg .theme-chip .theme-icon {
   color: var(--th);
 }
-.lg .why-toggle {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: var(--control-height);
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-}
-.lg .why-toggle:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-.lg .why-chevron {
-  transition: transform var(--duration-press);
-}
-.lg .why-chevron.open {
-  transform: rotate(180deg);
-}
-.lg .why-panel p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-}
 @media (max-width: 640px) {
   .lg .news-card-top {
     flex-direction: column;
@@ -7219,11 +7183,28 @@ textarea.input,
 
 /* News videos: our own poster, YouTube loads only on click. */
 .lg .video-card {
+  padding: var(--card-pad);
+  border-top: 3px solid color-mix(in srgb, var(--th) 70%, transparent);
+  container-type: inline-size;
+}
+.lg .video-card-inner {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-top: 3px solid color-mix(in srgb, var(--th) 70%, transparent);
+  gap: var(--space-4);
+}
+/* A video alone in a wide row sits beside its text instead of filling the
+   panel with a huge poster. */
+@container (min-width: 560px) {
+  .lg .video-card-inner {
+    flex-direction: row;
+  }
+  .lg .video-card-inner > .video-poster,
+  .lg .video-card-inner > .video-frame {
+    flex: none;
+    width: min(45%, 420px);
+    align-self: flex-start;
+  }
 }
 .lg .video-poster,
 .lg .video-frame {
@@ -7276,4 +7257,254 @@ textarea.input,
 }
 .lg .video-title {
   margin: 0;
+}
+
+/* "Why it matters" (WhyItMatters.tsx): a 2-line summary always visible; the
+   full approved paragraph and chain in a glass popover (hover, focus) or a
+   bottom sheet (tap on phones). */
+.lg .why {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.lg .why-summary {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+.lg .why-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+.lg .why-label:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.why-popover {
+  max-width: min(420px, calc(100vw - 16px));
+  pointer-events: auto;
+}
+.why-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+.why-chain li {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.why-chain-arrow {
+  color: var(--accent);
+}
+.why-explanation {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+.why-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  background: var(--video-scrim);
+}
+.why-sheet {
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5) calc(var(--space-5) + env(safe-area-inset-bottom));
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  background: var(--lg-sheen), var(--lg-tooltip);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--lg-edge-top), var(--lg-tooltip-shadow);
+  color: var(--text-primary);
+  outline: none;
+  animation: sheet-up 220ms var(--ease-out);
+}
+.why-sheet-handle {
+  align-self: center;
+  width: var(--space-8);
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--text-tertiary);
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .why-sheet { background: var(--lg-solid); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .why-sheet { background: var(--lg-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .why-sheet { animation: none; }
+}
+
+/* Research and news rhythm (2026-11-11): every news, video and world-event
+   card has the same padding and the same order (source and time, headline,
+   2-line summary, "Why it matters", chips), and the chips sit on the card's
+   bottom edge so they line up across a row. Panels stack with --panel-gap;
+   inside a panel, blocks stack with --title-gap. */
+.lg {
+  --card-pad: var(--space-5);
+  --leading-tight-card: 1.35;
+}
+@media (max-width: 640px) {
+  .lg {
+    --card-pad: var(--space-4);
+  }
+}
+.lg .research-landing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap);
+}
+.lg .news-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--title-gap);
+}
+.lg .news-panel > *,
+.lg .news-panel > .panel-title {
+  margin: 0;
+}
+.lg .news-panel > .subsection-title:not(:nth-child(2)) {
+  margin-top: var(--space-4);
+}
+.lg .news-panel > .btn {
+  align-self: flex-start;
+}
+.lg .news-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tile-gap);
+}
+.lg .news-cards > .theme-filter {
+  margin-bottom: var(--space-1);
+}
+.lg .news-card-headline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.lg .news-card-top .news-card-headline {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.lg .news-card-meta {
+  min-height: var(--space-5);
+  font-size: var(--text-sm);
+}
+.lg .news-card-body > .news-card-chips {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  align-items: center;
+}
+.lg .news-card-top .news-card-body > .news-card-chips {
+  margin-top: 0;
+}
+.lg .news-card-source {
+  margin-left: auto;
+  font-size: var(--text-sm);
+}
+.lg .theme-chip,
+.lg .news-card-chips .chip.chip-static {
+  min-height: var(--space-6);
+  line-height: var(--space-6);
+}
+.lg .why {
+  gap: 0;
+}
+@media (pointer: fine) {
+  .lg .why-label {
+    min-height: var(--space-7);
+  }
+}
+.lg .world-event {
+  flex-direction: column;
+}
+.lg .news-row {
+  padding: var(--space-4) var(--card-pad);
+}
+.lg .news-headline {
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight-card);
+}
+
+/* Phase 4 analysis (AnalysisPanel.tsx). */
+.lg .analysis-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--card-pad);
+  border-radius: var(--radius-inner);
+  background: var(--lg-inset);
+  box-shadow: inset 0 1px 0 var(--lg-edge-top), inset 0 0 0 1px var(--lg-edge);
+}
+.lg .analysis-heading {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.lg .analysis-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+.lg .analysis-questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.lg .analysis-questions ul {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+/* News-style grids: cards match within a row, not across the whole page. */
+.lg .tile-grid.news-grid,
+.lg .tile-grid.analysis-sections {
+  grid-auto-rows: auto;
 }

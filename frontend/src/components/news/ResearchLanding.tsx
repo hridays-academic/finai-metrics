@@ -64,12 +64,12 @@ export default function ResearchLanding() {
   }
 
   return (
-    <>
+    <div className="research-landing">
       <WorldEvents events={events} />
 
-      <section className="glass panel reveal" aria-labelledby="news-title">
+      <section className="glass panel reveal news-panel" aria-labelledby="news-title">
         <h2 className="panel-title" id="news-title">
-          News and world events
+          News
         </h2>
         <div className="segmented news-views" role="tablist" aria-label="Show news for">
           {VIEWS.map((v) => (
@@ -102,6 +102,6 @@ export default function ResearchLanding() {
       <VideoCards videos={videos} />
 
       <MacroCharts series={macro} />
-    </>
+    </div>
   );
 }

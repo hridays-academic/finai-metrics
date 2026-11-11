@@ -122,6 +122,19 @@ export interface CompanyFinancialsResponse {
   // The fiscal year-end the ratios are computed from.
   ratios_period_end?: string | null;
   profile?: CompanyProfile | null;
+  analysis?: Analysis | null;
+}
+
+// Rule-based analysis (backend services/analysis.py, approved templates).
+export interface AnalysisLine {
+  id: string;
+  text: string;
+}
+
+export interface Analysis {
+  sections: { key: string; title: string; sentences: AnalysisLine[] }[];
+  questions: AnalysisLine[];
+  pe: number | null;
 }
 
 export interface CompanyProfile {
@@ -475,6 +488,8 @@ export interface NewsItem {
   sector_label?: string | null;
   publisher_domain?: string | null;
   sectors?: string[];
+  chain?: string | null;
+  explanation?: string | null;
 }
 
 export interface NewsList {
@@ -492,6 +507,8 @@ export interface WorldEvent {
   sectors: WorldEventSector[];
   sector_labels: string[];
   why: string;
+  why_long?: string | null;
+  chain?: string | null;
   source_url: string | null;
   pinned: boolean;
   show_until: string | null;
@@ -502,6 +519,8 @@ export interface WorldEventIn {
   event_date: string;
   sectors: WorldEventSector[];
   why: string;
+  why_long: string | null;
+  chain: string | null;
   source_url: string | null;
   pinned: boolean;
   show_until: string | null;
@@ -527,6 +546,8 @@ export interface Filing {
   filed_at: string;
   type_label: string | null;
   why: string | null;
+  chain?: string | null;
+  explanation?: string | null;
 }
 
 export interface Video {
@@ -538,6 +559,8 @@ export interface Video {
   theme: string;
   theme_label: string;
   why: string;
+  chain?: string | null;
+  explanation?: string | null;
 }
 
 export interface CompanyNews {

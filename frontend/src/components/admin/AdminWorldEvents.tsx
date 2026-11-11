@@ -26,6 +26,8 @@ const EMPTY: WorldEventIn = {
   event_date: new Date().toISOString().slice(0, 10),
   sectors: [],
   why: "",
+  why_long: "",
+  chain: "",
   source_url: "",
   pinned: false,
   show_until: null,
@@ -37,6 +39,8 @@ function toInput(e: WorldEvent): WorldEventIn {
     event_date: e.event_date,
     sectors: e.sectors,
     why: e.why,
+    why_long: e.why_long ?? "",
+    chain: e.chain ?? "",
     source_url: e.source_url ?? "",
     pinned: e.pinned,
     show_until: e.show_until,
@@ -61,8 +65,10 @@ export default function AdminWorldEvents() {
   }, []);
 
   const warnings = [
-    PREDICTIVE.test(form.why) && 'The line reads like a prediction. Use "may" instead of "will".',
-    ADVICE.test(`${form.title} ${form.why}`) && "This reads like investment advice. Describe the event and its possible effect only.",
+    PREDICTIVE.test(`${form.why} ${form.why_long ?? ""} ${form.chain ?? ""}`) &&
+      'This reads like a prediction. Use "may" instead of "will".',
+    ADVICE.test(`${form.title} ${form.why} ${form.why_long ?? ""}`) &&
+      "This reads like investment advice. Describe the event and its possible effect only.",
   ].filter(Boolean) as string[];
 
   function set<K extends keyof WorldEventIn>(key: K, value: WorldEventIn[K]) {
@@ -78,7 +84,13 @@ export default function AdminWorldEvents() {
     setSaving(true);
     setError(null);
     setMessage(null);
-    const body = { ...form, source_url: form.source_url?.trim() || null, show_until: form.show_until || null };
+    const body = {
+      ...form,
+      why_long: form.why_long?.trim() || null,
+      chain: form.chain?.trim() || null,
+      source_url: form.source_url?.trim() || null,
+      show_until: form.show_until || null,
+    };
     try {
       if (editing === null) await adminCreateWorldEvent(body);
       else await adminUpdateWorldEvent(editing, body);
@@ -137,6 +149,29 @@ export default function AdminWorldEvents() {
           <span className="field-hint">
             {form.why.length}/200. One sentence, plain words, "may" not "will".
           </span>
+        </label>
+        <label className="field">
+          <span className="field-label">
+            Longer explanation <span className="field-optional">Optional</span>
+          </span>
+          <textarea
+            className="input"
+            rows={5}
+            value={form.why_long ?? ""}
+            maxLength={800}
+            onChange={(e) => set("why_long", e.target.value)}
+          />
+          <span className="field-hint">
+            {(form.why_long ?? "").length}/800. Shown when someone opens "Why it may matter": 4 to 6 plain sentences on
+            what is happening, how it reaches companies, which numbers it can move, what to watch and what it depends on.
+          </span>
+        </label>
+        <label className="field">
+          <span className="field-label">
+            Cause and effect <span className="field-optional">Optional</span>
+          </span>
+          <input className="input" value={form.chain ?? ""} maxLength={200} onChange={(e) => set("chain", e.target.value)} />
+          <span className="field-hint">Steps joined by →, for example: Oil up → freight costs up → margin may fall</span>
         </label>
         <label className="field">
           <span className="field-label">

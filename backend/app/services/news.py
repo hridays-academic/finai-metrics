@@ -472,7 +472,9 @@ def _item_out(row: dict, view: str) -> Optional[dict]:
     why = nc.sentence_for(row["theme"], view)
     if why is None:
         return None
+    chain, explanation = nc.explanation_for(row["theme"], view)
     return {
+        "chain": chain, "explanation": explanation,
         "title": row["title"], "url": row["url"], "publisher": row["publisher"],
         "publisher_domain": nc.domain_for(row["publisher"]),
         "published_at": row["published_at"].isoformat(), "theme": row["theme"],
@@ -516,7 +518,7 @@ def _updated(conn: psycopg.Connection, jobs: tuple[str, ...]) -> Optional[str]:
 def world_events(conn: psycopg.Connection, sector: Optional[str], today: date) -> list[dict]:
     rows = conn.execute(
         """
-        SELECT id, title, event_date, sectors, why, source_url, pinned, show_until FROM world_events
+        SELECT id, title, event_date, sectors, why, why_long, chain, source_url, pinned, show_until FROM world_events
         WHERE (show_until IS NULL OR show_until >= %s)
           AND (%s::text IS NULL OR %s = ANY(sectors) OR 'economy' = ANY(sectors))
         ORDER BY pinned DESC, event_date DESC LIMIT 12
@@ -530,6 +532,7 @@ def _event_out(r: dict) -> dict:
     return {
         "id": r["id"], "title": r["title"], "event_date": r["event_date"].isoformat(), "sectors": list(r["sectors"]),
         "sector_labels": [nc.SECTOR_LABELS.get(s, s) for s in r["sectors"]], "why": r["why"],
+        "why_long": r.get("why_long"), "chain": r.get("chain"),
         "source_url": r["source_url"], "pinned": r["pinned"],
         "show_until": r["show_until"].isoformat() if r["show_until"] else None,
     }
@@ -587,8 +590,10 @@ def company_news(conn: psycopg.Connection, symbol: str, today: date) -> dict:
             "ORDER BY filed_at DESC LIMIT 15", (company["id"],),
         ).fetchall():
             e = nc.EVENT_TYPES_BY_KEY.get(r["event_type"]) if r["event_type"] else None
+            chain, explanation = nc.explanation_for(r["event_type"], view) if e else (None, None)
             filings.append({"url": r["url"], "subject": r["subject"], "filed_at": r["filed_at"].isoformat(),
-                            "type_label": e.label if e else None, "why": e.sentence if e else None})
+                            "type_label": e.label if e else None, "why": e.sentence if e else None,
+                            "chain": chain, "explanation": explanation})
         for r in conn.execute(
             "SELECT title, url, publisher, published_at, theme FROM news_items WHERE company_id = %s "
             "ORDER BY published_at DESC LIMIT 10", (company["id"],),

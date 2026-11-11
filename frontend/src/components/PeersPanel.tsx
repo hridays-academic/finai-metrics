@@ -23,15 +23,17 @@ function quarter(iso: string | null): string {
   return iso ? new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "N/A";
 }
 
-// The company next to its peers on eight ratios. Each peer loads on its own,
-// so a slow one never holds up the others.
-export default function PeersPanel({ self, peers }: { self: PeerSummary; peers: string[] }) {
-  const [rows, setRows] = useState<Record<string, PeerSummary | "error" | undefined>>({});
+export type PeerRows = Record<string, PeerSummary | "error" | undefined>;
 
+// Loads each peer on its own, so a slow one never holds up the others.
+// Shared by the peers table and the analysis (peer P/E comparison).
+export function usePeers(peers: string[]): PeerRows {
+  const [rows, setRows] = useState<PeerRows>({});
+  const key = peers.join(",");
   useEffect(() => {
     let cancelled = false;
     setRows({});
-    for (const p of peers) {
+    for (const p of key ? key.split(",") : []) {
       fetchPeer(p)
         .then((r) => !cancelled && setRows((s) => ({ ...s, [p]: r })))
         .catch(() => !cancelled && setRows((s) => ({ ...s, [p]: "error" })));
@@ -39,8 +41,12 @@ export default function PeersPanel({ self, peers }: { self: PeerSummary; peers: 
     return () => {
       cancelled = true;
     };
-  }, [peers.join(",")]);
+  }, [key]);
+  return rows;
+}
 
+// The company next to its peers on eight ratios.
+export default function PeersPanel({ self, peers, rows }: { self: PeerSummary; peers: string[]; rows: PeerRows }) {
   if (peers.length === 0) return null;
   const all: (PeerSummary | { symbol: string; state: "loading" | "error" })[] = [
     self,

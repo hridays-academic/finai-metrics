@@ -55,6 +55,10 @@ def admin_world_events(_admin: dict = Depends(require_admin)) -> list[WorldEvent
         return [WorldEvent(**news._event_out(dict(r))) for r in rows]
 
 
+def _clean(text: Optional[str]) -> Optional[str]:
+    return (text or "").strip() or None
+
+
 def _check_dates(body: WorldEventIn) -> None:
     if body.show_until and body.show_until < body.event_date:
         raise HTTPException(status_code=422, detail="'Show until' can't be before the event date.")
@@ -66,11 +70,12 @@ def create_world_event(body: WorldEventIn, admin: dict = Depends(require_admin))
     with get_conn() as conn:
         row = conn.execute(
             """
-            INSERT INTO world_events (title, event_date, sectors, why, source_url, pinned, show_until, created_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
+            INSERT INTO world_events (title, event_date, sectors, why, why_long, chain, source_url, pinned,
+                                      show_until, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
             """,
-            (body.title.strip(), body.event_date, list(body.sectors), body.why.strip(), body.source_url,
-             body.pinned, body.show_until, admin["id"]),
+            (body.title.strip(), body.event_date, list(body.sectors), body.why.strip(), _clean(body.why_long),
+             _clean(body.chain), body.source_url, body.pinned, body.show_until, admin["id"]),
         ).fetchone()
         audit.write(conn, admin["id"], "create", "world_event", row["id"], {"title": row["title"]})
         return WorldEvent(**news._event_out(dict(row)))
@@ -82,12 +87,12 @@ def update_world_event(event_id: int, body: WorldEventIn, admin: dict = Depends(
     with get_conn() as conn:
         row = conn.execute(
             """
-            UPDATE world_events SET title = %s, event_date = %s, sectors = %s, why = %s, source_url = %s,
-                pinned = %s, show_until = %s, updated_at = now()
+            UPDATE world_events SET title = %s, event_date = %s, sectors = %s, why = %s, why_long = %s,
+                chain = %s, source_url = %s, pinned = %s, show_until = %s, updated_at = now()
             WHERE id = %s RETURNING *
             """,
-            (body.title.strip(), body.event_date, list(body.sectors), body.why.strip(), body.source_url,
-             body.pinned, body.show_until, event_id),
+            (body.title.strip(), body.event_date, list(body.sectors), body.why.strip(), _clean(body.why_long),
+             _clean(body.chain), body.source_url, body.pinned, body.show_until, event_id),
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="No such world event.")

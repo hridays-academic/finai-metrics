@@ -25,7 +25,9 @@ API = "https://www.googleapis.com/youtube/v3"
 RETENTION = timedelta(days=30)
 PER_CHANNEL = 25
 _ECONOMIC = re.compile(
-    r"\b(oil|crude|shipping|trade|tariffs?|prices?|markets?|econom\w*|sanctions?|supply|exports?|imports?)\b", re.I)
+    r"\b(oil|crude|shipping|trade|tariffs?|prices?|markets?|econom\w*|sanctions?|supply|exports?|imports?|demand|costs?|"
+    r"growth|inflation|output|production)\b", re.I)
+NEEDS_ECONOMIC = ("supply", "inputs")
 _DURATION = re.compile(r"P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?")
 
 
@@ -48,9 +50,10 @@ def classify_video(title: str, companies) -> Optional[tuple[str, Optional[int]]]
         if key:
             return key, company_id
     key = nc.classify(title, company=False)
-    # News channels post a lot of general war coverage; a "war and supply"
-    # video needs an economic angle too.
-    if key == "supply" and not _ECONOMIC.search(title):
+    # News channels post a lot of general war and accident coverage; a "war
+    # and supply" or "input prices" video needs an economic angle too (a
+    # steel-plant blast isn't about steel prices).
+    if key in NEEDS_ECONOMIC and not _ECONOMIC.search(title):
         return None
     return (key, None) if key else None
 
@@ -108,6 +111,12 @@ def run_videos(conn_factory, *, show_demo: bool) -> dict:
                 added += cur.rowcount
     with conn_factory() as conn:
         conn.execute("DELETE FROM news_videos WHERE fetched_at < now() - %s::interval", (RETENTION,))
+        # Videos stored before a rule was tightened are dropped once they fail it.
+        stale = [r["video_id"] for r in conn.execute(
+            "SELECT video_id, title FROM news_videos WHERE company_id IS NULL AND theme = ANY(%s)",
+            (list(NEEDS_ECONOMIC),)).fetchall() if not _ECONOMIC.search(r["title"])]
+        if stale:
+            conn.execute("DELETE FROM news_videos WHERE video_id = ANY(%s)", (stale,))
         _job_done(conn, "videos", ok=error is None, error=error, items=added)
     return {"candidates": len(candidates), "added": added, "error": error}
 
@@ -116,7 +125,9 @@ def video_out(row: dict, view: str) -> Optional[dict]:
     why = nc.sentence_for(row["theme"], view)
     if why is None:
         return None
+    chain, explanation = nc.explanation_for(row["theme"], view)
     return {
+        "chain": chain, "explanation": explanation,
         "video_id": row["video_id"], "title": row["title"], "channel": row["channel_title"],
         "published_at": row["published_at"].isoformat(), "duration_seconds": row["duration_seconds"],
         "theme": row["theme"], "theme_label": nc.label_for(row["theme"]), "why": why,

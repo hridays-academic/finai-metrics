@@ -1015,8 +1015,10 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
   The 30-day lag applies: a daily value once its date is 30 days past, a monthly
   average once the month's last day is (`news.lag_points`). Gold left out.
 - **World event cards** are admin-written (Admin > World events: title, date,
-  sectors, "why it may matter" up to 200 characters, source link, pinned, show
-  until), audited, with soft warnings for "will" or advice words.
+  sectors, "why it may matter" up to 200 characters, a longer "Why it
+  matters" up to 800 characters and a cause-and-effect chain (schema v13),
+  source link, pinned, show until), audited, with soft warnings for "will" or
+  advice words.
 
 ## Research phase 3: profile, segments, peers, documents (2026-11)
 
@@ -1045,9 +1047,9 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
 - **Cards** (`components/news/NewsCards.tsx`): top story + grid, theme filter
   chips, our own theme icons (`ThemeIcon.tsx`) and colours (`--th-*` tokens,
   icons and tints only, text stays in text tokens), sector chips, relative
-  time, and a "Why it matters" button. **The longer paragraphs and chains are
-  awaiting Hriday's approval** (`Areas/News explanations (for approval).md`);
-  until then the button shows the approved one-line text.
+  time and "Why it matters" (below). Every card (news, video, filing, world
+  event) has the same order and padding: source and time, headline (3 lines
+  max), 2-line summary, "Why it matters", chips on the bottom edge.
 - **Publisher icons are self-hosted** in `frontend/public/publishers/`
   (downloaded once, 2026-11-10), on a white plate (`--icon-plate`). No page
   makes a request to a publisher. Business Standard, Moneycontrol and NDTV
@@ -1067,6 +1069,45 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
   Privacy Policy says so (LEGAL_UPDATED 11 Nov 2026, TERMS_VERSION 2026-11-11,
   so signed-in users agree once more). Checked in a browser: 0 requests to
   Google/YouTube before the click.
+- **Input-price and war-and-supply videos need an economic word** in the title
+  (`videos.NEEDS_ECONOMIC`): the first production run tagged "Deadly blast at
+  Turkey steel factory" as steel prices. Each run also deletes stored videos
+  that fail the current rule. First production run (2026-11-11 12:25 UTC): 3
+  videos, ET Now, CNBC-TV18, DW News (the DW one is removed by the rule).
+
+## "Why it matters" and the analysis (2026-11-11, approved)
+
+- **Paragraphs and chains** (approved 2026-11-11, `Areas/News explanations`)
+  live in `app/news_explanations.py`, copied word for word: 33 theme x sector
+  pairs and 8 event types, the same coverage as the one-line sentences
+  (`news_config.explanation_for`). Change wording only with approval.
+- **Interaction** (`components/news/WhyItMatters.tsx`): the one-line text is
+  always shown, clamped to 2 lines. With a mouse, hovering the card or
+  focusing the "Why it matters" label opens a glass popover (tooltip style,
+  portalled to `<body>`, above the label, flips below near the top, shifted
+  to stay on screen) with the chain and paragraph; it stays open while the
+  pointer is over it and follows its anchor on scroll (focusing an off-screen
+  label scrolls it into view, so closing on scroll broke keyboard use).
+  Without hover, tapping the label opens a bottom sheet; tap outside, swipe
+  down (80px, distance kept in a ref because touchend can run before a
+  re-render) or Close. Escape closes both. No expand-in-place.
+- **Phase 4 analysis** (`services/analysis.py`, `AnalysisPanel.tsx`, "What
+  the numbers show"): the approved templates (`Areas/Analysis templates`)
+  over figures already on the page, 7 sections plus up to 4 questions.
+  Guards so a template can't say something false: G6 (one-off gain) only
+  with a positive profit before tax; the DuPont driver sentences only with a
+  positive ROE; V1 only with a positive P/E; M3 ("held roughly steady") only
+  when all four quarters sit within 2 points. "a"/"an" before a percentage
+  follows how the number is read (`a_pct`). V2 (P/E against the peers'
+  median) is added on the page once 2+ peers with a positive P/E load
+  (`usePeers` is shared with the peers table). Tests: `tests/test_analysis.py`.
+- **Spacing**: panels stack with `--panel-gap` (the Research landing was
+  missing its wrapper, so its panels touched); panels with stacked blocks use
+  `.news-panel` (gap `--title-gap`, subsection titles get extra space above);
+  card padding is `--card-pad`. News, video, world-event and analysis grids
+  use `TileGrid` (no orphans; `pairOnPhones={false}` keeps one card per row
+  on phones) with heights matched per row. A video alone in a wide row puts
+  its poster beside the text (container query).
 
 ## Market Simulator
 

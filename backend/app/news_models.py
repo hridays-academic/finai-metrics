@@ -19,6 +19,8 @@ class NewsItem(BaseModel):
     why: str
     publisher_domain: Optional[str] = None
     sectors: list[str] = []
+    chain: Optional[str] = None
+    explanation: Optional[str] = None
     # Set in the "All" view when the line is a sector's (not the economy's).
     sector_label: Optional[str] = None
 
@@ -36,6 +38,8 @@ class WorldEvent(BaseModel):
     sectors: list[str]
     sector_labels: list[str]
     why: str
+    why_long: Optional[str] = None
+    chain: Optional[str] = None
     source_url: Optional[str] = None
     pinned: bool
     show_until: Optional[str] = None
@@ -46,6 +50,9 @@ class WorldEventIn(BaseModel):
     event_date: date
     sectors: list[WorldEventSector] = Field(min_length=1)
     why: str = Field(min_length=10, max_length=200)
+    # The longer explanation shown in the "Why it matters" popover.
+    why_long: Optional[str] = Field(default=None, max_length=800)
+    chain: Optional[str] = Field(default=None, max_length=200)
     source_url: Optional[str] = Field(default=None, max_length=500)
     pinned: bool = False
     show_until: Optional[date] = None
@@ -84,6 +91,8 @@ class Filing(BaseModel):
     filed_at: str
     type_label: Optional[str] = None
     why: Optional[str] = None
+    chain: Optional[str] = None
+    explanation: Optional[str] = None
 
 
 class Video(BaseModel):
@@ -95,6 +104,8 @@ class Video(BaseModel):
     theme: str
     theme_label: str
     why: str
+    chain: Optional[str] = None
+    explanation: Optional[str] = None
 
 
 class CompanyNews(BaseModel):

@@ -233,6 +233,14 @@ def sentence_for(key: str, view: str) -> str | None:
     return THEMES_BY_KEY[key].sentences.get(view)
 
 
+def explanation_for(key: str, view: str) -> tuple[str | None, str | None]:
+    """(chain, paragraph) behind a card's "Why it matters", for its view."""
+    from app.news_explanations import EVENT_EXPLANATIONS, THEME_EXPLANATIONS
+
+    found = EVENT_EXPLANATIONS.get(key) or THEME_EXPLANATIONS.get((key, view))
+    return found if found else (None, None)
+
+
 def views_for(key: str) -> tuple[str, ...]:
     """Sector views a theme appears in (where it has a sentence)."""
     if key in EVENT_TYPES_BY_KEY:

@@ -311,6 +311,10 @@ NEWS_SCHEMA_STATEMENTS = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS news_videos_recent ON news_videos (published_at DESC)",
+    # v13: a World event card's longer "Why it matters" (up to 800 characters)
+    # and its cause-and-effect chain, shown in the card's popover.
+    "ALTER TABLE world_events ADD COLUMN IF NOT EXISTS why_long TEXT",
+    "ALTER TABLE world_events ADD COLUMN IF NOT EXISTS chain TEXT",
 ]
 
 
@@ -344,7 +348,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001

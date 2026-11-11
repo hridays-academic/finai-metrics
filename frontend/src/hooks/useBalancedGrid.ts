@@ -19,7 +19,7 @@ export function pickColumns(n: number, max: number): { cols: number; spanLast: b
 // half-columns, so a short last row can be centred by starting it half a
 // column in per missing tile; every row is the height of the tallest tile.
 // Also gives each tile its column as --col, which staggers the scroll entry.
-export function useBalancedGrid<T extends HTMLElement>(count: number, minTile: number) {
+export function useBalancedGrid<T extends HTMLElement>(count: number, minTile: number, pairOnPhones = true) {
   const ref = useRef<T>(null);
 
   useLayoutEffect(() => {
@@ -33,7 +33,7 @@ export function useBalancedGrid<T extends HTMLElement>(count: number, minTile: n
       const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
       // Narrow containers (phones) still get two columns while each tile
       // can stay at least 120px wide; one column of tiles reads as a list.
-      const min = width < 480 ? Math.min(minTile, Math.max(120, (width - gap) / 2)) : minTile;
+      const min = pairOnPhones && width < 480 ? Math.min(minTile, Math.max(120, (width - gap) / 2)) : minTile;
       const max = Math.max(1, Math.floor((width + gap) / (min + gap)));
       const tiles = Array.from(grid.children) as HTMLElement[];
       const { cols, spanLast } = pickColumns(tiles.length, max);
@@ -53,7 +53,7 @@ export function useBalancedGrid<T extends HTMLElement>(count: number, minTile: n
     const observer = new ResizeObserver(layout);
     observer.observe(grid);
     return () => observer.disconnect();
-  }, [count, minTile]);
+  }, [count, minTile, pairOnPhones]);
 
   return ref;
 }

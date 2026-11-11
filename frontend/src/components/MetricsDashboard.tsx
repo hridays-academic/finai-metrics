@@ -8,7 +8,8 @@ import PriceChart from "./PriceChart";
 import FinancialHistory from "./FinancialHistory";
 import CompanyNewsPanel from "./news/CompanyNewsPanel";
 import CompanyProfilePanel from "./CompanyProfilePanel";
-import PeersPanel from "./PeersPanel";
+import PeersPanel, { usePeers } from "./PeersPanel";
+import AnalysisPanel from "./AnalysisPanel";
 import type { PeerSummary } from "../lib/types";
 import type { Theme } from "../hooks/useTheme";
 
@@ -76,6 +77,8 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
   // revenue/assets/etc. figures) are a deliberate "more detail" step behind
   // one click, not the first thing on screen.
   const [expanded, setExpanded] = useState(false);
+  const peerSymbols = data.profile?.peers ?? [];
+  const peerRows = usePeers(peerSymbols);
 
   const highlights: [string, number | null][] = [
     ["Revenue", raw.revenue],
@@ -138,7 +141,9 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
 
       {data.history && <FinancialHistory history={data.history} fetchedAt={data.fundamentals_as_of} currency={raw.currency} />}
 
-      {data.profile && data.profile.peers.length > 0 && <PeersPanel self={selfSummary(data)} peers={data.profile.peers} />}
+      {peerSymbols.length > 0 && <PeersPanel self={selfSummary(data)} peers={peerSymbols} rows={peerRows} />}
+
+      {data.analysis && <AnalysisPanel analysis={data.analysis} peers={peerRows} fetchedAt={data.fundamentals_as_of} />}
 
       <CompanyNewsPanel symbol={info.resolved_symbol} name={info.company_name} />
 

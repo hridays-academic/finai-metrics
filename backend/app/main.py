@@ -28,6 +28,7 @@ from app.models import (
     CompanyFinancialsResponse,
     CompanyInfo,
     DataSourceName,
+    AnalysisOut,
     DeleteAccountRequest,
     FinancialHistory,
     PeerSummary,
@@ -53,6 +54,7 @@ from app.services.data_provider import (
 )
 from app.services.metrics import compute_health_snapshot, compute_metric_groups, history_table
 from app.services.company_profile import build_profile
+from app.services.analysis import build_analysis
 from app.services import gmail_service
 from app.services.providers import provider as shared_provider
 from app.services import auth_service, fundamentals_cache, price_lag, rate_limit
@@ -389,6 +391,12 @@ def get_company(
         raw, info.company_name, bundle.history, info.sector, info.industry)
     health_snapshot = compute_health_snapshot(metric_groups)
     history = bundle.history
+    table = history_table(history, price_lag.today_in_india()) if history is not None else None
+    analysis = None
+    try:
+        analysis = AnalysisOut(**build_analysis(history, table, metric_groups, info.sector, info.industry, price_as_of))
+    except Exception:  # noqa: BLE001 -- the analysis is a bonus; never fail the page for it
+        logger.warning("Analysis failed for %s", info.resolved_symbol, exc_info=True)
     profile = None
     try:
         with get_conn() as conn:
@@ -407,9 +415,10 @@ def get_company(
         fundamentals_as_of=bundle.as_of,
         is_stale=bundle.is_stale,
         price_as_of=price_as_of,
-        history=history_table(history, price_lag.today_in_india()) if history is not None else None,
+        history=table,
         ratios_period_end=history.annual[0].period_end_date if history and history.annual else None,
         profile=profile,
+        analysis=analysis,
     )
     _last_company_by_ticker[info.resolved_symbol] = response
     # No-op if current_user is None (anonymous search) -- see

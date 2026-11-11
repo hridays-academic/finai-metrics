@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import type { NewsItem } from "../../lib/types";
 import { formatDay } from "../../lib/leagueFormat";
 import ThemeIcon from "./ThemeIcon";
+import TileGrid from "../TileGrid";
+import { useWhyItMatters, WhySummary } from "./WhyItMatters";
 
 const ICONS = new Set([
   "economictimes.indiatimes.com.ico", "livemint.com.png", "thehindubusinessline.com.png", "financialexpress.com.png",
@@ -30,10 +32,13 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 
 function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const id = `why-${item.url.replace(/[^a-z0-9]/gi, "").slice(-24)}`;
+  const why = useWhyItMatters<HTMLButtonElement>({
+    title: `Why it matters${item.sector_label ? ` (${item.sector_label})` : ""}`,
+    chain: item.chain,
+    explanation: item.explanation,
+  });
   return (
-    <article className={`news-card tile theme-${item.theme} ${top ? "news-card-top" : ""}`}>
+    <article className={`news-card tile theme-${item.theme} ${top ? "news-card-top" : ""}`} {...why.cardProps}>
       {top && (
         <div className="news-card-art" aria-hidden="true">
           <ThemeIcon theme={item.theme} size={56} />
@@ -50,6 +55,7 @@ function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
           {item.title}
           <span className="visually-hidden"> (opens {item.publisher})</span>
         </a>
+        <WhySummary summary={item.why} triggerProps={why.triggerProps} has={why.has} />
         <div className="news-card-chips">
           <span className="theme-chip">
             <ThemeIcon theme={item.theme} size={14} />
@@ -61,26 +67,13 @@ function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
             </span>
           ))}
         </div>
-        <button
-          type="button"
-          className="why-toggle"
-          aria-expanded={open}
-          aria-controls={id}
-          title={open ? undefined : item.why}
-          onClick={() => setOpen((v) => !v)}
-        >
-          Why it matters{item.sector_label ? ` (${item.sector_label})` : ""}
-          <svg className={`why-chevron ${open ? "open" : ""}`} width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <div id={id} className="why-panel" hidden={!open}>
-          <p>{item.why}</p>
-        </div>
       </div>
+      {why.overlay}
     </article>
   );
 }
+
+export const CARD_MIN = 280;
 
 // A top story, then a grid; theme chips filter what's shown.
 export default function NewsCards({ items, topStory = true }: { items: NewsItem[]; topStory?: boolean }) {
@@ -94,7 +87,7 @@ export default function NewsCards({ items, topStory = true }: { items: NewsItem[
   const [first, ...rest] = shown;
 
   return (
-    <>
+    <div className="news-cards">
       {themes.length > 1 && (
         <div className="theme-filter" role="group" aria-label="Filter by theme">
           <button type="button" className={`chip ${theme === null ? "active" : ""}`} aria-pressed={theme === null} onClick={() => setTheme(null)}>
@@ -114,12 +107,12 @@ export default function NewsCards({ items, topStory = true }: { items: NewsItem[
           ))}
         </div>
       )}
-      <div className="news-grid">
-        {first && <NewsCard item={first} top={topStory} />}
-        {rest.map((n) => (
+      {first && topStory && <NewsCard item={first} top />}
+      <TileGrid className="news-grid" minTile={CARD_MIN} pairOnPhones={false}>
+        {(topStory ? rest : shown).map((n) => (
           <NewsCard key={n.url} item={n} />
         ))}
-      </div>
-    </>
+      </TileGrid>
+    </div>
   );
 }

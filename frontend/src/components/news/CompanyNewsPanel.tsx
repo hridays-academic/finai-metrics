@@ -1,12 +1,31 @@
 import { useEffect, useState } from "react";
 import { ApiError, fetchCompanyNews } from "../../lib/api";
-import type { CompanyNews } from "../../lib/types";
+import type { CompanyNews, Filing } from "../../lib/types";
 import { formatDay } from "../../lib/leagueFormat";
 import NewsSourceNote from "./NewsSourceNote";
 import NewsCards from "./NewsCards";
 import WorldEvents from "./WorldEvents";
 import MacroCharts from "./MacroCharts";
 import VideoCards from "./VideoCards";
+import { useWhyItMatters, WhySummary } from "./WhyItMatters";
+
+function FilingRow({ f }: { f: Filing }) {
+  const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it matters", chain: f.chain, explanation: f.explanation });
+  return (
+    <li className="news-row reveal-row" {...why.cardProps}>
+      <a className="news-headline" href={f.url} target="_blank" rel="noopener noreferrer">
+        {f.subject}
+        <span className="visually-hidden"> (opens the filing on NSE)</span>
+      </a>
+      <div className="news-meta">
+        NSE · {formatDay(f.filed_at, true)}
+        {f.type_label && <span className="chip chip-static">{f.type_label}</span>}
+      </div>
+      {f.why && <WhySummary summary={f.why} triggerProps={why.triggerProps} has={why.has} />}
+      {why.overlay}
+    </li>
+  );
+}
 
 // A company's exchange filings and news on the Research page. Filings and
 // company headlines exist only for the league's companies for now.
@@ -31,7 +50,7 @@ export default function CompanyNewsPanel({ symbol, name }: { symbol: string; nam
 
   return (
     <>
-      <section className="glass panel reveal company-news" aria-labelledby="company-news-title">
+      <section className="glass panel reveal news-panel company-news" aria-labelledby="company-news-title">
         <h2 className="panel-title" id="company-news-title">
           News and announcements
         </h2>
@@ -41,21 +60,7 @@ export default function CompanyNewsPanel({ symbol, name }: { symbol: string; nam
           <>
             <ul className="group news-list">
               {data.filings.map((f) => (
-                <li key={f.url} className="news-row reveal-row">
-                  <a className="news-headline" href={f.url} target="_blank" rel="noopener noreferrer">
-                    {f.subject}
-                    <span className="visually-hidden"> (opens the filing on NSE)</span>
-                  </a>
-                  <div className="news-meta">
-                    NSE · {formatDay(f.filed_at, true)}
-                    {f.type_label && <span className="chip chip-static">{f.type_label}</span>}
-                  </div>
-                  {f.why && (
-                    <p className="news-why">
-                      <span className="news-why-label">Why it may matter:</span> {f.why}
-                    </p>
-                  )}
-                </li>
+                <FilingRow key={f.url} f={f} />
               ))}
             </ul>
             <p className="footnote">

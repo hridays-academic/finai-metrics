@@ -296,6 +296,8 @@ def test_video_duration_and_classification():
     assert videos.classify_video("Cricket highlights", companies) is None
     assert videos.classify_video("Iran unveils secret missile city as war fears grow", companies) is None
     assert videos.classify_video("Red Sea attacks push up shipping costs", companies) == ("supply", None)
+    assert videos.classify_video("Deadly blast at Turkey steel factory", companies) is None
+    assert videos.classify_video("Assent Steel on Growth, Green Steel and Global Demand", companies) == ("inputs", None)
 
 
 def test_videos_job_skips_without_a_key(monkeypatch):

@@ -54,7 +54,7 @@ function MacroLine({ s }: { s: MacroSeries }) {
 export default function MacroCharts({ series, title = "Macro context" }: { series: MacroSeries[]; title?: string }) {
   if (series.length === 0) return null;
   return (
-    <section className="glass panel reveal" aria-labelledby="macro-title">
+    <section className="glass panel reveal news-panel" aria-labelledby="macro-title">
       <h2 className="panel-title" id="macro-title">
         {title}
       </h2>

@@ -172,6 +172,23 @@ class CompanyProfileOut(BaseModel):
     peers: list[str] = Field(default_factory=list)
 
 
+class AnalysisLine(BaseModel):
+    id: str  # the approved template, e.g. "G1"
+    text: str
+
+
+class AnalysisSection(BaseModel):
+    key: str
+    title: str
+    sentences: list[AnalysisLine]
+
+
+class AnalysisOut(BaseModel):
+    sections: list[AnalysisSection] = Field(default_factory=list)
+    questions: list[AnalysisLine] = Field(default_factory=list)
+    pe: Optional[float] = None  # for the peer comparison sentence the page adds
+
+
 class PeerSummary(BaseModel):
     symbol: str
     name: str
@@ -299,6 +316,7 @@ class CompanyFinancialsResponse(BaseModel):
     # The fiscal year the ratios are computed from ("YYYY-MM-DD").
     ratios_period_end: Optional[str] = None
     profile: Optional["CompanyProfileOut"] = None
+    analysis: Optional["AnalysisOut"] = None
 
 
 class PricePoint(BaseModel):
