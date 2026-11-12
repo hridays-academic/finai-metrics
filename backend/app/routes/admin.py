@@ -14,6 +14,7 @@ from app.league_models import (
     EventPatch,
     PeriodIn,
     QuickEventIn,
+    ResultProposalOut,
     ScoreRunOut,
 )
 from app.routes.deps import require_admin
@@ -66,9 +67,16 @@ def score_event(event_id: int, admin: dict = Depends(require_admin)) -> ScoreRun
 
 
 @router.put("/events/{event_id}/results", status_code=204)
-def put_results(event_id: int, body: list[ActualIn], admin: dict = Depends(require_admin)) -> None:
+def put_results(event_id: int, body: list[ActualIn], from_proposal: bool = Query(False),
+                admin: dict = Depends(require_admin)) -> None:
     with get_conn() as conn:
-        league_admin.put_results(conn, admin, event_id, body)
+        league_admin.put_results(conn, admin, event_id, body, from_proposal=from_proposal)
+
+
+@router.get("/events/{event_id}/proposal", response_model=ResultProposalOut)
+def get_proposal(event_id: int) -> ResultProposalOut:
+    with get_conn() as conn:
+        return league_admin.get_proposal(conn, event_id)
 
 
 @router.post("/events/quick", response_model=IdOut)

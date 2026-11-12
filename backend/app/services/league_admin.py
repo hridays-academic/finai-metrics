@@ -23,9 +23,11 @@ from app.league_models import (
     EventPatch,
     MetricDefinitionOut,
     PeriodIn,
+    ProposalMetricOut,
     QuickEventIn,
+    ResultProposalOut,
 )
-from app.services import audit
+from app.services import audit, result_proposals
 from app.services.league_service import LeagueError
 
 
@@ -337,6 +339,9 @@ def admin_board(conn: psycopg.Connection) -> list[AdminBoardRow]:
             year_ago_label=prev,
             metrics=[MetricDefinitionOut(**m) for m in metrics], missing_last_year=missing_last_year,
             missing_results=missing_results, research_notes=r["research_notes"],
+            has_proposal=(r["lock_passed"] and r["status"] != "scored" and len(missing_results) == len(metrics)
+                          and result_proposals.find(r["ticker"], r["fiscal_year_label"], r["fiscal_quarter"],
+                                                    metrics) is not None),
         ))
     return out
 
@@ -344,8 +349,10 @@ def admin_board(conn: psycopg.Connection) -> list[AdminBoardRow]:
 def _event_for_entry(conn: psycopg.Connection, event_id: int) -> dict:
     row = conn.execute(
         """SELECT e.id, e.status, e.metric_definitions, e.lock_at <= now() AS lock_passed,
-                  p.id AS period_id, p.company_id, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date
-           FROM forecast_events e JOIN fiscal_periods p ON p.id = e.period_id WHERE e.id = %s""",
+                  p.id AS period_id, p.company_id, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date,
+                  c.ticker
+           FROM forecast_events e JOIN fiscal_periods p ON p.id = e.period_id
+           JOIN companies c ON c.id = p.company_id WHERE e.id = %s""",
         (event_id,),
     ).fetchone()
     if row is None:
@@ -381,11 +388,66 @@ def put_last_year(conn: psycopg.Connection, actor: dict, event_id: int, items: l
     return False
 
 
-def put_results(conn: psycopg.Connection, actor: dict, event_id: int, items: list[ActualIn]) -> None:
+def put_results(conn: psycopg.Connection, actor: dict, event_id: int, items: list[ActualIn],
+                from_proposal: bool = False) -> None:
     """Saves the reported numbers for the event's own quarter -- only after
-    the lock, so a result can never be visible while forecasts are open."""
+    the lock, so a result can never be visible while forecasts are open.
+
+    from_proposal: the admin approved a committed proposal. Same checks and
+    the same save; it only adds an audit entry comparing each saved value
+    with the proposed one, so an edit made before approving is on record."""
     event = _event_for_entry(conn, event_id)
     if not event["lock_passed"]:
         raise LeagueError(409, "results_before_lock", "Forecasts are still open. Enter results after the lock time.")
     _check_event_definitions(event, items)
+    proposal = _proposal_for(event) if from_proposal else None
+    if from_proposal and proposal is None:
+        raise LeagueError(409, "no_proposal", "There's no proposal for this company's results.")
     put_actuals(conn, actor, event["period_id"], items)
+    if proposal is not None:
+        proposed = {m.metric_key: m.value for m in proposal.event.metrics}
+        compared = [
+            {"metric_key": i.metric_key, "proposed": proposed.get(i.metric_key), "saved": i.value,
+             "edited": proposed.get(i.metric_key) is None or abs(proposed[i.metric_key] - i.value) > 1e-9}
+            for i in items
+        ]
+        audit.write(conn, actor["id"], "approve", "result_proposal", event_id, {
+            "file": proposal.file, "ticker": event["ticker"],
+            "edited": any(c["edited"] for c in compared), "metrics": compared,
+        })
+
+
+def _proposal_for(event: dict) -> Optional[result_proposals.Proposal]:
+    return result_proposals.find(event["ticker"], event["fiscal_year_label"], event["fiscal_quarter"],
+                                 event["metric_definitions"]["metrics"])
+
+
+def get_proposal(conn: psycopg.Connection, event_id: int) -> ResultProposalOut:
+    """The committed proposal for an event, with last year's value for each
+    metric so the reviewer can see the comparison."""
+    event = _event_for_entry(conn, event_id)
+    proposal = _proposal_for(event)
+    if proposal is None:
+        raise LeagueError(404, "no_proposal", "There's no proposal for this company's results.")
+    last_year = {
+        (r["metric_key"], r["definition_key"]): r["value"]
+        for r in conn.execute(
+            """SELECT a.metric_key, a.definition_key, a.value FROM actuals a JOIN fiscal_periods p ON p.id = a.period_id
+               WHERE p.company_id = %s AND p.fiscal_year_label = %s AND p.fiscal_quarter = %s""",
+            (event["company_id"], year_ago_label(event["fiscal_year_label"]), event["fiscal_quarter"]),
+        ).fetchall()
+    }
+    defs = {m["key"]: m for m in event["metric_definitions"]["metrics"]}
+    return ResultProposalOut(
+        event_id=event_id, file=proposal.file, prepared_on=proposal.prepared_on,
+        metrics=[
+            ProposalMetricOut(
+                metric_key=m.metric_key, definition_key=m.definition_key, label=defs[m.metric_key]["label"],
+                unit=defs[m.metric_key]["unit"], value=m.value,
+                last_year_value=last_year.get((m.metric_key, m.definition_key)),
+                source_url=m.source_url, page=m.page, working=m.working, flag=m.flag, note=m.note,
+            )
+            # In the event's own metric order.
+            for m in sorted(proposal.event.metrics, key=lambda m: list(defs).index(m.metric_key))
+        ],
+    )

@@ -378,3 +378,112 @@ def test_scoring_flow_results_page_rescore_and_refusals(conn, client, ready):
     runs = [r[0] for r in conn.execute(
         "SELECT action FROM audit_log WHERE entity = 'forecast_event' AND action IN ('score', 'rescore') ORDER BY id")]
     assert runs == ["score", "rescore"]
+
+
+# ---------- Reviewing and approving proposed results ----------
+
+def _proposal(values=(12.5, 17.0, 9.0)):
+    from app.services.result_proposals import Proposal, ProposedEvent, ProposedMetric
+
+    metrics = [
+        ProposedMetric(metric_key=k, definition_key=CEMENT_DEFS[k], value=v, source_url=SRC, page="PDF p7",
+                       working="worked", flag="Check this" if k == "sector_kpi" else None, note=None)
+        for k, v in zip(CEMENT_DEFS, values)
+    ]
+    return Proposal(file="FY27-Q2.json", prepared_on="2026-11-12",
+                    event=ProposedEvent(ticker="DEMOCEM", company="Demo Cement", metrics=metrics))
+
+
+@pytest.fixture
+def proposed(monkeypatch):
+    from app.services import result_proposals
+
+    monkeypatch.setattr(result_proposals, "all_proposals", lambda: {("DEMOCEM", "FY27", 2): _proposal()})
+
+
+def _approve_items(values):
+    return [{"metric_key": k, "definition_key": CEMENT_DEFS[k], "value": v, "source_url": SRC}
+            for k, v in zip(CEMENT_DEFS, values)]
+
+
+def _approvals(conn):
+    return [r[0] for r in conn.execute(
+        "SELECT details FROM audit_log WHERE action = 'approve' AND entity = 'result_proposal' ORDER BY id")]
+
+
+def test_review_offered_only_after_lock_and_before_any_result(conn, client, setup, proposed):
+    admin, event = setup["admin"], setup["event"]
+    assert _board_row(client, admin, event)["has_proposal"] is False  # still open
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    row = _board_row(client, admin, event)
+    assert (row["status"], row["has_proposal"]) == ("results_due", True)
+    # One result typed by hand: the event is no longer "nothing saved yet".
+    client.put(f"/api/admin/events/{event}/results", json=_items(["revenue_growth_yoy"]), headers=admin)
+    assert _board_row(client, admin, event)["has_proposal"] is False
+
+
+def test_proposal_endpoint_shows_last_year_and_needs_admin(conn, client, setup, proposed):
+    admin, event = setup["admin"], setup["event"]
+    client.put(f"/api/admin/events/{event}/last-year", json=_items(["revenue_growth_yoy", "operating_margin"]),
+               headers=admin)
+    body = client.get(f"/api/admin/events/{event}/proposal", headers=admin).json()
+    assert [m["metric_key"] for m in body["metrics"]] == list(CEMENT_DEFS)
+    assert [m["last_year_value"] for m in body["metrics"]] == [5.0, 5.0, None]
+    assert body["metrics"][2]["flag"] == "Check this" and body["metrics"][0]["label"]
+    assert client.get(f"/api/admin/events/{event}/proposal", headers=setup["user"]).status_code == 403
+
+
+def test_no_proposal_is_404_and_cannot_be_approved(conn, client, setup):
+    admin, event = setup["admin"], setup["event"]
+    res = client.get(f"/api/admin/events/{event}/proposal", headers=admin)
+    assert res.status_code == 404 and res.json()["detail"]["code"] == "no_proposal"
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    res = client.put(f"/api/admin/events/{event}/results?from_proposal=true", json=_approve_items((1, 2, 3)),
+                     headers=admin)
+    assert res.status_code == 409 and res.json()["detail"]["code"] == "no_proposal"
+    assert conn.execute("SELECT count(*) FROM actuals").fetchone()[0] == 0
+
+
+def test_approve_saves_through_the_normal_checks_and_never_scores(conn, client, setup, proposed):
+    admin, event = setup["admin"], setup["event"]
+    url = f"/api/admin/events/{event}/results?from_proposal=true"
+    res = client.put(url, json=_approve_items((12.5, 17.0, 9.0)), headers=admin)
+    assert res.status_code == 409 and res.json()["detail"]["code"] == "results_before_lock"
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    # An out-of-bounds or wrong-definition value is refused as for a hand-typed one; nothing is saved.
+    res = client.put(url, json=_approve_items((12.5, 17.0, 900.0)), headers=admin)
+    assert res.status_code == 422 and res.json()["detail"]["code"] == "out_of_bounds"
+    wrong = _approve_items((12.5, 17.0, 9.0))
+    wrong[2]["definition_key"] = "in.it.cc_revenue_growth_yoy.v1"
+    res = client.put(url, json=wrong, headers=admin)
+    assert res.status_code == 422 and res.json()["detail"]["code"] == "wrong_definition"
+    assert _approvals(conn) == []
+    assert conn.execute("SELECT count(*) FROM actuals").fetchone()[0] == 0
+
+
+def test_approve_unchanged_then_board_moves_to_score(conn, client, setup, proposed):
+    admin, event = setup["admin"], setup["event"]
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    res = client.put(f"/api/admin/events/{event}/results?from_proposal=true", json=_approve_items((12.5, 17.0, 9.0)),
+                     headers=admin)
+    assert res.status_code == 204
+    row = _board_row(client, admin, event)
+    assert (row["status"], row["has_proposal"]) == ("ready_to_score", False)
+    assert conn.execute("SELECT count(*) FROM scores").fetchone()[0] == 0
+    assert conn.execute("SELECT status FROM forecast_events WHERE id = %s", (event,)).fetchone()[0] != "scored"
+    [entry] = _approvals(conn)
+    assert entry["edited"] is False and entry["ticker"] == "DEMOCEM" and entry["file"] == "FY27-Q2.json"
+    assert [m["edited"] for m in entry["metrics"]] == [False, False, False]
+
+
+def test_an_edited_value_is_saved_and_logged_as_different(conn, client, setup, proposed):
+    admin, event = setup["admin"], setup["event"]
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    res = client.put(f"/api/admin/events/{event}/results?from_proposal=true", json=_approve_items((12.5, 16.8, 9.0)),
+                     headers=admin)
+    assert res.status_code == 204
+    saved = conn.execute("SELECT value FROM actuals WHERE metric_key = 'operating_margin'").fetchone()[0]
+    assert saved == 16.8
+    [entry] = _approvals(conn)
+    margin = next(m for m in entry["metrics"] if m["metric_key"] == "operating_margin")
+    assert entry["edited"] is True and (margin["proposed"], margin["saved"], margin["edited"]) == (17.0, 16.8, True)

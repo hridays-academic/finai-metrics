@@ -409,6 +409,30 @@ export interface AdminBoardRow {
   missing_last_year: string[];
   missing_results: string[];
   research_notes: string | null;
+  // Lock passed, nothing saved yet, and a committed proposal matches: "Review results".
+  has_proposal: boolean;
+}
+
+// A committed proposal for an event's results (backend ResultProposalOut).
+export interface ProposalMetric {
+  metric_key: string;
+  definition_key: string;
+  label: string;
+  unit: string;
+  value: number;
+  last_year_value: number | null;
+  source_url: string;
+  page: string;
+  working: string;
+  flag: string | null;
+  note: string | null;
+}
+
+export interface ResultProposal {
+  event_id: number;
+  file: string;
+  prepared_on: string;
+  metrics: ProposalMetric[];
 }
 
 export interface AdminUser {

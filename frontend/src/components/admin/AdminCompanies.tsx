@@ -13,6 +13,7 @@ import {
 import { formatDay } from "../../lib/leagueFormat";
 import type { AdminBoardRow, BoardStatus, LeagueConfig } from "../../lib/types";
 import { formatIst } from "../league/LockCountdown";
+import ReviewResultsPanel from "./ReviewResultsPanel";
 
 // Last day of fiscal quarter `q` of fiscal year FY`yy` for a company whose
 // year ends in month `fyeMonth` (India: 3 = March, so FY27 Q2 = 30 Sep 2026).
@@ -49,7 +50,7 @@ const STATUS_TONE: Record<BoardStatus, string> = {
   rescore_needed: "caution",
 };
 
-type Panel = { id: number; mode: "last_year" | "results" | "edit" } | null;
+type Panel = { id: number; mode: "last_year" | "results" | "edit" | "review" } | null;
 
 // The admin page's main view: one list of companies, each with a plain
 // status and one button for the next step (2026-10).
@@ -137,10 +138,12 @@ export default function AdminCompanies() {
                     {row.forecasts} forecast{row.forecasts === 1 ? "" : "s"}
                   </div>
                 </div>
-                <span className={`status-text ${STATUS_TONE[row.status]}`}>{STATUS_LABEL[row.status]}</span>
+                <span className={`status-text ${STATUS_TONE[row.status]}`}>
+                  {row.has_proposal ? "Results due: review proposal" : STATUS_LABEL[row.status]}
+                </span>
                 <NextStep row={row} onPanel={setPanel} onOpen={openNow} onScore={score} />
               </div>
-              {panel?.id === row.id && panel.mode !== "edit" && (
+              {panel?.id === row.id && (panel.mode === "last_year" || panel.mode === "results") && (
                 <NumbersPanel
                   row={row}
                   mode={panel.mode}
@@ -148,6 +151,9 @@ export default function AdminCompanies() {
                   onDone={done}
                   onCancel={() => setPanel(null)}
                 />
+              )}
+              {panel?.id === row.id && panel.mode === "review" && (
+                <ReviewResultsPanel row={row} onDone={done} onCancel={() => setPanel(null)} />
               )}
               {panel?.id === row.id && panel.mode === "edit" && (
                 <EditPanel row={row} onDone={done} onCancel={() => setPanel(null)} />
@@ -179,7 +185,10 @@ function NextStep({ row, onPanel, onOpen, onScore }: {
     case "open":
       return button("Edit", () => onPanel({ id: row.id, mode: "edit" }));
     case "results_due":
-      return button("Enter results", () => onPanel({ id: row.id, mode: "results" }));
+      // A committed proposal is checked and approved; without one, typed by hand.
+      return row.has_proposal
+        ? button("Review results", () => onPanel({ id: row.id, mode: "review" }))
+        : button("Enter results", () => onPanel({ id: row.id, mode: "results" }));
     case "ready_to_score":
       return button("Score", () => onScore(row));
     case "rescore_needed":

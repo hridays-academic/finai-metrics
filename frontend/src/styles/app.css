@@ -7512,3 +7512,103 @@ textarea.input,
 .lg .tile-grid.analysis-sections {
   grid-auto-rows: auto;
 }
+
+/* ---------- Admin: reviewing proposed results (2026-11-12) ---------- */
+.review-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.review-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-inner);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.lg .review-metric {
+  background: var(--lg-inset);
+  box-shadow: inset 0 0 0 1px var(--lg-edge);
+}
+.review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.review-label {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+/* "Needs attention": amber tint, warning icon, primary-colour text (same
+   treatment as "Locks soon", so it never relies on colour alone). */
+.review-flag {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  /* Not a pill: flags often wrap to several lines, and a pill radius turns
+     a wrapped block into an oval (seen at phone width). */
+  border-radius: var(--radius-sm);
+  background: var(--caution-bg);
+  box-shadow: inset 0 0 0 1px var(--caution);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+.review-flag-icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--caution);
+}
+.review-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+.review-input {
+  width: 9rem;
+  min-height: var(--control-height);
+}
+.review-last-year,
+.review-source,
+.review-working {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+.review-last-year strong {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+.review-edited {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--accent);
+}
+.review-working-label {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+@media (max-width: 640px) {
+  .review-metric {
+    padding: var(--space-3);
+  }
+  .review-input {
+    width: 100%;
+  }
+}

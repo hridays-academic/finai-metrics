@@ -372,6 +372,32 @@ class AdminBoardRow(BaseModel):
     missing_last_year: list[str]  # metric keys
     missing_results: list[str]
     research_notes: Optional[str]
+    # Lock passed, nothing saved yet, and a committed proposal matches this
+    # event (services/result_proposals.py): the board offers "Review results".
+    has_proposal: bool = False
+
+
+class ProposalMetricOut(BaseModel):
+    """One proposed result, with what the reviewer needs to check it."""
+
+    metric_key: str
+    definition_key: str
+    label: str
+    unit: str
+    value: float
+    last_year_value: Optional[float]  # year-ago actual under the same definition
+    source_url: str
+    page: str
+    working: str
+    flag: Optional[str]
+    note: Optional[str]
+
+
+class ResultProposalOut(BaseModel):
+    event_id: int
+    file: str
+    prepared_on: str
+    metrics: list[ProposalMetricOut]
 
 
 class AdminUserOut(BaseModel):

@@ -57,7 +57,7 @@ from app.services.company_profile import build_profile
 from app.services.analysis import build_analysis
 from app.services import gmail_service
 from app.services.providers import provider as shared_provider
-from app.services import auth_service, fundamentals_cache, price_lag, rate_limit
+from app.services import auth_service, fundamentals_cache, price_lag, rate_limit, result_proposals
 from app.services.auth_service import AuthError, TermsRequiredError
 from app.services import db as db_module
 from app.services.db import get_conn, init_db
@@ -80,6 +80,8 @@ app.add_middleware(
 )
 
 init_db()
+# Confirms after a deploy that backend/data shipped with the function.
+logger.info("Result proposals loaded: %d", len(result_proposals.all_proposals()))
 
 app.include_router(visit_routes.router)
 app.include_router(admin_routes.router)

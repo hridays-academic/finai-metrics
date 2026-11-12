@@ -8,6 +8,7 @@ import type {
   WorldEvent,
   WorldEventIn,
   AdminBoardRow,
+  ResultProposal,
   AdminUser,
   AuditEntry,
   EventDetail,
@@ -355,8 +356,12 @@ export const adminPutLastYear = (eventId: number, items: ActualInput[]) =>
   leagueRequest<{ opened: boolean }>("PUT", `/admin/events/${eventId}/last-year`, items);
 export const adminScoreEvent = (eventId: number) =>
   leagueRequest<{ scored: number }>("POST", `/admin/events/${eventId}/score`);
-export const adminPutResults = (eventId: number, items: ActualInput[]) =>
-  leagueRequest<void>("PUT", `/admin/events/${eventId}/results`, items);
+// fromProposal: approving a committed proposal. Same endpoint and checks; the
+// backend also logs each saved value against the proposed one.
+export const adminPutResults = (eventId: number, items: ActualInput[], fromProposal = false) =>
+  leagueRequest<void>("PUT", `/admin/events/${eventId}/results${fromProposal ? "?from_proposal=true" : ""}`, items);
+export const adminGetProposal = (eventId: number) =>
+  leagueRequest<ResultProposal>("GET", `/admin/events/${eventId}/proposal`);
 export const adminFindUsers = (q: string) => leagueRequest<AdminUser[]>("GET", `/admin/users?q=${encodeURIComponent(q)}`);
 export interface ConsentDetails {
   parent_name: string;

@@ -2472,10 +2472,16 @@ Several older sections above describe tests as though they were permanent
 artifacts ("unit-tested", "verified with a mocked-clock test"). Those were
 throwaway scripts, run once and discarded -- don't go looking for them.
 
-**Frontend: no test suite.** `npm run build` (strict `tsc -b` plus
-`noUnusedLocals`/`noUnusedParameters`) is the check. Untested pure functions
-worth covering if a JS test runner is ever added: `lib/portfolioHistory.ts`
-(already had one off-by-one-day bug) and `lib/marketHolidays.ts` (IST dates).
+**Frontend: Vitest (since 2026-11-12), plus the build.** `npm test` runs
+Vitest; test files sit next to their component (`*.test.tsx`) and opt into
+jsdom with a `// @vitest-environment jsdom` first line (no vitest config).
+Testing Library renders components with `lib/api` mocked via `vi.mock`.
+Dev dependencies only (vitest, jsdom, @testing-library/react + dom); nothing
+ships in the bundle. Only the results review panel is covered so far.
+`npm run build` (strict `tsc -b` plus `noUnusedLocals`/`noUnusedParameters`,
+which also type-checks the test files) is still the main check. Untested
+pure functions worth covering next: `lib/portfolioHistory.ts` (already had
+one off-by-one-day bug) and `lib/marketHolidays.ts` (IST dates).
 
 ## First-party visit counter (2026-09, replaces Google Analytics)
 
@@ -2662,6 +2668,52 @@ the maths in `scoring.py` is unchanged.
   frontend's `toFixed` label (7.25 -> 7.3 in both).
 - Crowd median = median of all forecasters' midpoints, shown only at
   `min_forecasters_for_crowd` (5)+.
+
+**Reviewing and approving results (2026-11-12).** Hriday only checks and
+approves from now on; whoever researches results never writes them to the
+database.
+- **Proposals are committed JSON**, `backend/data/proposed_results/<FY>-Q<n>.json`
+  (first file: `FY27-Q2.json`, the 7 pilot companies), shipped with a deploy
+  (`vercel.json` `includeFiles: backend/data/**`; the main app logs "Result
+  proposals loaded: N" at cold start, so check that line in the runtime log
+  after a deploy). One entry per company: ticker, then per metric the
+  value, definition key, source URL, PDF page, working, an optional `flag`
+  (shown as a warning chip) and an optional one-line `note`. The research
+  behind each file is a vault doc (`approval_doc`).
+- **Matched by (ticker, fiscal year label, quarter)**, not event id
+  (production ids aren't visible when preparing the file). Offered only if
+  the proposal's (metric, definition key) set equals the event's exactly; a
+  malformed file is skipped and logged, never fatal
+  (`services/result_proposals.py`).
+- **Board:** `AdminBoardRow.has_proposal` is true when the lock has passed,
+  the event isn't scored, no result is saved yet, and a matching proposal
+  exists. Then the status reads "Results due: review proposal" and the
+  button is "Review results" (`admin/ReviewResultsPanel.tsx`): each metric's
+  proposed value in an editable field, last year's value, source link and
+  page, working, note and flag. Without a proposal the manual "Enter
+  results" path is unchanged.
+- **Approve and save** calls the same `PUT /api/admin/events/{id}/results`
+  with `?from_proposal=true`: identical checks and save (lock, definitions,
+  bounds, source link); it then writes one audit entry (action `approve`,
+  entity `result_proposal`) with each metric's proposed and saved value,
+  `edited` per metric and overall. Who approved and when are the audit
+  row's actor and timestamp, so no schema change was needed. Approving
+  never scores; the normal "Score" button follows. `GET
+  /api/admin/events/{id}/proposal` serves the panel (404 `no_proposal`).
+- **League rule (Hriday, 2026-11-12): if a company restates last year or
+  sells a business, use the company's own like-for-like figure and note
+  it** (the proposal's `note`). First uses: Marico revenue growth against
+  last year as restated (accounting change: customer promotions netted off
+  revenue, Q2 FY26 3,482 -> 3,450 cr); Jyothy volume growth excluding the
+  Pril and Fa brands it exited on 31 May 2026. Stored year-ago numbers (the
+  lazy guess) are never changed for this. FMCG volume growth is taken as
+  the company states it (Dabur's "underlying volume growth", basis note kept).
+- **Sources when NSE/BSE refuse an honest user agent** (they did on
+  2026-11-12, from Hriday's machine and from WebFetch): each company's own
+  investor site has the same filings. Scanned PDFs (Maruti, Marico, Dabur)
+  must be read from the rendered page, not the OCR text.
+- **Backlog:** show the like-for-like note to students on the results page
+  (today it is only in the admin review panel and the audit log).
 
 **Schema changes need a version bump.** `init_db()` skips all schema
 statements when the database's `schema_version` row is already at
