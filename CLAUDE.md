@@ -391,6 +391,12 @@ frontend/src/
     Sidebar.tsx              Primary nav (2026-10): Home (league stock picker),
                               Research (company search), Paper Trading. Left icon
                               rail on desktop, labelled bottom bar at <=640px.
+                              An Admin button (opens #/admin) renders only when
+                              the signed-in user has is_admin (2026-11-12); for
+                              anyone else it isn't in the DOM at all. Server
+                              checks (require_admin) are unchanged; AdminPage
+                              mounts its tabs, the only callers of /api/admin/*,
+                              for admins only (Sidebar.test.tsx checks both).
                               ReturnCalculator/StockMarketSimulator only appear when
                               lib/features.ts's SHOW_EXTRA_TOOLS is on
                               (VITE_SHOW_EXTRA_TOOLS=true at build time) -- hidden,

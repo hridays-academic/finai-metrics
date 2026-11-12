@@ -18,7 +18,7 @@ import LeagueHome from "./components/league/LeagueHome";
 import ForecastPage from "./components/league/ForecastPage";
 import ResultsPage from "./components/league/ResultsPage";
 import ResearchLanding from "./components/news/ResearchLanding";
-import { clearRoute, leaveRoute, replaceRoute, useHashRoute } from "./lib/router";
+import { clearRoute, leaveRoute, navigate, replaceRoute, useHashRoute } from "./lib/router";
 import { clearForecastDrafts } from "./lib/forecastDrafts";
 import { useTheme } from "./hooks/useTheme";
 import { useCursorLight } from "./hooks/useCursorLight";
@@ -170,6 +170,14 @@ export default function App() {
     else clearRoute();
   }
 
+  // Only reachable for admins (Sidebar renders the button for is_admin only).
+  // A history entry, so Back returns to the page you came from.
+  function handleOpenAdmin() {
+    setResearchFrom(null);
+    if (route?.name === "admin") scrollPageToTop();
+    else navigate("#/admin");
+  }
+
   // The logo behaves like the Home tab. Research keeps its loaded company.
   function handleGoHome() {
     handleChangeView("home");
@@ -180,7 +188,13 @@ export default function App() {
     <div className="app-shell lg">
       <Wallpaper />
 
-      <Sidebar view={navView} onChange={handleChangeView} />
+      <Sidebar
+        view={navView}
+        onChange={handleChangeView}
+        user={user}
+        adminActive={route?.name === "admin"}
+        onOpenAdmin={handleOpenAdmin}
+      />
 
       <div className="app-shell-content">
         <Header

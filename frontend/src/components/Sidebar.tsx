@@ -1,10 +1,17 @@
 import { SHOW_EXTRA_TOOLS } from "../lib/features";
+import type { UserPublic } from "../lib/types";
 
 export type View = "home" | "search" | "calculator" | "simulator" | "trading";
 
 interface SidebarProps {
   view: View | null;
   onChange: (view: View) => void;
+  // The Admin button renders only for a signed-in admin; for everyone else
+  // it isn't in the DOM at all. Access is still enforced by the server
+  // (require_admin); this only decides what to show.
+  user?: UserPublic | null;
+  adminActive?: boolean;
+  onOpenAdmin?: () => void;
 }
 
 // The app's primary nav: a slim icon rail on the left, and a labelled bottom
@@ -12,7 +19,7 @@ interface SidebarProps {
 // Research (company search); the Return Calculator, Market Simulator and
 // Paper Trading only appear when SHOW_EXTRA_TOOLS is on. Icons match
 // Header.tsx's gear icon: 1.6-1.8 stroke width, currentColor, no fill.
-export default function Sidebar({ view, onChange }: SidebarProps) {
+export default function Sidebar({ view, onChange, user, adminActive = false, onOpenAdmin }: SidebarProps) {
   return (
     <nav className="sidebar glass" aria-label="Primary">
       <button
@@ -112,6 +119,27 @@ export default function Sidebar({ view, onChange }: SidebarProps) {
       </button>
 
         </>
+      )}
+
+      {user?.is_admin && onOpenAdmin && (
+        <button
+          type="button"
+          className={`sidebar-icon-button ${adminActive ? "active" : ""}`}
+          aria-label="Admin"
+          aria-current={adminActive}
+          onClick={onOpenAdmin}
+        >
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M12 3.5l7 2.6v5.4c0 4.3-2.9 7.8-7 9-4.1-1.2-7-4.7-7-9V6.1z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path d="M9 12l2.2 2.2L15.2 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="sidebar-label">Admin</span>
+        </button>
       )}
     </nav>
   );
