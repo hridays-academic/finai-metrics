@@ -38,7 +38,7 @@ function ShowMoreToggle({ expanded, onToggle }: { expanded: boolean; onToggle: (
 }
 
 // This company's row for the peers table, from the ratios already loaded.
-function selfSummary(data: CompanyFinancialsResponse): PeerSummary {
+export function selfSummary(data: CompanyFinancialsResponse): PeerSummary {
   const m = Object.fromEntries(data.metric_groups.flatMap((g) => g.metrics).map((x) => [x.key, x.value]));
   const quarters = data.history?.quarterly ?? [];
   const latest = quarters.find((q) => q.revenue !== null)?.period_end_date ?? null;

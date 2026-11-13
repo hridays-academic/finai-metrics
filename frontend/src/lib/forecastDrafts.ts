@@ -6,8 +6,12 @@ export type Range = { low: string; high: string };
 
 export interface ForecastDraft {
   ranges: Record<string, Range>;
-  tags: string[];
-  note: string;
+  // Left out when the draft came from the worksheet, so the saved tags and
+  // note stay as they are.
+  tags?: string[];
+  note?: string;
+  // Set by "Use as a starting point" in the driver worksheet.
+  fromWorksheet?: boolean;
 }
 
 const drafts = new Map<number, ForecastDraft>();
@@ -26,4 +30,16 @@ export function clearForecastDraft(eventId: number): void {
 
 export function clearForecastDrafts(): void {
   drafts.clear();
+  formJumps.clear();
+}
+
+// "Use as a starting point" sends the student to the company page's form.
+const formJumps = new Set<number>();
+
+export function requestFormJump(eventId: number): void {
+  formJumps.add(eventId);
+}
+
+export function takeFormJump(eventId: number): boolean {
+  return formJumps.delete(eventId);
 }

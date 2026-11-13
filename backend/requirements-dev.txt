@@ -3,5 +3,7 @@
 -r requirements.txt
 
 pytest==8.4.2
+# One hung Neon connection must fail its test, not stall the run (pytest.ini).
+pytest-timeout==2.4.0
 # FastAPI's TestClient is built on httpx.
 httpx==0.28.1

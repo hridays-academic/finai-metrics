@@ -10,7 +10,33 @@ function crore(v: number): string {
 }
 
 // What the company does, its segments as one bar, and official documents.
-export default function CompanyProfilePanel({ profile, name }: { profile: CompanyProfile; name: string }) {
+export function DocumentList({ documents }: { documents: CompanyProfile["documents"] }) {
+  return (
+    <ul className="group doc-list">
+      {documents.map((d) => (
+        <li key={d.url}>
+          <a href={d.url} target="_blank" rel="noopener noreferrer">
+            {d.label}
+          </a>
+          <span className="doc-meta">
+            {d.source}
+            {d.date ? ` · ${formatDay(d.date, true)}` : ""}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function CompanyProfilePanel({
+  profile,
+  name,
+  showDocuments = true,
+}: {
+  profile: CompanyProfile;
+  name: string;
+  showDocuments?: boolean;
+}) {
   const [more, setMore] = useState(false);
   const long = (profile.description?.length ?? 0) > 420;
   const text = profile.description && long && !more ? `${profile.description.slice(0, 400).trimEnd()}...` : profile.description;
@@ -104,20 +130,12 @@ export default function CompanyProfilePanel({ profile, name }: { profile: Compan
         </>
       )}
 
-      <h3 className="subsection-title">Official documents</h3>
-      <ul className="group doc-list">
-        {profile.documents.map((d) => (
-          <li key={d.url}>
-            <a href={d.url} target="_blank" rel="noopener noreferrer">
-              {d.label}
-            </a>
-            <span className="doc-meta">
-              {d.source}
-              {d.date ? ` · ${formatDay(d.date, true)}` : ""}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {showDocuments && (
+        <>
+          <h3 className="subsection-title">Official documents</h3>
+          <DocumentList documents={profile.documents} />
+        </>
+      )}
     </section>
   );
 }

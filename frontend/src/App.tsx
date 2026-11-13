@@ -17,6 +17,8 @@ import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
 import ForecastPage from "./components/league/ForecastPage";
 import ResultsPage from "./components/league/ResultsPage";
+import WorkspacePage from "./components/workspace/WorkspacePage";
+import { clearWorkspaceMemory } from "./lib/workspaceMemory";
 import ResearchLanding from "./components/news/ResearchLanding";
 import { clearRoute, leaveRoute, navigate, replaceRoute, useHashRoute } from "./lib/router";
 import { clearForecastDrafts } from "./lib/forecastDrafts";
@@ -29,8 +31,8 @@ import { fetchCompany, fetchMe, recordVisit, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
 import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
 
-// A company or results page opened from Home.
-type HomePage = { name: "event" | "results"; id: number } | null;
+// A company, results or research workspace page opened from Home.
+type HomePage = { name: "event" | "results" | "workspace"; id: number } | null;
 
 function samePage(a: HomePage, b: HomePage): boolean {
   return a?.name === b?.name && a?.id === b?.id;
@@ -77,7 +79,8 @@ export default function App() {
   // from Home, kept mounted (hidden) even under the list, so Back/Forward and
   // tab switches return to it with its scroll and typed inputs intact. Both
   // update during render, not in an effect, so they never lag the route.
-  const homePage: HomePage = route?.name === "event" || route?.name === "results" ? route : null;
+  const homePage: HomePage =
+    route?.name === "event" || route?.name === "results" || route?.name === "workspace" ? route : null;
   const [homeAt, setHomeAt] = useState<HomePage>(homePage);
   if (navView === "home" && !samePage(homeAt, homePage)) setHomeAt(homePage);
   const [keptPage, setKeptPage] = useState<HomePage>(homePage);
@@ -100,7 +103,10 @@ export default function App() {
   const previousUserId = useRef<number | null>(null);
   useEffect(() => {
     const id = user?.id ?? null;
-    if (previousUserId.current !== null && previousUserId.current !== id) clearForecastDrafts();
+    if (previousUserId.current !== null && previousUserId.current !== id) {
+      clearForecastDrafts();
+      clearWorkspaceMemory();
+    }
     previousUserId.current = id;
   }, [user?.id]);
 
@@ -278,6 +284,19 @@ export default function App() {
           {keptPage?.name === "results" && (
             <div className={`view-wrapper ${route?.name === "results" ? "" : "view-hidden"}`}>
               <ResultsPage key={keptPage.id} eventId={keptPage.id} user={user} onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          )}
+          {keptPage?.name === "workspace" && (
+            <div className={`view-wrapper ${route?.name === "workspace" ? "" : "view-hidden"}`}>
+              <WorkspacePage
+                key={keptPage.id}
+                eventId={keptPage.id}
+                user={user}
+                onUserChange={setUser}
+                onOpenAuth={() => setAuthOpen(true)}
+                theme={theme}
+                visible={route?.name === "workspace"}
+              />
             </div>
           )}
           {keptPage?.name === "event" && (

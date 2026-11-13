@@ -21,6 +21,8 @@ PAGES = frozenset({
     "league", "event", "results", "reveal", "profile", "leagues", "practice",
     # legal pages (2026-11)
     "privacy", "terms",
+    # research workspace (2026-11-13)
+    "workspace",
 })
 
 

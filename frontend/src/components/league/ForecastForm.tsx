@@ -34,6 +34,7 @@ export default function ForecastForm(props: ForecastFormProps) {
   const [ranges, setRanges] = useState(() => initialRanges(event, forecast, draft?.ranges));
   const [tags, setTags] = useState<string[]>(draft?.tags ?? forecast?.reason_tags ?? []);
   const [note, setNote] = useState(draft?.note ?? forecast?.note ?? "");
+  const fromWorksheet = draft?.fromWorksheet === true;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(forecast?.updated_at ?? null);
@@ -103,6 +104,9 @@ export default function ForecastForm(props: ForecastFormProps) {
         Give a range you're 80% sure the result lands in. Too narrow, and a miss costs a lot. Too wide, and the width
         costs points.
       </p>
+      {fromWorksheet && unsaved && (
+        <p className="callout callout-tip worksheet-start-note">Started from your worksheet. Change anything before you save.</p>
+      )}
 
       {event.metrics.map((m) => {
         const r = ranges[m.key];

@@ -1,5 +1,8 @@
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, fetchLeagueConfig, fetchLeagueEvent, fetchMyForecast, fetchOutcome, fetchResearchHistory } from "../../lib/api";
+import {
+  ApiError, fetchLeagueConfig, fetchLeagueEvent, fetchMyForecast, fetchOutcome, fetchResearchHistory, fetchWorkspace,
+} from "../../lib/api";
+import { takeFormJump } from "../../lib/forecastDrafts";
 import type { Theme } from "../../hooks/useTheme";
 import type { EventDetail, EventOutcome, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
 import { formatCrore, formatDay } from "../../lib/leagueFormat";
@@ -94,6 +97,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   const [history, setHistory] = useState<ResearchHistory | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<EventOutcome | null>(null);
+  const [stepsDone, setStepsDone] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -115,6 +119,26 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Progress for the workspace button; refreshed when the page is shown again.
+  useEffect(() => {
+    if (!user || !visible) return;
+    let cancelled = false;
+    fetchWorkspace(eventId)
+      .then((w) => !cancelled && setStepsDone(w.state ? w.state.done.length : null))
+      .catch(() => !cancelled && setStepsDone(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, user?.id, visible]);
+
+  // Arriving from the worksheet's "Use as a starting point": go to the form.
+  const ready = event !== null && config !== null;
+  useEffect(() => {
+    if (ready && visible && takeFormJump(eventId)) {
+      requestAnimationFrame(() => document.getElementById("forecast")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  }, [ready, visible, eventId]);
 
   // Refresh on coming back (the lock may have passed meanwhile). The form
   // only remounts if the event's status changed, so typed inputs stay.
@@ -190,11 +214,16 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
           {new Date(`${event.period_end_date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
         </p>
         <KeyStats event={event} history={history} historyError={historyError} outcome={outcome} />
-        {event.status === "open" && (
-          <a className="btn btn-primary page-header-action" href="#forecast" onClick={jumpToForm}>
-            {forecast ? "Edit your forecast" : "Make your forecast"}
+        <div className="page-header-actions">
+          {event.status === "open" && (
+            <a className="btn btn-primary page-header-action" href="#forecast" onClick={jumpToForm}>
+              {forecast ? "Edit your forecast" : "Make your forecast"}
+            </a>
+          )}
+          <a className="btn btn-secondary page-header-action" href={`#/workspace/${event.id}`}>
+            {stepsDone ? `Continue research (${stepsDone} of 10 steps done)` : "Open research workspace"}
           </a>
-        )}
+        </div>
       </header>
 
       {explainer && <SectorExplainer explainer={explainer} />}

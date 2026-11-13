@@ -5,7 +5,7 @@ import SiteFooter from "./SiteFooter";
 // either page changes materially, bump auth_service.TERMS_VERSION so every
 // account is asked to agree again. Never add a claim of legal compliance.
 
-export const LEGAL_UPDATED = "11 November 2026";
+export const LEGAL_UPDATED = "13 November 2026";
 
 type Block = string | { list: string[] };
 interface Section {
@@ -28,6 +28,7 @@ const PRIVACY: Section[] = [
           "Account: your email address and name. If you sign up with a password, we store only a scrambled (hashed) version of it, never the password itself. If you sign in with Google, we store your Google account ID.",
           "League profile: your handle (a public nickname), your age band (under 18, or 18 and over), your school if you choose to give it, and, for under-18 players, a record of a parent or guardian's consent: their name, how they gave it and the date.",
           "Forecasts: the ranges you submit, any reason tags or short note, when you submitted them, and the scores they earn.",
+          "Research workspace: if you're signed in, the notes you write, the steps you tick and the numbers you type into the driver worksheet, for each company. They're linked to your account so you can see them on any device.",
           "Sign-in sessions: a random code that keeps you signed in for up to 30 days.",
           "Activity: when you sign up or sign in, and which companies you look up on the Research page while signed in. You can see this list in your account panel.",
           "Password resets: a one-time link that works for 30 minutes.",
@@ -72,6 +73,7 @@ const PRIVACY: Section[] = [
       {
         list: [
           "Account and profile: until you delete your account.",
+          "Workspace notes, ticks and worksheet numbers are kept until you clear that company's workspace or delete your account. Deleting your account deletes them.",
           "Activity: 12 months, then deleted automatically.",
           "Sign-in sessions: 30 days, or until you sign out.",
           "Password-reset links: 30 minutes.",
@@ -94,6 +96,7 @@ const PRIVACY: Section[] = [
         list: [
           "Other players: your handle and scores may appear on results and leaderboards. Group (\"crowd\") figures combine many people's forecasts and only appear once at least 5 people have forecast. Other players never see your email, name, age band or school.",
           "The people who run Stackly: they can see account details to run the league, record consent and deal with abuse.",
+          "Your workspace is private. Other students can't see it, and it isn't shown on the admin pages.",
         ],
       },
     ],

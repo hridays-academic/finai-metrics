@@ -7,6 +7,7 @@ export type Route =
   | { name: "league" }
   | { name: "event"; id: number }
   | { name: "results"; id: number }
+  | { name: "workspace"; id: number }
   | { name: "admin" }
   | { name: "privacy" }
   | { name: "terms" }
@@ -22,6 +23,8 @@ export function parseHash(hash: string): Route {
   if (event) return { name: "event", id: Number(event[1]) };
   const results = /^\/results\/(\d+)$/.exec(path);
   if (results) return { name: "results", id: Number(results[1]) };
+  const workspace = /^\/workspace\/(\d+)$/.exec(path);
+  if (workspace) return { name: "workspace", id: Number(workspace[1]) };
   return null;
 }
 

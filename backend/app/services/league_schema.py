@@ -349,4 +349,46 @@ LEAGUE_SCHEMA_STATEMENTS = [
         BEFORE UPDATE ON forecast_events
         FOR EACH ROW EXECUTE FUNCTION league_freeze_passed_lock()
     """,
+    # ---------- Research workspace (schema v14) ----------
+    # One row per student per event: notes per step, ticked steps and the
+    # driver worksheet. Private to the student; deleted with the account
+    # (auth_service.delete_account) or by "Clear this workspace". Notes and
+    # ticks stay editable after the lock; the worksheet doesn't.
+    """
+    CREATE TABLE IF NOT EXISTS research_workspaces (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        event_id INTEGER NOT NULL REFERENCES forecast_events(id),
+        notes JSONB NOT NULL DEFAULT '{}'::jsonb,
+        done TEXT[] NOT NULL DEFAULT '{}',
+        worksheet JSONB,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, event_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_research_workspaces_event ON research_workspaces(event_id)",
+    # Same clock as the forecast lock: the worksheet can't be written once
+    # the event's lock_at has passed, whatever the API code does.
+    """
+    CREATE OR REPLACE FUNCTION workspace_reject_late_worksheet() RETURNS trigger AS $$
+    DECLARE
+        v_locked BOOLEAN;
+    BEGIN
+        IF (TG_OP = 'INSERT' AND NEW.worksheet IS NULL)
+           OR (TG_OP = 'UPDATE' AND NEW.worksheet IS NOT DISTINCT FROM OLD.worksheet) THEN
+            RETURN NEW;
+        END IF;
+        SELECT (e.status IN ('locked', 'scored') OR e.lock_at <= now()) INTO v_locked
+            FROM forecast_events e WHERE e.id = NEW.event_id;
+        IF v_locked THEN
+            RAISE EXCEPTION 'worksheet_locked' USING ERRCODE = 'check_violation';
+        END IF;
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql
+    """,
+    """
+    CREATE OR REPLACE TRIGGER trg_research_workspaces_worksheet_lock
+        BEFORE INSERT OR UPDATE ON research_workspaces
+        FOR EACH ROW EXECUTE FUNCTION workspace_reject_late_worksheet()
+    """,
 ]

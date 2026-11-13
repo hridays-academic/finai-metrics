@@ -61,7 +61,10 @@ from app.services import auth_service, fundamentals_cache, price_lag, rate_limit
 from app.services.auth_service import AuthError, TermsRequiredError
 from app.services import db as db_module
 from app.services.db import get_conn, init_db
-from app.routes import admin as admin_routes, cron as cron_routes, league as league_routes, news as news_routes, visits as visit_routes
+from app.routes import (
+    admin as admin_routes, cron as cron_routes, league as league_routes, news as news_routes, visits as visit_routes,
+    workspace as workspace_routes,
+)
 from app.services.league_service import LeagueError
 from app.routes.deps import optional_user as _current_user, require_user
 
@@ -88,6 +91,7 @@ app.include_router(admin_routes.router)
 app.include_router(league_routes.router)
 app.include_router(news_routes.router)
 app.include_router(cron_routes.router)
+app.include_router(workspace_routes.router)
 
 
 @app.exception_handler(LeagueError)

@@ -30,6 +30,9 @@ import type {
   TradingRange,
   TradingSymbolInfo,
   UserPublic,
+  Workspace,
+  WorkspaceState,
+  WorksheetData,
 } from "./types";
 import { getAuthToken } from "./auth";
 
@@ -288,6 +291,7 @@ export type VisitPage =
   | "reset_password"
   | "admin"
   | "league"
+  | "workspace"
   | "event"
   | "results"
   | "privacy"
@@ -348,6 +352,13 @@ export const fetchRecentResults = () => leagueRequest<RecentResult[]>("GET", "/l
 export const fetchMySeason = () => leagueRequest<Season>("GET", "/league/me/season");
 export const fetchResearchHistory = (companyId: number) =>
   leagueRequest<ResearchHistory>("GET", `/league/companies/${companyId}/history`);
+// Research workspace: steps for anyone, saved notes/ticks/worksheet for the student.
+export const fetchWorkspace = (eventId: number) => leagueRequest<Workspace>("GET", `/workspace/${eventId}`);
+export const saveWorkspace = (
+  eventId: number,
+  body: { notes?: Record<string, string>; done?: string[]; worksheet?: WorksheetData | null },
+) => leagueRequest<WorkspaceState>("PUT", `/workspace/${eventId}`, body);
+export const clearWorkspace = (eventId: number) => leagueRequest<void>("DELETE", `/workspace/${eventId}`);
 export const updateLeagueProfile = (body: { handle: string; age_band: string; school_name: string | null }) =>
   leagueRequest<UserPublic>("PATCH", "/league/me", body);
 

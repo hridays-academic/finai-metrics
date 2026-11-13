@@ -1117,6 +1117,55 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
   on phones) with heights matched per row. A video alone in a wide row puts
   its poster beside the text (container query).
 
+## Research workspace and driver worksheet (2026-11-13, phase A)
+
+Plan and wording approved by Hriday 2026-11-13 (vault: `Areas/Research workspace
+and AI tutor (plan, for approval)`, `Areas/Research workspace wording (for
+approval)`). Phase B (the AI research tutor) is NOT approved yet: he decides
+after a hosted side by side (Cerebras/Groq keys in `backend/.env`; never run
+models on his Mac). Under-18s with consent pending will get no tutor.
+
+- **Page** `#/workspace/<event>` (`components/workspace/WorkspacePage.tsx`,
+  kept mounted like the company page; `keptPage` in `App.tsx`), opened from the
+  company page ("Open research workspace" / "Continue research (n of 10 steps
+  done)"). Ten steps, each: title + why, the data Stackly already has (reused
+  panels in `StepData.tsx`), guiding questions, notes, "Mark as done".
+  Desktop: step list on the left; 900px and below: all ten as numbers in a grid.
+- **Wording** lives in `app/workspace_config.py` (steps, per-sector items) and
+  `app/glossary.py` (14 new terms + the league's own metric/KPI definitions),
+  copied word for word; change only with approval. Lines reused from earlier
+  approvals are listed and checked against their sources in `test_workspace.py`.
+- **Table** `research_workspaces` (schema v14): notes per step (jsonb, merged per
+  step on save), done steps, worksheet (jsonb). `GET/PUT/DELETE /api/workspace/{event}`
+  (`routes/workspace.py`, `services/workspace.py`). Private: no admin view.
+  Deleted by "Clear this workspace" and by `delete_account`.
+- **Who can save**: the same as forecasting (`forecast_eligibility`: terms,
+  handle + age group, under-18 needs consent granted). Anyone can read every
+  step and use the worksheet on screen; otherwise nothing is stored (worksheet
+  kept in memory only, `lib/workspaceMemory.ts`, cleared on sign-out). The
+  consent message is "Your notes will be saved once your parent's consent is
+  recorded." Enforced on the server (403).
+- **Lock**: notes and ticks stay editable after the lock; the worksheet is
+  hidden and refused (409 `worksheet_locked` in the API, and the trigger
+  `workspace_reject_late_worksheet` on the database clock).
+- **Worksheet** (`lib/worksheet.ts`, tested): every input is the student's;
+  revenue growth = (1 + volume) x (1 + price) - 1 (IT: constant currency x
+  currency effect); margin = 1 - (1 - start) x (1 + cost) / (1 + price) + other
+  (IT: start + points adjustments); KPI = the student's volume (IT: CC growth);
+  autos units helper from three monthly releases. **Starting margin options are
+  league figures only**: last year's same quarter, last quarter only when the
+  league has that quarter under the same definition, or the student's own.
+  Yahoo's margin is never offered (different definition). "Use as a starting
+  point" puts result ± "how unsure" into the forecast form's unsaved draft
+  (`lib/forecastDrafts.ts`, `fromWorksheet`) and jumps to the form, which says
+  "Started from your worksheet. Change anything before you save." The Python
+  mirror of the formulas in the plan is deferred to phase B (only the tutor
+  would need it).
+- Autos "sales release" links per company are waiting for approval (vault:
+  `Areas/Autos sales-release links (for approval)`); not wired in.
+- Privacy Policy gained the workspace lines (LEGAL_UPDATED 13 Nov 2026,
+  TERMS_VERSION 2026-11-13, so signed-in users agree once more).
+
 ## Market Simulator
 
 (2026-08) The app's third top-level page (`StockMarketSimulator.tsx`, via
@@ -2473,6 +2522,20 @@ never installs that file), then run `python -m pytest` from `backend/`.
   the `VERCEL=1` system env var, which this project exposes).
 - From India each round trip to Neon (US East) takes ~0.3s, so the database
   tests take a few minutes locally. That's latency, not a hang.
+- **Per-test limit (2026-11-13):** `pytest-timeout` (dev only), 600 s per test,
+  signal method, so a hung Neon connection fails one test instead of stalling the
+  run for hours. Test connections also get `connect_timeout` and TCP keepalives
+  (conftest adds them to TEST_DATABASE_URL; the "test URL differs from
+  DATABASE_URL" guard still compares the URL as configured).
+- **Faster database tests (2026-11-13):** a new TLS connection to Neon costs
+  ~2.3 s from India, and the app opens one per `get_conn()`. conftest now
+  reuses `get_conn()` connections (each use still commits or rolls back its own
+  transaction; nested calls get separate connections; the app has no
+  connection-level state) and each test's label check, wipe and `conn` share one
+  connection. The 7 workspace DB tests went from 8.4 to under 3.6 minutes.
+- **Local DNS:** if the Neon test host won't resolve, pin its address in the URL
+  for that run (libpq `hostaddr=`, from `dig @1.1.1.1 <host>`); `PGHOSTADDR`
+  alone wasn't enough (psycopg still looked the name up and tests hung).
 
 Several older sections above describe tests as though they were permanent
 artifacts ("unit-tested", "verified with a mocked-clock test"). Those were

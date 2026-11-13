@@ -60,11 +60,16 @@ function crorePlain(value: number): string {
   return `₹${(value / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 })} cr`;
 }
 
-// The company page keeps only what a forecaster needs; the full ratio
-// analysis lives on the Research page, one click away.
-export default function ResearchPanel({ event, theme, history, historyError, onOpenInResearch }: ResearchPanelProps) {
-  const symbol = event.company.provider_symbol;
-
+// The eight quarters before the event: Yahoo figures and league figures side by side.
+export function QuartersTable({
+  event,
+  history,
+  historyError,
+}: {
+  event: EventDetail;
+  history: ResearchHistory | null;
+  historyError: string | null;
+}) {
   const quarters = previousQuarterEnds(event.period_end_date, 8);
   const byEnd = new Map(history?.provider_rows.map((r) => [r.period_end_date, r]));
   const actual = (end: string, key: string) =>
@@ -74,25 +79,7 @@ export default function ResearchPanel({ event, theme, history, historyError, onO
   const shortLabels = oldestFirst.map(quarterLabel);
 
   return (
-    <div className="league-research">
-      {event.research_notes && (
-        <aside className="callout callout-tip reveal-item" aria-label="Tip from Stackly">
-          <svg className="explainer-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <div>
-            <div className="callout-label">Tip</div>
-            <p>{event.research_notes}</p>
-          </div>
-        </aside>
-      )}
-
+    <>
       <h3 className="subsection-title">Last 8 quarters</h3>
       {historyError && <div className="form-error">{historyError}</div>}
       {!history && !historyError && <p className="empty-note">Loading...</p>}
@@ -164,6 +151,36 @@ export default function ResearchPanel({ event, theme, history, historyError, onO
           </p>
         </>
       )}
+    </>
+  );
+}
+
+// The company page keeps only what a forecaster needs; the full ratio
+// analysis lives on the Research page, one click away.
+export default function ResearchPanel({ event, theme, history, historyError, onOpenInResearch }: ResearchPanelProps) {
+  const symbol = event.company.provider_symbol;
+
+  return (
+    <div className="league-research">
+      {event.research_notes && (
+        <aside className="callout callout-tip reveal-item" aria-label="Tip from Stackly">
+          <svg className="explainer-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <div>
+            <div className="callout-label">Tip</div>
+            <p>{event.research_notes}</p>
+          </div>
+        </aside>
+      )}
+
+      <QuartersTable event={event} history={history} historyError={historyError} />
 
       {symbol && (
         <>

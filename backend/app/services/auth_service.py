@@ -53,7 +53,7 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # The Terms of Use / Privacy Policy version a user agrees to (the date the
 # pages were last changed). Bump it when either page changes materially:
 # every account whose terms_version differs is asked to agree again.
-TERMS_VERSION = "2026-11-11"
+TERMS_VERSION = "2026-11-13"
 _TERMS_REQUIRED = "Please agree to the Terms of Use and Privacy Policy to create an account."
 
 
@@ -323,8 +323,9 @@ def delete_account(user_id: int) -> None:
     and results stay exactly as they were, but nothing links them to a
     person any more. Free-text forecast notes are cleared (they could name
     someone); the league lock trigger allows that one change after a lock.
-    Sessions, activity, reset links, league memberships and practice
-    attempts are deleted outright. All in one transaction.
+    Sessions, activity, reset links, league memberships, practice
+    attempts and research workspaces (notes, ticks, worksheet) are deleted
+    outright. All in one transaction.
 
     The audit entry holds only the internal id and a forecast count."""
     with get_conn() as conn:
@@ -332,7 +333,10 @@ def delete_account(user_id: int) -> None:
             "SELECT count(*) AS n FROM forecasts WHERE user_id = %s", (user_id,)
         ).fetchone()["n"]
         conn.execute("UPDATE forecasts SET note = NULL WHERE user_id = %s AND note IS NOT NULL", (user_id,))
-        for table in ("sessions", "activity_log", "password_reset_tokens", "league_members", "practice_attempts"):
+        for table in (
+            "sessions", "activity_log", "password_reset_tokens", "league_members", "practice_attempts",
+            "research_workspaces",
+        ):
             conn.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
         conn.execute(
             """

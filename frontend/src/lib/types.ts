@@ -628,3 +628,49 @@ export interface CompanyNews {
   videos?: Video[];
   updated_at: string | null;
 }
+
+// ---------- Research workspace ----------
+
+export interface WorksheetData {
+  inputs: Record<string, number | null>;
+  units?: { this_year: (number | null)[]; last_year: (number | null)[] } | null;
+  base?: "last_year" | "last_quarter" | "own" | null;
+  own_base?: number | null;
+  unsure: Record<string, number | null>;
+}
+
+export interface WorkspaceState {
+  notes: Record<string, string>;
+  done: string[];
+  worksheet: WorksheetData | null;
+  updated_at: string | null;
+}
+
+export interface WorkspaceStep {
+  key: string;
+  title: string;
+  why: string;
+  items: { text: string; kind: "question" | "note" }[];
+}
+
+export interface BaseFigure {
+  metric_key: string;
+  value: number;
+  source_url: string;
+  fiscal_year_label: string;
+  fiscal_quarter: number;
+}
+
+export interface Workspace {
+  event_id: number;
+  sector: string;
+  locked: boolean;
+  status: string;
+  steps: WorkspaceStep[];
+  glossary: { term: string; definition: string; source: "league" | "glossary" }[];
+  last_year: BaseFigure[];
+  last_quarter: BaseFigure[];
+  news_since: string | null;
+  save_blocked: "sign_in" | "terms_required" | "profile_required" | "guardian_consent_pending" | null;
+  state: WorkspaceState | null;
+}
