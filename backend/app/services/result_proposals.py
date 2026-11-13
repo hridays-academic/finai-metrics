@@ -34,6 +34,9 @@ class ProposedMetric(BaseModel):
     working: str = Field(min_length=1, max_length=1000)
     flag: Optional[str] = Field(default=None, max_length=400)
     note: Optional[str] = Field(default=None, max_length=200)
+    # Shown to students on the results and company pages (approved wording);
+    # `note` is for the admin reviewing the proposal.
+    student_note: Optional[str] = Field(default=None, max_length=300)
 
     @field_validator("source_url")
     @classmethod

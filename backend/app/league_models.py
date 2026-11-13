@@ -326,6 +326,35 @@ class MetricResultOut(BaseModel):
     hit: bool
     beat_lazy: Optional[bool]
     explanations: list[str]
+    note: Optional[str] = None  # like-for-like note for students (proposal student_note)
+
+
+class OutcomeMetricOut(BaseModel):
+    """How one metric turned out, for everyone (no forecast needed)."""
+
+    metric_key: str
+    label: str
+    unit: str
+    actual: Optional[float]
+    lazy: Optional[float]  # last year's value, the lazy guess
+    source_url: Optional[str]
+    crowd_median: Optional[float]  # None below the minimum crowd size
+    note: Optional[str] = None
+
+
+class EventOutcomeOut(BaseModel):
+    event: EventSummary
+    forecasters: int
+    crowd_shown: bool
+    crowd_explanation: str
+    metrics: list[OutcomeMetricOut]
+
+
+class RecentResultOut(BaseModel):
+    """A scored company on Home: the event and its actual numbers."""
+
+    event: EventSummary
+    metrics: list[OutcomeMetricOut]
 
 
 class ResultOut(BaseModel):

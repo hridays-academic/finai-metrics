@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.league_models import (
-    EventDetail, EventSummary, ForecastIn, ForecastOut, LeagueConfigOut, ProfileIn, ResearchHistoryOut, ResultOut,
-    SeasonOut,
+    EventDetail, EventOutcomeOut, EventSummary, ForecastIn, ForecastOut, LeagueConfigOut, ProfileIn,
+    RecentResultOut, ResearchHistoryOut, ResultOut, SeasonOut,
 )
 from app.models import UserPublic
 from app.routes.deps import optional_user, require_user
@@ -44,6 +44,19 @@ def get_my_forecast(event_id: int, user: dict = Depends(require_user)) -> Option
 def get_my_result(event_id: int, user: dict = Depends(require_user)) -> ResultOut:
     with get_conn() as conn:
         return league_scoring.my_result(conn, user["id"], event_id)
+
+
+@router.get("/events/{event_id}/outcome", response_model=EventOutcomeOut)
+def get_outcome(event_id: int, user: Optional[dict] = Depends(optional_user)) -> EventOutcomeOut:
+    """Public: how a scored company turned out (no forecast or sign-in needed)."""
+    with get_conn() as conn:
+        return league_scoring.outcome(conn, user["id"] if user else None, event_id)
+
+
+@router.get("/recent-results", response_model=list[RecentResultOut])
+def get_recent_results(user: Optional[dict] = Depends(optional_user)) -> list[RecentResultOut]:
+    with get_conn() as conn:
+        return league_scoring.recent_results(conn, user["id"] if user else None)
 
 
 @router.get("/me/season", response_model=SeasonOut)

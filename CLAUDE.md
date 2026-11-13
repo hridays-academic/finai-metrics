@@ -2670,7 +2670,8 @@ the maths in `scoring.py` is unchanged.
   `explain_crowd` (pure, tested). Wording approved by Hriday: widths and
   misses are "percentage points" (or the KPI's unit); "points" only ever
   means score; a floored score adds "Scores can't go below 0, so this
-  counts as 0." `_n` rounds half up so a sentence never disagrees with the
+  counts as 0." -- for a miss AND for a hit so wide its width alone costs
+  over 100 (it used to read "100 - 200 = 0"; fixed 2026-11-12). `_n` rounds half up so a sentence never disagrees with the
   frontend's `toFixed` label (7.25 -> 7.3 in both).
 - Crowd median = median of all forecasters' midpoints, shown only at
   `min_forecasters_for_crowd` (5)+.
@@ -2718,8 +2719,50 @@ database.
   2026-11-12, from Hriday's machine and from WebFetch): each company's own
   investor site has the same filings. Scanned PDFs (Maruti, Marico, Dabur)
   must be read from the rendered page, not the OCR text.
-- **Backlog:** show the like-for-like note to students on the results page
-  (today it is only in the admin review panel and the audit log).
+- **Student notes** (`student_note` in the proposal file, wording approved by
+  Hriday) are what students see; the admin-only `note` is not. Shown on the
+  results page (forecasters and everyone else) only when the saved value
+  equals the proposed one, since an edited value may make the note wrong
+  (`league_scoring._student_notes`). First notes: Marico revenue growth,
+  Jyothy revenue growth and volume growth.
+
+**Dry run of scoring (2026-11-12, dev only).** A fictional DRYRUNCEM event,
+three accounts covering hit, miss below, miss above, a 0 floor, bonus, no
+bonus and bonus ties (equal distance = no bonus), scored through the normal
+admin flow: all 9 metric and 3 event scores matched hand maths
+(IS = width + 10 x miss, points = max(0, 100 - 2 x IS), +10 if strictly
+closer than the lazy guess). Fixes from it: the floored-hit sentence above,
+and the results legend now reads "-36% to 64%" for a negative low end
+(`rangeText`). Seed data was deleted afterwards; deleting locked forecasts
+needs the two lock triggers disabled inside the same transaction (dev only).
+
+**After scoring, everyone sees how it turned out (2026-11-12, wording
+approved by Hriday).** No schema or scoring change.
+- `GET /api/league/events/{id}/outcome` (public; 404 `not_scored` before
+  scoring): per metric the actual as saved now (with its source link), last
+  year's value as scored (the `baselines` row written at every scoring run),
+  the crowd median at 5+ forecasters (`_crowd`, shared with `my_result`) and
+  any student note. Nobody's forecast or points. `GET /api/league/recent-results`
+  (public): scored events, newest results first, with their actuals.
+- Results page (`#/results/<id>`): with no forecast, or signed out, it shows
+  "How it turned out" (`league/outcome.tsx`); signed in without a forecast it
+  adds "You didn't forecast this company, so there's no score for you here."
+  Signed out before scoring still asks to sign in. Forecasters' pages gained
+  the student note and the league footnote.
+- Company page after scoring: the header tile reads "Results are in"; the
+  forecast form is replaced by "How it turned out" with "See the full
+  results" (or "See your score"). Under the header tiles, "Yahoo Finance puts
+  the operating margin at X%; the league's figure is Y%. ..." appears only
+  when Yahoo's latest quarter is the event's quarter and the two differ once
+  rounded (`yahooLeagueNote`).
+- Home: "Recent results" lists scored companies with "Revenue growth +13.0%,
+  margin 18.2%, volume growth +10.0%" (each sector's KPI short name:
+  `KPI_SHORT` in `outcome.tsx`), linking to the results page, or "Your score"
+  for forecasters. Outcome figures use one decimal, growth signed.
+- **Local DNS (2026-11-12):** this Mac's router intermittently fails to
+  resolve the Neon hosts. Workaround for local runs only: set libpq's
+  `PGHOSTADDR` to the address from `dig @1.1.1.1 <host>` (the hostname still
+  drives TLS/SNI). Never in Vercel.
 
 **Schema changes need a version bump.** `init_db()` skips all schema
 statements when the database's `schema_version` row is already at

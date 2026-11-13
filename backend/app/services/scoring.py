@@ -154,9 +154,14 @@ def explain_metric(score: MetricScore, label: str, low: float, high: float, actu
     width_cost = k * width
     base = max(0.0, 100.0 - k * score.interval_score)
     if score.hit:
+        # Same floor wording as a miss: a very wide range can cost more than 100
+        # on its own, and "100 - 200 = 0" would be false arithmetic.
+        ending = f"100 - {_n(width_cost)} = {_n(100 - width_cost)}."
+        if width_cost > 100:
+            ending += " Scores can't go below 0, so this counts as 0."
         points_line = (
             f"Your range was {_dist(width, u)} wide and the result ({_n(actual)}{u}) landed inside it, "
-            f"so you lost {_pts(width_cost)} for width: 100 - {_n(width_cost)} = {_n(base)}."
+            f"so you lost {_pts(width_cost)} for width: {ending}"
         )
     else:
         side = "below" if actual < low else "above"

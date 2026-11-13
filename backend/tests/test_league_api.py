@@ -487,3 +487,78 @@ def test_an_edited_value_is_saved_and_logged_as_different(conn, client, setup, p
     [entry] = _approvals(conn)
     margin = next(m for m in entry["metrics"] if m["metric_key"] == "operating_margin")
     assert entry["edited"] is True and (margin["proposed"], margin["saved"], margin["edited"]) == (17.0, 16.8, True)
+
+
+# ---------- How a scored company turned out (everyone, forecast or not) ----------
+
+def _outcome_proposal(rev_value, margin_value):
+    from app.services.result_proposals import Proposal, ProposedEvent, ProposedMetric
+
+    vals = {"revenue_growth_yoy": rev_value, "operating_margin": margin_value, "sector_kpi": 8.0}
+    metrics = [ProposedMetric(metric_key=k, definition_key=CEMENT_DEFS[k], value=v, source_url=SRC, page="p1",
+                              working="w", student_note=f"Like for like note on {k}.")
+               for k, v in vals.items()]
+    return Proposal(file="FY27-Q2.json", prepared_on="2026-11-12",
+                    event=ProposedEvent(ticker="DEMOCEM", company="Demo", metrics=metrics))
+
+
+def _score_demo(conn, client, setup, forecasters, actual=(12.0, 14.0, 8.0)):
+    admin, event = setup["admin"], setup["event"]
+    client.put(f"/api/admin/events/{event}/last-year",
+               json=[_actual(k, v) for k, v in zip(CEMENT_DEFS, (10.0, 15.0, 5.0))], headers=admin)
+    for i, headers in enumerate(forecasters):
+        assert _profile(client, headers, f"fc{i}").status_code == 200
+        res = client.put(f"/api/league/events/{event}/forecast", headers=headers, json={"values": [
+            {"metric_key": "revenue_growth_yoy", "low": 10.0 + i, "high": 14.0 + i},
+            {"metric_key": "operating_margin", "low": 13.0, "high": 15.0},
+            {"metric_key": "sector_kpi", "low": 7.0, "high": 9.0}]})
+        assert res.status_code == 200, res.text
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    client.put(f"/api/admin/events/{event}/results", json=[_actual(k, v) for k, v in zip(CEMENT_DEFS, actual)],
+               headers=admin)
+    return client.post(f"/api/admin/events/{event}/score", headers=admin)
+
+
+def test_outcome_for_everyone_after_scoring(conn, client, setup, monkeypatch):
+    from app.services import result_proposals
+
+    # Revenue saved exactly as proposed -> its note shows; margin saved differently -> hidden.
+    monkeypatch.setattr(result_proposals, "all_proposals",
+                        lambda: {("DEMOCEM", "FY27", 2): _outcome_proposal(12.0, 99.0)})
+    admin, event, forecaster = setup["admin"], setup["event"], setup["user"]
+    url = f"/api/league/events/{event}/outcome"
+    assert client.get(url).json()["detail"]["code"] == "not_scored"
+    assert _score_demo(conn, client, setup, [forecaster]).json() == {"scored": 1}
+
+    anon = client.get(url).json()  # signed out
+    assert (anon["event"]["submitted"], anon["event"]["my_score"], anon["forecasters"], anon["crowd_shown"]) == \
+        (False, None, 1, False)
+    rev, margin, kpi = anon["metrics"]
+    assert (rev["actual"], rev["lazy"], rev["source_url"], rev["crowd_median"]) == (12.0, 10.0, SRC, None)
+    assert (margin["actual"], margin["lazy"], kpi["actual"], kpi["lazy"]) == (14.0, 15.0, 8.0, 5.0)
+    assert rev["note"] == "Like for like note on revenue_growth_yoy." and margin["note"] is None
+    assert "points" not in rev and "low" not in rev  # nobody's forecast in a public outcome
+
+    bystander = _signup(client, "bystander@example.com")  # signed in, no forecast
+    mine = client.get(url, headers=bystander).json()
+    assert (mine["event"]["submitted"], mine["event"]["my_score"]) == (False, None)
+    assert client.get(f"/api/league/events/{event}/my-result", headers=bystander).json()["detail"]["code"] == \
+        "no_forecast"
+    theirs = client.get(url, headers=forecaster).json()
+    assert theirs["event"]["submitted"] is True and theirs["event"]["my_score"] == pytest.approx((102 + 106 + 106) / 3)
+    result = client.get(f"/api/league/events/{event}/my-result", headers=forecaster).json()
+    assert [m["note"] for m in result["metrics"]] == ["Like for like note on revenue_growth_yoy.", None,
+                                                      "Like for like note on sector_kpi."]
+
+    recent = client.get("/api/league/recent-results").json()
+    assert [r["event"]["id"] for r in recent] == [event]
+    assert [m["actual"] for m in recent[0]["metrics"]] == [12.0, 14.0, 8.0]
+
+
+def test_outcome_shows_crowd_median_from_five_forecasters(conn, client, setup):
+    users = [setup["user"]] + [_signup(client, f"crowd{i}@example.com") for i in range(4)]
+    assert _score_demo(conn, client, setup, users).json() == {"scored": 5}
+    body = client.get(f"/api/league/events/{setup['event']}/outcome").json()
+    assert (body["forecasters"], body["crowd_shown"]) == (5, True)
+    # Revenue midpoints 12..16 -> median 14; the others are all 14 and 8.
+    assert [m["crowd_median"] for m in body["metrics"]] == [14.0, 14.0, 8.0]

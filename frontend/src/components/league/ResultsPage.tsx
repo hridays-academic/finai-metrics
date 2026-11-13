@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ApiError, fetchLeagueEvent, fetchMyResult } from "../../lib/api";
+import { ApiError, fetchLeagueEvent, fetchMyResult, fetchOutcome } from "../../lib/api";
 import { formatDay } from "../../lib/leagueFormat";
-import type { EventDetail, EventResult, MetricResult, UserPublic } from "../../lib/types";
+import type { EventDetail, EventOutcome, EventResult, MetricResult, UserPublic } from "../../lib/types";
+import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, OutcomeList, resultsDateLine } from "./outcome";
 import SiteFooter from "../SiteFooter";
 import { formatIst } from "./LockCountdown";
 
@@ -109,8 +110,7 @@ function MetricCard({ m }: { m: MetricResult }) {
       <NumberLine m={m} />
       <div className="nl-legend">
         <span>
-          <i className="nl-key nl-key-range" /> Your range {n(m.low)}–{n(m.high)}
-          {u}
+          <i className="nl-key nl-key-range" /> Your range {rangeText(n(m.low), n(m.high), u)}
         </span>
         <span>
           <i className={`nl-key nl-key-actual ${m.hit ? "nl-hit" : "nl-miss"}`} /> Actual {n(m.actual)}
@@ -131,8 +131,15 @@ function MetricCard({ m }: { m: MetricResult }) {
           <li key={line}>{line}</li>
         ))}
       </ul>
+      {m.note && <p className="outcome-note">{m.note}</p>}
     </li>
   );
+}
+
+// "8.5–9.5%", but "-36% to 64%" once the low end is negative: "-36–64%"
+// reads like two minus signs (found in the 2026-11-12 dry run).
+export function rangeText(low: string, high: string, unit: string): string {
+  return low.startsWith("-") ? `${low}${unit} to ${high}${unit}` : `${low}–${high}${unit}`;
 }
 
 // #/results/<id>: the signed-in student's own scored forecast.
@@ -140,15 +147,37 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
   const [result, setResult] = useState<EventResult | null>(null);
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // How it turned out, for a visitor without a forecast or not signed in.
+  const [outcome, setOutcome] = useState<EventOutcome | null>(null);
+  const [signedOutNotScored, setSignedOutNotScored] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
     let cancelled = false;
+    setResult(null);
+    setOutcome(null);
     setNotice(null);
+    setSignedOutNotScored(false);
+    if (!user) {
+      fetchOutcome(eventId)
+        .then((o) => !cancelled && setOutcome(o))
+        .catch(async () => {
+          if (cancelled) return;
+          setEvent(await fetchLeagueEvent(eventId).catch(() => null));
+          setSignedOutNotScored(true);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     fetchMyResult(eventId)
       .then((r) => !cancelled && setResult(r))
       .catch(async (err) => {
         if (cancelled) return;
+        if (err instanceof ApiError && err.code === "no_forecast") {
+          const o = await fetchOutcome(eventId).catch(() => null);
+          if (cancelled) return;
+          if (o) return setOutcome(o);
+        }
         const ev = await fetchLeagueEvent(eventId).catch(() => null);
         if (cancelled) return;
         setEvent(ev);
@@ -169,6 +198,10 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
     };
   }, [eventId, user?.id]);
 
+  if (outcome && !result) {
+    return <OutcomePage outcome={outcome} personal={!!user} />;
+  }
+
   if (!user || !result) {
     return (
       <div className="page">
@@ -176,7 +209,11 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
           <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
           {event && <h1 className="page-title">{event.company.name}</h1>}
         </header>
-        {!user ? (
+        {!user && !signedOutNotScored ? (
+          <section className="section glass panel">
+            <p className="section-text">Loading...</p>
+          </section>
+        ) : !user ? (
           <section className="section glass panel">
             <p className="section-text">Sign in to see your results.</p>
             <button type="button" className="btn btn-primary" onClick={onOpenAuth}>
@@ -220,6 +257,40 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
             <MetricCard key={m.metric_key} m={m} />
           ))}
         </ul>
+        <p className="panel-footnote">{LEAGUE_FOOTNOTE}</p>
+      </section>
+
+      <SiteFooter />
+    </div>
+  );
+}
+
+// A scored company for someone with no score here: what happened, no points.
+function OutcomePage({ outcome, personal }: { outcome: EventOutcome; personal: boolean }) {
+  const ev = outcome.event;
+  return (
+    <div className="page">
+      <header className="page-header glass page-hero">
+        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
+        <h1 className="page-title">
+          {ev.company.name} <span className="page-title-sub">{ev.company.ticker}</span>
+        </h1>
+        <p className="page-meta">{resultsDateLine(ev)}</p>
+      </header>
+
+      {personal && (
+        <section className="section glass panel reveal">
+          <p className="section-text">{NO_FORECAST_LINE}</p>
+        </section>
+      )}
+
+      <section className="section glass panel reveal" aria-labelledby="outcome-title">
+        <h2 className="section-title" id="outcome-title">
+          How it turned out
+        </h2>
+        <p className="section-text">{outcome.crowd_explanation}</p>
+        <OutcomeList metrics={outcome.metrics} />
+        <p className="panel-footnote">{LEAGUE_FOOTNOTE}</p>
       </section>
 
       <SiteFooter />

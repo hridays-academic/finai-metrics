@@ -1,7 +1,7 @@
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, fetchLeagueConfig, fetchLeagueEvent, fetchMyForecast, fetchResearchHistory } from "../../lib/api";
+import { ApiError, fetchLeagueConfig, fetchLeagueEvent, fetchMyForecast, fetchOutcome, fetchResearchHistory } from "../../lib/api";
 import type { Theme } from "../../hooks/useTheme";
-import type { EventDetail, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
+import type { EventDetail, EventOutcome, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
 import { formatCrore, formatDay } from "../../lib/leagueFormat";
 import TileGrid from "../TileGrid";
 import ForecastForm from "./ForecastForm";
@@ -10,13 +10,19 @@ import ProfileModal from "./ProfileModal";
 import ResearchPanel from "./ResearchPanel";
 import SectorExplainer from "./SectorExplainer";
 import SiteFooter from "../SiteFooter";
+import { LEAGUE_FOOTNOTE, OutcomeList, yahooLeagueNote } from "./outcome";
 
 function quarterName(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 }
 
 // The numbers a forecaster wants first, as big figures with their source.
-function KeyStats({ event, history, historyError }: { event: EventDetail; history: ResearchHistory | null; historyError: string | null }) {
+export function KeyStats({ event, history, historyError, outcome }: {
+  event: EventDetail;
+  history: ResearchHistory | null;
+  historyError: string | null;
+  outcome: EventOutcome | null;
+}) {
   const loading = !history && !historyError;
   const latest = history?.provider_rows[0];
   const when = latest ? `Quarter to ${quarterName(latest.period_end_date)}` : loading ? "Loading" : "Not available";
@@ -41,7 +47,7 @@ function KeyStats({ event, history, historyError }: { event: EventDetail; histor
           <div className="stat-sub">{when}</div>
         </div>
         <div className="stat tile">
-          <div className="stat-label">Results expected</div>
+          <div className="stat-label">{event.status === "scored" ? "Results are in" : "Results expected"}</div>
           <div className="stat-value">{formatDay(event.results_date)}</div>
           <div className="stat-sub">{event.season_label} results</div>
         </div>
@@ -59,6 +65,10 @@ function KeyStats({ event, history, historyError }: { event: EventDetail; histor
           {history.provider_as_of ? `, fetched ${formatDay(history.provider_as_of, true)}` : ""}. Definitions are in Research below.
         </p>
       )}
+      {(() => {
+        const note = yahooLeagueNote(margin, latest?.period_end_date, event, outcome?.metrics ?? null);
+        return note && <p className="footnote yahoo-league-note">{note}</p>;
+      })()}
     </div>
   );
 }
@@ -83,6 +93,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   const [profileOpen, setProfileOpen] = useState(false);
   const [history, setHistory] = useState<ResearchHistory | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<EventOutcome | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -112,6 +123,19 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
     if (visible && !wasVisible.current) load();
     wasVisible.current = visible;
   }, [visible, load]);
+
+  // After scoring: the actual numbers replace the forecast form.
+  const scored = event?.status === "scored";
+  useEffect(() => {
+    if (!scored) return setOutcome(null);
+    let cancelled = false;
+    fetchOutcome(eventId)
+      .then((o) => !cancelled && setOutcome(o))
+      .catch(() => !cancelled && setOutcome(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, scored, user?.id]);
 
   // Shared by the key figures in the header and the research section.
   const companyId = event?.company.id;
@@ -165,7 +189,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
           {event.season_label} results · quarter ending{" "}
           {new Date(`${event.period_end_date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
         </p>
-        <KeyStats event={event} history={history} historyError={historyError} />
+        <KeyStats event={event} history={history} historyError={historyError} outcome={outcome} />
         {event.status === "open" && (
           <a className="btn btn-primary page-header-action" href="#forecast" onClick={jumpToForm}>
             {forecast ? "Edit your forecast" : "Make your forecast"}
@@ -188,6 +212,9 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
         />
       </section>
 
+      {event.status === "scored" ? (
+        <ScoredPanel event={event} outcome={outcome} />
+      ) : (
       <section id="forecast" className="section glass panel reveal forecast-section" aria-labelledby="forecast-title">
         <h2 className="section-title" id="forecast-title">
           Your forecast
@@ -210,6 +237,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
           onLocked={load}
         />
       </section>
+      )}
 
       <SiteFooter />
 
@@ -224,5 +252,21 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
         />
       )}
     </div>
+  );
+}
+
+// The company page once results are scored: what happened, and where to see more.
+export function ScoredPanel({ event, outcome }: { event: EventDetail; outcome: EventOutcome | null }) {
+  return (
+    <section id="forecast" className="section glass panel reveal" aria-labelledby="outcome-title">
+      <h2 className="section-title" id="outcome-title">
+        How it turned out
+      </h2>
+      {outcome ? <OutcomeList metrics={outcome.metrics} /> : <p className="empty-note">Loading...</p>}
+      <a className="btn btn-secondary outcome-link" href={`#/results/${event.id}`}>
+        {event.submitted ? "See your score" : "See the full results"}
+      </a>
+      <p className="panel-footnote">{LEAGUE_FOOTNOTE}</p>
+    </section>
   );
 }

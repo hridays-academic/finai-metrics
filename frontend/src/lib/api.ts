@@ -13,6 +13,8 @@ import type {
   AuditEntry,
   EventDetail,
   EventResult,
+  EventOutcome,
+  RecentResult,
   EventSummary,
   Forecast,
   ForecastValue,
@@ -340,6 +342,9 @@ export const fetchMyForecast = (id: number) => leagueRequest<Forecast | null>("G
 export const saveForecast = (id: number, body: { values: ForecastValue[]; reason_tags: string[]; note: string | null }) =>
   leagueRequest<Forecast>("PUT", `/league/events/${id}/forecast`, body);
 export const fetchMyResult = (id: number) => leagueRequest<EventResult>("GET", `/league/events/${id}/my-result`);
+// Public once a company is scored: actual numbers for everyone, forecast or not.
+export const fetchOutcome = (id: number) => leagueRequest<EventOutcome>("GET", `/league/events/${id}/outcome`);
+export const fetchRecentResults = () => leagueRequest<RecentResult[]>("GET", "/league/recent-results");
 export const fetchMySeason = () => leagueRequest<Season>("GET", "/league/me/season");
 export const fetchResearchHistory = (companyId: number) =>
   leagueRequest<ResearchHistory>("GET", `/league/companies/${companyId}/history`);

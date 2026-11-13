@@ -89,7 +89,8 @@
           "page": "PDF p5 (consolidated statement), p9 (note 7, restatement table)",
           "working": "3,897 / 3,450 (restated) - 1 = 12.96% (INR crore); against the originally reported 3,482 it would be 11.92%",
           "flag": "Last year restated: 3,482 cr to 3,450 cr (accounting change, note 7). Decided 12 Nov: like for like.",
-          "note": "Like for like: compared with last year as restated"
+          "note": "Like for like: compared with last year as restated",
+          "student_note": "Marico changed how it counts some promotions and restated last year's revenue the same way, so the 13.0% compares like with like."
         },
         {
           "metric_key": "operating_margin",
@@ -197,7 +198,8 @@
           "page": "PDF p5 (statement; no subsidiaries, as last year)",
           "working": "76,004 / 73,606 - 1 = 3.26% (INR lakh)",
           "flag": null,
-          "note": "Includes the loss of Pril and Fa sales after 31 May, as reported"
+          "note": "Includes the loss of Pril and Fa sales after 31 May, as reported",
+          "student_note": "Includes Pril and Fa sales only until 31 May 2026, as reported."
         },
         {
           "metric_key": "operating_margin",
@@ -217,7 +219,8 @@
           "page": "PDF p7 (Q2FY27 snapshot)",
           "working": "As stated: Excluding Pril & Fa value growth 12.4%, volume growth 8.1%",
           "flag": "Only an ex-Pril & Fa figure is disclosed; last year's 2.8% was whole-company volume. Decided 12 Nov: use it.",
-          "note": "Like for like: excludes Pril and Fa (sold 31 May 2026)"
+          "note": "Like for like: excludes Pril and Fa (sold 31 May 2026)",
+          "student_note": "Jyothy stopped selling Pril and Fa on 31 May 2026. Its volume growth leaves them out, as Jyothy reports it."
         }
       ]
     },

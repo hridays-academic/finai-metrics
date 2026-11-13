@@ -475,6 +475,32 @@ export interface MetricResult {
   hit: boolean;
   beat_lazy: boolean | null;
   explanations: string[];
+  note: string | null; // approved like-for-like note, if any
+}
+
+// How a scored company turned out, for everyone (backend EventOutcomeOut).
+export interface OutcomeMetric {
+  metric_key: string;
+  label: string;
+  unit: string;
+  actual: number | null;
+  lazy: number | null; // last year's value, the lazy guess
+  source_url: string | null;
+  crowd_median: number | null;
+  note: string | null;
+}
+
+export interface EventOutcome {
+  event: EventSummary;
+  forecasters: number;
+  crowd_shown: boolean;
+  crowd_explanation: string;
+  metrics: OutcomeMetric[];
+}
+
+export interface RecentResult {
+  event: EventSummary;
+  metrics: OutcomeMetric[];
 }
 
 export interface EventResult {

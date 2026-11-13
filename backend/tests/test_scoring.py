@@ -170,6 +170,21 @@ class TestExplanations:
         assert s.points == 0.0
         assert line.endswith("100 - 782 = -682. Scores can't go below 0, so this counts as 0.")
 
+    def test_very_wide_hit_floors_at_zero_with_true_arithmetic(self):
+        # Found in the 2026-11-12 dry run: a hit whose width alone costs over
+        # 100 used to read "100 - 200 = 0".
+        s = score_metric("operating_margin", -36.0, 64.0, 14.0, 15.0, CFG)
+        lines = explain_metric(s, "Operating margin", -36.0, 64.0, 14.0, 15.0, "%", CFG)
+        assert (s.points, s.hit, s.beat_lazy) == (10.0, True, True)
+        assert lines[0].endswith("so you lost 200 points for width: 100 - 200 = -100. "
+                                 "Scores can't go below 0, so this counts as 0.")
+        assert lines[1].endswith("so you earned the +10 bonus: 0 + 10 = 10.")
+
+    def test_hit_at_exactly_100_width_cost_has_no_floor_sentence(self):
+        s = score_metric("operating_margin", 0.0, 50.0, 20.0, None, CFG)
+        line = explain_metric(s, "Operating margin", 0.0, 50.0, 20.0, None, "%", CFG)[0]
+        assert line.endswith("100 - 100 = 0.") and s.points == 0.0
+
     def test_singular_percentage_point(self):
         s = score_metric("sector_kpi", 2.0, 8.0, 9.0, None, CFG)
         line = explain_metric(s, "Sales volume growth", 2.0, 8.0, 9.0, None, "%", CFG)[0]

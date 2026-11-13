@@ -22,10 +22,12 @@ from typing import Optional
 import psycopg
 
 from app.league_config import market_config
-from app.league_models import MetricResultOut, ResultOut, SeasonOut
-from app.services import audit, scoring
+from app.league_models import (
+    EventOutcomeOut, MetricResultOut, OutcomeMetricOut, RecentResultOut, ResultOut, SeasonOut,
+)
+from app.services import audit, result_proposals, scoring
 from app.services.league_admin import _event_for_entry, year_ago_label
-from app.services.league_service import LeagueError, _load_event, _summary
+from app.services.league_service import _EVENT_SELECT, LeagueError, _load_event, _show_demo, _summary
 
 
 def _actuals(conn: psycopg.Connection, company_id: int, fy_label: str, quarter: int) -> dict[str, tuple[str, float]]:
@@ -98,6 +100,85 @@ def score_event(conn: psycopg.Connection, actor: dict, event_id: int) -> int:
     return forecasts
 
 
+def _crowd(conn: psycopg.Connection, event_id: int, minimum: int) -> tuple[int, bool, dict[str, float]]:
+    """(forecasters, whether the crowd median may be shown, median midpoint per metric)."""
+    forecasters = conn.execute("SELECT count(*) AS n FROM forecasts WHERE event_id = %s", (event_id,)).fetchone()["n"]
+    crowd_shown = forecasters >= minimum
+    medians: dict[str, float] = {}
+    if crowd_shown:
+        mids: dict[str, list[float]] = {}
+        for r in conn.execute(
+            """SELECT fv.metric_key, (fv.low + fv.high) / 2 AS mid FROM forecast_values fv
+               JOIN forecasts f ON f.id = fv.forecast_id WHERE f.event_id = %s""", (event_id,)
+        ).fetchall():
+            mids.setdefault(r["metric_key"], []).append(r["mid"])
+        medians = {k: statistics.median(v) for k, v in mids.items()}
+    return forecasters, crowd_shown, medians
+
+
+def _student_notes(row: dict, actuals: dict[str, Optional[float]]) -> dict[str, str]:
+    """Approved like-for-like notes from the committed proposal, only for
+    values saved exactly as proposed (an edited value may make a note wrong)."""
+    proposal = result_proposals.find(row["ticker"], row["fiscal_year_label"], row["fiscal_quarter"],
+                                     row["metric_definitions"]["metrics"])
+    if proposal is None:
+        return {}
+    return {
+        m.metric_key: m.student_note for m in proposal.event.metrics
+        if m.student_note and actuals.get(m.metric_key) is not None and abs(actuals[m.metric_key] - m.value) < 1e-9
+    }
+
+
+def _outcome_metrics(conn: psycopg.Connection, row: dict, medians: dict[str, float]) -> list[OutcomeMetricOut]:
+    """Each metric's actual (as saved now), its source, and last year's value as
+    it was scored (baselines, written at every scoring run; never estimated)."""
+    current = {r["metric_key"]: r for r in conn.execute(
+        """SELECT a.metric_key, a.definition_key, a.value, a.source_url FROM actuals a
+           JOIN fiscal_periods p ON p.id = a.period_id
+           WHERE p.company_id = %s AND p.fiscal_year_label = %s AND p.fiscal_quarter = %s""",
+        (row["company_id"], row["fiscal_year_label"], row["fiscal_quarter"]),
+    ).fetchall()}
+    lazy = {r["metric_key"]: r["lazy_value"] for r in conn.execute(
+        "SELECT metric_key, lazy_value FROM baselines WHERE event_id = %s", (row["id"],)).fetchall()}
+    out, actuals = [], {}
+    for m in row["metric_definitions"]["metrics"]:
+        a = current.get(m["key"])
+        actuals[m["key"]] = a["value"] if a and a["definition_key"] == m["definition_key"] else None
+    notes = _student_notes(row, actuals)
+    for m in row["metric_definitions"]["metrics"]:
+        a = current.get(m["key"])
+        same_def = a is not None and a["definition_key"] == m["definition_key"]
+        out.append(OutcomeMetricOut(
+            metric_key=m["key"], label=m["label"], unit=m["unit"], actual=actuals[m["key"]],
+            lazy=lazy.get(m["key"]), source_url=a["source_url"] if same_def else None,
+            crowd_median=medians.get(m["key"]), note=notes.get(m["key"]),
+        ))
+    return out
+
+
+def outcome(conn: psycopg.Connection, user_id: Optional[int], event_id: int) -> EventOutcomeOut:
+    """How a scored company turned out, for everyone, forecast or not."""
+    row = _load_event(conn, event_id, user_id)
+    if row["effective_status"] != "scored":
+        raise LeagueError(404, "not_scored", "This company's results haven't been scored yet.")
+    cfg = market_config(row["market_code"])
+    forecasters, crowd_shown, medians = _crowd(conn, event_id, cfg.min_forecasters_for_crowd)
+    return EventOutcomeOut(
+        event=_summary(row), forecasters=forecasters, crowd_shown=crowd_shown,
+        crowd_explanation=scoring.explain_crowd(forecasters, crowd_shown, cfg.min_forecasters_for_crowd),
+        metrics=_outcome_metrics(conn, row, medians),
+    )
+
+
+def recent_results(conn: psycopg.Connection, user_id: Optional[int], limit: int = 20) -> list[RecentResultOut]:
+    """Scored companies, newest results first, with their actual numbers."""
+    rows = conn.execute(
+        _EVENT_SELECT + " AND e.status = 'scored' ORDER BY e.results_date DESC, c.name LIMIT %(limit)s",
+        {"user_id": user_id or 0, "show_demo": _show_demo(), "limit": limit},
+    ).fetchall()
+    return [RecentResultOut(event=_summary(r), metrics=_outcome_metrics(conn, r, {})) for r in rows]
+
+
 def my_result(conn: psycopg.Connection, user_id: int, event_id: int) -> ResultOut:
     row = _load_event(conn, event_id, user_id)
     if row["effective_status"] != "scored":
@@ -114,17 +195,8 @@ def my_result(conn: psycopg.Connection, user_id: int, event_id: int) -> ResultOu
            WHERE s.forecast_id = %s""",
         (forecast["id"],),
     ).fetchall()}
-    forecasters = conn.execute("SELECT count(*) AS n FROM forecasts WHERE event_id = %s", (event_id,)).fetchone()["n"]
-    crowd_shown = forecasters >= cfg.min_forecasters_for_crowd
-    medians: dict[str, float] = {}
-    if crowd_shown:
-        mids: dict[str, list[float]] = {}
-        for r in conn.execute(
-            """SELECT fv.metric_key, (fv.low + fv.high) / 2 AS mid FROM forecast_values fv
-               JOIN forecasts f ON f.id = fv.forecast_id WHERE f.event_id = %s""", (event_id,)
-        ).fetchall():
-            mids.setdefault(r["metric_key"], []).append(r["mid"])
-        medians = {k: statistics.median(v) for k, v in mids.items()}
+    forecasters, crowd_shown, medians = _crowd(conn, event_id, cfg.min_forecasters_for_crowd)
+    notes = _student_notes(row, {k: r["actual_value"] for k, r in scores.items()})
 
     out = []
     for m in row["metric_definitions"]["metrics"]:
@@ -140,6 +212,7 @@ def my_result(conn: psycopg.Connection, user_id: int, event_id: int) -> ResultOu
             interval_score=r["interval_score"], points=r["points"], hit=r["hit"], beat_lazy=r["beat_lazy"],
             explanations=scoring.explain_metric(ms, m["label"], r["low"], r["high"], r["actual_value"],
                                                 r["lazy_value"], m["unit"], cfg.scoring, median, forecasters),
+            note=notes.get(m["key"]),
         ))
     points = [m.points for m in out]
     return ResultOut(

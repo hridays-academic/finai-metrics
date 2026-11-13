@@ -93,3 +93,17 @@ def test_find_needs_an_exact_metric_match(tmp_path, ticker, fy, q, metrics, foun
     (tmp_path / "q.json").write_text(json.dumps(_file()))
     proposals = result_proposals.load_dir(tmp_path)
     assert (result_proposals.find(ticker, fy, q, metrics, proposals) is not None) is found
+
+
+def test_pilot_student_notes_are_the_approved_wording():
+    p = result_proposals.load_dir(result_proposals.PROPOSALS_DIR)
+    notes = {(t, m.metric_key): m.student_note for (t, _, _), prop in p.items() for m in prop.event.metrics
+             if m.student_note}
+    # Approved by Hriday on 12 Nov 2026; change only with approval.
+    assert notes == {
+        ("MARICO", "revenue_growth_yoy"): "Marico changed how it counts some promotions and restated last year's "
+                                          "revenue the same way, so the 13.0% compares like with like.",
+        ("JYOTHYLAB", "sector_kpi"): "Jyothy stopped selling Pril and Fa on 31 May 2026. Its volume growth leaves "
+                                     "them out, as Jyothy reports it.",
+        ("JYOTHYLAB", "revenue_growth_yoy"): "Includes Pril and Fa sales only until 31 May 2026, as reported.",
+    }

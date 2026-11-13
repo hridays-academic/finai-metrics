@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMySeason, fetchResearchHistory } from "../../lib/api";
+import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMySeason, fetchResearchHistory, fetchRecentResults } from "../../lib/api";
 import { daysUntil, formatDay } from "../../lib/leagueFormat";
-import type { EventSummary, LeagueConfig, ResearchHistory, Season, UserPublic } from "../../lib/types";
+import type { EventSummary, LeagueConfig, ResearchHistory, Season, UserPublic, RecentResult } from "../../lib/types";
 import SiteFooter from "../SiteFooter";
 import CountUp from "../CountUp";
 import ArrowChip from "../ArrowChip";
+import { outcomeSummary } from "./outcome";
 import LockCountdown from "./LockCountdown";
 
 interface LeagueHomeProps {
@@ -136,6 +137,32 @@ function SourceNote({ events, histories }: { events: EventSummary[]; histories: 
   );
 }
 
+// Scored companies, newest first, so Home never only says "nothing is open".
+export function RecentResults({ results }: { results: RecentResult[] }) {
+  return (
+    <ul className="group picker-mine recent-results">
+      {results.map(({ event: e, metrics }) => (
+        <li key={e.id}>
+          <a href={`#/results/${e.id}`}>
+            <span className="picker-mine-name">
+              {e.company.name}{" "}
+              <span className="picker-mine-season">
+                {e.season_label} · results {formatDay(e.results_date)}
+              </span>
+              <span className="recent-results-summary">{outcomeSummary(metrics, e.company.sector)}</span>
+            </span>
+            <span className="picker-mine-status">
+              <span className="league-submitted">
+                {e.submitted && e.my_score !== null ? `Your score ${e.my_score.toFixed(1)}` : "See results"}
+              </span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function MyForecasts({ events }: { events: EventSummary[] }) {
   if (events.length === 0) {
     return <p className="empty-note">You haven't made any forecasts yet. Pick a company above.</p>;
@@ -201,6 +228,7 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
   const [seen, setSeen] = useState<Set<number>>(new Set());
   const [histories, setHistories] = useState<Record<number, HistoryState>>({});
   const [season, setSeason] = useState<Season | null>(null);
+  const [recent, setRecent] = useState<RecentResult[]>([]);
 
   // Refetch on coming back, so e.g. a forecast just saved on a company page
   // shows up at once.
@@ -215,6 +243,7 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
     let cancelled = false;
     fetchLeagueConfig().then((c) => !cancelled && setConfig(c)).catch(() => {});
     if (user) fetchMySeason().then((s) => !cancelled && setSeason(s)).catch(() => {});
+    fetchRecentResults().then((r) => !cancelled && setRecent(r)).catch(() => {});
     Promise.all([fetchLeagueEvents("upcoming"), fetchLeagueEvents("scored")])
       .then(([u, s]) => {
         if (cancelled) return;
@@ -347,6 +376,15 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
             </ul>
           )}
           {waiting.length > 0 && <SourceNote events={waiting} histories={histories} />}
+        </section>
+      )}
+
+      {recent.length > 0 && (
+        <section className="glass panel reveal" aria-labelledby="recent-title">
+          <h2 className="panel-title" id="recent-title">
+            Recent results
+          </h2>
+          <RecentResults results={recent} />
         </section>
       )}
 
