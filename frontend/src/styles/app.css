@@ -5437,3 +5437,120 @@ a.news-card-headline:hover {
     inset 3px 0 6px rgba(15, 23, 42, 0.25),
     inset -1px 0 0 rgba(255, 255, 255, 0.8);
 }
+
+/* =====================================================================
+   Colourful news (2026-11-17): each news theme's own colour (--th, the
+   icon colours above) now tints its card, chip and video poster, the top
+   story is a deep shade of its theme colour in the card material, the
+   macro lines and world events take colours too, and panel titles on the
+   news pages carry a strip of the theme colours. Tints only: text keeps
+   the text tokens (the top story's white text is 4.5:1 or better on every
+   theme's deep shades).
+   ===================================================================== */
+.theme-event {
+  --th: var(--th-supply);
+}
+
+.news-card[class*="theme-"],
+.video-card[class*="theme-"] {
+  box-shadow:
+    inset 0 2px 0 color-mix(in srgb, var(--th, transparent) 75%, transparent),
+    var(--raised-shadow);
+}
+
+.news-card[class*="theme-"]:not(.news-card-top) {
+  background:
+    radial-gradient(120% 70% at 0% 0%, color-mix(in srgb, var(--th, transparent) 20%, transparent), transparent 70%),
+    var(--raised-fill);
+}
+
+.theme-chip {
+  background: color-mix(in srgb, var(--th, white) 20%, transparent);
+}
+
+.theme-filter .chip[class*="theme-"]:not(.active) {
+  background: color-mix(in srgb, var(--th) 14%, var(--raised-fill));
+}
+
+.theme-filter .chip.active[class*="theme-"] {
+  background: var(--th);
+  color: #0b0d12;
+}
+
+.video-card[class*="theme-"] .video-poster {
+  background:
+    radial-gradient(circle at 28% 22%, color-mix(in srgb, var(--th) 55%, transparent), transparent 62%),
+    radial-gradient(circle at 85% 90%, color-mix(in srgb, var(--th) 30%, transparent), transparent 55%),
+    linear-gradient(145deg, #2a2d33, #15171b);
+}
+
+.video-poster > .theme-icon {
+  color: var(--th, var(--text));
+}
+
+/* The top story: the card material in a deep shade of its theme colour. */
+.news-card-top {
+  --sector: color-mix(in srgb, var(--th, #30343b) 40%, #0b0d12);
+  --sector-light: color-mix(in srgb, var(--th, #454a53) 52%, #0b0d12);
+  --sector-dark: color-mix(in srgb, var(--th, #1d2025) 22%, #0b0d12);
+  --on-sector: #ffffff;
+}
+
+.news-card-top .news-card-art .theme-icon {
+  color: var(--th, #ffffff);
+  opacity: 1;
+  filter: drop-shadow(0 6px 18px color-mix(in srgb, var(--th, transparent) 60%, transparent));
+}
+
+/* Macro charts: each line its own colour, its dot to match. */
+.macro-grid > :nth-child(6n + 1) { --line: var(--th-crude); }
+.macro-grid > :nth-child(6n + 2) { --line: var(--th-inputs); }
+.macro-grid > :nth-child(6n + 3) { --line: var(--th-rates); }
+.macro-grid > :nth-child(6n + 4) { --line: var(--th-rupee); }
+.macro-grid > :nth-child(6n + 5) { --line: var(--th-gst); }
+.macro-grid > :nth-child(6n + 6) { --line: var(--th-tech); }
+
+.macro-chart .sparkline-line {
+  stroke: var(--line, var(--text));
+}
+
+.macro-chart .sparkline-dot.is-last {
+  fill: var(--line, var(--text));
+  stroke: var(--line, var(--text));
+}
+
+.macro-chart {
+  background:
+    radial-gradient(120% 70% at 100% 0%, color-mix(in srgb, var(--line, transparent) 16%, transparent), transparent 70%),
+    var(--raised-fill);
+}
+
+/* Panel titles on the news pages: a short strip of the theme colours. */
+.research-landing .panel-title::after,
+.company-news .panel-title::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 3px;
+  margin-top: var(--space-2);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--th-crude), var(--th-supply), var(--th-gst), var(--th-rates), var(--th-rupee));
+}
+
+[data-mode="light"] .theme-filter .chip.active[class*="theme-"] {
+  color: #ffffff;
+}
+
+/* Theme chips keep their theme tint in light mode too; on the top story's
+   colour, chips are a light frosted capsule in both modes. */
+[data-mode="light"] .theme-chip {
+  background: color-mix(in srgb, var(--th, #0b0d12) 14%, transparent);
+}
+
+.news-card-top .theme-chip,
+.news-card-top .chip-static,
+[data-mode="light"] .news-card-top .theme-chip,
+[data-mode="light"] .news-card-top .news-card-chips .chip-static {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}

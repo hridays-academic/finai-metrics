@@ -39,11 +39,11 @@ function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
     explanation: item.explanation,
   });
   return (
-    <article className={`news-card theme-${item.theme} ${top ? "news-card-top sector-neutral" : ""}`}>
+    <article className={`news-card theme-${item.theme} ${top ? "news-card-top" : ""}`}>
       {top && (
         <>
-          {/* The company cards' material (engraving, grain) in neutral graphite:
-              company colours mean how hard a company is to forecast. */}
+          {/* The company cards' material (engraving, grain) in a deep shade of
+              the story's theme colour. */}
           <div className="news-card-material" aria-hidden="true">
             <Guilloche />
             <Grain />
