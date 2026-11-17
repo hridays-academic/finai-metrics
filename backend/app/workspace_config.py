@@ -1,7 +1,9 @@
 """The research workspace's ten steps: titles, why each matters, and the
 guiding questions per sector. Copied word for word from Areas/Research
 workspace wording (for approval).md, approved by Hriday on 2026-11-13 with
-his changes. Change wording only with approval.
+his changes. The step titles and "why" lines were simplified on 2026-11-16
+(Areas/Simpler wording draft (for approval).md, approved that day). Change
+wording only with approval.
 
 Lines marked approved=True in the source doc were already approved earlier
 (sector explainers 2026-10-19, Why it matters 2026-11-11) and are reused
@@ -40,8 +42,8 @@ _NO_FREE_SOURCE = "Stackly has no free source it may republish. Look for the com
 STEPS: tuple[WorkspaceStep, ...] = (
     WorkspaceStep(
         "business",
-        "The business and the three numbers",
-        "You can't forecast a number until you know what makes it move.",
+        "The three numbers",
+        "First, learn what makes each one go up or down.",
         (
             _q("In one sentence, how does this company make money?"),
             _q("Which segment brings in the most revenue?"),
@@ -50,9 +52,8 @@ STEPS: tuple[WorkspaceStep, ...] = (
     ),
     WorkspaceStep(
         "base",
-        "Last year's same quarter (the base)",
-        "Growth is measured against the same quarter last year, so an unusually strong or weak quarter last year "
-        "changes this year's growth.",
+        "Last year, same time",
+        "Growth is measured against this quarter last year, so a great or awful last year changes the answer.",
         (
             _q("Was last year's quarter unusually strong or weak compared with the quarters around it?"),
             _q("Did anything one-off happen in it, such as a strike, a plant shutdown or an accounting change? "
@@ -63,8 +64,8 @@ STEPS: tuple[WorkspaceStep, ...] = (
     ),
     WorkspaceStep(
         "trend",
-        "The recent trend",
-        "The last four to eight quarters show which way revenue and margin have been moving and how much they swing.",
+        "The trend",
+        "Look at the last two years: going up, going down, or bouncing around?",
         (
             _q("Has revenue growth been speeding up, slowing down or steady?"),
             _q("Has the margin been rising, falling or steady? By how many percentage points?"),
@@ -75,8 +76,8 @@ STEPS: tuple[WorkspaceStep, ...] = (
     ),
     WorkspaceStep(
         "said",
-        "What the company said",
-        "In results and presentations, managers explain what drove the last quarter and what they're seeing now.",
+        "What the bosses said",
+        "Managers explain what happened last time and what they're seeing now.",
         (
             _q("What did the company say about demand at its last results?"),
             _q("Did it mention price increases, cost pressure or new capacity?"),
@@ -88,8 +89,8 @@ STEPS: tuple[WorkspaceStep, ...] = (
     ),
     WorkspaceStep(
         "clues",
-        "Clues already public",
-        "Some of the quarter's numbers come out before results day.",
+        "Early clues",
+        "Some numbers come out before results day. Go find them.",
         (
             _q("Add up the company's three monthly sales releases for the quarter. That's the units KPI, and a big "
                "clue for revenue.", "autos"),
@@ -103,8 +104,8 @@ STEPS: tuple[WorkspaceStep, ...] = (
     WorkspaceStep(
         "prices",
         "Prices and mix",
-        "Revenue is volume times price, and price also moves when customers buy more of the expensive products or "
-        "more of the cheap ones (the mix).",
+        "Revenue is how much they sold times the price. The price also changes when people buy fancier or cheaper "
+        "products.",
         (
             _q("Were cement prices higher or lower this quarter than a year ago?", "cement"),
             _q("Did it sell more of its expensive models, or more of its cheap ones?", "autos"),
@@ -116,8 +117,8 @@ STEPS: tuple[WorkspaceStep, ...] = (
     ),
     WorkspaceStep(
         "costs",
-        "Costs and inputs",
-        "The margin depends on whether costs rise faster or slower than prices.",
+        "Costs",
+        "If costs rise faster than prices, the margin shrinks. If slower, it grows.",
         (
             _q("Are coal and petcoke prices up or down? That's the biggest swing in margin.", "cement"),
             _q("Are steel and aluminium prices up or down since last year?", "autos"),
@@ -132,8 +133,8 @@ STEPS: tuple[WorkspaceStep, ...] = (
     ),
     WorkspaceStep(
         "news",
-        "News and events since the last results",
-        "Anything that changed since the last results may change this quarter's numbers.",
+        "What's new",
+        "Anything that changed since last time can change this quarter.",
         (
             _q("Which one or two items could matter most for revenue? For the margin?"),
             _q("For each, which way would it push, and what does it depend on?"),
@@ -142,14 +143,14 @@ STEPS: tuple[WorkspaceStep, ...] = (
     ),
     WorkspaceStep(
         "worksheet",
-        "Your driver worksheet",
-        "Turning your assumptions into numbers shows whether they fit together.",
+        "Your worksheet",
+        "Turn your guesses into numbers and check they add up.",
         (_note("Every number here is your own. Stackly does the arithmetic and shows the formula."),),
     ),
     WorkspaceStep(
         "range",
         "Your range",
-        "A range is how sure you are. Too narrow and you may miss; too wide and you lose points for width.",
+        "A range shows how sure you are. Too tight and you might miss. Too wide and you lose points.",
         (
             _note("Each forecast is an 80% range: you should expect the real number to land inside it about 8 times "
                   "in 10. Your score starts at 100. Every percentage point of width costs 2 points. Every percentage "

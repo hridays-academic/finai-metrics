@@ -60,7 +60,8 @@ def test_glossary_has_new_terms_and_league_definitions():
     assert terms["Base effect"]["source"] == "glossary"
     assert terms["Operating margin"]["source"] == "league"
     assert "Underlying volume growth (Everyday goods (FMCG))" in terms
-    assert len([e for e in terms.values() if e["source"] == "glossary"]) == 14
+    assert len([e for e in terms.values() if e["source"] == "glossary"]) == 15
+    assert terms["Difficulty"]["source"] == "glossary"
 
 
 # ---------- Input checks (pure) ----------

@@ -32,6 +32,9 @@ NEW_TERMS: tuple[tuple[str, str], ...] = (
     ("Lazy guess", "Last year's number for the same quarter. You earn a bonus if the middle of your range is closer "
                    "to the result than it."),
     ("80% range", "A range you expect the real number to fall inside about 8 times in 10."),
+    # Approved by Hriday 2026-11-17 (Areas/Difficulty colours (for approval)).
+    ("Difficulty", "How much a company's revenue and margin have moved from quarter to quarter. Bigger moves make a "
+                   "forecast harder."),
 )
 
 
