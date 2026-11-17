@@ -1,8 +1,8 @@
 import type { Theme } from "../../hooks/useTheme";
 import type { ActualRow, EventDetail, ResearchHistory } from "../../lib/types";
-import ArrowChip from "../ArrowChip";
 import PriceChart from "../PriceChart";
 import QuarterSparkline from "./QuarterSparkline";
+import { crorePlain, formatCrore, previousQuarterEnds, quarterLabel } from "../../lib/leagueFormat";
 
 interface ResearchPanelProps {
   event: EventDetail;
@@ -13,34 +13,10 @@ interface ResearchPanelProps {
   onOpenInResearch: (symbol: string) => void;
 }
 
-const QUARTER_ENDS = ["03-31", "06-30", "09-30", "12-31"];
-
-// The eight quarter-end dates before the event's own period, newest first.
-// Generated rather than taken from the data, so a missing quarter shows as
-// N/A instead of silently disappearing (yfinance often skips one).
-function previousQuarterEnds(periodEnd: string, count: number): string[] {
-  let year = Number(periodEnd.slice(0, 4));
-  let idx = QUARTER_ENDS.indexOf(periodEnd.slice(5));
-  const out: string[] = [];
-  for (let i = 0; i < count; i++) {
-    idx -= 1;
-    if (idx < 0) {
-      idx = 3;
-      year -= 1;
-    }
-    out.push(`${year}-${QUARTER_ENDS[idx]}`);
-  }
-  return out;
-}
-
-function quarterLabel(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
-}
-
 const NA = <span className="cell-na">N/A</span>;
 
 function crore(value: number | null) {
-  return value === null ? NA : `₹${(value / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 })} cr`;
+  return value === null ? NA : formatCrore(value);
 }
 
 function pct(value: number | null | undefined) {
@@ -56,9 +32,6 @@ function ActualCell({ actual }: { actual: ActualRow | undefined }) {
   );
 }
 
-function crorePlain(value: number): string {
-  return `₹${(value / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 0 })} cr`;
-}
 
 // The eight quarters before the event: Yahoo figures and league figures side by side.
 export function QuartersTable({
@@ -163,20 +136,9 @@ export default function ResearchPanel({ event, theme, history, historyError, onO
   return (
     <div className="league-research">
       {event.research_notes && (
-        <aside className="callout callout-tip reveal-item" aria-label="Tip from Stackly">
-          <svg className="explainer-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <div>
-            <div className="callout-label">Tip</div>
-            <p>{event.research_notes}</p>
-          </div>
+        <aside className="research-tip" aria-label="Tip from Stackly">
+          <div className="research-tip-label">Tip</div>
+          <p>{event.research_notes}</p>
         </aside>
       )}
 
@@ -188,13 +150,12 @@ export default function ResearchPanel({ event, theme, history, historyError, onO
           <div className="league-price-chart">
             <PriceChart symbol={symbol} currency={event.company.currency} theme={theme} />
           </div>
-          <aside className="callout callout-research reveal-item" aria-label="Full analysis on the Research page">
+          <aside className="research-more" aria-label="Full analysis on the Research page">
             <p>
               Want the full picture? See all ratios, charts and details for {event.company.name} on the Research page.
             </p>
             <button type="button" className="btn btn-secondary" onClick={() => onOpenInResearch(symbol)}>
               Open in Research
-              <ArrowChip />
             </button>
           </aside>
         </>

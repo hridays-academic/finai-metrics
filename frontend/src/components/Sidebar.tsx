@@ -14,17 +14,17 @@ interface SidebarProps {
   onOpenAdmin?: () => void;
 }
 
-// The app's primary nav: a slim icon rail on the left, and a labelled bottom
-// bar on phones (see .sidebar in app.css). Home (the league stock picker) and
+// The app's primary nav: text tabs in the top bar on desktop, and a labelled
+// bottom tab bar with icons on phones (see .primary-nav in app.css). Home (the league stock picker) and
 // Research (company search); the Return Calculator, Market Simulator and
 // Paper Trading only appear when SHOW_EXTRA_TOOLS is on. Icons match
 // Header.tsx's gear icon: 1.6-1.8 stroke width, currentColor, no fill.
 export default function Sidebar({ view, onChange, user, adminActive = false, onOpenAdmin }: SidebarProps) {
   return (
-    <nav className="sidebar glass" aria-label="Primary">
+    <nav className="primary-nav" aria-label="Primary">
       <button
         type="button"
-        className={`sidebar-icon-button ${view === "home" ? "active" : ""}`}
+        className={`nav-tab ${view === "home" ? "active" : ""}`}
         aria-label="Home"
         aria-current={view === "home"}
         onClick={() => onChange("home")}
@@ -37,12 +37,12 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
             strokeLinejoin="round"
           />
         </svg>
-        <span className="sidebar-label">Home</span>
+        <span className="nav-tab-label">Home</span>
       </button>
 
       <button
         type="button"
-        className={`sidebar-icon-button ${view === "search" ? "active" : ""}`}
+        className={`nav-tab ${view === "search" ? "active" : ""}`}
         aria-label="Research"
         aria-current={view === "search"}
         onClick={() => onChange("search")}
@@ -51,14 +51,14 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
           <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
           <path d="M20 20L15.8 15.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
-        <span className="sidebar-label">Research</span>
+        <span className="nav-tab-label">Research</span>
       </button>
 
       {SHOW_EXTRA_TOOLS && (
         <>
       <button
         type="button"
-        className={`sidebar-icon-button ${view === "calculator" ? "active" : ""}`}
+        className={`nav-tab ${view === "calculator" ? "active" : ""}`}
         aria-label="Return calculator"
         aria-current={view === "calculator"}
         onClick={() => onChange("calculator")}
@@ -77,7 +77,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
 
       <button
         type="button"
-        className={`sidebar-icon-button ${view === "simulator" ? "active" : ""}`}
+        className={`nav-tab ${view === "simulator" ? "active" : ""}`}
         aria-label="Market simulator"
         aria-current={view === "simulator"}
         onClick={() => onChange("simulator")}
@@ -101,7 +101,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
 
       <button
         type="button"
-        className={`sidebar-icon-button ${view === "trading" ? "active" : ""}`}
+        className={`nav-tab ${view === "trading" ? "active" : ""}`}
         aria-label="Paper trading"
         aria-current={view === "trading"}
         onClick={() => onChange("trading")}
@@ -115,7 +115,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
           <path d="M17 3v9M17 19v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           <rect x="14.5" y="9" width="5" height="10" rx="1" stroke="currentColor" strokeWidth="1.6" />
         </svg>
-        <span className="sidebar-label">Trading</span>
+        <span className="nav-tab-label">Trading</span>
       </button>
 
         </>
@@ -124,7 +124,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
       {user?.is_admin && onOpenAdmin && (
         <button
           type="button"
-          className={`sidebar-icon-button ${adminActive ? "active" : ""}`}
+          className={`nav-tab ${adminActive ? "active" : ""}`}
           aria-label="Admin"
           aria-current={adminActive}
           onClick={onOpenAdmin}
@@ -138,7 +138,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
             />
             <path d="M9 12l2.2 2.2L15.2 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="sidebar-label">Admin</span>
+          <span className="nav-tab-label">Admin</span>
         </button>
       )}
     </nav>

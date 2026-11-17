@@ -13,6 +13,8 @@ vi.mock("../../lib/api", () => {
     ApiError,
     fetchMyResult: vi.fn(), fetchOutcome: vi.fn(), fetchLeagueEvent: vi.fn(), fetchLeagueConfig: vi.fn(),
     fetchMyForecast: vi.fn(), fetchResearchHistory: vi.fn(),
+    // The story's share price chapter; never resolves (no chart under test).
+    fetchPriceHistory: vi.fn(() => new Promise(() => {})),
   };
 });
 // Charts and research tables aren't under test here.
@@ -141,7 +143,7 @@ describe("company page after scoring", () => {
     mocked.fetchLeagueEvent.mockResolvedValue(DETAIL);
     mocked.fetchLeagueConfig.mockResolvedValue({ sector_explainers: [], kpi_templates: [] } as never);
     mocked.fetchResearchHistory.mockReturnValue(new Promise(() => {}));
-    render(<ForecastPage eventId={3} user={null} onUserChange={vi.fn()} onOpenAuth={vi.fn()} theme="dark-aurora" onOpenInResearch={vi.fn()} visible />);
+    render(<ForecastPage eventId={3} user={null} onUserChange={vi.fn()} onOpenAuth={vi.fn()} theme="dark" onOpenInResearch={vi.fn()} visible />);
     expect(await screen.findByRole("heading", { name: "How it turned out" })).toBeTruthy();
     await waitFor(() => expect(screen.getByText("+13.0%")).toBeTruthy());
     expect(screen.queryByRole("form", { name: "forecast form" })).toBeNull();
@@ -152,7 +154,7 @@ describe("company page after scoring", () => {
     mocked.fetchLeagueEvent.mockResolvedValue({ ...DETAIL, status: "open" });
     mocked.fetchLeagueConfig.mockResolvedValue({ sector_explainers: [], kpi_templates: [] } as never);
     mocked.fetchResearchHistory.mockReturnValue(new Promise(() => {}));
-    render(<ForecastPage eventId={3} user={null} onUserChange={vi.fn()} onOpenAuth={vi.fn()} theme="dark-aurora" onOpenInResearch={vi.fn()} visible />);
+    render(<ForecastPage eventId={3} user={null} onUserChange={vi.fn()} onOpenAuth={vi.fn()} theme="dark" onOpenInResearch={vi.fn()} visible />);
     expect(await screen.findByRole("form", { name: "forecast form" })).toBeTruthy();
     expect(mocked.fetchOutcome).not.toHaveBeenCalled();
   });

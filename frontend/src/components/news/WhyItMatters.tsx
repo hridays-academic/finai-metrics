@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 // "Why it matters" for news, video, filing and world-event cards. A 2-line
@@ -27,11 +27,11 @@ function Chain({ chain }: { chain: string }) {
   return (
     <ol className="why-chain" aria-label="Cause and effect">
       {steps.map((s, i) => (
-        <li key={i}>
+        <li key={i} style={{ "--step": i } as CSSProperties}>
           {i > 0 && (
-            <span className="why-chain-arrow" aria-hidden="true">
-              →
-            </span>
+            <svg className="why-chain-arrow" viewBox="0 0 12 22" aria-hidden="true">
+              <path d="M6 1v18M1.5 14.5 6 19l4.5-4.5" pathLength={1} />
+            </svg>
           )}
           <span className="why-chain-step">{s}</span>
         </li>

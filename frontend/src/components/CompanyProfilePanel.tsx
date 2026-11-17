@@ -43,7 +43,7 @@ export default function CompanyProfilePanel({
   const bar = profile.segments.filter((s) => s.revenue_cr > 0);
 
   return (
-    <section className="glass panel reveal news-panel company-profile" aria-labelledby="profile-title">
+    <section className="glass panel news-panel company-profile" aria-labelledby="profile-title">
       <h2 className="panel-title" id="profile-title">
         About {name}
       </h2>

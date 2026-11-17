@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { useOnceVisible } from "../hooks/useOnceVisible";
 import { fetchPeer } from "../lib/api";
 import type { PeerSummary } from "../lib/types";
 import { formatDay } from "../lib/leagueFormat";
@@ -14,9 +15,19 @@ const COLS: { key: keyof PeerSummary; label: string; unit: "%" | "x" }[] = [
   { key: "ev_to_ebitda", label: "EV / EBITDA", unit: "x" },
 ];
 
-function cell(v: unknown, unit: "%" | "x") {
+// The number, with a thin bar under it sized against the largest value in
+// its column (only for comparing at a glance; the number is the source of truth).
+function cell(v: unknown, unit: "%" | "x", max: number) {
   if (typeof v !== "number") return <span className="cell-na">N/A</span>;
-  return unit === "%" ? `${v.toFixed(1)}%` : `${v.toFixed(1)}x`;
+  const w = max > 0 ? Math.min(1, Math.abs(v) / max) : 0;
+  return (
+    <span className="cell-with-bar">
+      <span>{unit === "%" ? `${v.toFixed(1)}%` : `${v.toFixed(1)}x`}</span>
+      <span className="ratio-bar-track" aria-hidden="true">
+        <span className={`value-bar ${v < 0 ? "is-negative" : ""}`} style={{ "--w": w.toFixed(3) } as CSSProperties} />
+      </span>
+    </span>
+  );
 }
 
 function quarter(iso: string | null): string {
@@ -47,6 +58,7 @@ export function usePeers(peers: string[]): PeerRows {
 
 // The company next to its peers on eight ratios.
 export default function PeersPanel({ self, peers, rows }: { self: PeerSummary; peers: string[]; rows: PeerRows }) {
+  const [barsRef, barsShown] = useOnceVisible<HTMLDivElement>(0.2);
   if (peers.length === 0) return null;
   const all: (PeerSummary | { symbol: string; state: "loading" | "error" })[] = [
     self,
@@ -56,12 +68,17 @@ export default function PeersPanel({ self, peers, rows }: { self: PeerSummary; p
     }),
   ];
 
+  const loaded = all.filter((r): r is PeerSummary => !("state" in r));
+  const maxOf = (k: keyof PeerSummary) =>
+    Math.max(0, ...loaded.map((r) => (typeof r[k] === "number" ? Math.abs(r[k] as number) : 0)));
+  const max = Object.fromEntries(COLS.map((c) => [c.key, maxOf(c.key)]));
+
   return (
-    <section className="glass panel reveal peers" aria-labelledby="peers-title">
+    <section className="glass panel peers" aria-labelledby="peers-title">
       <h2 className="panel-title" id="peers-title">
         Compared with peers
       </h2>
-      <div className="table-wrap">
+      <div className={`table-wrap ${barsShown ? "bars-shown" : "bars-pending"}`} ref={barsRef}>
         <table className="data-table peers-table">
           <thead>
             <tr>
@@ -88,7 +105,7 @@ export default function PeersPanel({ self, peers, rows }: { self: PeerSummary; p
                     {i === 0 && <span className="visually-hidden"> (this company)</span>}
                   </td>
                   {COLS.map((c) => (
-                    <td key={c.key}>{cell(r[c.key], c.unit)}</td>
+                    <td key={c.key}>{cell(r[c.key], c.unit, max[c.key])}</td>
                   ))}
                   <td>
                     {quarter(r.latest_quarter)}

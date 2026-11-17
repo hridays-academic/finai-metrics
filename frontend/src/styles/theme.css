@@ -1,82 +1,135 @@
-/* Design tokens (2026-11 design pass). One axis, `data-mode` = "dark"
-   (default) | "light", set by useTheme.ts. Components read ONLY these
-   variables: no hex values, spacing or radii hardcoded in app.css.
+/* Design tokens, v3 (2026-11-15). Dark is the default; light mode
+   (2026-11-17) overrides the tokens under :root[data-mode="light"] at the
+   end of this file. First visit follows the device setting
+   (public/theme-init.js, hooks/useTheme.ts).
 
-   Colour rules:
-   - Neutral greys for everything structural.
-   - ONE accent (blue), for primary actions, links, focus and key highlights.
-   - --positive / --negative (green/red) ONLY for numbers that went up or
-     down, or a forecast that hit or missed. Never decoration.
-   - Every text token is at least 4.5:1 on --bg-app, --bg-surface and
-     --bg-elevated in its mode (checked with a script, 2026-11-06). */
+   - Page #0B0D12. Working surfaces are frosted dark glass (.glass): white
+     6-8% fill, ~32px blur, a lit top edge, a dark bottom edge, a contact
+     shadow plus a wide ambient one. Raised glass (.raised) for inputs and
+     chips inside glass; never blur inside blur.
+   - --gold ONLY for the student's own range and score.
+   - --positive / --negative for hit/miss and up/down; --caution for
+     "locks soon"; --sector-* for company tiles and the 3D company card.
+   - Headlines (hero, chapters, tiles): Barlow Condensed, uppercase. All
+     other text: the system font, tabular numerals.
+   Contrast checked by script 2026-11-15 on the page and on glass; sector
+   colours rechecked 2026-11-16 (see the Sectors block). */
+
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("/fonts/barlow-condensed-extrabold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("/fonts/barlow-condensed-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   color-scheme: dark;
 
-  --bg-app: #0b0b0d;
-  --bg-surface: #1c1c1e;
-  --bg-elevated: #2c2c2e;
-  --bg-hover: #2a2a2d;
-  --bg-pressed: #333336;
+  --page: #0b0d12;
+  --text: #f7f8fa;
+  --text-2: #a7b0c0;
+  --hairline: rgba(255, 255, 255, 0.1);
+  --link: #8fb4ff; /* 7.9:1 on glass */
+  --focus: #f7f8fa;
 
-  --text-primary: #f5f5f7;
-  --text-secondary: #aeaeb2;
-  --text-tertiary: #9a9aa0;
+  /* Glass */
+  --glass-fill: rgba(255, 255, 255, 0.07);
+  --glass-blur: 32px;
+  --edge-lit: rgba(255, 255, 255, 0.2);
+  --edge-side: rgba(255, 255, 255, 0.08);
+  --edge-dark: rgba(0, 0, 0, 0.6);
+  --shadow-panel: 0 1px 1px rgba(0, 0, 0, 0.45), 0 3px 8px rgba(0, 0, 0, 0.35), 0 28px 70px -18px rgba(0, 0, 0, 0.75);
+  --raised-fill: rgba(255, 255, 255, 0.07);
+  --raised-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --recessed-fill: #05070a;
+  --solid-glass: #17191e; /* fallback when blur is unavailable */
 
-  /* Hairline dividers vs. control outlines (inputs need 3:1). */
-  --border-subtle: #38383a;
-  --border-strong: #6c6c70;
+  /* Buttons */
+  --offwhite: #f7f8fa;
+  --on-offwhite: #0b0d12;
+  --offwhite-press: #e6e9ee;
+  --button-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 2px 0 #9aa1ad, 0 6px 16px rgba(0, 0, 0, 0.45);
+  --button-shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 3px 0 #9aa1ad, 0 14px 28px rgba(0, 0, 0, 0.55);
+  --button-shadow-pressed: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 1px 0 #9aa1ad, 0 2px 6px rgba(0, 0, 0, 0.4);
 
-  --accent: #4ea1ff;            /* text, links, focus ring, highlights */
-  --accent-fill: #0a6fd8;       /* primary button fill (white text 4.9:1) */
-  --accent-fill-hover: #0862c0;
-  --accent-fill-pressed: #0754a6;
-  --accent-tint: rgba(78, 161, 255, 0.16);
-  --accent-tint-hover: rgba(78, 161, 255, 0.24);
-  --accent-contrast: #ffffff;
+  /* Meaning */
+  --gold: #f2c14e;
+  --on-gold: #0b0d12;
+  --positive: #3ddc84;
+  --negative: #ff6b6b;
+  --caution: #ff9f43;
 
-  --positive: #30d158;
-  --positive-bg: rgba(48, 209, 88, 0.14);
-  --negative: #ff6961;
-  --negative-bg: rgba(255, 105, 97, 0.14);
-  --caution: #ffd60a;
-  --caution-bg: rgba(255, 214, 10, 0.14);
+  /* Sectors (2026-11-16): a rich material colour each, with a lighter and a
+     darker shade for the bevel, sheen and card edge. Home tiles and the 3D
+     card use the same three. Text contrast checked by script on all three
+     shades (the tile and card shade between them): white text 4.6-10.9:1;
+     cement carries dark text, 4.7-11.6:1. Banks, pharma, energy and metals
+     are for January's sectors; neutral is for companies outside the league. */
+  --sector-autos: #1f4fd6;
+  --sector-autos-light: #3b68ee;
+  --sector-autos-dark: #13358f;
+  --on-sector-autos: #ffffff;
+  --sector-fmcg: #077a4c;
+  --sector-fmcg-light: #0a8452;
+  --sector-fmcg-dark: #04532f;
+  --on-sector-fmcg: #ffffff;
+  --sector-it: #6a3fd8;
+  --sector-it-light: #7c54e8;
+  --sector-it-dark: #46239c;
+  --on-sector-it: #ffffff;
+  --sector-cement: #dba13d;
+  --sector-cement-light: #efc265;
+  --sector-cement-dark: #a8721c;
+  --on-sector-cement: #0b0d12;
+  --sector-banks: #086c74;
+  --sector-banks-light: #0b7b84;
+  --sector-banks-dark: #044a50;
+  --on-sector-banks: #ffffff;
+  --sector-pharma: #b52a55;
+  --sector-pharma-light: #c63a65;
+  --sector-pharma-dark: #80183a;
+  --on-sector-pharma: #ffffff;
+  --sector-energy: #b4430a;
+  --sector-energy-light: #c24d0e;
+  --sector-energy-dark: #7d2f05;
+  --on-sector-energy: #ffffff;
+  --sector-metals: #556273;
+  --sector-metals-light: #657386;
+  --sector-metals-dark: #39434f;
+  --on-sector-metals: #ffffff;
+  --sector-neutral: #30343b;
+  --sector-neutral-light: #454a53;
+  --sector-neutral-dark: #1d2025;
+  --on-sector-neutral: #ffffff;
 
-  --disabled-bg: #2c2c2e;
-  --disabled-text: #8e8e93;
-
-  --negative-fill: #d70015;     /* destructive button fill (white text 5.3:1) */
-  --negative-fill-hover: #b80012;
-
-  --segment-track: rgba(118, 118, 128, 0.24);
-  --segment-active: #636366;
-  --segment-hover: rgba(118, 118, 128, 0.2);
-  --segment-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-
-  /* Liquid glass (top bar, sidebar/tab bar, sheets only). */
-  --glass-bg: rgba(28, 28, 30, 0.72);
-  --glass-sheet-bg: rgba(28, 28, 30, 0.86);
-  --glass-solid: #1c1c1e;
-  --glass-edge: rgba(255, 255, 255, 0.1);
-  --glass-highlight: rgba(255, 255, 255, 0.06);
-  --scrim: rgba(0, 0, 0, 0.5);
-
-  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.5);
-
-  /* Older names still read by the hidden extra tools (Calculator,
-     Simulator, Paper Trading) and charts. Aliases, not new colours. */
-  --accent-strong: var(--accent-fill-hover);
-  --status-good: var(--positive);
-  --status-good-bg: var(--positive-bg);
-  --status-bad: var(--negative);
-  --status-bad-bg: var(--negative-bg);
-  --status-warning: var(--caution);
-  --status-warning-bg: var(--caution-bg);
-  --status-neutral: var(--text-secondary);
-  --status-neutral-bg: var(--bg-elevated);
-  --user-bubble-bg: var(--accent-fill);
-  --user-bubble-text: var(--accent-contrast);
-  --assistant-bubble-bg: var(--bg-elevated);
+  /* Solid stand-ins, used by charts and the not-yet-redesigned pages. */
+  --card: #1b1d22;
+  --raised: #2a2c31;
+  --separator: #2c2f36;
+  --control-border: #6b7280; /* 3.4:1 on glass */
+  --fill: #2a2c31;
+  --accent: #8fb4ff;
+  --accent-fill: #f7f8fa;
+  --accent-fill-press: #e6e9ee;
+  --accent-text: #f7f8fa;
+  --accent-tint: rgba(255, 255, 255, 0.08);
+  --accent-tint-press: rgba(255, 255, 255, 0.14);
+  --on-accent: #0b0d12;
+  --negative-fill: #d70015;
+  --disabled-bg: #2a2c31;
+  --disabled-text: #a7b0c0;
+  --glass: rgba(11, 13, 18, 0.72);
+  --glass-solid: #0b0d12;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow-float: var(--shadow-panel);
 
   /* Spacing: a 4/8 scale. */
   --space-0: 0;
@@ -90,326 +143,138 @@
   --space-8: 40px;
   --space-9: 48px;
   --space-10: 64px;
+  --gap: 24px;
+  --panel-pad: 32px;
 
-  /* Two radii. Circles (avatars, dots) use 50% as a shape, not a radius. */
-  --radius-sm: 8px;   /* controls: buttons, inputs, chips, segmented */
-  --radius-lg: 14px;  /* surfaces: grouped lists, sheets, charts */
+  --radius-panel: 24px;
+  --radius-control: 14px;
+  --radius-small: 10px;
 
   /* Type */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Barlow Condensed", "Arial Narrow", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --text-xs: 12px;
-  --text-sm: 14px;
-  --text-md: 16px;
-  --text-lg: 19px;
-  --text-xl: 24px;
-  --text-2xl: 34px;
-  --text-display: 48px;
-  --leading-tight: 1.2;
-  --leading-body: 1.5;
-  --weight-regular: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
-  --weight-bold: 700;
+  --text-xs: 13px;
+  --text-sm: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --text-stat: 34px;
+  --head-hero: clamp(56px, 8.4vw, 128px);
+  --head-chapter: clamp(44px, 6vw, 96px);
+  --head-tile: 44px;
+  --leading-body: 1.47;
+  --measure: 66ch;
 
-  /* Controls */
   --control-height: 44px;
-  --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--accent);
+  --focus-ring: 0 0 0 2px var(--page), 0 0 0 4px var(--focus);
 
-  /* Motion: short and plain. Reduced-motion users get none (below). */
-  --duration-press: 100ms;
-  --duration-ui: 180ms;
-  --ease-out: cubic-bezier(0.2, 0, 0, 1);
-  --press-scale: 0.97;
+  /* Motion: responses to an action, plus the story's scroll turn. */
+  --duration-press: 120ms;
+  --duration-open: 250ms;
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
 
-  /* Layout */
-  --header-height: 56px;
-  --sidebar-width: 88px;
+  --max: 1120px;
+  --topbar-height: 60px;
   --tabbar-height: 64px;
-  --content-max: 960px;
-  --content-wide: 1200px;
-  --reading-max: 680px;
+  --aside: 380px;
 }
 
-:root[data-mode="light"] {
-  color-scheme: light;
-
-  --bg-app: #f5f5f7;
-  --bg-surface: #ffffff;
-  --bg-elevated: #ffffff;
-  --bg-hover: #ebebef;
-  --bg-pressed: #e0e0e5;
-
-  --text-primary: #1d1d1f;
-  --text-secondary: #48484c;
-  --text-tertiary: #636368;
-
-  --border-subtle: #d8d8dc;
-  --border-strong: #8e8e93;
-
-  --accent: #0066cc;
-  --accent-fill: #0071e3;
-  --accent-fill-hover: #0064c9;
-  --accent-fill-pressed: #0057ad;
-  --accent-tint: rgba(0, 113, 227, 0.1);
-  --accent-tint-hover: rgba(0, 113, 227, 0.16);
-  --accent-contrast: #ffffff;
-
-  --positive: #157a32;
-  --positive-bg: rgba(21, 122, 50, 0.1);
-  --negative: #c4261d;
-  --negative-bg: rgba(196, 38, 29, 0.09);
-  --caution: #8a5a00;
-  --caution-bg: rgba(138, 90, 0, 0.1);
-
-  --disabled-bg: #e8e8ed;
-  --disabled-text: #6e6e73;
-
-  --negative-fill: #c4261d;
-  --negative-fill-hover: #a61f17;
-
-  --segment-track: rgba(118, 118, 128, 0.12);
-  --segment-active: #ffffff;
-  --segment-hover: rgba(118, 118, 128, 0.1);
-  --segment-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-sheet-bg: rgba(255, 255, 255, 0.86);
-  --glass-solid: #ffffff;
-  --glass-edge: rgba(0, 0, 0, 0.08);
-  --glass-highlight: rgba(255, 255, 255, 0.7);
-  --scrim: rgba(0, 0, 0, 0.32);
-
-  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.12);
+@media (max-width: 640px) {
+  :root {
+    --gap: 16px;
+    --panel-pad: 20px;
+    --head-tile: 36px;
+    --text-stat: 28px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-press: 0ms;
-    --duration-ui: 0ms;
-    --press-scale: 1;
+    --duration-open: 0ms;
   }
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-}
-
-body {
-  background: var(--bg-app);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  line-height: var(--leading-body);
-  /* Tabular figures everywhere, so numbers line up in tables, scores and
-     countdowns without each component having to remember. */
-  font-variant-numeric: tabular-nums;
-  -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 100%;
-}
-
-#root {
-  height: 100%;
-}
-
-h1,
-h2,
-h3,
-h4 {
-  line-height: var(--leading-tight);
-  letter-spacing: -0.01em;
-}
-
-a {
-  color: var(--accent);
-  text-underline-offset: 2px;
-}
-
-button,
-input,
-select,
-textarea {
-  font-family: inherit;
-  font-size: inherit;
-}
-
-:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-::selection {
-  background: var(--accent-tint-hover);
-  color: var(--text-primary);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
-}
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: var(--radius-sm);
-}
-
-/* ---------- Liquid Glass (2026-11, second pass) ----------
-   App-wide since 2026-11-06. These override the base values above. Text
-   colours are retuned so every token stays >= 4.5:1 on the worst case: a
-   glass panel (up to 16% white in dark, 58% white in light) over the
-   brightest point of the wallpaper (checked by script, 2026-11-06).
-
-   Two palettes, picked in Settings (useTheme.ts, `data-palette` on <html>):
-   Aurora (default) and Graphite. A palette sets the wallpaper fields, the
-   scroll tint, the accent text colour, the primary button fill and the
-   "locks soon" badge tint. Palette blocks must repeat every variable they
-   change in both modes (the light Graphite block outranks the rest). */
+/* ---------------------------------------------------------------------
+   TEMPORARY (2026-11-15, redesign v3): the old token names, mapped
+   onto the new tokens so pages not yet redesigned still render. Removed
+   with legacy.css in step 3.
+   --------------------------------------------------------------------- */
 :root {
-  --text-secondary: #c7c7cc;
-  --text-tertiary: #c4c4cb;
-  --accent: #9ccbff;
-  --positive: #4be37a;
-  --negative: #ffb3ae;
+  --bg-app: var(--page);
+  --bg-surface: var(--card);
+  --bg-elevated: var(--raised);
+  --bg-hover: var(--accent-tint);
+  --bg-pressed: var(--accent-tint-press);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-2);
+  --text-tertiary: var(--text-2);
+  --border-subtle: var(--separator);
+  --border-strong: var(--control-border);
 
-  --lg-fill: rgba(255, 255, 255, 0.04);
-  --lg-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 40%);
-  --lg-inset: rgba(255, 255, 255, 0.06);
-  --lg-row-hover: rgba(255, 255, 255, 0.06);
-  --lg-btn-fill: rgba(255, 255, 255, 0.1);
-  --lg-btn-fill-hover: rgba(255, 255, 255, 0.16);
-  --lg-edge: rgba(255, 255, 255, 0.12);
-  --lg-edge-top: rgba(255, 255, 255, 0.26);
-  --lg-divider: rgba(255, 255, 255, 0.1);
-  --lg-shadow: 0 1px 1px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.25), 0 28px 64px rgba(0, 0, 0, 0.35);
-  --lg-solid: #17201f;
-  --lg-sheet: rgba(24, 30, 32, 0.82);
-  /* Tooltips: clearer than a sheet, same glass (see app.css .tooltip). */
-  --lg-tooltip: rgba(24, 30, 32, 0.55);
-  --lg-tooltip-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 14px 36px -8px rgba(0, 0, 0, 0.45);
-  --lg-light: rgba(255, 255, 255, 0.13);
-  --lg-light-radius: 180px;
-  --lg-blur: blur(32px) saturate(180%);
-  --lg-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --lg-primary-glow: rgba(10, 111, 216, 0.55);
-  --lg-primary-highlight: rgba(255, 255, 255, 0.35);
-
-  --radius-panel: 24px;
-  --radius-inner: 16px;
-  --radius-tile: 14px;
+  --accent-fill-hover: var(--accent-fill-press);
+  --accent-fill-pressed: var(--accent-fill-press);
+  --accent-strong: var(--accent-fill-press);
+  --accent-tint-hover: var(--accent-tint);
+  --accent-contrast: var(--on-accent);
+  --positive-bg: transparent;
+  --negative-bg: transparent;
+  --caution-bg: transparent;
+  --negative-fill-hover: var(--negative-fill);
+  --status-good: var(--positive);
+  --status-good-bg: transparent;
+  --status-bad: var(--negative);
+  --status-bad-bg: transparent;
+  --status-warning: var(--caution);
+  --status-warning-bg: transparent;
+  --status-neutral: var(--text-2);
+  --status-neutral-bg: transparent;
+  --segment-track: transparent;
+  --segment-active: var(--accent);
+  --segment-hover: var(--accent-tint);
+  --segment-shadow: none;
+  --glass-bg: var(--card);
+  --glass-sheet-bg: var(--card);
+  --glass-edge: var(--separator);
+  --glass-highlight: transparent;
+  --shadow-elevated: var(--shadow-float);
+  --radius-sm: var(--radius-control);
+  --radius-lg: var(--radius-card);
+  --radius-inner: var(--radius-card);
   --radius-pill: 999px;
-  --lg-gap: 12px;
-  --press-scale: 0.97;
-
-  /* Aurora, dark */
-  --wall-base: #041011;
-  --wall-1: rgba(12, 105, 88, 0.43);
-  --wall-2: rgba(26, 72, 150, 0.38);
-  --wall-3: rgba(92, 62, 150, 0.27);
-  --wall-4: rgba(16, 92, 104, 0.38);
-  --wall-tint: rgba(30, 24, 70, 0.55);
-  --soon-bg: rgba(255, 214, 10, 0.2);
-}
-
-:root[data-mode="light"] {
-  --text-secondary: #48484c;
-  --text-tertiary: #5b5b60;
-  --accent: #0054a6;
-  --caution: #7d5200;
-  --positive: #0f6629;
-  --negative: #b3221a;
-
-  --lg-fill: rgba(255, 255, 255, 0.36);
-  --lg-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 40%);
-  --lg-inset: rgba(255, 255, 255, 0.42);
-  --lg-row-hover: rgba(0, 0, 0, 0.04);
-  --lg-btn-fill: rgba(255, 255, 255, 0.6);
-  --lg-btn-fill-hover: rgba(255, 255, 255, 0.85);
-  --lg-edge: rgba(255, 255, 255, 0.7);
-  --lg-edge-top: rgba(255, 255, 255, 0.95);
-  --lg-divider: rgba(0, 0, 0, 0.08);
-  --lg-shadow: 0 0 0 1px rgba(30, 50, 90, 0.06), 0 1px 1px rgba(30, 50, 90, 0.05), 0 8px 24px rgba(30, 50, 90, 0.08),
-    0 28px 60px rgba(30, 50, 90, 0.1);
-  --lg-solid: #f7faf9;
-  --lg-sheet: rgba(250, 252, 252, 0.86);
-  --lg-tooltip: rgba(250, 252, 252, 0.55);
-  --lg-tooltip-shadow: 0 2px 6px rgba(30, 50, 90, 0.08), 0 14px 36px -8px rgba(30, 50, 90, 0.22);
-  --lg-light: rgba(255, 255, 255, 0.75);
+  --text-2xl: 34px;
+  --radius-card: var(--radius-panel);
+  --card-pad: var(--panel-pad);
+  --weight-regular: 400;
+  --weight-medium: 600;
+  --weight-semibold: 600;
+  --weight-bold: 600;
+  --duration-ui: var(--duration-open);
+  --ease-out: var(--ease);
+  --header-height: var(--topbar-height);
+  --sidebar-width: 0px;
+  --content-max: var(--max);
+  --content-wide: var(--max);
+  --reading-max: var(--max);
+  --text-display: var(--text-stat);
+  --panel-gap: var(--space-8);
+  --tile-gap: var(--space-3);
+  --lg-solid: var(--card);
+  --lg-edge: var(--separator);
+  --lg-edge-top: var(--separator);
+  --lg-divider: var(--separator);
+  --lg-sheen: none;
+  --lg-tooltip: var(--card);
+  --lg-tooltip-shadow: var(--shadow-float);
   --lg-text-shadow: none;
-  --lg-primary-glow: rgba(0, 113, 227, 0.4);
-  --accent-fill: #0067c8;
-  --accent-fill-pressed: #0057ad;
-
-  /* Aurora, light */
-  --wall-base: #e9f3f0;
-  --wall-1: rgba(150, 215, 195, 0.55);
-  --wall-2: rgba(160, 190, 240, 0.5);
-  --wall-3: rgba(200, 185, 240, 0.4);
-  --wall-4: rgba(150, 210, 215, 0.45);
-  --wall-tint: rgba(205, 195, 240, 0.45);
-  --soon-bg: rgba(150, 110, 0, 0.14);
+  --lg-sheet: var(--card);
+  --lg-inset: var(--card);
+  --lg-btn-fill: transparent;
+  --lg-btn-fill-hover: var(--accent-tint);
 }
 
-/* Graphite: warm graphite with amber/copper light. Copper buttons (white
-   text 5.8:1). "Locks soon" gets a coral-tinted badge with a clock icon so
-   it can't be mistaken for an amber link. */
-:root[data-palette="graphite"] {
-  --wall-base: #100e0d;
-  --wall-1: rgba(66, 60, 56, 0.51);
-  --wall-2: rgba(165, 100, 32, 0.32);
-  --wall-3: rgba(150, 72, 42, 0.29);
-  --wall-4: rgba(168, 82, 72, 0.22);
-  --wall-tint: rgba(40, 22, 14, 0.55);
-  --accent: #ffc085;
-  --accent-fill: #a64b17;
-  --accent-fill-hover: #a64b17;
-  --accent-fill-pressed: #8a3e13;
-  --accent-tint: rgba(255, 192, 133, 0.16);
-  --accent-tint-hover: rgba(255, 192, 133, 0.24);
-  --lg-primary-glow: rgba(200, 100, 40, 0.5);
-  --lg-solid: #1e1a17;
-  --lg-sheet: rgba(34, 29, 26, 0.84);
-  --lg-tooltip: rgba(34, 29, 26, 0.55);
-  --soon-bg: rgba(255, 110, 80, 0.28);
-}
-:root[data-mode="light"][data-palette="graphite"] {
-  --wall-base: #f4f1ee;
-  --wall-1: rgba(225, 205, 180, 0.55);
-  --wall-2: rgba(235, 190, 160, 0.45);
-  --wall-3: rgba(236, 196, 190, 0.4);
-  --wall-4: rgba(215, 205, 195, 0.45);
-  --wall-tint: rgba(235, 200, 175, 0.45);
-  --accent: #8a3e10;
-  --accent-fill: #a64b17;
-  --accent-fill-hover: #a64b17;
-  --accent-fill-pressed: #8a3e13;
-  --accent-tint: rgba(166, 75, 23, 0.1);
-  --accent-tint-hover: rgba(166, 75, 23, 0.16);
-  --lg-primary-glow: rgba(166, 75, 23, 0.35);
-  --lg-solid: #faf8f6;
-  --lg-sheet: rgba(252, 250, 248, 0.88);
-  --lg-tooltip: rgba(252, 250, 248, 0.55);
-  --soon-bg: rgba(200, 60, 40, 0.14);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --press-scale: 1;
-  }
-}
-
-/* News theme colours (2026-11-10). Used for icons and light tints only;
-   text on cards stays in the text tokens, so contrast is unchanged. */
+/* News theme colours (2026-11-10): icons only. Dark values; light mode in stage 2. */
 :root {
   --th-crude: #e3a35b;
   --th-monsoon: #6cb6ff;
@@ -420,24 +285,84 @@ textarea {
   --th-rates: #8fa3ff;
   --th-inputs: #b7c0cc;
   --th-tech: #56d4e8;
-  --th-event: var(--accent);
-}
-:root[data-mode="light"] {
-  --th-crude: #9a5b12;
-  --th-monsoon: #0b63b8;
-  --th-rupee: #1c7c43;
-  --th-tariffs: #0f7a73;
-  --th-supply: #b42318;
-  --th-gst: #6b3fb5;
-  --th-rates: #3949ab;
-  --th-inputs: #55606e;
-  --th-tech: #0e7490;
 }
 :root {
   /* Publishers' icons are drawn for white backgrounds: give them one in both modes. */
   --icon-plate: #ffffff;
-}
-:root {
   /* Behind white text on video posters, in both modes. */
+  --video-scrim: rgba(0, 0, 0, 0.62);
+}
+
+/* =====================================================================
+   Light mode (2026-11-17). The same materials on a pale page: glass is
+   white and frosted, the primary capsule is dark ink, and every coloured
+   text token is darkened for a light background. WCAG AA checked by script
+   2026-11-17 on the page (#F3F4F6), on glass and on white:
+   text 17.7:1, secondary 6.9, links 6.1, gold text 5.0, green 4.9,
+   red 5.1, orange 4.6, input outline 3.6 (non-text, needs 3:1); white on
+   the dark primary 18.6. Sector colours are unchanged (their text was
+   checked on their own shades).
+   ===================================================================== */
+:root[data-mode="light"] {
+  color-scheme: light;
+
+  --page: #f3f4f6;
+  --text: #0b0d12;
+  --text-2: #4b5563;
+  --hairline: rgba(15, 23, 42, 0.1);
+  --link: #1f4fd6;
+  --focus: #0b0d12;
+
+  --glass-fill: rgba(255, 255, 255, 0.72);
+  --edge-lit: rgba(255, 255, 255, 1);
+  --edge-side: rgba(15, 23, 42, 0.07);
+  --edge-dark: rgba(15, 23, 42, 0.12);
+  --shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.05), 0 24px 48px -20px rgba(15, 23, 42, 0.22);
+  --raised-fill: rgba(255, 255, 255, 0.85);
+  --raised-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  --recessed-fill: #e3e6ea;
+  --solid-glass: #ffffff;
+
+  --offwhite: #111318;
+  --on-offwhite: #ffffff;
+  --offwhite-press: #2a2d35;
+  --button-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 2px 0 #000000, 0 6px 16px rgba(15, 23, 42, 0.25);
+  --button-shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 3px 0 #000000, 0 14px 28px rgba(15, 23, 42, 0.3);
+  --button-shadow-pressed: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 1px 0 #000000, 0 2px 6px rgba(15, 23, 42, 0.2);
+
+  --gold: #8a6100;
+  --on-gold: #ffffff;
+  --positive: #0f7a3e;
+  --negative: #c62828;
+  --caution: #b45309;
+
+  --card: #ffffff;
+  --raised: #f0f1f4;
+  --separator: #e3e5e9;
+  --control-border: #7a808c;
+  --fill: #e9ebef;
+  --accent: #1f4fd6;
+  --accent-fill: #111318;
+  --accent-fill-press: #2a2d35;
+  --accent-text: #0b0d12;
+  --accent-tint: rgba(15, 23, 42, 0.05);
+  --accent-tint-press: rgba(15, 23, 42, 0.09);
+  --on-accent: #ffffff;
+  --negative-fill: #c62828;
+  --disabled-bg: #e3e5e9;
+  --disabled-text: #4b5563;
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-solid: #ffffff;
+  --scrim: rgba(15, 23, 42, 0.35);
+
+  --th-crude: #a35f12;
+  --th-monsoon: #1d6fb8;
+  --th-rupee: #1d7f47;
+  --th-tariffs: #11787a;
+  --th-supply: #c0392b;
+  --th-gst: #7a3fc2;
+  --th-rates: #3f4fd0;
+  --th-inputs: #5b6573;
+  --th-tech: #0f7c8c;
   --video-scrim: rgba(0, 0, 0, 0.62);
 }

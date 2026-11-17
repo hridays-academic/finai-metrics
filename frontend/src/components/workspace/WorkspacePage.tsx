@@ -4,6 +4,7 @@ import {
   fetchWorkspace, saveWorkspace,
 } from "../../lib/api";
 import { requestFormJump } from "../../lib/forecastDrafts";
+import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import type { Theme } from "../../hooks/useTheme";
 import type {
   CompanyFinancialsResponse, CompanyNews, EventDetail, LeagueConfig, ResearchHistory, UserPublic, Workspace,
@@ -53,6 +54,15 @@ interface WorkspacePageProps {
   onOpenAuth: () => void;
   theme: Theme;
   visible: boolean;
+}
+
+function glossaryGroups<T extends { term: string }>(terms: T[]): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const t of terms) {
+    const letter = t.term.charAt(0).toUpperCase();
+    groups.set(letter, [...(groups.get(letter) ?? []), t]);
+  }
+  return [...groups];
 }
 
 export default function WorkspacePage({ eventId, user, onUserChange, onOpenAuth, visible }: WorkspacePageProps) {
@@ -238,7 +248,7 @@ export default function WorkspacePage({ eventId, user, onUserChange, onOpenAuth,
     status === "saving" ? "Saving..." : status === "saved" ? "Saved" : status === "error" ? "Couldn't save. Check your connection and try again." : "";
 
   return (
-    <div className="page page-wide workspace-page">
+    <div className={`page page-wide workspace-page company-colour ${colourClass(difficultyOf(fromProviderRows(history?.provider_rows)))}`}>
       <header className="page-header glass page-hero">
         <a className="back-link" href={`#/event/${event.id}`} data-keep-scroll>
           ← {name}
@@ -297,13 +307,18 @@ export default function WorkspacePage({ eventId, user, onUserChange, onOpenAuth,
 
         <div className="workspace-main">
           <section className="glass panel workspace-step-head" aria-labelledby="workspace-step-title">
-            <p className="workspace-step-count">
-              Step {index + 1} of {steps.length}
-            </p>
-            <h2 className="panel-title" id="workspace-step-title">
-              {step.title}
-            </h2>
-            <p className="section-text">{step.why}</p>
+            <span className="workspace-step-numeral" aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <div className="workspace-step-head-text">
+              <p className="workspace-step-count">
+                Step {index + 1} of {steps.length}
+              </p>
+              <h2 className="workspace-step-title" id="workspace-step-title">
+                {step.title}
+              </h2>
+              <p className="workspace-step-why">{step.why}</p>
+            </div>
           </section>
 
           <StepData
@@ -419,15 +434,31 @@ export default function WorkspacePage({ eventId, user, onUserChange, onOpenAuth,
       </div>
 
       <details className="glass panel workspace-glossary">
-        <summary className="panel-title">Glossary</summary>
-        <dl className="workspace-definitions">
-          {ws.glossary.map((g) => (
-            <div key={g.term}>
-              <dt>{g.term}</dt>
-              <dd>{g.definition}</dd>
+        <summary className="workspace-glossary-summary">
+          <span className="panel-title">Glossary</span>
+          <svg className="workspace-glossary-chevron" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </summary>
+        {/* Grouped by first letter (the list arrives sorted), each letter
+            large beside its terms, each term on its own raised card. */}
+        <div className="glossary-groups">
+          {glossaryGroups(ws.glossary).map(([letter, terms]) => (
+            <div className="glossary-group" key={letter}>
+              <span className="glossary-letter" aria-hidden="true">
+                {letter}
+              </span>
+              <dl className="glossary-terms">
+                {terms.map((g) => (
+                  <div className="glossary-term" key={g.term}>
+                    <dt>{g.term}</dt>
+                    <dd>{g.definition}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           ))}
-        </dl>
+        </div>
       </details>
 
       {canSave && (

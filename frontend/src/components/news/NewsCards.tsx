@@ -4,6 +4,7 @@ import { formatDay } from "../../lib/leagueFormat";
 import ThemeIcon from "./ThemeIcon";
 import TileGrid from "../TileGrid";
 import { useWhyItMatters, WhySummary } from "./WhyItMatters";
+import { Grain, Guilloche } from "../league/CardArt";
 
 const ICONS = new Set([
   "economictimes.indiatimes.com.ico", "livemint.com.png", "thehindubusinessline.com.png", "financialexpress.com.png",
@@ -38,11 +39,19 @@ function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
     explanation: item.explanation,
   });
   return (
-    <article className={`news-card tile theme-${item.theme} ${top ? "news-card-top" : ""}`}>
+    <article className={`news-card theme-${item.theme} ${top ? "news-card-top sector-neutral" : ""}`}>
       {top && (
-        <div className="news-card-art" aria-hidden="true">
-          <ThemeIcon theme={item.theme} size={56} />
-        </div>
+        <>
+          {/* The company cards' material (engraving, grain) in neutral graphite:
+              company colours mean how hard a company is to forecast. */}
+          <div className="news-card-material" aria-hidden="true">
+            <Guilloche />
+            <Grain />
+          </div>
+          <div className="news-card-art" aria-hidden="true">
+            <ThemeIcon theme={item.theme} size={64} />
+          </div>
+        </>
       )}
       <div className="news-card-body">
         <div className="news-card-meta">

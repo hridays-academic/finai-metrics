@@ -1,39 +1,70 @@
-import { useRef, useState } from "react";
-import type { CompanyFinancialsResponse } from "../lib/types";
+import type { CompanyFinancialsResponse, MetricGroup } from "../lib/types";
 import { formatRawValue } from "../lib/format";
 import { formatDay } from "../lib/leagueFormat";
 import MetricCard from "./MetricCard";
-import TileGrid from "./TileGrid";
 import PriceChart from "./PriceChart";
 import FinancialHistory from "./FinancialHistory";
 import CompanyNewsPanel from "./news/CompanyNewsPanel";
 import CompanyProfilePanel from "./CompanyProfilePanel";
 import PeersPanel, { usePeers } from "./PeersPanel";
 import AnalysisPanel from "./AnalysisPanel";
+import ResearchCard from "./ResearchCard";
+import ResearchSectionNav, { type ResearchSection } from "./ResearchSectionNav";
+import { useOnceVisible } from "../hooks/useOnceVisible";
+import { useLeagueSector } from "../lib/leagueSector";
+import { colourClass, DIFFICULTY_LABEL, difficultyOf, fromProviderRows, type DifficultyRow } from "../lib/difficulty";
+import { fetchResearchHistory } from "../lib/api";
+import { useEffect, useState } from "react";
 import type { PeerSummary } from "../lib/types";
 import type { Theme } from "../hooks/useTheme";
 
-// Reused above (top of the collapsed section) and below (end of the
-// expanded section) -- so collapsing back doesn't require scrolling all
-// the way back up past every metric group first.
-function ShowMoreToggle({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
+// Bars beside the ratios compare values that share a unit within a group
+// (a margin with a margin, days with days); a ratio alone in its unit, or
+// N/A, gets none.
+export function barsFor(group: MetricGroup): Record<string, number | null> {
+  const byUnit = new Map<string, number[]>();
+  for (const m of group.metrics) {
+    if (typeof m.value !== "number") continue;
+    const unit = m.unit ?? "";
+    byUnit.set(unit, [...(byUnit.get(unit) ?? []), Math.abs(m.value)]);
+  }
+  return Object.fromEntries(
+    group.metrics.map((m) => {
+      const peers = byUnit.get(m.unit ?? "") ?? [];
+      if (typeof m.value !== "number" || peers.length < 2) return [m.key, null];
+      const max = Math.max(...peers);
+      return [m.key, max > 0 ? Math.abs(m.value) / max : 0];
+    })
+  );
+}
+
+// One ratio group: a glass panel with its ratios as a list. The bars grow
+// once, the first time the list is on screen.
+function RatioGroup({ group, period, fetched, priceAsOf }: { group: MetricGroup; period: string; fetched: string; priceAsOf: string | null | undefined }) {
+  const [ref, shown] = useOnceVisible<HTMLUListElement>(0.2);
+  const bars = barsFor(group);
   return (
-    <div className="show-more-row">
-      <button type="button" className="btn btn-secondary show-more-pill" onClick={onToggle} aria-expanded={expanded}>
-        {expanded ? "Hide ratios" : "Show all ratios"}
-        <svg
-          className={`show-more-arrow ${expanded ? "open" : ""}`}
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-    </div>
+    <section className="glass panel ratio-group" aria-labelledby={`ratios-${group.key}`}>
+      <h3 className="panel-title" id={`ratios-${group.key}`}>
+        {group.label}
+      </h3>
+      {group.key === "valuation" && (
+        <p className="price-lag-note">
+          {priceAsOf
+            ? `Uses the share price on ${formatDay(priceAsOf, true)}. Prices on Stackly are at least 30 days old.`
+            : "No share price at least 30 days old is available, so the price-based figures show N/A."}
+        </p>
+      )}
+      <ul className={`grouped-list ratio-list ${shown ? "bars-shown" : "bars-pending"}`} ref={ref}>
+        {group.metrics.map((metric) => (
+          <MetricCard metric={metric} bar={bars[metric.key]} key={metric.key} />
+        ))}
+      </ul>
+      <p className="footnote">
+        {group.key === "growth" ? `Compares ${period} with earlier years.` : `From ${period}.`} Yahoo Finance, fetched{" "}
+        {fetched}. Hover or tap a ratio for its formula.
+      </p>
+    </section>
   );
 }
 
@@ -72,13 +103,33 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
       ? `FY${data.ratios_period_end.slice(2, 4)} (year to ${formatDay(data.ratios_period_end, true)})`
       : `the year to ${formatDay(data.ratios_period_end, true)}`
     : "the latest year Yahoo has";
-  // Collapsed by default -- the two charts + the summary row below are the
-  // whole story most of the time; every grouped ratio card (and the raw
-  // revenue/assets/etc. figures) are a deliberate "more detail" step behind
-  // one click, not the first thing on screen.
-  const [expanded, setExpanded] = useState(false);
   const peerSymbols = data.profile?.peers ?? [];
   const peerRows = usePeers(peerSymbols);
+  const league = useLeagueSector(info.resolved_symbol);
+
+  // The company's colour says how hard it is to forecast (lib/difficulty):
+  // a league company is measured on the league's history, as on Home and its
+  // company page, so the colour matches everywhere; any other company on the
+  // quarterly figures shown here.
+  const [leagueRows, setLeagueRows] = useState<DifficultyRow[] | null>(null);
+  useEffect(() => {
+    setLeagueRows(null);
+    if (league.companyId === null) return;
+    let cancelled = false;
+    fetchResearchHistory(league.companyId)
+      .then((h) => !cancelled && setLeagueRows(fromProviderRows(h.provider_rows)))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [league.companyId]);
+  const ownRows: DifficultyRow[] = (data.history?.quarterly ?? []).map((q) => ({
+    period_end_date: q.period_end_date,
+    revenue: q.revenue,
+    margin: q.ebitda_margin_pct,
+  }));
+  const level = difficultyOf(league.companyId !== null ? leagueRows ?? [] : ownRows);
+  const colour = colourClass(level);
 
   const highlights: [string, number | null][] = [
     ["Revenue", raw.revenue],
@@ -94,137 +145,101 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
   // and PriceForecastChart.tsx are kept (unrendered) in case that decision
   // is revisited; see CLAUDE.md's Results League decisions.
 
-  // Refs per group, keyed by group.key, so the quick-jump nav can
-  // smooth-scroll .metrics-pane to a specific group without hiding any of
-  // the others behind a tab -- every group stays visible and scannable at
-  // once, this is purely a faster way to get to one, not a replacement for
-  // scrolling.
-  const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const revenues = [...(data.history?.quarterly ?? [])].reverse().map((q) => q.revenue);
+  const nextResults = data.profile?.next_results_date;
 
-  function jumpToGroup(key: string) {
-    const el = groupRefs.current[key];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  const sections: ResearchSection[] = [
+    ...(data.profile ? [{ id: "research-profile", label: "Profile" }] : []),
+    ...(data.history ? [{ id: "research-history", label: "History" }] : []),
+    ...(peerSymbols.length > 0 ? [{ id: "research-peers", label: "Peers" }] : []),
+    ...(data.analysis ? [{ id: "research-analysis", label: "Analysis" }] : []),
+    { id: "research-news", label: "News" },
+    { id: "research-ratios", label: "Ratios" },
+  ];
 
   return (
-    <div>
-      <div className="company-header glass panel">
-        <div className="company-title">
-          <h1>{info.company_name}</h1>
-          <span className="company-ticker">
-            {info.resolved_symbol} · {info.exchange}
-          </span>
-        </div>
-        {info.sector && (
-          <div className="company-meta">
-            {info.sector}
-            {info.industry ? ` · ${info.industry}` : ""}
+    <div className={`research-company company-colour ${colour}`}>
+      <header className="glass panel research-hero">
+        <div className="research-hero-top">
+          <div className="research-hero-text">
+            {info.sector && (
+              <p className="research-hero-meta">
+                {info.sector}
+                {info.industry ? ` · ${info.industry}` : ""}
+              </p>
+            )}
+            <h1 className="research-hero-title">{info.company_name}</h1>
+            <p className="research-hero-ticker">
+              {info.resolved_symbol} · {info.exchange}
+            </p>
           </div>
-        )}
-
-        {/* Side by side (was two full-width stacked cards) -- isolated to this
-            wrapper + the .charts-row rule in app.css, so reverting to the old
-            stacked layout is just deleting this div's tag and that one CSS
-            rule, nothing else touched. */}
-        <div className="charts-row">
-          <PriceChart
-            symbol={info.resolved_symbol}
-            currency={raw.currency}
-            theme={theme}
+          <ResearchCard
+            key={info.resolved_symbol}
+            name={info.company_name}
+            ticker={info.resolved_symbol}
+            colour={colour}
+            difficulty={level ? DIFFICULTY_LABEL[level] : null}
+            sectorLabel={league.label ?? info.sector}
+            revenues={revenues}
+            foot={nextResults ? `Results ${formatDay(nextResults)}` : info.exchange}
           />
-
         </div>
+        <dl className="research-figures">
+          {highlights.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{formatRawValue(value, raw.currency)}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="footnote">
+          From {period}. Yahoo Finance, fetched {fetched}.
+        </p>
+        <div className="research-price">
+          <PriceChart symbol={info.resolved_symbol} currency={raw.currency} theme={theme} />
+        </div>
+      </header>
 
+      <ResearchSectionNav sections={sections} />
+
+      {data.profile && (
+        <div id="research-profile" className="research-anchor">
+          <CompanyProfilePanel profile={data.profile} name={info.company_name} />
+        </div>
+      )}
+
+      {data.history && (
+        <div id="research-history" className="research-anchor">
+          <FinancialHistory history={data.history} fetchedAt={data.fundamentals_as_of} currency={raw.currency} />
+        </div>
+      )}
+
+      {peerSymbols.length > 0 && (
+        <div id="research-peers" className="research-anchor">
+          <PeersPanel self={selfSummary(data)} peers={peerSymbols} rows={peerRows} />
+        </div>
+      )}
+
+      {data.analysis && (
+        <div id="research-analysis" className="research-anchor">
+          <AnalysisPanel analysis={data.analysis} peers={peerRows} fetchedAt={data.fundamentals_as_of} />
+        </div>
+      )}
+
+      <div id="research-news" className="research-anchor">
+        <CompanyNewsPanel symbol={info.resolved_symbol} name={info.company_name} />
       </div>
 
-      {data.profile && <CompanyProfilePanel profile={data.profile} name={info.company_name} />}
-
-      {data.history && <FinancialHistory history={data.history} fetchedAt={data.fundamentals_as_of} currency={raw.currency} />}
-
-      {peerSymbols.length > 0 && <PeersPanel self={selfSummary(data)} peers={peerSymbols} rows={peerRows} />}
-
-      {data.analysis && <AnalysisPanel analysis={data.analysis} peers={peerRows} fetchedAt={data.fundamentals_as_of} />}
-
-      <CompanyNewsPanel symbol={info.resolved_symbol} name={info.company_name} />
-
-      <ShowMoreToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
-
-      {/* Always mounted (never conditionally removed) -- a smooth open/close
-          height animation needs the content present throughout, not popped
-          in/out at the two extremes. The grid-template-rows 0fr/1fr trick
-          animates to the content's real (variable) height without any JS
-          measurement, and collapses cleanly regardless of how tall the
-          expanded content happens to be for a given company. */}
-      <div className={`expanded-details-wrapper ${expanded ? "expanded" : ""}`}>
-        <div className="expanded-details">
-          {/* Jumps to a group via scrollIntoView -- every group stays fully
-              visible and expanded at all times (see the ref comment above),
-              this is just a faster way to reach one on a long page, never a
-              tab that hides the rest. Sits above the raw-figures row (not
-              below it) so it's the first thing seen on expanding, not
-              something you have to scroll past a whole row of numbers to
-              find. */}
-          <div className="group-jump-nav">
-            {metric_groups.map((group) => (
-              <button
-                type="button"
-                className="group-jump-pill"
-                key={group.key}
-                onClick={() => jumpToGroup(group.key)}
-              >
-                {group.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="highlights-row glass panel">
-            <TileGrid>
-              {highlights.map(([label, value]) => (
-                <div className="highlight-tile tile" key={label}>
-                  <div className="label">{label}</div>
-                  <div className="value">{formatRawValue(value, raw.currency)}</div>
-                </div>
-              ))}
-            </TileGrid>
-          </div>
-
-          <div className="metric-groups-grid">
-            {metric_groups.map((group) => (
-              <div
-                className="metric-group glass panel"
-                key={group.key}
-                ref={(el) => {
-                  groupRefs.current[group.key] = el;
-                }}
-              >
-                <h3>
-                    {group.label}
-                </h3>
-                {group.key === "valuation" && (
-                  <p className="price-lag-note">
-                    {data.price_as_of
-                      ? `Uses the share price on ${formatDay(data.price_as_of, true)}. Prices on Stackly are at least 30 days old.`
-                      : "No share price at least 30 days old is available, so the price-based figures show N/A."}
-                  </p>
-                )}
-                <TileGrid className="metric-cards">
-                  {group.metrics.map((metric) => (
-                    <MetricCard metric={metric} key={metric.key} />
-                  ))}
-                </TileGrid>
-                <p className="footnote">
-                  {group.key === "growth"
-                    ? `Compares ${period} with earlier years.`
-                    : `From ${period}.`}{" "}
-                  Yahoo Finance, fetched {fetched}. Hover or tap a tile for its formula.
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <ShowMoreToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
+      <section id="research-ratios" className="research-anchor research-ratios" aria-labelledby="ratios-title">
+        <h2 className="section-title" id="ratios-title">
+          Ratios
+        </h2>
+        <div className="ratio-groups">
+          {metric_groups.map((group) => (
+            <RatioGroup key={group.key} group={group} period={period} fetched={fetched} priceAsOf={data.price_as_of} />
+          ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

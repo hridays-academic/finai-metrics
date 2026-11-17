@@ -74,7 +74,7 @@ async function open(ws: Workspace) {
   vi.mocked(api.fetchWorkspace).mockResolvedValue(ws);
   vi.mocked(api.fetchLeagueEvent).mockResolvedValue(event);
   vi.mocked(api.fetchLeagueConfig).mockResolvedValue(config);
-  render(<WorkspacePage eventId={1} user={user} onUserChange={vi.fn()} onOpenAuth={vi.fn()} theme="dark-aurora" visible />);
+  render(<WorkspacePage eventId={1} user={user} onUserChange={vi.fn()} onOpenAuth={vi.fn()} theme="dark" visible />);
   await screen.findByRole("heading", { name: "Research workspace: Demo Cement" });
 }
 

@@ -87,7 +87,7 @@ interface FinancialHistoryProps {
 
 export default function FinancialHistory({ history, fetchedAt, currency }: FinancialHistoryProps) {
   return (
-    <section className="glass panel reveal financial-history" aria-labelledby="history-title">
+    <section className="glass panel financial-history" aria-labelledby="history-title">
       <h2 className="panel-title" id="history-title">
         Financial history
       </h2>

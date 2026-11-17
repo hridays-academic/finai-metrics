@@ -1,5 +1,4 @@
 import { FormEvent, useEffect, useState } from "react";
-import ArrowChip from "./ArrowChip";
 
 interface CompanySearchProps {
   onSearch: (query: string) => void;
@@ -26,8 +25,7 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
   }
 
   return (
-    <div className="search-bar-wrap">
-      <div className="glass panel research-search">
+    <section className="glass panel research-search" aria-labelledby="research-title">
       {backTo && (
         <a
           className="back-link"
@@ -38,7 +36,9 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
           ← Back to forecast: {backTo.name}
         </a>
       )}
-      <h1 className="page-title">Research</h1>
+      <h1 className="research-title" id="research-title">
+        Research
+      </h1>
       <form className="search-form" onSubmit={handleSubmit}>
         <input
           className="input search-input"
@@ -48,9 +48,14 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Company name or ticker"
         />
-        <button className="btn btn-primary" type="submit" disabled={loading || !query.trim()} aria-busy={loading}>
+        <button
+          className={`btn btn-primary ${loading ? "" : "btn-arrow"}`}
+          type="submit"
+          disabled={loading || !query.trim()}
+          aria-busy={loading}
+        >
           {loading ? "Searching..." : "Search"}
-          {!loading && <ArrowChip />}
+          {!loading && <span className="btn-arrow-icon" aria-hidden="true" />}
         </button>
       </form>
       {error && <div className="form-error">{error}</div>}
@@ -59,7 +64,6 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
         only. Any financial decisions you make are your own responsibility, and Stackly and its owner accept no liability
         for them.
       </p>
-      </div>
-    </div>
+    </section>
   );
 }

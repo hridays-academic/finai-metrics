@@ -7,7 +7,7 @@ import { CARD_MIN } from "./NewsCards";
 function WorldEventCard({ e }: { e: WorldEvent }) {
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it may matter", chain: e.chain, explanation: e.why_long });
   return (
-    <article className="news-card world-event tile theme-event">
+    <article className="news-card world-event theme-event">
       <div className="news-card-body">
         <div className="news-card-meta">
           <time dateTime={e.event_date}>{formatDay(e.event_date, true)}</time>
@@ -42,7 +42,7 @@ function WorldEventCard({ e }: { e: WorldEvent }) {
 export default function WorldEvents({ events, title = "World events" }: { events: WorldEvent[]; title?: string }) {
   if (events.length === 0) return null;
   return (
-    <section className="glass panel reveal news-panel" aria-labelledby="world-events-title">
+    <section className="glass panel news-panel" aria-labelledby="world-events-title">
       <h2 className="panel-title" id="world-events-title">
         {title}
       </h2>

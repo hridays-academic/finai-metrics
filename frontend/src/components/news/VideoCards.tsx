@@ -22,7 +22,7 @@ function VideoCard({ v }: { v: Video }) {
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it matters", chain: v.chain, explanation: v.explanation });
   const len = duration(v.duration_seconds);
   return (
-    <article className={`video-card tile theme-${v.theme}`}>
+    <article className={`video-card theme-${v.theme}`}>
       <div className="video-card-inner">
       {playing ? (
         <div className="video-frame">
@@ -69,7 +69,7 @@ function VideoCard({ v }: { v: Video }) {
 export default function VideoCards({ videos, title = "Videos" }: { videos: Video[]; title?: string }) {
   if (videos.length === 0) return null;
   return (
-    <section className="glass panel reveal news-panel" aria-labelledby="videos-title">
+    <section className="glass panel news-panel" aria-labelledby="videos-title">
       <h2 className="panel-title" id="videos-title">
         {title}
       </h2>

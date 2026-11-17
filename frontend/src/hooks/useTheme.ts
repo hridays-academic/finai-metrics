@@ -1,55 +1,59 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
-// Two independent choices, both saved per browser:
-// - mode: light or dark;
-// - palette: the Liquid Glass colour theme, Aurora (default) or Graphite.
-// They're set as `data-mode` / `data-palette` on <html> (theme.css).
+// One choice, saved per browser: Light or Dark, set as `data-mode` on <html>
+// (theme.css). Until a visitor picks one in Settings, the device's
+// light/dark setting decides (Light if unknown), and it keeps following the
+// device.
 export type ThemeMode = "dark" | "light";
-export type Palette = "aurora" | "graphite";
 
 // Charts use this only as a useEffect dependency, to know when to re-read
-// CSS variables for their lightweight-charts canvas. Either choice changes
-// those variables, so both are in it.
-export type Theme = `${ThemeMode}-${Palette}`;
+// CSS variables for their lightweight-charts canvas.
+export type Theme = ThemeMode;
 
 const MODE_KEY = "finai-metrics-mode";
-const PALETTE_KEY = "finai-metrics-palette";
-const LEGACY_THEME_KEY = "finai-metrics-theme";
+// Left over from earlier designs; deleted so nobody keeps a theme that no
+// longer exists (Aurora/Graphite palettes, 2026-11-15; the old single key).
+const OLD_KEYS = ["finai-metrics-palette", "finai-metrics-theme"];
 
-function read(key: string): string | null {
+function readStored(): ThemeMode | null {
   try {
-    return localStorage.getItem(key);
+    const v = localStorage.getItem(MODE_KEY);
+    return v === "light" || v === "dark" ? v : null;
   } catch {
     return null;
   }
 }
 
-function write(key: string, value: string): void {
+function deviceQuery(): MediaQueryList | null {
   try {
-    localStorage.setItem(key, value);
+    return window.matchMedia("(prefers-color-scheme: dark)");
   } catch {
-    // storage unavailable -- the choice still applies for this visit
+    return null;
   }
 }
 
-function getInitialMode(): ThemeMode {
-  const stored = read(MODE_KEY);
-  return stored === "light" ? "light" : "dark";
+function deviceMode(): ThemeMode {
+  return deviceQuery()?.matches ? "dark" : "light";
 }
 
-function getInitialPalette(): Palette {
-  return read(PALETTE_KEY) === "graphite" ? "graphite" : "aurora";
-}
+export function useTheme(): { mode: ThemeMode; theme: Theme; setMode: (m: ThemeMode) => void } {
+  const [chosen, setChosen] = useState<ThemeMode | null>(readStored);
+  const [device, setDevice] = useState<ThemeMode>(deviceMode);
+  const mode = chosen ?? device;
 
-export function useTheme(): {
-  mode: ThemeMode;
-  palette: Palette;
-  theme: Theme;
-  setMode: (m: ThemeMode) => void;
-  setPalette: (p: Palette) => void;
-} {
-  const [mode, setModeState] = useState<ThemeMode>(getInitialMode);
-  const [palette, setPaletteState] = useState<Palette>(getInitialPalette);
+  useEffect(() => {
+    try {
+      for (const k of OLD_KEYS) localStorage.removeItem(k);
+    } catch {
+      // storage unavailable: nothing to clean up
+    }
+    document.documentElement.removeAttribute("data-palette");
+    const q = deviceQuery();
+    if (!q) return;
+    const onChange = () => setDevice(q.matches ? "dark" : "light");
+    q.addEventListener("change", onChange);
+    return () => q.removeEventListener("change", onChange);
+  }, []);
 
   // useLayoutEffect, not useEffect: the chart components read CSS variables
   // via getComputedStyle in their own effects. A child's effect fires before
@@ -58,18 +62,16 @@ export function useTheme(): {
   // any plain effect, which fixes the ordering.
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-mode", mode);
-    document.documentElement.setAttribute("data-palette", palette);
-    write(MODE_KEY, mode);
-    write(PALETTE_KEY, palette);
+  }, [mode]);
+
+  const setMode = useCallback((m: ThemeMode) => {
+    setChosen(m);
     try {
-      localStorage.removeItem(LEGACY_THEME_KEY);
+      localStorage.setItem(MODE_KEY, m);
     } catch {
-      // nothing to clean up
+      // storage unavailable: the choice still applies for this visit
     }
-  }, [mode, palette]);
+  }, []);
 
-  const setMode = useCallback((m: ThemeMode) => setModeState(m), []);
-  const setPalette = useCallback((p: Palette) => setPaletteState(p), []);
-
-  return { mode, palette, theme: `${mode}-${palette}`, setMode, setPalette };
+  return { mode, theme: mode, setMode };
 }

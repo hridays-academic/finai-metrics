@@ -1,0 +1,5439 @@
+/* Stackly v3 (2026-11-15), dark. Frosted dark glass for working surfaces,
+   solid sector-colour blocks on Home, a pinned 3D story on the company page.
+   Tokens only (theme.css). Motion: presses, opening and closing, the hover
+   lift on tiles (mouse only) and the story card turning with scroll. */
+
+/* ---------- Base ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Headline face: hero, chapters and tiles only. */
+.hero-title,
+.chapter-head,
+.tile-name,
+.how-grid > li::before {
+  font-family: var(--font-head);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  line-height: 0.88;
+}
+
+/* ---------- Glass ---------- */
+
+/* Working surfaces: frosted dark glass with a lit top edge, a dark bottom
+   edge, a contact shadow and a wide ambient one. */
+.glass {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border: 1px solid var(--edge-side);
+  border-top-color: var(--edge-lit);
+  border-bottom-color: var(--edge-dark);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+/* Never blur inside blur: glass in glass is raised glass. */
+.glass .glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.panel {
+  padding: var(--panel-pad);
+  min-width: 0;
+}
+
+.panel-title {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
+  letter-spacing: -0.015em;
+}
+
+.raised {
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+}
+
+/* ---------- Shell ---------- */
+
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.app-shell-content {
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: clip;
+  background: var(--page);
+}
+
+.view-wrapper {
+  display: contents;
+}
+
+.view-wrapper.view-hidden {
+  display: none;
+}
+
+/* The top bar's glass lives on a pseudo-element: a backdrop-filter on the
+   bar itself would trap the phone tab bar (position: fixed) inside it. */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: var(--topbar-height);
+  padding: 0 max(var(--space-6), calc((100% - var(--max)) / 2));
+}
+
+.app-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-small);
+}
+
+.logo-wordmark {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: var(--text);
+  background: var(--raised-fill);
+}
+
+.header-avatar {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 34px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-tab svg {
+  display: none;
+}
+
+.nav-tab:hover {
+  color: var(--text);
+}
+
+.nav-tab.active {
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+}
+
+/* ---------- Page layout ---------- */
+
+.app-main {
+  padding: var(--space-6) max(var(--space-6), calc((100% - var(--max)) / 2)) var(--space-10);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  max-width: var(--max);
+  margin: 0 auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-top: var(--space-8);
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.section-title {
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+}
+
+.section-text {
+  max-width: var(--measure);
+  color: var(--text-2);
+}
+
+.back-link {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1em;
+  row-gap: 2px;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.footnote {
+  max-width: var(--measure);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.empty-note {
+  color: var(--text-2);
+}
+
+.site-footer {
+  margin-top: var(--space-8);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hairline);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-top: var(--space-1);
+}
+
+/* ---------- Buttons: capsules ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 150ms var(--ease),
+    box-shadow 150ms var(--ease),
+    background-color 150ms var(--ease);
+}
+
+.btn:hover {
+  text-decoration: none;
+}
+
+/* Hover lifts the whole button (mouse only); press sits 1px below rest. */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled):not([aria-disabled="true"]) {
+    transform: translateY(-3px) scale(1.04);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: var(--button-shadow-hover);
+  }
+  .btn-secondary:hover:not(:disabled),
+  .btn-dark:hover:not(:disabled) {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 24px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.btn:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn-arrow-icon {
+    transition: none;
+  }
+}
+
+/* Primary: off-white, raised; pressed sinks 1px onto a smaller shadow. */
+.btn-primary {
+  background: var(--offwhite);
+  color: var(--on-offwhite);
+  box-shadow: var(--button-shadow);
+}
+
+.btn-primary:hover {
+  background: #ffffff;
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+  background: var(--offwhite-press);
+  box-shadow: var(--button-shadow-pressed);
+}
+
+/* Secondary: raised glass. */
+.btn-secondary {
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.btn-secondary:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.btn-tertiary {
+  padding: 0 var(--space-4);
+  color: var(--link);
+}
+
+.btn-tertiary:hover {
+  background: var(--raised-fill);
+}
+
+/* Dark capsule (on the colour tiles). */
+.btn-dark {
+  background: var(--page);
+  color: var(--text);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* The small arrow circle at the end of a capsule (a real element,
+   .btn-arrow-icon, so the arrow tilts only while the pointer is on it). */
+.btn-arrow {
+  padding-right: 6px;
+}
+
+.btn-arrow-icon {
+  display: block;
+  flex: none;
+  transition: transform 150ms var(--ease);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--page)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M2.5 8h10M8.5 3.5 13 8l-4.5 4.5' stroke='%23F7F8FA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 14px no-repeat;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-arrow-icon:hover {
+    transform: rotate(-45deg);
+  }
+}
+
+.btn-dark .btn-arrow-icon {
+  background: var(--offwhite)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M2.5 8h10M8.5 3.5 13 8l-4.5 4.5' stroke='%230B0D12' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 14px no-repeat;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-compact {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.btn-destructive {
+  color: var(--negative);
+}
+
+.btn-destructive-filled {
+  background: var(--negative-fill);
+  color: #ffffff;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn[aria-busy="true"]::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  background: none;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+/* Raised-glass chips; a tick marks "on". */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease);
+}
+
+.chip:active {
+  transform: translateY(1px);
+}
+
+.chip.active {
+  background: var(--offwhite);
+  color: var(--on-offwhite);
+  font-weight: 600;
+}
+
+.chip.active::before {
+  content: "✓";
+  margin-right: var(--space-1);
+}
+
+.chip:disabled {
+  cursor: default;
+  transform: none;
+}
+
+/* Segmented control: a recessed track, the chosen segment raised. Shrinks
+   to fit its buttons. */
+.segmented {
+  display: inline-flex;
+  align-self: flex-start;
+  width: fit-content;
+  gap: 2px;
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--recessed-fill);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.segmented > button {
+  min-height: 30px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmented > button.active {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+}
+
+/* ---------- Grouped lists ---------- */
+
+.grouped-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grouped-list > li + li {
+  border-top: 1px solid var(--hairline);
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-3) 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.list-row:hover {
+  text-decoration: none;
+}
+
+a.list-row:hover .list-row-title,
+a.list-row:hover .recent-row-name {
+  text-decoration: underline;
+}
+
+.list-row-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.list-row-title {
+  font-weight: 600;
+}
+
+.list-row-sub {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.list-row-detail {
+  max-width: 55%;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+.list-row-value {
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-2);
+}
+
+/* ---------- Forms ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  border: 0;
+}
+
+.field-label {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field-optional {
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.field-hint {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.field-hint-error {
+  color: var(--negative);
+}
+
+/* Inputs: raised glass with a 3:1 outline. */
+.input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: var(--raised-fill);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+}
+
+textarea.input {
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+}
+
+.input::placeholder {
+  color: var(--text-2);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+.input:disabled {
+  background: var(--disabled-bg);
+  color: var(--text-2);
+}
+
+.input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.input[type="number"]::-webkit-inner-spin-button,
+.input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.input-wrap .input {
+  padding-right: 2.4em;
+}
+
+.input-suffix {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+
+.form-error {
+  margin-bottom: var(--space-3);
+  color: var(--negative);
+  font-size: var(--text-sm);
+}
+
+.notice,
+.form-note {
+  margin-bottom: var(--space-4);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Tables ---------- */
+
+.table-wrap {
+  position: relative; /* keeps visually-hidden text inside the scroll area */
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  text-align: right;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table th:first-child,
+.data-table td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+  padding-right: 0;
+}
+
+.data-table thead th {
+  min-width: 5.5em;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  vertical-align: bottom;
+  white-space: normal;
+}
+
+.cell-na {
+  color: var(--text-2);
+}
+
+/* ---------- Range bar (RangeLine.tsx) ---------- */
+
+.range-line {
+  position: relative;
+  width: 100%;
+  margin: var(--space-2) 0 0;
+}
+
+.range-line-svg {
+  display: block;
+  overflow: visible;
+}
+
+.rl-track {
+  fill: var(--recessed-fill);
+  stroke: rgba(0, 0, 0, 0.8);
+  stroke-width: 1;
+}
+
+.rl-track-edge {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 1;
+}
+
+.rl-range {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(242, 193, 78, 0.25));
+}
+
+.rl-ref {
+  stroke: var(--text-2);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.rl-actual {
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.7));
+}
+
+.rl-tick-text {
+  fill: var(--text-2);
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+
+.rl-label {
+  position: absolute;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.rl-label-actual {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.range-line-compact {
+  margin: 0;
+}
+
+.range-line-compact .rl-tick-text {
+  font-size: 10px;
+}
+
+/* ---------- Sector colours ---------- */
+
+.sector-neutral {
+  --sector: var(--sector-neutral);
+  --sector-light: var(--sector-neutral-light);
+  --sector-dark: var(--sector-neutral-dark);
+  --on-sector: var(--on-sector-neutral);
+}
+
+/* ---------- Home ---------- */
+
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-7);
+  padding: var(--space-8) 0 var(--space-6);
+}
+
+.hero-title {
+  padding-top: 0.06em;
+  font-size: var(--head-hero);
+  line-height: 0.92;
+}
+
+.hero-lede {
+  max-width: 46ch;
+  margin-top: var(--space-6);
+  color: var(--text-2);
+  font-size: var(--text-lg);
+  line-height: 1.4;
+}
+
+.hero-note {
+  margin-top: var(--space-4);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+/* Stage 1 stand-in for the 3D object (HeroObject.tsx): a recessed track, a
+   glossy gold range and a polished ball, lit from the top left. Each has
+   form shading (light top left, dark underside), a gloss highlight, and a
+   shadow cast down and to the right. The headline never moves; the range
+   and ball can be dragged (JS writes their transforms). */
+.hero-object {
+  --ball: 76px;
+  --cap-h: 38px;
+  --track-h: 24px;
+  --ball-x: 47%;
+  position: relative;
+  height: 300px;
+}
+
+.hero-object-scene {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-6deg);
+}
+
+.hero-object-scene > span {
+  position: absolute;
+}
+
+/* A channel cut into the page: shadowed inside under the top lip, a faint
+   lit lower edge. */
+.hero-object-track {
+  top: calc(50% - var(--track-h) / 2);
+  left: 0;
+  right: 0;
+  height: var(--track-h);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #000000 0%, #05070a 50%, #11141a 100%);
+  box-shadow:
+    inset 0 5px 8px rgba(0, 0, 0, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* A gold bar with rounded ends: bright upper shoulder, deep underside,
+   warm reflected light along the bottom edge, a gloss streak on top, and
+   a shadow cast onto the track. */
+.hero-object-range {
+  top: calc(50% - var(--cap-h) / 2);
+  left: 30%;
+  width: 34%;
+  height: var(--cap-h);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 18%, rgba(0, 0, 0, 0) 82%, rgba(60, 30, 0, 0.18) 100%),
+    linear-gradient(180deg, #fbe7b0 0%, #f8d373 14%, #f2c14e 34%, #dba53b 60%, #a8741a 86%, #bf8a2c 100%);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.6),
+    inset 0 -4px 6px rgba(90, 50, 0, 0.42),
+    inset 0 -1px 0 rgba(255, 228, 160, 0.4),
+    3px 9px 12px -5px rgba(0, 0, 0, 0.6),
+    1px 2px 3px rgba(0, 0, 0, 0.42);
+  cursor: grab;
+  touch-action: none;
+}
+
+.hero-object-range::before {
+  content: "";
+  position: absolute;
+  top: 14%;
+  left: 7%;
+  right: 12%;
+  height: 26%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.04));
+}
+
+/* The ball's contact shadow, on whatever surface is under it (moved by JS). */
+.hero-object-ball-shadow {
+  top: calc(50% - var(--cap-h) / 2 - 6px);
+  left: calc(var(--ball-x) - var(--ball) * 0.4 + 6px);
+  width: calc(var(--ball) * 0.8);
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+
+/* The ball's position on the slider; its surface is .ball-skin (below). */
+.hero-object-ball {
+  top: calc(50% - var(--cap-h) / 2 - var(--ball) + 3px);
+  left: calc(var(--ball-x) - var(--ball) / 2);
+  width: var(--ball);
+  height: var(--ball);
+  cursor: grab;
+  touch-action: none;
+  transition: filter 150ms var(--ease);
+}
+
+/* While the ball is loose on the page, the slider has no ball. */
+.ball-away .hero-object-ball,
+.ball-away .hero-object-ball-shadow {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The ball's surface (Home's slider and the loose ball): a polished sphere
+   lit from the top left, with a fine dimpled texture and one seam that turn
+   as it rolls (.ball-texture, rotated by JS), under fixed shading and
+   highlights (.ball-shade) that stay put as the light does. */
+.ball-skin {
+  position: relative;
+  display: block;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #eef0f3 0%, #cdd2d9 30%, #8f97a3 62%, #4a515c 88%, #3a4049 100%);
+  box-shadow: 5px 12px 20px -7px rgba(0, 0, 0, 0.55);
+}
+
+.ball-texture {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  /* The texture fades towards the edge, where a real sphere's surface turns
+     away from you, so it reads as wrapped round the ball, not printed on. */
+  -webkit-mask-image: radial-gradient(circle at 42% 40%, #000 0%, #000 42%, rgba(0, 0, 0, 0.35) 64%, transparent 78%);
+  mask-image: radial-gradient(circle at 42% 40%, #000 0%, #000 42%, rgba(0, 0, 0, 0.35) 64%, transparent 78%);
+}
+
+/* Dimples: small dents lit from the top left (a light lip up-left, shadow
+   down-right), on two offset grids of slightly different sizes so the
+   pattern doesn't look printed, plus a fine micro-grain. */
+.ball-texture::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 62% 64%, rgba(20, 26, 36, 0.2) 0 0.9px, rgba(20, 26, 36, 0) 1.6px) 0 0 / 7px 7px,
+    radial-gradient(circle at 38% 36%, rgba(255, 255, 255, 0.28) 0 0.7px, rgba(255, 255, 255, 0) 1.3px) 0 0 / 7px 7px,
+    radial-gradient(circle at 62% 64%, rgba(20, 26, 36, 0.16) 0 1.1px, rgba(20, 26, 36, 0) 1.9px) 3.5px 3.5px / 7px 7px,
+    radial-gradient(circle at 38% 36%, rgba(255, 255, 255, 0.22) 0 0.8px, rgba(255, 255, 255, 0) 1.5px) 3.5px 3.5px / 7px 7px,
+    radial-gradient(circle, rgba(20, 26, 36, 0.06) 0 0.5px, rgba(20, 26, 36, 0) 0.9px) 1px 2px / 3px 3px;
+}
+
+/* The seam: a fine, faint groove (a dark line with a lit edge beside it). */
+.ball-texture::after {
+  content: "";
+  position: absolute;
+  top: -8%;
+  bottom: -8%;
+  left: 20%;
+  right: 20%;
+  border: 1px solid rgba(20, 26, 36, 0.22);
+  border-radius: 50%;
+  box-shadow: -1px -1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.ball-shade {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 24%, #ffffff 0%, rgba(255, 255, 255, 0.95) 3.5%, rgba(255, 255, 255, 0.6) 7%, rgba(255, 255, 255, 0) 13%),
+    radial-gradient(circle at 33% 29%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 38%),
+    radial-gradient(circle at 74% 88%, rgba(225, 233, 245, 0.38) 0%, rgba(225, 233, 245, 0) 24%),
+    radial-gradient(circle at 38% 34%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.32) 100%);
+  box-shadow:
+    inset -10px -14px 22px rgba(0, 0, 0, 0.3),
+    inset 3px 4px 8px rgba(255, 255, 255, 0.22);
+}
+
+/* The loose ball: a fixed layer over the page; only the ball takes pointers. */
+.free-ball-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+}
+
+.free-ball,
+.free-ball-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 64px;
+}
+
+.free-ball {
+  height: 64px;
+  cursor: grab;
+  touch-action: none;
+  pointer-events: auto;
+  will-change: transform;
+}
+
+.free-ball.is-dragging {
+  cursor: grabbing;
+}
+
+.free-ball-shadow {
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0));
+  will-change: transform, opacity;
+}
+
+@media (max-width: 640px) {
+  .free-ball,
+  .free-ball-shadow {
+    width: 52px;
+  }
+
+  .free-ball {
+    height: 52px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-object-ball:hover,
+  .hero-object-range:hover {
+    filter: brightness(1.06);
+  }
+}
+
+.hero-object-scene.is-dragging,
+.hero-object-scene.is-dragging .hero-object-range,
+.hero-object-scene.is-dragging .hero-object-ball {
+  cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-object-track {
+    animation: hero-fade 500ms var(--ease) backwards;
+  }
+  .hero-object-range {
+    animation: hero-range-settle 850ms cubic-bezier(0.34, 1.4, 0.64, 1) 200ms backwards;
+  }
+  .hero-object-ball {
+    animation: hero-ball-drop 1200ms linear 1000ms backwards;
+  }
+  .hero-object-ball-shadow {
+    animation: hero-ball-shadow 1200ms linear 1000ms backwards;
+  }
+}
+
+/* The contact shadow gathers as the ball falls and spreads on the bounce. */
+@keyframes hero-ball-shadow {
+  0% {
+    opacity: 0;
+    scale: 2.2;
+  }
+  50% {
+    opacity: 1;
+    scale: 1;
+  }
+  72% {
+    opacity: 0.6;
+    scale: 1.2;
+  }
+  86%,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes hero-range-settle {
+  from {
+    opacity: 0;
+    translate: 0 -36px;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* Falls, lands, one small bounce, rests. Individual `translate`/`scale`. */
+@keyframes hero-ball-drop {
+  0% {
+    opacity: 0;
+    translate: 0 -220px;
+    animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    translate: 0 0;
+    scale: 1.06 0.93;
+    animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+  }
+  58% {
+    scale: 1;
+  }
+  72% {
+    translate: 0 -30px;
+    animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+  }
+  86% {
+    translate: 0 0;
+    scale: 1.02 0.98;
+    animation-timing-function: ease-out;
+  }
+  100% {
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+/* The scroll motion on every page: transforms and opacity written per
+   frame by usePageMotion for every top-level glass panel and every
+   [data-scrub] element (Home's tiles, titles, the "How it works" band and
+   steps). Without it everything sits in place. */
+/* No will-change here: the tiles hold text and scale up to 1, so the
+   browser should re-raster them at full size rather than keep a smaller
+   bitmap. */
+.motion-on [data-scrub="tile"],
+.motion-on [data-scrub="panel"],
+.motion-on .glass.panel {
+  transform-origin: 50% 100%;
+}
+
+.company-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.company-grid > li {
+  display: flex;
+}
+
+/* Solid sector-colour blocks. */
+.sector-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 300px;
+  padding: var(--space-7);
+  border-radius: 28px;
+  background: linear-gradient(145deg, var(--sector-light) 0%, var(--sector) 48%, var(--sector-dark) 100%);
+  color: var(--on-sector);
+  text-decoration: none;
+  box-shadow:
+    inset 2px 2px 1px rgba(255, 255, 255, 0.28),
+    inset -2px -3px 2px rgba(0, 0, 0, 0.28),
+    0 24px 50px -24px rgba(0, 0, 0, 0.8);
+  transition: transform var(--duration-press) var(--ease);
+}
+
+.sector-tile:hover {
+  text-decoration: none;
+}
+
+.sector-tile:focus-visible {
+  border-radius: 28px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sector-tile:hover {
+    transform: translateY(-3px);
+  }
+}
+
+.tile-sector {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.tile-name {
+  font-size: var(--head-tile);
+  color: inherit;
+}
+
+.tile-when {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1em;
+  font-size: var(--text-sm);
+}
+
+/* On a colour block "locks soon" keeps its clock and weight, not orange. */
+.sector-tile .league-lock.soon {
+  color: inherit;
+}
+
+.tile-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: auto;
+}
+
+.tile-stats {
+  display: flex;
+  gap: var(--space-7);
+  margin: 0;
+}
+
+.tile-stats dt {
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.tile-stats dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.league-lock {
+  white-space: nowrap;
+}
+
+.league-lock.soon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--caution);
+  font-weight: 600;
+}
+
+.league-lock-icon {
+  flex: none;
+}
+
+.home-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--aside);
+  align-items: start;
+  gap: var(--gap);
+  margin-top: var(--space-8);
+}
+
+.home-columns.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.card-more {
+  margin-top: var(--space-2);
+  margin-left: calc(-1 * var(--space-4));
+}
+
+.recent-row {
+  align-items: flex-start;
+  padding: var(--space-4) 0;
+}
+
+.recent-row .chevron {
+  margin-top: 6px;
+}
+
+.recent-row-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.recent-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.recent-row-name {
+  font-weight: 600;
+}
+
+.recent-row-status {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+/* The student's own score: gold. */
+.own-score {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.recent-results-summary {
+  font-size: var(--text-sm);
+}
+
+.recent-lines {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--space-5);
+  margin-top: var(--space-3);
+}
+
+.recent-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.recent-line-name {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.picker-season {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-8);
+}
+
+/* The score is the student's own: gold. */
+.picker-season-value {
+  color: var(--gold);
+  font-size: var(--text-stat);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.picker-season-label {
+  margin-top: var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.picker-source {
+  flex-basis: 100%;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+/* "How it works": three large numerals on a full-width band. The band's
+   colour is its own layer (.how-band-bg) so the scroll motion can grow it
+   from an inset card to full width without scaling the text. */
+.how-band {
+  position: relative;
+  isolation: isolate;
+  margin: var(--space-9) calc(50% - 50vw) 0;
+  padding: var(--space-10) max(var(--space-6), calc((100vw - var(--max)) / 2));
+  color: var(--on-offwhite);
+}
+
+.how-band-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 40px;
+  background: var(--offwhite);
+  will-change: transform;
+}
+
+.how-band .section-title {
+  margin-bottom: var(--space-7);
+  color: var(--on-offwhite);
+}
+
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.how-grid > li {
+  counter-increment: step;
+}
+
+.how-grid > li::before {
+  content: counter(step, decimal-leading-zero);
+  display: block;
+  margin-bottom: var(--space-4);
+  font-size: 120px;
+}
+
+.how-grid h3 {
+  margin-bottom: var(--space-2);
+  color: var(--on-offwhite);
+  font-size: var(--text-lg);
+}
+
+.how-grid p {
+  color: #3d4350; /* 10:1 on the band */
+}
+
+/* ---------- Company page: the story ---------- */
+
+.company-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--aside);
+  align-items: start;
+  gap: var(--gap);
+}
+
+.company-page > .story,
+.company-page > .company-facts,
+.company-page > .site-footer {
+  grid-column: 1 / -1;
+}
+
+.story {
+  position: relative;
+  height: calc(8 * (100vh - var(--topbar-height)));
+}
+
+.story-sticky {
+  position: sticky;
+  top: var(--topbar-height);
+  height: calc(100vh - var(--topbar-height));
+  overflow: clip;
+}
+
+/* The chapter label as a very large faded word behind everything. Its
+   opacity and sideways drift are set from the scroll position. */
+.story-word {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.story-word > span {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-head);
+  font-size: 19vw;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.story-skip {
+  position: absolute;
+  top: var(--space-4);
+  right: 0;
+  z-index: 3;
+}
+
+.story-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-8);
+  height: 100%;
+  padding: var(--space-4) 0 96px;
+}
+
+.story-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.story-company {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.story-ticker {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.story-chapters {
+  position: relative;
+  min-height: 420px;
+}
+
+/* Opacity, drift and visibility are set from the scroll position. */
+.story-chapter {
+  position: absolute;
+  inset: 0 0 auto 0;
+  opacity: 0;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.chapter-head {
+  margin-bottom: var(--space-5);
+  font-size: var(--head-chapter);
+}
+
+.chapter-num {
+  margin-right: 0.15em;
+  color: var(--text-2);
+  font-size: 0.42em;
+  vertical-align: 0.95em;
+}
+
+.chapter-lead {
+  max-width: 44ch;
+  margin-bottom: var(--space-5);
+  font-size: var(--text-lg);
+  line-height: 1.4;
+}
+
+.chapter-numbers {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapter-numbers li {
+  display: flex;
+  flex-direction: column;
+}
+
+.chapter-number-value {
+  font-size: var(--text-stat);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.chapter-number-label {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.chapter-trends {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 440px;
+}
+
+.chapter-quote {
+  max-width: 44ch;
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* The 3D card. Faces and slices are planes in one preserve-3d group. Per
+   frame the scroll handler writes only transforms and opacities: the group,
+   each face's specular band and edge rims, and the ground shadow.
+   The card is laid out at 1.2x its shown size and scaled down (BASE in
+   CompanyStory.tsx), so text stays sharp when it zooms in to 1.12x. */
+.story-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 300px;
+  perspective: 1400px;
+}
+
+.card3d {
+  position: relative;
+  flex: none;
+  width: 480px;
+  max-width: 120%;
+  aspect-ratio: 1.586;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* The card's thickness: stacked planes in the same material as the faces
+   (same gradient, so the edge colour matches the face beside it at every
+   point), a shade darker because the edge faces away from the light, with
+   the same fine engraved texture. */
+.card3d-slice {
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0 1px, rgba(0, 0, 0, 0) 1px 4px),
+    linear-gradient(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.14)),
+    linear-gradient(145deg, var(--sector-light) 0%, var(--sector) 48%, var(--sector-dark) 100%);
+}
+
+.card3d-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  color: var(--on-sector);
+  transform-style: preserve-3d;
+}
+
+.card3d-face > * {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.card3d-front {
+  transform: translateZ(10px);
+}
+
+.card3d-back {
+  transform: rotateY(180deg) translateZ(10px);
+}
+
+/* The printed surface: material gradient, bevelled edge, engraving and
+   grain, then the moving light on top. */
+.card3d-surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(145deg, var(--sector-light) 0%, var(--sector) 48%, var(--sector-dark) 100%);
+  box-shadow:
+    inset 2px 2px 1px rgba(255, 255, 255, 0.32),
+    inset -2px -3px 2px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.card3d-back .card3d-surface {
+  background: linear-gradient(215deg, var(--sector-light) 0%, var(--sector) 40%, var(--sector-dark) 100%);
+}
+
+.card3d-guilloche {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+}
+
+.card3d-grain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.35;
+}
+
+/* A narrow specular band; translateX and opacity come from the rotation. */
+.card3d-sheen {
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg, transparent 45%, rgba(255, 255, 255, 0.07) 47.5%, rgba(255, 255, 255, 0.34) 50%, rgba(255, 255, 255, 0.07) 52.5%, transparent 55%);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* Edge rims: a thin bright line on one edge each; opacity from the rotation. */
+.card3d-rim {
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  opacity: 0;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  will-change: opacity;
+}
+
+.card3d-rim-top {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 32%);
+}
+
+.card3d-rim-left {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 22%);
+}
+
+.card3d-rim-right {
+  background: linear-gradient(270deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 22%);
+}
+
+/* The text and numbers float just above the surface, so they shift a
+   little against the engraving as the card turns. */
+.card3d-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 29px 38px;
+  transform: translateZ(8px);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+}
+
+.card3d-sector {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card3d-mid {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: auto;
+}
+
+.card3d-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card3d-name {
+  font-family: var(--font-head);
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.card3d-ticker {
+  margin-top: 6px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.card3d-spark {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.card3d-spark-line {
+  display: block;
+  width: 120px;
+  height: 40px;
+}
+
+.card3d-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: 18px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.card3d .league-lock.soon {
+  color: inherit;
+}
+
+.card3d-numbers {
+  display: grid;
+  gap: 10px;
+  margin: auto 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card3d-numbers li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.card3d-number {
+  order: 2;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.card3d-number-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.card3d-shadow {
+  position: absolute;
+  bottom: 14%;
+  left: 15%;
+  width: 70%;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+  will-change: transform, opacity;
+}
+
+/* Chapter strip along the bottom. */
+.story-strip {
+  position: absolute;
+  bottom: var(--space-5);
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--edge-side);
+  border-top-color: var(--edge-lit);
+  box-shadow: var(--shadow-panel);
+  transform: translateX(-50%);
+}
+
+.story-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.story-tab:hover {
+  color: var(--text);
+}
+
+.story-tab.is-current {
+  background: var(--offwhite);
+  color: var(--on-offwhite);
+}
+
+.story-tab-num {
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+  font-weight: 800;
+}
+
+/* Reduced motion or no sticky: the chapters as a stacked list, card flat. */
+.story-flat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  height: auto;
+}
+
+.story-flat .story-stage {
+  height: auto;
+  perspective: none;
+}
+
+.story-flat .card3d {
+  width: min(400px, 100%);
+}
+
+.story-flat .card3d-slice,
+.story-flat .card3d-back,
+.story-flat .card3d-shadow,
+.story-flat .card3d-sheen,
+.story-flat .card3d-rim {
+  display: none;
+}
+
+.story-flat .card3d-front,
+.story-flat .card3d-content {
+  transform: none;
+}
+
+.story-flat .card3d-content {
+  padding: var(--space-6) var(--space-7);
+}
+
+.story-flat .card3d-name {
+  font-size: 46px;
+}
+
+.story-flat-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---------- Company page: below the story ---------- */
+
+.page-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.page-aside {
+  min-width: 0;
+}
+
+.page-aside.is-pinned {
+  position: sticky;
+  top: calc(var(--topbar-height) + var(--gap));
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin: var(--space-5) 0;
+}
+
+.hero-stats dt {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.hero-stats dd {
+  margin: 0;
+  font-size: var(--text-stat);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.hero-stats .hero-stat-sub {
+  margin-top: var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.hero-dates {
+  margin-bottom: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.key-stats .footnote + .footnote {
+  margin-top: var(--space-1);
+}
+
+.explainer-lead {
+  font-size: var(--text-lg);
+  line-height: 1.4;
+}
+
+.explainer-equation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-5) 0;
+}
+
+.equation-step {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.equation-op {
+  color: var(--text-2);
+  font-size: var(--text-lg);
+}
+
+.equation-term {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.equation-label {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.equation-note {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.explainer-blocks {
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.explainer-block {
+  padding: var(--space-4) 0;
+}
+
+.explainer-block h3,
+.explainer-check h3 {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-md);
+}
+
+.key-insight {
+  margin: var(--space-6) 0;
+}
+
+.key-insight-label,
+.research-tip-label {
+  margin-bottom: var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.key-insight blockquote {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.checklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist li {
+  position: relative;
+  padding: var(--space-2) 0 var(--space-2) var(--space-7);
+}
+
+.checklist li + li {
+  border-top: 1px solid var(--hairline);
+}
+
+.checklist li::before {
+  content: "✓";
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-1);
+  color: var(--positive);
+  font-weight: 700;
+}
+
+.research-tip {
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.league-research .subsection-title {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.quarters-trends {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-5);
+}
+
+.sparkline {
+  margin: 0;
+  min-width: 0;
+}
+
+.sparkline-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.sparkline-label {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.sparkline-value {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sparkline-when {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.sparkline-svg {
+  display: block;
+  width: 100%;
+  height: 72px;
+  margin-top: var(--space-2);
+}
+
+.sparkline-base {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.sparkline-dot {
+  fill: var(--page);
+  stroke: var(--text);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.sparkline-dot.is-last {
+  fill: var(--text);
+}
+
+.sparkline-range {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.sparkline-empty {
+  padding: var(--space-5) 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.research-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hairline);
+  color: var(--text-2);
+}
+
+.league-price-chart .price-chart-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.price-chart-period-row {
+  margin-top: var(--space-3);
+}
+
+.price-chart-period-row > .price-chart-period-btn {
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.price-chart-period-row > .price-chart-period-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+}
+
+/* ---------- Forecast form ---------- */
+
+.forecast-section .panel-title {
+  margin-bottom: var(--space-2);
+}
+
+.league-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.league-eighty {
+  margin-bottom: var(--space-6);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.league-range-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.league-range-to {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.league-definition summary {
+  color: var(--link);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.league-definition p {
+  margin-top: var(--space-2);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.league-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.league-form > .btn-primary {
+  margin-top: var(--space-2);
+}
+
+.league-form > .btn-primary + .field-hint,
+.league-form > .field-hint + .field-hint {
+  margin-top: var(--space-2);
+}
+
+.scored-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.outcome-list > li {
+  padding: var(--space-4) 0;
+}
+
+.outcome-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.outcome-label {
+  font-size: var(--text-md);
+}
+
+.outcome-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.outcome-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin-top: var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.outcome-note,
+.outcome-source {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.outcome-link {
+  align-self: flex-start;
+  margin-top: var(--space-5);
+}
+
+/* ---------- Narrower screens ---------- */
+
+@media (max-width: 1099px) {
+  .company-page,
+  .home-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .story-tab-label {
+    display: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .jump-to-form {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .company-grid,
+  .how-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .hero-object {
+    --ball: 54px;
+    --cap-h: 28px;
+    --track-h: 18px;
+    height: 200px;
+  }
+
+  .how-grid {
+    gap: var(--space-6);
+  }
+
+  .how-grid > li::before {
+    font-size: 80px;
+    margin-bottom: var(--space-2);
+  }
+}
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 640px) {
+  .app-header {
+    padding: 0 var(--space-4);
+  }
+
+  .app-main {
+    padding: var(--space-4) var(--space-4) calc(var(--tabbar-height) + var(--space-8) + env(safe-area-inset-bottom));
+  }
+
+  /* The nav becomes a frosted tab bar fixed to the bottom. */
+  .primary-nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    gap: 0;
+    height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+    padding: 0 var(--space-2) env(safe-area-inset-bottom);
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+    border-top: 1px solid var(--hairline);
+  }
+
+  .nav-tab {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    height: auto;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    font-size: 11px;
+  }
+
+  .nav-tab.active {
+    background: none;
+    box-shadow: none;
+    color: var(--text);
+  }
+
+  .nav-tab svg {
+    display: block;
+  }
+
+  .home-hero {
+    padding: var(--space-6) 0 0;
+  }
+
+  .hero-lede {
+    font-size: var(--text-md);
+  }
+
+  .sector-tile {
+    min-height: 0;
+    padding: var(--space-6);
+  }
+
+  .tile-stats {
+    gap: var(--space-5);
+  }
+
+  .recent-lines {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-2);
+  }
+
+  .recent-line {
+    display: grid;
+    grid-template-columns: 7.5em minmax(0, 1fr);
+    align-items: start;
+    column-gap: var(--space-3);
+  }
+
+  .recent-line-name {
+    padding-top: 2px;
+  }
+
+  .section-head .btn-tertiary {
+    margin-left: calc(-1 * var(--space-4));
+  }
+
+  .how-band {
+    padding: var(--space-9) var(--space-4);
+  }
+
+  /* Story on phones: the card on top, smaller; the text under it. */
+  .story {
+    height: calc(8 * (100vh - var(--topbar-height) - var(--tabbar-height)));
+  }
+
+  .story-sticky {
+    height: calc(100vh - var(--topbar-height) - var(--tabbar-height));
+  }
+
+  .story-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-4);
+    padding: var(--space-3) 0 72px;
+  }
+
+  .story-stage {
+    grid-row: 1;
+    height: 190px;
+    min-height: 0;
+  }
+
+  .card3d {
+    width: 300px;
+  }
+
+  .card3d-face,
+  .card3d-slice {
+    border-radius: 20px;
+  }
+
+  .card3d-content {
+    padding: 18px 22px;
+  }
+
+  .card3d-sector,
+  .card3d-foot,
+  .card3d-number-label {
+    font-size: 12px;
+  }
+
+  .card3d-name {
+    font-size: 36px;
+  }
+
+  .card3d-ticker {
+    font-size: 13px;
+  }
+
+  .card3d-spark {
+    font-size: 11px;
+  }
+
+  .card3d-spark-line {
+    width: 76px;
+    height: 28px;
+  }
+
+  .card3d-foot {
+    margin-top: 10px;
+  }
+
+  .card3d-number {
+    font-size: 18px;
+  }
+
+  .card3d-numbers {
+    gap: 4px;
+  }
+
+  .story-text {
+    grid-row: 2;
+    min-height: 0;
+  }
+
+  .story-title {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+  }
+
+  .story-company {
+    font-size: var(--text-md);
+  }
+
+  /* Skip sits beside the chapter strip, so it never covers chapter text. */
+  .story-skip {
+    top: auto;
+    bottom: var(--space-3);
+    right: 0;
+  }
+
+  .story-chapters {
+    min-height: 0;
+  }
+
+  .chapter-head {
+    margin-bottom: var(--space-3);
+    font-size: 40px;
+  }
+
+  .chapter-lead,
+  .chapter-quote {
+    font-size: var(--text-md);
+  }
+
+  .chapter-numbers {
+    gap: var(--space-2);
+  }
+
+  .chapter-number-value {
+    font-size: var(--text-xl);
+  }
+
+  .chapter-trends {
+    gap: var(--space-3);
+  }
+
+  .chapter-trends .sparkline-svg {
+    height: 52px;
+  }
+
+  .story .checklist li {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    font-size: var(--text-sm);
+  }
+
+  .story-word > span {
+    top: 30%;
+    font-size: 28vw;
+  }
+
+  .story-strip {
+    bottom: var(--space-3);
+    left: 0;
+    transform: none;
+  }
+
+  .story-tab {
+    min-height: 36px;
+    padding: 0 10px;
+  }
+
+  .hero-stats {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .quarters-trends {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .list-row-detail {
+    max-width: 60%;
+  }
+}
+
+/* Solid fallbacks: no blur support, or less transparency asked for. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .story-strip,
+  .app-header::before,
+  .primary-nav {
+    background: var(--solid-glass) !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .story-strip,
+  .app-header::before,
+  .primary-nav {
+    background: var(--solid-glass) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* =====================================================================
+   Research (2026-11-16, redesign v3). One spacing rhythm throughout:
+   --gap between panels, --panel-pad inside them, --space-4 between cards
+   in a grid, --space-5 inside a card, subsection titles --space-7 above
+   and --space-3 below, footnotes --space-4 above.
+   ===================================================================== */
+
+.research-page,
+.research-company,
+.research-landing,
+.research-anchor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.research-anchor {
+  scroll-margin-top: calc(var(--topbar-height) + 72px);
+}
+
+.research-page .footnote {
+  margin-top: var(--space-4);
+}
+
+.research-page .subsection-title {
+  margin: var(--space-7) 0 var(--space-3);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.research-page .panel-title + .subsection-title {
+  margin-top: var(--space-2);
+}
+
+.research-page .group {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.research-page .group > li + li {
+  border-top: 1px solid var(--hairline);
+}
+
+/* Search */
+.research-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.research-search .footnote {
+  margin-top: 0;
+}
+
+.research-title {
+  padding-top: 0.04em;
+  font-family: var(--font-head);
+  font-size: var(--head-chapter);
+  font-weight: 800;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.search-form {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  max-width: none;
+  min-width: 0;
+}
+
+.search-form .search-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Company hero: name and key figures beside the card, the price chart below. */
+.research-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.research-hero > .footnote {
+  margin-top: calc(-1 * var(--space-5));
+}
+
+/* The card sits in the top right corner, as far from the right edge as it
+   is from the figures below it. */
+.research-hero-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-7);
+}
+
+/* The same distance from the right edge as from the figures below. */
+.research-hero-top > .research-card-stage {
+  margin: 0 var(--space-4) var(--space-4) 0;
+}
+
+.research-hero-meta {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.research-hero-title {
+  margin-top: var(--space-2);
+  padding-top: 0.04em;
+  font-family: var(--font-head);
+  font-size: clamp(40px, 5vw, 72px);
+  font-weight: 800;
+  line-height: 0.92;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.research-hero-ticker {
+  margin-top: var(--space-3);
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.research-figures {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.research-figures > div,
+.profile-facts > div {
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-control);
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+}
+
+.research-figures dt,
+.profile-facts dt {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.research-figures dd {
+  margin: var(--space-1) 0 0;
+  overflow: hidden;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.research-price {
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--hairline);
+}
+
+.research-price .price-chart-card,
+.research-price .price-chart-card:hover {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+
+/* The smaller company card (ResearchCard.tsx): laid out at 360px, shown
+   at 300 x 189px, exactly the stage's size. Same material classes as the
+   forecast page's card. Drag to turn it. */
+.research-card-stage {
+  display: grid;
+  place-items: center;
+  width: 300px;
+  height: 189px;
+  perspective: 1200px;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.research-card-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.research-card-back {
+  justify-content: space-between;
+}
+
+.research-card-ticker {
+  font-family: var(--font-head);
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 0.9;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.card3d-small {
+  width: 360px;
+  max-width: none;
+}
+
+.card3d-small .card3d-face,
+.card3d-small .card3d-slice {
+  border-radius: 22px;
+}
+
+.card3d-small .card3d-content {
+  padding: 22px 26px;
+}
+
+.card3d-small .card3d-sector,
+.card3d-small .card3d-foot {
+  font-size: 13px;
+}
+
+.card3d-small .card3d-name {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 32px;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.card3d-small .card3d-ticker {
+  font-size: 14px;
+}
+
+.card3d-small .card3d-spark {
+  font-size: 12px;
+}
+
+.card3d-small .card3d-spark-line {
+  width: 90px;
+  height: 32px;
+}
+
+.card3d-small .card3d-foot {
+  margin-top: 12px;
+}
+
+/* Section bar: sticks under the top bar. */
+.research-sections {
+  position: sticky;
+  top: var(--topbar-height);
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  margin: calc(-1 * var(--space-2)) 0;
+  padding: var(--space-2) 0;
+  pointer-events: none;
+}
+
+.research-sections-strip {
+  display: flex;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--edge-side);
+  border-top-color: var(--edge-lit);
+  border-radius: 999px;
+  background: rgba(23, 25, 30, 0.72);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.7);
+  scrollbar-width: none;
+  pointer-events: auto;
+}
+
+.research-sections-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.research-section-tab {
+  flex: none;
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 150ms var(--ease),
+    color 150ms var(--ease);
+}
+
+.research-section-tab:hover {
+  color: var(--text);
+}
+
+.research-section-tab.is-current {
+  background: var(--offwhite);
+  color: var(--on-offwhite);
+}
+
+/* Profile */
+.profile-description {
+  max-width: var(--measure);
+  line-height: var(--leading-body);
+}
+
+.profile-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-6) 0 0;
+}
+
+.profile-facts dd {
+  margin: var(--space-1) 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.segment-bar {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--recessed-fill);
+}
+
+.segment-bar-part {
+  min-width: 4px;
+}
+
+.seg-1 { background: #f7f8fa; }
+.seg-2 { background: #c9ced6; }
+.seg-3 { background: #9aa1ad; }
+.seg-4 { background: #737b88; }
+.seg-5 { background: #555c68; }
+.seg-6 { background: #3c424c; }
+.seg-neg {
+  background: repeating-linear-gradient(135deg, var(--text-2) 0 2px, transparent 2px 5px);
+}
+
+.segment-legend {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.segment-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.segment-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.segment-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.segment-value {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.company-profile .section-text {
+  margin-top: var(--space-3);
+}
+
+.doc-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-3) 0;
+}
+
+.doc-meta {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+/* History */
+.quarters-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.quarters-layout .quarters-trends {
+  margin-bottom: 0;
+}
+
+/* Bars beside values (peers table and ratio lists): grow once, the first
+   time they are on screen. Only for comparing; the numbers are the source. */
+.ratio-bar-track {
+  display: block;
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.value-bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--text-2);
+  transform: scaleX(var(--w, 0));
+  transform-origin: left center;
+}
+
+.value-bar.is-negative {
+  background: var(--negative);
+}
+
+.bars-pending .value-bar {
+  transform: scaleX(0);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bars-shown .value-bar {
+    transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+/* Peers: sized to fit the panel on a laptop (headers wrap, tighter cells,
+   the "Reported" chip under the date), so the table only scrolls sideways on
+   narrow screens, and then with a thin dark scrollbar. */
+.peers-table th,
+.peers-table td {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+.peers-table thead th {
+  min-width: 0;
+  white-space: normal;
+}
+
+.peers-table td {
+  white-space: nowrap;
+}
+
+.peers-table td:first-child {
+  white-space: normal;
+  min-width: 8em;
+}
+
+.peers-table td:last-child {
+  white-space: normal;
+}
+
+.peers .table-wrap {
+  padding-bottom: var(--space-2);
+}
+
+.peers-self td {
+  font-weight: 700;
+}
+
+.peers-self .value-bar:not(.is-negative) {
+  background: var(--text);
+}
+
+.cell-with-bar {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-width: 52px;
+  text-align: right;
+}
+
+.peers-reported {
+  display: flex;
+  width: fit-content;
+  margin: var(--space-1) 0 0 auto;
+}
+
+/* Analysis */
+.analysis-section {
+  height: 100%;
+  padding: var(--space-5);
+  border-radius: var(--radius-control);
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+}
+
+.analysis-heading {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.analysis-text {
+  color: var(--text-2);
+  line-height: var(--leading-body);
+}
+
+.analysis-text + .analysis-text {
+  margin-top: var(--space-2);
+}
+
+.analysis-questions ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text-2);
+  line-height: var(--leading-body);
+}
+
+/* Ratios: one glass panel per group, packed in two columns. */
+.ratio-groups {
+  columns: 2;
+  column-gap: var(--gap);
+  margin-bottom: calc(-1 * var(--gap));
+}
+
+.ratio-group {
+  margin-bottom: var(--gap);
+  break-inside: avoid;
+}
+
+.ratio-group .price-lag-note {
+  margin: 0 0 var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.ratio-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(64px, auto) 96px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: var(--space-2) 0;
+  cursor: help;
+}
+
+.ratio-row:focus-visible {
+  border-radius: var(--radius-small);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ratio-row:hover .ratio-label {
+    text-decoration: underline dotted var(--text-2);
+    text-underline-offset: 3px;
+  }
+}
+
+.ratio-label {
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+
+.ratio-value {
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ratio-value.na {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.ratio-row .status-text {
+  font-size: var(--text-xs);
+}
+
+.metric-parts {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.metric-parts-legend {
+  display: block;
+}
+
+/* Grids of cards (TileGrid sets --half-cols per row). */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--half-cols, 2), minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.tile-grid > * {
+  grid-column: span 2;
+  min-width: 0;
+}
+
+/* News panels */
+.news-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.news-panel > .panel-title {
+  margin-bottom: 0;
+}
+
+.news-panel > .subsection-title {
+  margin: var(--space-3) 0 0;
+}
+
+.news-panel > .panel-title + .subsection-title {
+  margin-top: 0;
+}
+
+.news-panel > .footnote,
+.news-panel > .btn {
+  margin-top: 0;
+}
+
+.news-panel > .btn {
+  align-self: flex-start;
+}
+
+.news-views {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.news-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.theme-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.theme-filter .chip {
+  gap: 6px;
+}
+
+.theme-crude { --th: var(--th-crude); }
+.theme-monsoon { --th: var(--th-monsoon); }
+.theme-rupee { --th: var(--th-rupee); }
+.theme-tariffs { --th: var(--th-tariffs); }
+.theme-supply { --th: var(--th-supply); }
+.theme-gst { --th: var(--th-gst); }
+.theme-rates { --th: var(--th-rates); }
+.theme-inputs { --th: var(--th-inputs); }
+.theme-tech { --th: var(--th-tech); }
+
+.theme-icon {
+  flex: none;
+  color: var(--th, var(--text-2));
+}
+
+.chip.active .theme-icon {
+  color: inherit;
+}
+
+/* A news, video, world-event or macro card: raised glass inside the panel. */
+.news-card,
+.video-card,
+.macro-chart {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+  border-radius: 18px;
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+}
+
+.news-card,
+.macro-chart {
+  padding: var(--space-5);
+}
+
+.news-card,
+.video-card {
+  transition:
+    transform 150ms var(--ease),
+    box-shadow 150ms var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .news-card:hover,
+  .video-card:hover {
+    transform: translateY(-3px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 16px 32px -12px rgba(0, 0, 0, 0.65);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .news-card,
+  .video-card {
+    transition: none;
+  }
+}
+
+.news-card-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.news-card-meta,
+.news-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.publisher-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 1px;
+  border-radius: 4px;
+  background: var(--icon-plate);
+}
+
+.publisher-monogram {
+  display: inline-grid;
+  place-items: center;
+  color: #0b0d12;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.news-card-headline {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.35;
+  text-decoration: none;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+a.news-card-headline:hover {
+  text-decoration: underline;
+}
+
+.news-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-1);
+}
+
+.theme-chip,
+.news-card-chips .chip-static,
+.news-meta .chip-static,
+.peers-reported {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+  color: var(--text);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: default;
+}
+
+.news-card-source {
+  font-size: var(--text-xs);
+}
+
+/* "Why it matters" line and its button. */
+.why {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.why-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.why-label {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.why-label:hover {
+  text-decoration: underline;
+}
+
+/* Research landing: the top story is a larger card in the company-card
+   material (sector colour when it's about a league sector, else graphite). */
+.news-card-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  align-items: stretch;
+  gap: var(--space-6);
+  min-height: 260px;
+  padding: var(--space-7);
+  overflow: hidden;
+  border-radius: var(--radius-panel);
+  background: linear-gradient(145deg, var(--sector-light) 0%, var(--sector) 48%, var(--sector-dark) 100%);
+  color: var(--on-sector);
+  box-shadow:
+    inset 2px 2px 1px rgba(255, 255, 255, 0.28),
+    inset -2px -3px 2px rgba(0, 0, 0, 0.28),
+    0 24px 50px -24px rgba(0, 0, 0, 0.8);
+}
+
+.news-card-material {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.news-card-top .news-card-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  order: 1;
+  color: inherit;
+}
+
+.news-card-top .news-card-art .theme-icon {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.news-card-top .news-card-headline {
+  color: inherit;
+  font-family: var(--font-head);
+  font-size: clamp(30px, 3.4vw, 44px);
+  font-weight: 800;
+  line-height: 0.95;
+  text-transform: uppercase;
+  -webkit-line-clamp: 4;
+}
+
+.news-card-top .news-card-meta,
+.news-card-top .why-summary,
+.news-card-top .why-label,
+.news-card-top .theme-icon {
+  color: inherit;
+}
+
+.news-card-top .why-label {
+  text-decoration: underline;
+}
+
+.news-card-top .theme-chip,
+.news-card-top .chip-static {
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .news-card-top:hover {
+    box-shadow:
+      inset 2px 2px 1px rgba(255, 255, 255, 0.28),
+      inset -2px -3px 2px rgba(0, 0, 0, 0.28),
+      0 30px 60px -24px rgba(0, 0, 0, 0.85);
+  }
+}
+
+/* Videos */
+.video-card {
+  overflow: hidden;
+}
+
+.video-card-inner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.video-card .news-card-body {
+  padding: var(--space-5);
+}
+
+.video-poster {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: 0;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(145deg, #2a2d33, #15171b);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.video-poster > .theme-icon {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+}
+
+.video-play {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding-left: 3px;
+  border-radius: 50%;
+  background: var(--offwhite);
+  color: var(--on-offwhite);
+  box-shadow: var(--button-shadow);
+  transition: transform 150ms var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .video-poster:hover .video-play {
+    transform: scale(1.06);
+  }
+}
+
+.video-length {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--video-scrim);
+  color: #ffffff;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.video-frame {
+  aspect-ratio: 16 / 9;
+}
+
+.video-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Macro charts */
+.macro-chart {
+  gap: var(--space-2);
+}
+
+.macro-line .sparkline-svg {
+  height: 96px;
+}
+
+.macro-meta {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+/* Exchange filings */
+.news-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+}
+
+.news-list > .news-row:first-child {
+  padding-top: 0;
+}
+
+.news-headline {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Charts draw in from the left the first time they are on screen. */
+.sparkline-line {
+  vector-effect: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .draw-pending .sparkline-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .draw-pending .sparkline-dot {
+    opacity: 0;
+  }
+
+  .is-drawn .sparkline-line {
+    stroke-dasharray: 1;
+    animation: draw-line 600ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  .is-drawn .sparkline-dot {
+    animation: fade-in 200ms var(--ease) backwards;
+  }
+
+  .price-chart-canvas-wrap.draw-pending .price-chart-canvas {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  .price-chart-canvas-wrap.is-drawn .price-chart-canvas {
+    animation: reveal-x 600ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+}
+
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes reveal-x {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* "Why it matters": the cause-and-effect chain, one step at a time, an
+   arrow drawing down to each step (about 250 ms per step). */
+.why-chain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.why-chain li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.why-chain-step {
+  padding: 6px 12px;
+  border-radius: var(--radius-small);
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.why-chain-arrow {
+  width: 12px;
+  height: 22px;
+  margin: 3px 0 3px 16px;
+  fill: none;
+  stroke: var(--text-2);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .why-chain-step {
+    animation: why-step-in 220ms var(--ease) backwards;
+    animation-delay: calc(var(--step, 0) * 250ms);
+  }
+
+  .why-chain-arrow path {
+    stroke-dasharray: 1;
+    animation: draw-line 170ms ease-out backwards;
+    animation-delay: calc(var(--step, 0) * 250ms - 170ms);
+  }
+}
+
+@keyframes why-step-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+/* Research on narrower screens */
+@media (max-width: 1099px) {
+  .ratio-groups {
+    columns: 1;
+  }
+
+  .research-figures {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .research-hero-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .research-card-stage {
+    justify-self: center;
+  }
+
+  .profile-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .news-card-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .news-card-top .news-card-art {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .research-figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .research-figures > div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .research-sections {
+    justify-content: flex-start;
+  }
+
+  .search-form {
+    flex-direction: column;
+  }
+
+  .ratio-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "label value"
+      "bar status";
+    row-gap: var(--space-1);
+  }
+
+  .ratio-label {
+    grid-area: label;
+  }
+
+  .ratio-value {
+    grid-area: value;
+  }
+
+  .ratio-row .ratio-bar-track {
+    grid-area: bar;
+    align-self: center;
+    max-width: 120px;
+  }
+
+  .ratio-row .status-text {
+    grid-area: status;
+    justify-self: end;
+  }
+
+  .news-card-top {
+    min-height: 0;
+    padding: var(--space-6);
+  }
+}
+
+/* =====================================================================
+   Research workspace (2026-11-16, redesign v3)
+   ===================================================================== */
+
+.page-header.glass {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--panel-pad);
+}
+
+.page-title {
+  padding-top: 0.04em;
+  font-family: var(--font-head);
+  font-size: clamp(36px, 4.6vw, 64px);
+  font-weight: 800;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.page-lede {
+  max-width: var(--measure);
+  color: var(--text-2);
+  font-size: var(--text-lg);
+  line-height: 1.45;
+}
+
+.workspace-progress {
+  margin-top: var(--space-2);
+}
+
+.workspace-progress-bar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.workspace-progress-bar span {
+  background: var(--offwhite);
+}
+
+/* Callouts: banners, the sign-in prompt, confirmations, and the glossary
+   term shown on a step ("Price and mix"). */
+.callout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-radius: 18px;
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+  line-height: var(--leading-body);
+}
+
+.callout p {
+  margin: 0;
+}
+
+.callout-tip {
+  padding: var(--panel-pad);
+  border: 1px solid var(--edge-side);
+  border-top-color: var(--edge-lit);
+  border-radius: var(--radius-panel);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.03));
+}
+
+.callout-label {
+  font-family: var(--font-head);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.callout-tip p {
+  max-width: var(--measure);
+  margin-top: var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-lg);
+  line-height: 1.45;
+}
+
+/* Layout: the step list (sticky) beside the step. */
+.workspace-layout {
+  gap: var(--gap);
+}
+
+.workspace-main {
+  gap: var(--gap);
+}
+
+.workspace-steps.glass {
+  position: sticky;
+  top: calc(var(--topbar-height) + var(--space-4));
+  padding: var(--space-3);
+}
+
+.workspace-step-link {
+  border-radius: 12px;
+  color: var(--text-2);
+}
+
+.workspace-step-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.workspace-step-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.workspace-step-link.is-current {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.workspace-step-num {
+  border-color: var(--control-border);
+}
+
+.workspace-step-link.is-current .workspace-step-num,
+.workspace-step-num.is-done {
+  border-color: var(--offwhite);
+  background: var(--offwhite);
+  color: var(--on-offwhite);
+}
+
+/* The step's header: a large outlined numeral beside the title and why. */
+.workspace-step-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.workspace-step-numeral {
+  font-family: var(--font-head);
+  font-size: 104px;
+  font-weight: 800;
+  line-height: 0.8;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--text-2);
+}
+
+.workspace-step-count {
+  margin: 0 0 var(--space-2);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workspace-step-title {
+  padding-top: 0.04em;
+  font-family: var(--font-head);
+  font-size: var(--head-tile);
+  font-weight: 800;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.workspace-step-why {
+  max-width: var(--measure);
+  margin-top: var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-lg);
+  line-height: 1.45;
+}
+
+/* The data panel's lead sentence (a KPI's definition, say) reads larger,
+   and a source hint sits on its own raised strip. */
+.workspace-data > .section-text:first-of-type {
+  max-width: var(--measure);
+  color: var(--text);
+  font-size: var(--text-lg);
+  line-height: 1.45;
+}
+
+.workspace-data > .field-hint {
+  align-self: flex-start;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 12px;
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+/* Questions as numbered cards, notes as quieter outlined ones. */
+.workspace-items {
+  display: grid;
+  gap: var(--space-3);
+  counter-reset: question;
+}
+
+.workspace-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: 16px;
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+}
+
+.workspace-item::before {
+  position: static;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--offwhite);
+  color: var(--on-offwhite);
+  font-family: var(--font-head);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.workspace-item-question {
+  counter-increment: question;
+}
+
+.workspace-item-question::before {
+  content: counter(question, decimal-leading-zero);
+}
+
+.workspace-item-note {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.workspace-item-note::before {
+  content: "i";
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+/* Glossary: lettered groups, each term on its own raised card. */
+.workspace-glossary-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  cursor: pointer;
+  list-style: none;
+}
+
+.workspace-glossary-summary::-webkit-details-marker {
+  display: none;
+}
+
+.workspace-glossary-summary .panel-title {
+  margin: 0;
+}
+
+.workspace-glossary-chevron {
+  flex: none;
+  color: var(--text-2);
+  transition: transform var(--duration-open) var(--ease);
+}
+
+.workspace-glossary[open] .workspace-glossary-chevron {
+  transform: rotate(180deg);
+}
+
+.glossary-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.glossary-group {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.glossary-letter {
+  font-family: var(--font-head);
+  font-size: 60px;
+  font-weight: 800;
+  line-height: 0.85;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--text-2);
+}
+
+.glossary-terms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.glossary-term {
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: 16px;
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+}
+
+.glossary-term dt {
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.glossary-term dd {
+  margin: var(--space-2) 0 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+
+@media (max-width: 900px) {
+  .workspace-steps.glass {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace-step-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .workspace-step-numeral {
+    font-size: 64px;
+  }
+
+  .workspace-step-title {
+    font-size: 34px;
+  }
+
+  .glossary-group {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .glossary-letter {
+    font-size: 40px;
+  }
+
+  .glossary-terms {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-item {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .workspace-item::before {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+}
+
+/* =====================================================================
+   Colour highlights (2026-11-16): key words and numbers marked in the
+   company's own card colour (the page carries its .sector-* class). Text on
+   a full marker uses --on-sector (checked 4.6:1 or more on every shade);
+   a half-height marker sits behind ordinary text (5.8:1 or more).
+   ===================================================================== */
+
+.company-page .equation-label,
+.company-page .chapter-number-value {
+  align-self: flex-start;
+  padding: 0.04em 0.32em;
+  border-radius: 8px;
+  background: var(--sector);
+  color: var(--on-sector);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.company-page .equation-term.is-result .equation-label {
+  background: var(--sector-light);
+}
+
+.company-page .equation-note {
+  margin-top: 4px;
+}
+
+.company-page .hl-under {
+  background: linear-gradient(transparent 60%, color-mix(in srgb, var(--sector) 55%, transparent) 60%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.workspace-page .workspace-item-question::before {
+  background: var(--sector);
+  color: var(--on-sector);
+}
+
+.workspace-page .workspace-step-numeral,
+.workspace-page .glossary-letter {
+  -webkit-text-stroke-color: var(--sector-light);
+}
+
+.workspace-page .workspace-progress-bar span,
+.workspace-page .workspace-step-link.is-current .workspace-step-num,
+.workspace-page .workspace-step-num.is-done {
+  border-color: var(--sector);
+  background: var(--sector);
+  color: var(--on-sector);
+}
+
+/* The ball mini game on Home: a short pulse of the range when the ball
+   drops into it. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-object-range.is-scored {
+    animation: range-scored 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+
+@keyframes range-scored {
+  40% {
+    scale: 1.06 1.14;
+  }
+}
+
+/* The share-price chapter: numbered steps that light up one at a time as
+   the story scrolls (opacity and a small slide, set from the scroll
+   position), each number in the company's card colour, then the price line. */
+.chapter-steps {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 46ch;
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  list-style: none;
+  counter-reset: chapter-step;
+}
+
+.chapter-steps > li {
+  position: relative;
+  padding-left: 44px;
+  counter-increment: chapter-step;
+  line-height: 1.45;
+  will-change: transform, opacity;
+}
+
+.chapter-steps > li::before {
+  content: counter(chapter-step);
+  position: absolute;
+  top: -1px;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--sector, var(--offwhite));
+  color: var(--on-sector, var(--on-offwhite));
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.chapter-price {
+  max-width: 440px;
+}
+
+.chapter-price .footnote {
+  margin-top: var(--space-2);
+}
+
+.story-flat .chapter-steps > li {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .chapter-steps {
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .chapter-steps > li {
+    padding-left: 38px;
+  }
+
+  .chapter-steps > li::before {
+    width: 26px;
+    height: 26px;
+    font-size: 16px;
+  }
+
+  .chapter-price .sparkline-svg {
+    height: 52px;
+  }
+}
+
+/* =====================================================================
+   Scrollbars (2026-11-17)
+   The page: on mouse devices the browser's own scrollbar is hidden and
+   PageScrollbar.tsx draws one that floats over the page (no gutter, so
+   full-width parts reach the edge): a semi-transparent frosted pill-shaped
+   socket holding a glossy silver pill, lit from the top left like the ball,
+   which casts a shadow on the cards under it. Phones and touch screens keep their overlay scrollbar.
+   The peers table keeps a native bar in the same style (WebKit/Blink
+   pseudo-elements; Firefox gets flat colours, because in Chrome 121+
+   scrollbar-color would switch the pseudo-elements off).
+   ===================================================================== */
+
+.custom-scrollbar .app-shell-content {
+  scrollbar-width: none;
+}
+
+.custom-scrollbar .app-shell-content::-webkit-scrollbar {
+  display: none;
+}
+
+.page-scrollbar {
+  position: fixed;
+  top: calc(var(--topbar-height) + 12px);
+  right: 10px;
+  bottom: 12px;
+  z-index: 48;
+  width: 20px;
+  border-radius: 999px;
+  background: rgba(5, 7, 10, 0.55);
+  box-shadow:
+    inset 3px 0 6px rgba(0, 0, 0, 0.85),
+    inset -1px 0 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  cursor: default;
+}
+
+.page-scrollbar.is-hidden {
+  display: none;
+}
+
+.page-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 14px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 45%),
+    linear-gradient(90deg, #f4f5f7 0%, #d5d9df 30%, #9aa1ad 70%, #646c79 100%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.8),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.35),
+    -4px 8px 16px rgba(0, 0, 0, 0.5),
+    -1px 2px 4px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  will-change: transform;
+  transition: filter 150ms var(--ease);
+}
+
+.page-scrollbar-thumb:hover {
+  filter: brightness(1.07);
+}
+
+.page-scrollbar.is-dragging .page-scrollbar-thumb {
+  cursor: grabbing;
+  filter: brightness(0.97);
+}
+
+.peers .table-wrap::-webkit-scrollbar {
+  height: 16px;
+  background: var(--page);
+}
+
+.peers .table-wrap::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.peers .table-wrap::-webkit-scrollbar-track {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #000000 0%, #05070a 50%, #11141a 100%) padding-box;
+  box-shadow:
+    inset 0 3px 5px rgba(0, 0, 0, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.peers .table-wrap::-webkit-scrollbar-thumb {
+  min-width: 48px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 40%) padding-box,
+    linear-gradient(180deg, #f4f5f7 0%, #d5d9df 30%, #9aa1ad 70%, #646c79 100%) padding-box;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.75),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.35);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .peers .table-wrap {
+    scrollbar-width: thin;
+    scrollbar-color: #b4bac4 #05070a;
+  }
+}
+
+/* The story fills the screen's width (2026-11-17): its pinned area spans the
+   whole content column of the window, and the text, card, skip button and
+   chapter strip keep to the page's own margins inside it. So nothing sits
+   on the clipped edge (a hovered button used to be cut off), and the six-tab
+   strip has room. (The page scrollbar floats over the page, so 100vw is the
+   content width.) */
+.company-page > .story {
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+.story-grid {
+  padding-left: max(var(--space-6), calc((100% - var(--max)) / 2));
+  padding-right: max(var(--space-6), calc((100% - var(--max)) / 2));
+}
+
+.story-skip {
+  right: max(var(--space-6), calc((100% - var(--max)) / 2));
+}
+
+/* Only the current chapter shows its name; the others show their number
+   (full name as a tooltip and for screen readers), so all six always fit. */
+.story-strip {
+  max-width: calc(100% - 2 * var(--space-6));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.story-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* One white pill (.story-strip-indicator, moved by CompanyStory) slides
+   between tabs; the current tab's name opens and the others' close. */
+.story-strip-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: 999px;
+  background: var(--offwhite);
+  box-shadow: var(--raised-shadow);
+  pointer-events: none;
+}
+
+.story-tab {
+  position: relative;
+  z-index: 1;
+  gap: 0;
+  transition: color 420ms var(--ease);
+}
+
+.story-tab.is-current {
+  background: none;
+}
+
+.story-tab-label {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition:
+    max-width 520ms cubic-bezier(0.65, 0, 0.35, 1),
+    opacity 360ms var(--ease);
+}
+
+.story-tab.is-current .story-tab-label {
+  max-width: 16em;
+  padding-left: var(--space-2);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-tab,
+  .story-tab-label {
+    transition: none;
+  }
+}
+
+/* Below 1100px the strip shows numbers only (names are in the chapters). */
+@media (max-width: 1099px) {
+  .story-tab-label,
+  .story-tab.is-current .story-tab-label {
+    display: none;
+  }
+}
+
+/* The pinned area lines up with the screen from the start (the page's top
+   padding is taken back), so the strip sits the page margin above the
+   bottom of the screen before and during scrolling. */
+.company-page > .story {
+  margin-top: calc(-1 * var(--space-6));
+}
+
+.story-strip {
+  bottom: var(--space-6);
+}
+
+@media (max-width: 640px) {
+  .story-grid {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .story-skip {
+    right: var(--space-4);
+  }
+
+  .story-strip {
+    left: var(--space-4);
+    bottom: var(--space-4);
+    max-width: calc(100% - 2 * var(--space-4));
+  }
+
+  .company-page > .story {
+    margin-top: calc(-1 * var(--space-4));
+  }
+}
+
+/* =====================================================================
+   Company colour = how hard it is to forecast (2026-11-17, lib/difficulty).
+   easy = emerald, medium = cobalt, hard = violet; unknown = graphite
+   (.sector-neutral). The same three-shade sets as the sector tokens, so
+   every material (tiles, 3D cards, highlights) works unchanged. Declared
+   after the sector classes, so they win where both appear.
+   ===================================================================== */
+
+.difficulty-easy {
+  --sector: var(--sector-fmcg);
+  --sector-light: var(--sector-fmcg-light);
+  --sector-dark: var(--sector-fmcg-dark);
+  --on-sector: var(--on-sector-fmcg);
+}
+
+.difficulty-medium {
+  --sector: var(--sector-autos);
+  --sector-light: var(--sector-autos-light);
+  --sector-dark: var(--sector-autos-dark);
+  --on-sector: var(--on-sector-autos);
+}
+
+.difficulty-hard {
+  --sector: var(--sector-it);
+  --sector-light: var(--sector-it-light);
+  --sector-dark: var(--sector-it-dark);
+  --on-sector: var(--on-sector-it);
+}
+
+/* A company's pages (company page, workspace, Research company) take on its
+   colour: a soft glow of it behind the page, and glass panels with a faint
+   wash of it at the top and a lit top edge in it. Decoration only; text keeps
+   its own colours (contrast unchanged: the wash is under 12%). */
+.company-colour {
+  position: relative;
+  isolation: isolate;
+}
+
+.company-colour::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60% 50% at 82% 6%, color-mix(in srgb, var(--sector) 28%, transparent), transparent 72%),
+    radial-gradient(50% 45% at 6% 96%, color-mix(in srgb, var(--sector-dark) 34%, transparent), transparent 72%);
+  pointer-events: none;
+}
+
+.company-colour .glass.panel {
+  border-top-color: color-mix(in srgb, var(--sector-light) 70%, white 10%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sector) 11%, transparent), transparent 46%),
+    var(--glass-fill);
+}
+
+.company-colour .panel-title::after {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 3px;
+  margin-top: var(--space-2);
+  border-radius: 999px;
+  background: var(--sector-light);
+}
+
+.company-colour .research-section-tab.is-current,
+.company-colour .chip.active {
+  background: var(--sector);
+  color: var(--on-sector);
+}
+
+/* =====================================================================
+   Results page (2026-11-17, v3). Complete rules (the legacy ones go with
+   legacy.css): the ticker sits under the name, your score is large and
+   gold (gold = your own score), every number has the v3 range bar: a
+   recessed track, your range a raised gold capsule, the result a glossy dot
+   ringed green if it landed in your range and red if not, the lazy guess a
+   grey diamond and the crowd a grey tick.
+   ===================================================================== */
+
+.page > .section.glass {
+  margin-top: 0;
+}
+
+.page-title .page-title-sub {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--text-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.page-meta {
+  color: var(--text-2);
+  line-height: 1.45;
+}
+
+.results-score {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2) var(--space-7);
+}
+
+.results-score-label {
+  grid-column: 1;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.results-score-value {
+  grid-column: 1;
+  margin: 0;
+  color: var(--gold);
+  font-family: var(--font-head);
+  font-size: 96px;
+  font-weight: 800;
+  line-height: 0.85;
+}
+
+.results-score > p {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  max-width: var(--measure);
+  margin: 0;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.results-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.results-list > li + li {
+  border-top: 1px solid var(--hairline);
+}
+
+.results-metric {
+  padding: var(--space-6) 0;
+}
+
+.results-list > li:first-child {
+  padding-top: 0;
+}
+
+.results-metric-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.results-metric-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.results-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.results-points {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.results-explain {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.results-explain li,
+.results-score p {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.panel-footnote {
+  margin-top: var(--space-4);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+/* The range bar */
+.nl {
+  position: relative;
+  margin: var(--space-7) 0 var(--space-2);
+}
+
+.nl-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--recessed-fill);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.nl-range {
+  position: absolute;
+  top: -4px;
+  height: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fbe7b0 0%, #f2c14e 45%, #c38f27 100%);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.nl-mark {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.nl-actual {
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid var(--positive);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #ffffff 0%, #e2e5ea 45%, #9aa1ad 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.nl-miss .nl-actual {
+  border-color: var(--negative);
+}
+
+.nl-lazy {
+  z-index: 2;
+  width: 11px;
+  height: 11px;
+  background: var(--text-2);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.nl-crowd {
+  top: -11px;
+  width: 0;
+  height: 0;
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+  border-top: 9px solid var(--text-2);
+  transform: translateX(-50%);
+}
+
+.nl-labels {
+  position: relative;
+  margin-top: var(--space-3);
+}
+
+.nl-label {
+  position: absolute;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.nl-label-range {
+  color: var(--gold);
+}
+
+.nl-label-actual {
+  font-weight: 700;
+}
+
+.nl-hit .nl-label-actual {
+  color: var(--positive);
+}
+
+.nl-miss .nl-label-actual {
+  color: var(--negative);
+}
+
+.nl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.nl-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.nl-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+.nl-key-range {
+  width: 18px;
+  height: 9px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fbe7b0, #f2c14e 45%, #c38f27);
+}
+
+.nl-key-actual {
+  border: 2px solid var(--positive);
+  border-radius: 50%;
+  background: #e2e5ea;
+}
+
+.nl-key-actual.nl-miss {
+  border-color: var(--negative);
+}
+
+.nl-key-lazy {
+  width: 8px;
+  height: 8px;
+  background: var(--text-2);
+  transform: rotate(45deg);
+}
+
+.nl-key-crowd {
+  width: 0;
+  height: 0;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  border-top: 8px solid var(--text-2);
+}
+
+@media (max-width: 640px) {
+  .results-score {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .results-score > p {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .results-score-value {
+    font-size: 72px;
+  }
+}
+
+.nl-hit .nl-actual,
+.nl-miss .nl-actual {
+  background: radial-gradient(circle at 34% 30%, #ffffff 0%, #e2e5ea 45%, #9aa1ad 100%);
+}
+
+.nl-key-actual.nl-hit,
+.nl-key-actual.nl-miss {
+  background: #e2e5ea;
+}
+
+/* =====================================================================
+   Sheets (Settings, account and sign-in; 2026-11-17, v3): a floating
+   frosted-glass panel inset from the window's edges, with the page dimmed
+   behind it. Segmented controls that should fill a row (sign in / sign
+   up) do, and no segment's label ever wraps.
+   ===================================================================== */
+
+.segmented > button {
+  white-space: nowrap;
+}
+
+.segmented.segmented-full {
+  display: flex;
+  align-self: stretch;
+  width: 100%;
+}
+
+.segmented.segmented-full > button {
+  flex: 1;
+}
+
+.settings-backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.settings-panel.sheet {
+  top: var(--space-2);
+  right: var(--space-2);
+  bottom: var(--space-2);
+  width: 420px;
+  max-width: calc(100% - 2 * var(--space-2));
+  gap: var(--space-6);
+  padding: var(--space-7);
+  overflow-y: auto;
+  border: 1px solid var(--edge-side);
+  border-top-color: var(--edge-lit);
+  border-radius: var(--radius-panel);
+  background: rgba(23, 25, 30, 0.82);
+  -webkit-backdrop-filter: blur(32px) saturate(150%);
+  backdrop-filter: blur(32px) saturate(150%);
+  box-shadow: var(--shadow-panel);
+}
+
+.settings-panel-header h2 {
+  font-family: var(--font-head);
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.settings-panel .field {
+  margin-bottom: var(--space-4);
+}
+
+.settings-panel hr {
+  border: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+@media (max-width: 640px) {
+  .settings-panel.sheet {
+    padding: var(--space-5);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .settings-panel.sheet {
+    background: var(--solid-glass);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .settings-panel.sheet {
+    background: var(--solid-glass);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* =====================================================================
+   Light mode: the places above that hard-code a white tint or dark glass
+   (they read well on the dark page only).
+   ===================================================================== */
+[data-mode="light"] .btn-secondary:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+[data-mode="light"] .btn-secondary:active {
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+[data-mode="light"] .segmented {
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.15), 0 1px 0 #ffffff;
+}
+
+[data-mode="light"] .segmented > button.active,
+[data-mode="light"] .price-chart-period-row > .price-chart-period-btn.active {
+  background: #ffffff;
+  box-shadow: var(--raised-shadow);
+  color: var(--text);
+}
+
+[data-mode="light"] .research-sections-strip {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+[data-mode="light"] .settings-panel.sheet {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+[data-mode="light"] .settings-backdrop {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+[data-mode="light"] .how-grid p {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+[data-mode="light"] .ratio-bar-track,
+[data-mode="light"] .peers-reported,
+[data-mode="light"] .theme-chip,
+[data-mode="light"] .news-card-chips .chip-static,
+[data-mode="light"] .news-meta .chip-static,
+[data-mode="light"] .workspace-progress-bar,
+[data-mode="light"] .workspace-item-note::before {
+  background: rgba(15, 23, 42, 0.07);
+}
+
+[data-mode="light"] .workspace-step-link:hover {
+  background: rgba(15, 23, 42, 0.05);
+}
+
+[data-mode="light"] .workspace-step-link.is-current {
+  background: rgba(15, 23, 42, 0.07);
+}
+
+[data-mode="light"] .callout-tip {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+}
+
+[data-mode="light"] .nl-track {
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.25), 0 1px 0 #ffffff;
+}
+
+/* The slider's socket: a channel in a pale surface. */
+[data-mode="light"] .hero-object-track {
+  background: linear-gradient(180deg, #b9bec6 0%, #cfd3d9 50%, #e1e4e8 100%);
+  box-shadow:
+    inset 0 5px 8px rgba(15, 23, 42, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 0 #ffffff;
+}
+
+[data-mode="light"] .company-colour::before {
+  background:
+    radial-gradient(60% 50% at 82% 6%, color-mix(in srgb, var(--sector) 16%, transparent), transparent 72%),
+    radial-gradient(50% 45% at 6% 96%, color-mix(in srgb, var(--sector-light) 18%, transparent), transparent 72%);
+}
+
+[data-mode="light"] .company-colour .glass.panel {
+  border-top-color: color-mix(in srgb, var(--sector-light) 55%, white 20%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sector) 7%, transparent), transparent 46%),
+    var(--glass-fill);
+}
+
+/* The big faded chapter word: half as strong on the light page. */
+[data-mode="light"] .story-word > span {
+  color: rgba(11, 13, 18, 0.5);
+}
+
+[data-mode="light"] .card3d-shadow,
+[data-mode="light"] .free-ball-shadow {
+  opacity: 0.55;
+}
+
+/* Phones: the story's chapter 05 (steps + price line) has to fit above the
+   strip. The skip button is hidden (the strip's 06 tab jumps straight to
+   "Your turn" and its forecast button), the strip spreads its six numbers
+   across the width, and the chapter text and chart are a little smaller. */
+@media (max-width: 640px) {
+  .story-skip {
+    display: none;
+  }
+
+  .story-strip {
+    right: var(--space-4);
+    justify-content: space-between;
+  }
+
+  .story-tab {
+    flex: 1;
+    justify-content: center;
+    padding: 0 6px;
+  }
+
+  .story .chapter-head {
+    margin-bottom: var(--space-3);
+    font-size: 34px;
+  }
+
+  .chapter-steps {
+    margin-bottom: var(--space-3);
+  }
+
+  .chapter-steps > li {
+    line-height: 1.35;
+  }
+
+  .chapter-price .sparkline-svg {
+    height: 40px;
+  }
+
+  .chapter-price .footnote {
+    margin-top: var(--space-1);
+    font-size: 11px;
+  }
+}
+
+/* =====================================================================
+   Accessibility (2026-11-17): a visible focus ring on everything you can
+   reach with the keyboard; 44px targets on touch screens; still pictures
+   under reduced motion.
+   ===================================================================== */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .chip,
+  .story-tab,
+  .research-section-tab,
+  .segmented > button,
+  .btn-compact,
+  .theme-filter .chip,
+  .price-chart-period-row > .price-chart-period-btn {
+    min-height: 44px;
+  }
+
+  .why-label,
+  .link-button,
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-object-ball,
+  .hero-object-range,
+  .research-card-stage {
+    cursor: default;
+    touch-action: auto;
+  }
+}
+
+/* Admin world events: the form and the list of published events. */
+.admin-world-events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.admin-form .field {
+  margin-bottom: 0;
+}
+
+.admin-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-world-event-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}
+
+/* Worksheet: each result on a raised card, its number in the company's
+   colour (one key number per result). */
+.worksheet-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.worksheet-result-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-radius: 16px;
+  background: var(--raised-fill);
+  box-shadow: var(--raised-shadow);
+}
+
+.workspace-page .worksheet-result-value {
+  padding: 0.04em 0.32em;
+  border-radius: 8px;
+  background: var(--sector);
+  color: var(--on-sector);
+}
+
+/* A segmented control never wraps onto a second row: on a narrow screen it
+   scrolls sideways (admin tabs, news views). */
+.segmented {
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.segmented::-webkit-scrollbar {
+  display: none;
+}
+
+.segmented > button {
+  flex: none;
+}
+
+.segmented.segmented-full > button {
+  flex: 1;
+}
+
+/* Difficulty label (approved 2026-11-17): under the sector on Home's tiles
+   and the 3D cards, plus one line explaining the colours above the tiles. */
+.tile-difficulty,
+.card3d-difficulty {
+  display: block;
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tile-difficulty {
+  font-size: var(--text-sm);
+}
+
+.card3d-difficulty {
+  font-size: 0.95em;
+}
+
+.difficulty-note {
+  margin-top: calc(-1 * var(--space-2));
+}
+
+/* Light mode: the scrollbar's socket, semi-transparent on the pale page. */
+[data-mode="light"] .page-scrollbar {
+  background: rgba(15, 23, 42, 0.12);
+  box-shadow:
+    inset 3px 0 6px rgba(15, 23, 42, 0.25),
+    inset -1px 0 0 rgba(255, 255, 255, 0.8);
+}

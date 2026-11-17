@@ -48,7 +48,7 @@ export default function AnalysisPanel({
   if (sections.length === 0 && analysis.questions.length === 0) return null;
 
   return (
-    <section className="glass panel reveal news-panel analysis" aria-labelledby="analysis-title">
+    <section className="glass panel news-panel analysis" aria-labelledby="analysis-title">
       <h2 className="panel-title" id="analysis-title">
         What the numbers show
       </h2>

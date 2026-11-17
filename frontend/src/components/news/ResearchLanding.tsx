@@ -67,7 +67,7 @@ export default function ResearchLanding() {
     <div className="research-landing">
       <WorldEvents events={events} />
 
-      <section className="glass panel reveal news-panel" aria-labelledby="news-title">
+      <section className="glass panel news-panel" aria-labelledby="news-title">
         <h2 className="panel-title" id="news-title">
           News
         </h2>

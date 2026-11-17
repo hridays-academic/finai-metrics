@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Logo from "./Logo";
 import type { UserPublic } from "../lib/types";
 
@@ -6,14 +7,15 @@ interface HeaderProps {
   onOpenAuth: () => void;
   onGoHome: () => void;
   user: UserPublic | null;
+  // The primary nav (Sidebar.tsx): tabs here on desktop, a bottom bar on phones.
+  nav: ReactNode;
 }
 
-export default function Header({ onOpenSettings, onOpenAuth, onGoHome, user }: HeaderProps) {
+export default function Header({ onOpenSettings, onOpenAuth, onGoHome, user, nav }: HeaderProps) {
   return (
-    <header className="app-header glass">
-      {/* Scroll progress (Liquid Glass pages only; driven by CSS scroll timeline). */}
-      <span className="scroll-progress" aria-hidden="true" />
+    <header className="app-header">
       <Logo onClick={onGoHome} />
+      {nav}
       <div className="app-header-actions">
         {/* Signing in is optional (every feature works signed-out), so this
             is a quiet labeled button rather than a banner -- an unlabeled

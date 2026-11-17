@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMySeason, fetchResearchHistory, fetchRecentResults } from "../../lib/api";
-import { daysUntil, formatDay } from "../../lib/leagueFormat";
-import type { EventSummary, LeagueConfig, ResearchHistory, Season, UserPublic, RecentResult } from "../../lib/types";
+import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMyResult, fetchMySeason, fetchResearchHistory, fetchRecentResults } from "../../lib/api";
+import { daysUntil, formatCrore, formatDay } from "../../lib/leagueFormat";
+import type { EventSummary, LeagueConfig, MetricResult, ResearchHistory, Season, UserPublic, RecentResult } from "../../lib/types";
 import SiteFooter from "../SiteFooter";
-import CountUp from "../CountUp";
-import ArrowChip from "../ArrowChip";
-import { outcomeSummary } from "./outcome";
+import RangeLine from "../RangeLine";
+import { metricShortName, outcomeSummary } from "./outcome";
 import LockCountdown from "./LockCountdown";
+import { colourClass, DIFFICULTY_LABEL, DIFFICULTY_NOTE, difficultyOf, fromProviderRows } from "../../lib/difficulty";
+import HeroObject from "./HeroObject";
 
 interface LeagueHomeProps {
   user: UserPublic | null;
@@ -62,63 +63,55 @@ function waitingLabel(event: EventSummary): string {
     : "Results out, scoring soon";
 }
 
-function PickerRow({ event, sectorName, history }: PickerRowProps) {
+function PickerRow({ event, sectorName, history, index = 0 }: PickerRowProps & { index?: number }) {
   const isOpen = event.status === "open";
   const latest = history && history !== "error" ? history.provider_rows[0] : undefined;
   const figure = (v: number | null | undefined) =>
-    history === undefined ? "..." : v === null || v === undefined ? "N/A" : <CountUp value={v / 1e7} format={crore} />;
+    history === undefined ? "..." : formatCrore(v) ?? "N/A";
+  // The tile's colour says how hard the company is to forecast (lib/difficulty).
+  const level = history && history !== "error" ? difficultyOf(fromProviderRows(history.provider_rows)) : null;
+  const colour = colourClass(level);
 
   return (
-    <li className="reveal-row">
-      <a className="picker-row" href={`#/event/${event.id}`}>
-        <div className="picker-row-main">
-          <h3 className="picker-row-name">{event.company.name}</h3>
-          <div className="picker-row-meta">
-            {sectorName} ·{" "}
-            {isOpen ? (
-              <>
-                Results {formatDay(event.results_date)} · <LockCountdown lockAt={event.lock_at} compact />
-              </>
-            ) : (
-              <span className="picker-row-waiting">{waitingLabel(event)}</span>
-            )}
-          </div>
-          {event.company.description && <p className="picker-row-desc">{event.company.description}</p>}
-        </div>
-        <dl className="picker-figures">
-          <div>
-            <dt>Revenue</dt>
-            <dd>{figure(latest?.revenue)}</dd>
-          </div>
-          <div>
-            <dt>Profit</dt>
-            <dd>{figure(latest?.net_income)}</dd>
-          </div>
-        </dl>
-        <span className="picker-row-action">
-          {isOpen && !event.submitted ? "Forecast" : "View"}
-          <ArrowChip />
+    <li data-scrub="tile" data-i={index}>
+      <a className={`sector-tile ${colour}`} href={`#/event/${event.id}`}>
+        <span className="tile-sector">
+          {sectorName}
+          {level && <span className="tile-difficulty">{DIFFICULTY_LABEL[level]}</span>}
+        </span>
+        <h3 className="tile-name">{event.company.name}</h3>
+        <span className="tile-when">
+          {isOpen ? (
+            <>
+              <span>Results {formatDay(event.results_date)}</span>
+              <LockCountdown lockAt={event.lock_at} compact />
+            </>
+          ) : (
+            <span>{waitingLabel(event)}</span>
+          )}
+        </span>
+        <span className="tile-foot">
+          <dl className="tile-stats">
+            <div>
+              <dt>Revenue</dt>
+              <dd>{figure(latest?.revenue)}</dd>
+            </div>
+            <div>
+              <dt>Profit</dt>
+              <dd>{figure(latest?.net_income)}</dd>
+            </div>
+          </dl>
+          <span className="btn btn-dark btn-arrow">
+            {isOpen && !event.submitted ? "Forecast" : "View"}
+            <span className="btn-arrow-icon" aria-hidden="true" />
+          </span>
         </span>
       </a>
     </li>
   );
 }
 
-function crore(n: number): string {
-  return `₹${Math.round(n).toLocaleString("en-IN")} cr`;
-}
 
-// Column labels for the figures, shown once per list on wide screens.
-function ListHead() {
-  return (
-    <div className="picker-list-head" aria-hidden="true">
-      <span />
-      <span>Revenue</span>
-      <span>Profit</span>
-      <span />
-    </div>
-  );
-}
 
 // One source line per panel instead of one per row.
 function SourceNote({ events, histories }: { events: EventSummary[]; histories: Record<number, HistoryState> }) {
@@ -130,7 +123,7 @@ function SourceNote({ events, histories }: { events: EventSummary[]; histories: 
   const quarter = ends.size === 1 ? ` (quarter ending ${formatDay([...ends][0]!, true)})` : "";
   const when = fetched.length ? `, fetched ${formatDay(fetched[fetched.length - 1])}` : "";
   return (
-    <p className="panel-footnote">
+    <p className="footnote">
       Revenue and profit are each company's latest quarter{quarter}, from Yahoo Finance{when}. N/A means Yahoo
       doesn't have it.
     </p>
@@ -138,28 +131,59 @@ function SourceNote({ events, histories }: { events: EventSummary[]; histories: 
 }
 
 // Scored companies, newest first, so Home never only says "nothing is open".
-export function RecentResults({ results }: { results: RecentResult[] }) {
+// Each number gets a small range bar: the actual as a dot, plus your range
+// for companies you forecast (`mine`, loaded after the page shows).
+export function RecentResults({ results, mine = {} }: { results: RecentResult[]; mine?: Record<number, MetricResult[]> }) {
   return (
-    <ul className="group picker-mine recent-results">
+    <ul className="grouped-list recent-results">
       {results.map(({ event: e, metrics }) => (
         <li key={e.id}>
-          <a href={`#/results/${e.id}`}>
-            <span className="picker-mine-name">
-              {e.company.name}{" "}
-              <span className="picker-mine-season">
-                {e.season_label} · results {formatDay(e.results_date)}
+          <a className="list-row recent-row" href={`#/results/${e.id}`}>
+            <span className="recent-row-main">
+              <span className="recent-row-head">
+                <span className="recent-row-name">{e.company.name}</span>
+                <span className={`recent-row-status ${e.submitted && e.my_score !== null ? "own-score" : ""}`}>
+                  {e.submitted && e.my_score !== null ? `Your score ${e.my_score.toFixed(1)}` : "See results"}
+                </span>
+              </span>
+              <span className="meta">
+                <span>{e.season_label}</span>
+                <span>results {formatDay(e.results_date)}</span>
               </span>
               <span className="recent-results-summary">{outcomeSummary(metrics, e.company.sector)}</span>
-            </span>
-            <span className="picker-mine-status">
-              <span className="league-submitted">
-                {e.submitted && e.my_score !== null ? `Your score ${e.my_score.toFixed(1)}` : "See results"}
+              <span className="recent-lines" aria-hidden="true">
+                {metrics
+                  .filter((m) => m.actual !== null)
+                  .map((m) => {
+                    const r = mine[e.id]?.find((x) => x.metric_key === m.metric_key);
+                    return (
+                      <span className="recent-line" key={m.metric_key}>
+                        <span className="recent-line-name">{metricShortName(m, e.company.sector)}</span>
+                        <RangeLine
+                          compact
+                          low={r ? r.low : null}
+                          high={r ? r.high : null}
+                          marks={[{ key: "actual", value: m.actual as number, kind: "actual" }]}
+                          minSpan={10}
+                        />
+                      </span>
+                    );
+                  })}
               </span>
             </span>
+            <Chevron />
           </a>
         </li>
       ))}
     </ul>
+  );
+}
+
+function Chevron() {
+  return (
+    <svg className="chevron" width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true">
+      <path d="M1.5 1.5 6.5 7l-5 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -168,24 +192,24 @@ function MyForecasts({ events }: { events: EventSummary[] }) {
     return <p className="empty-note">You haven't made any forecasts yet. Pick a company above.</p>;
   }
   return (
-    <ul className="group picker-mine">
+    <ul className="grouped-list my-forecasts">
       {events.map((e) => (
         <li key={e.id}>
-          <a href={e.status === "scored" ? `#/results/${e.id}` : `#/event/${e.id}`}>
-            <span className="picker-mine-name">
-              {e.company.name} <span className="picker-mine-season">{e.season_label}</span>
+          <a className="list-row" href={e.status === "scored" ? `#/results/${e.id}` : `#/event/${e.id}`}>
+            <span className="list-row-main">
+              <span className="list-row-title">{e.company.name}</span>
+              <span className="list-row-sub">{e.season_label}</span>
             </span>
-            <span className="picker-mine-status">
+            <span className="list-row-detail">
               {e.status === "open" ? (
                 <LockCountdown lockAt={e.lock_at} compact />
               ) : e.status === "scored" ? (
-                <span className="league-submitted">
-                  Score {e.my_score !== null ? e.my_score.toFixed(1) : "N/A"} · See results
-                </span>
+                <span className="own-score">Score {e.my_score !== null ? e.my_score.toFixed(1) : "N/A"}</span>
               ) : (
                 `Locked. Results are announced on ${formatDay(e.results_date, true)}; your score appears here after that.`
               )}
             </span>
+            <Chevron />
           </a>
         </li>
       ))}
@@ -229,6 +253,8 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
   const [histories, setHistories] = useState<Record<number, HistoryState>>({});
   const [season, setSeason] = useState<Season | null>(null);
   const [recent, setRecent] = useState<RecentResult[]>([]);
+  const [recentMine, setRecentMine] = useState<Record<number, MetricResult[]>>({});
+  const [showAllRecent, setShowAllRecent] = useState(false);
 
   // Refetch on coming back, so e.g. a forecast just saved on a company page
   // shows up at once.
@@ -255,6 +281,25 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
       cancelled = true;
     };
   }, [user?.id, refresh]);
+
+  // Your ranges for the five most recent companies you forecast, fetched
+  // after the page shows and never blocking it; other rows show the actual
+  // only. (Backlog: return these inside recent-results, one request.)
+  const recentKey = recent.filter((r) => r.event.submitted).slice(0, 5).map((r) => r.event.id).join(",");
+  useEffect(() => {
+    if (!user || !recentKey) return;
+    let cancelled = false;
+    for (const id of recentKey.split(",").map(Number)) {
+      if (recentMine[id]) continue;
+      fetchMyResult(id)
+        .then((r) => !cancelled && setRecentMine((s) => ({ ...s, [id]: r.metrics })))
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, recentKey]);
 
   const open = useMemo(() => (upcoming ?? []).filter((e) => e.status === "open"), [upcoming]);
   // Shown when nothing is open, so the page never looks empty between seasons.
@@ -310,16 +355,19 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
 
   const mine = [...(upcoming ?? []), ...scored].filter((e) => e.submitted);
 
+  const side = user && (season || upcoming !== null);
+
   return (
     <div className="page home">
-      <header className="glass hero">
-        <h1 className="hero-title">Forecast a company's results</h1>
+      <header className="home-hero">
+        <div className="home-hero-text">
+        <h1 className="hero-title">Forecast company results</h1>
         <p className="hero-lede">
-          Pick a company that reports soon. For each number, give a range you're 80% sure of. It's scored when the
-          results come out.
+          Pick a company. Guess its next results as a range you're pretty sure about. When the real numbers come out,
+          see how close you got.
         </p>
         {!user && (
-          <p className="page-note">
+          <p className="hero-note">
             Browse without an account.{" "}
             <button type="button" className="link-button" onClick={onOpenAuth}>
               Sign in
@@ -327,47 +375,51 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
             to forecast.
           </p>
         )}
+        </div>
+        <HeroObject />
       </header>
 
       {error && <div className="form-error">{error}</div>}
       {upcoming === null && !error && <p className="empty-note">Loading companies...</p>}
 
       {cards.length > 0 && (
-        <section className="glass panel reveal" aria-labelledby="open-title">
-          <h2 className="panel-title" id="open-title">
-            Open for forecasts
-          </h2>
-          <ListHead />
-          <ul className="group">
-            {cards.map((e) => (
-              <PickerRow key={e.id} event={e} sectorName={sectorName(e.company.sector)} history={histories[e.company.id]} />
+        <section className="section" aria-labelledby="open-title">
+          <div className="section-head" data-scrub="title">
+            <h2 className="section-title" id="open-title">
+              Open for forecasts
+            </h2>
+            {open.length > CARD_COUNT && (
+              <button type="button" className="btn btn-tertiary" onClick={showOthers}>
+                Show different companies
+              </button>
+            )}
+          </div>
+          <p className="section-text difficulty-note">{DIFFICULTY_NOTE}</p>
+          <ul className="company-grid">
+            {cards.map((e, i) => (
+              <PickerRow key={e.id} index={i} event={e} sectorName={sectorName(e.company.sector)} history={histories[e.company.id]} />
             ))}
           </ul>
           <SourceNote events={cards} histories={histories} />
-          {open.length > CARD_COUNT && (
-            <button type="button" className="btn btn-secondary picker-shuffle" onClick={showOthers}>
-              Show different companies
-            </button>
-          )}
         </section>
       )}
 
       {upcoming !== null && open.length === 0 && (
-        <section className="glass panel reveal" aria-labelledby="waiting-title">
-          <h2 className="panel-title" id="waiting-title">
+        <section className="section" aria-labelledby="waiting-title">
+          <h2 className="section-title" id="waiting-title">
             No companies are open right now
           </h2>
-          <p className="panel-text">
+          <p className="section-text">
             Each company opens for forecasts a week or two before it reports. The next results season starts with the
             companies that report first.
             {waiting.length > 0 && " These forecasts have locked and are waiting for results."}
           </p>
-          {waiting.length > 0 && <ListHead />}
           {waiting.length > 0 && (
-            <ul className="group">
-              {waiting.map((e) => (
+            <ul className="company-grid">
+              {waiting.map((e, i) => (
                 <PickerRow
                   key={e.id}
+                  index={i}
                   event={e}
                   sectorName={sectorName(e.company.sector)}
                   history={histories[e.company.id]}
@@ -379,51 +431,60 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         </section>
       )}
 
-      {recent.length > 0 && (
-        <section className="glass panel reveal" aria-labelledby="recent-title">
-          <h2 className="panel-title" id="recent-title">
-            Recent results
-          </h2>
-          <RecentResults results={recent} />
-        </section>
+      {(recent.length > 0 || side) && (
+        <div className={`home-columns ${side && recent.length > 0 ? "" : "single"}`}>
+          {recent.length > 0 && (
+            <section className="glass panel" aria-labelledby="recent-title" data-scrub="panel" data-i={0}>
+              <h2 className="panel-title" id="recent-title">
+                Recent results
+              </h2>
+              <RecentResults results={showAllRecent ? recent : recent.slice(0, 5)} mine={recentMine} />
+              {!showAllRecent && recent.length > 5 && (
+                <button type="button" className="btn btn-tertiary card-more" onClick={() => setShowAllRecent(true)}>
+                  Show all results
+                </button>
+              )}
+            </section>
+          )}
+          {side && (
+            <div className="home-side">
+              {season && (
+                <section className="glass panel" data-scrub="panel" data-i={1}>
+                  <h2 className="panel-title">Your season so far</h2>
+                  <SeasonSoFar season={season} />
+                </section>
+              )}
+              {upcoming !== null && (
+                <section className="glass panel" data-scrub="panel" data-i={2}>
+                  <h2 className="panel-title">My forecasts</h2>
+                  <MyForecasts events={mine} />
+                </section>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
-      <section className="glass panel reveal how-it-works" aria-labelledby="how-title">
-        <h2 className="panel-title" id="how-title">
+      <section className="how-band" aria-labelledby="how-title">
+        <div className="how-band-bg" data-scrub="band" aria-hidden="true" />
+        <h2 className="section-title" id="how-title" data-scrub="title">
           How it works
         </h2>
-        <ol className="how-steps">
-          <li>
-            <span className="how-step-number">1</span>
+        <ol className="how-grid">
+          <li data-scrub="step" data-i={0}>
             <h3>Pick a company</h3>
-            <p>Choose one that reports its quarterly results soon. The page explains how its business makes money.</p>
+            <p>Choose one that's about to share its results. We'll show you how it makes its money.</p>
           </li>
-          <li>
-            <span className="how-step-number">2</span>
-            <h3>Forecast a range</h3>
-            <p>For revenue growth, operating margin and sometimes one sector number, give a range you're 80% sure of.</p>
+          <li data-scrub="step" data-i={1}>
+            <h3>Make your guess</h3>
+            <p>For each number, give a low and a high. Aim for a range you'd be right about 8 times out of 10.</p>
           </li>
-          <li>
-            <span className="how-step-number">3</span>
-            <h3>Get scored</h3>
-            <p>When the results come out, narrow ranges that contain the real number score the most points.</p>
+          <li data-scrub="step" data-i={2}>
+            <h3>Get your score</h3>
+            <p>Tight ranges that catch the real number win the most points. Miss, and it costs you.</p>
           </li>
         </ol>
       </section>
-
-      {user && season && (
-        <section className="glass panel reveal">
-          <h2 className="panel-title">Your season so far</h2>
-          <SeasonSoFar season={season} />
-        </section>
-      )}
-
-      {user && upcoming !== null && (
-        <section className="glass panel reveal">
-          <h2 className="panel-title">My forecasts</h2>
-          <MyForecasts events={mine} />
-        </section>
-      )}
 
       <SiteFooter />
     </div>

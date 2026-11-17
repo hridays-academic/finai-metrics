@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useOnceVisible } from "../hooks/useOnceVisible";
 import {
   AreaSeries,
   ColorType,
@@ -25,9 +26,9 @@ function cssVar(name: string): string {
 // a real green-means-everything problem, not just a chart-specific one.
 // null (no data yet) falls back to a neutral grey.
 function seriesColorsFor(changePct: number | null): { lineColor: string; topColor: string; bottomColor: string } {
-  const token = changePct === null ? "--text-tertiary" : changePct >= 0 ? "--positive" : "--negative";
+  const token = changePct === null ? "--text-2" : changePct >= 0 ? "--positive" : "--negative";
   const color = cssVar(token);
-  return { lineColor: color, topColor: `${color}66`, bottomColor: `${color}00` };
+  return { lineColor: color, topColor: `${color}3d`, bottomColor: `${color}00` };
 }
 
 // No 1D/5D (2026-11): the API only serves prices at least 30 days old, so a
@@ -127,25 +128,25 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
       height: 280,
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: cssVar("--text-secondary"),
+        textColor: cssVar("--text-2"),
         fontFamily: cssVar("--font-sans"),
         fontSize: 11,
       },
       grid: {
         vertLines: { visible: false },
-        horzLines: { color: cssVar("--border-subtle") },
+        horzLines: { color: cssVar("--separator") },
       },
-      rightPriceScale: { borderColor: cssVar("--border-subtle") },
+      rightPriceScale: { borderColor: cssVar("--separator") },
       // fixLeftEdge/fixRightEdge stop the time scale's visible range from
       // ever extending past the actual data -- without them, scrolling or
       // pinch-zooming out past "5Y (Max)" doesn't error, it just shows a
       // mostly-empty chart with the real line squeezed into one corner and
       // dead space filling the rest, which reads as broken/glitched rather
       // than "you've reached the edge of the data."
-      timeScale: { borderColor: cssVar("--border-subtle"), fixLeftEdge: true, fixRightEdge: true },
+      timeScale: { borderColor: cssVar("--separator"), fixLeftEdge: true, fixRightEdge: true },
       crosshair: {
-        vertLine: { color: cssVar("--border-strong"), labelBackgroundColor: cssVar("--bg-elevated") },
-        horzLine: { color: cssVar("--border-strong"), labelBackgroundColor: cssVar("--bg-elevated") },
+        vertLine: { color: cssVar("--control-border"), labelBackgroundColor: cssVar("--raised") },
+        horzLine: { color: cssVar("--control-border"), labelBackgroundColor: cssVar("--raised") },
       },
     });
 
@@ -202,13 +203,13 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current) return;
     chartRef.current.applyOptions({
-      layout: { textColor: cssVar("--text-secondary") },
-      grid: { horzLines: { color: cssVar("--border-subtle") } },
-      rightPriceScale: { borderColor: cssVar("--border-subtle") },
-      timeScale: { borderColor: cssVar("--border-subtle") },
+      layout: { textColor: cssVar("--text-2") },
+      grid: { horzLines: { color: cssVar("--separator") } },
+      rightPriceScale: { borderColor: cssVar("--separator") },
+      timeScale: { borderColor: cssVar("--separator") },
       crosshair: {
-        vertLine: { color: cssVar("--border-strong"), labelBackgroundColor: cssVar("--bg-elevated") },
-        horzLine: { color: cssVar("--border-strong"), labelBackgroundColor: cssVar("--bg-elevated") },
+        vertLine: { color: cssVar("--control-border"), labelBackgroundColor: cssVar("--raised") },
+        horzLine: { color: cssVar("--control-border"), labelBackgroundColor: cssVar("--raised") },
       },
     });
     seriesRef.current.applyOptions(seriesColorsFor(changePctRef.current));
@@ -222,6 +223,10 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
     chartRef.current?.timeScale().fitContent();
   }, [displayedPoints, changePct]);
   const displayed = hover ?? (latest ? { date: latest.date, price: latest.close } : null);
+  // The line draws in from the left the first time the chart is on screen
+  // with its data loaded (a clip that opens left to right over 600 ms).
+  const [drawRef, seen] = useOnceVisible<HTMLDivElement>();
+  const drawn = seen && !loading;
   const symbolPrefix = currency === "INR" ? "₹" : "";
 
   return (
@@ -249,7 +254,7 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
         )}
       </div>
 
-      <div className="price-chart-canvas-wrap">
+      <div className={`price-chart-canvas-wrap ${drawn ? "is-drawn" : "draw-pending"}`} ref={drawRef}>
         <div className="price-chart-canvas" ref={containerRef} />
         {loading && (
           <div className="price-chart-skeleton" aria-label="Loading price history">

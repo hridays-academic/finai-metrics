@@ -1,6 +1,7 @@
 import type { MacroSeries } from "../../lib/types";
 import { formatDay } from "../../lib/leagueFormat";
 import TileGrid from "../TileGrid";
+import { useOnceVisible } from "../../hooks/useOnceVisible";
 
 const W = 320;
 const H = 96;
@@ -17,6 +18,7 @@ function fmt(v: number): string {
 // One real series as a line, oldest on the left. No interpolation, no axis
 // tricks: the latest value and the first and last dates are printed.
 function MacroLine({ s }: { s: MacroSeries }) {
+  const [ref, drawn] = useOnceVisible<HTMLDivElement>();
   const pts = s.points;
   const vals = pts.map((p) => p.value);
   const min = Math.min(...vals);
@@ -27,7 +29,7 @@ function MacroLine({ s }: { s: MacroSeries }) {
   const last = pts[pts.length - 1];
   const when = s.frequency === "monthly" ? monthLabel(last.date) : formatDay(last.date, true);
   return (
-    <>
+    <div className={`macro-line ${drawn ? "is-drawn" : "draw-pending"}`} ref={ref}>
       <div className="macro-value">
         <span className="sparkline-value">
           {fmt(last.value)} <span className="sparkline-when">{s.unit}, {when}</span>
@@ -40,27 +42,27 @@ function MacroLine({ s }: { s: MacroSeries }) {
         aria-label={`${s.label}, ${monthLabel(pts[0].date)} to ${when}: from ${fmt(pts[0].value)} to ${fmt(last.value)} ${s.unit}. Low ${fmt(min)}, high ${fmt(max)}.`}
       >
         <line className="sparkline-base" x1={PAD} x2={W - PAD} y1={H - 1} y2={H - 1} />
-        <path className="sparkline-line" d={d} />
-        <circle className="sparkline-dot is-last" cx={x(pts.length - 1)} cy={y(last.value)} r={4} />
+        <path className="sparkline-line" d={d} pathLength={1} />
+        <circle className="sparkline-dot is-last" cx={x(pts.length - 1)} cy={y(last.value)} r={4} style={{ animationDelay: "600ms" }} />
       </svg>
       <div className="sparkline-range" aria-hidden="true">
         <span>{monthLabel(pts[0].date)}</span>
         <span>{s.frequency === "monthly" ? monthLabel(last.date) : formatDay(last.date, true)}</span>
       </div>
-    </>
+    </div>
   );
 }
 
 export default function MacroCharts({ series, title = "Macro context" }: { series: MacroSeries[]; title?: string }) {
   if (series.length === 0) return null;
   return (
-    <section className="glass panel reveal news-panel" aria-labelledby="macro-title">
+    <section className="glass panel news-panel" aria-labelledby="macro-title">
       <h2 className="panel-title" id="macro-title">
         {title}
       </h2>
       <TileGrid className="macro-grid" minTile={260}>
         {series.map((s) => (
-          <figure key={s.key} className="sparkline macro-chart tile">
+          <figure key={s.key} className="sparkline macro-chart">
             <figcaption className="sparkline-head">
               <span className="sparkline-label">{s.label}</span>
             </figcaption>

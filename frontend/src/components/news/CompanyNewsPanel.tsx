@@ -12,7 +12,7 @@ import { useWhyItMatters, WhySummary } from "./WhyItMatters";
 function FilingRow({ f }: { f: Filing }) {
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it matters", chain: f.chain, explanation: f.explanation });
   return (
-    <li className="news-row reveal-row">
+    <li className="news-row">
       <a className="news-headline" href={f.url} target="_blank" rel="noopener noreferrer">
         {f.subject}
         <span className="visually-hidden"> (opens the filing on NSE)</span>
@@ -50,7 +50,7 @@ export default function CompanyNewsPanel({ symbol, name }: { symbol: string; nam
 
   return (
     <>
-      <section className="glass panel reveal news-panel company-news" aria-labelledby="company-news-title">
+      <section className="glass panel news-panel company-news" aria-labelledby="company-news-title">
         <h2 className="panel-title" id="company-news-title">
           News and announcements
         </h2>

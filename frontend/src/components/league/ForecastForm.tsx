@@ -3,6 +3,7 @@ import { ApiError, saveForecast } from "../../lib/api";
 import { clearForecastDraft, getForecastDraft, setForecastDraft, type Range } from "../../lib/forecastDrafts";
 import { formatDay } from "../../lib/leagueFormat";
 import type { EventDetail, Forecast, LeagueConfig, UserPublic } from "../../lib/types";
+import RangeLine from "../RangeLine";
 
 interface ForecastFormProps {
   event: EventDetail;
@@ -101,16 +102,17 @@ export default function ForecastForm(props: ForecastFormProps) {
   return (
     <form className="league-form" onSubmit={handleSubmit}>
       <p className="league-eighty">
-        Give a range you're 80% sure the result lands in. Too narrow, and a miss costs a lot. Too wide, and the width
-        costs points.
+        Pick a low and a high you're pretty sure the result lands between. Too tight and you might miss. Too wide and
+        you lose points for playing it safe.
       </p>
       {fromWorksheet && unsaved && (
-        <p className="callout callout-tip worksheet-start-note">Started from your worksheet. Change anything before you save.</p>
+        <p className="form-note worksheet-start-note">Started from your worksheet. Change anything before you save.</p>
       )}
 
       {event.metrics.map((m) => {
         const r = ranges[m.key];
         const width = r.low !== "" && r.high !== "" ? Number(r.high) - Number(r.low) : null;
+        const valid = width !== null && width >= 0 && Number.isFinite(width);
         return (
           <fieldset className="field" key={m.key}>
             <legend className="field-label">{m.label}</legend>
@@ -149,6 +151,8 @@ export default function ForecastForm(props: ForecastFormProps) {
                 <span className="input-suffix">{m.unit}</span>
               </div>
             </div>
+            {/* Redrawn as you type, once both ends make a range. */}
+            <RangeLine low={valid ? Number(r.low) : null} high={valid ? Number(r.high) : null} minSpan={20} />
             <p className={`field-hint ${width !== null && width < 0 ? "field-hint-error" : ""}`}>
               {width === null
                 ? "Enter both numbers."

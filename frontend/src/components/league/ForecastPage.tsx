@@ -6,12 +6,14 @@ import { takeFormJump } from "../../lib/forecastDrafts";
 import type { Theme } from "../../hooks/useTheme";
 import type { EventDetail, EventOutcome, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
 import { formatCrore, formatDay } from "../../lib/leagueFormat";
-import TileGrid from "../TileGrid";
+import { usePinIfFits } from "../../hooks/usePinIfFits";
 import ForecastForm from "./ForecastForm";
 import LockCountdown, { formatIst } from "./LockCountdown";
 import ProfileModal from "./ProfileModal";
 import ResearchPanel from "./ResearchPanel";
 import SectorExplainer from "./SectorExplainer";
+import CompanyStory from "./CompanyStory";
+import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import SiteFooter from "../SiteFooter";
 import { LEAGUE_FOOTNOTE, OutcomeList, yahooLeagueNote } from "./outcome";
 
@@ -33,35 +35,41 @@ export function KeyStats({ event, history, historyError, outcome }: {
   const margin = latest?.operating_margin_pct;
   return (
     <div className="key-stats">
-      <TileGrid className="key-stats-grid" minTile={170}>
-        <div className="stat tile">
-          <div className="stat-label">Revenue*</div>
-          <div className="stat-value">{show(formatCrore(latest?.revenue))}</div>
-          <div className="stat-sub">{when}</div>
+      <dl className="hero-stats">
+        <div>
+          <dt>Revenue*</dt>
+          <dd>{show(formatCrore(latest?.revenue))}</dd>
+          <dd className="hero-stat-sub">{when}</dd>
         </div>
-        <div className="stat tile">
-          <div className="stat-label">Profit*</div>
-          <div className="stat-value">{show(formatCrore(latest?.net_income))}</div>
-          <div className="stat-sub">{when}</div>
+        <div>
+          <dt>Profit*</dt>
+          <dd>{show(formatCrore(latest?.net_income))}</dd>
+          <dd className="hero-stat-sub">{when}</dd>
         </div>
-        <div className="stat tile">
-          <div className="stat-label">Op. margin*</div>
-          <div className="stat-value">{show(margin === null || margin === undefined ? null : `${margin.toFixed(1)}%`)}</div>
-          <div className="stat-sub">{when}</div>
+        <div>
+          <dt>Op. margin*</dt>
+          <dd>{show(margin === null || margin === undefined ? null : `${margin.toFixed(1)}%`)}</dd>
+          <dd className="hero-stat-sub">{when}</dd>
         </div>
-        <div className="stat tile">
-          <div className="stat-label">{event.status === "scored" ? "Results are in" : "Results expected"}</div>
-          <div className="stat-value">{formatDay(event.results_date)}</div>
-          <div className="stat-sub">{event.season_label} results</div>
-        </div>
-        <div className="stat tile">
-          <div className="stat-label">Forecasts</div>
-          <div className="stat-value">
+      </dl>
+      <ul className="grouped-list hero-dates">
+        <li className="list-row">
+          <span className="list-row-main">
+            <span className="list-row-title">{event.status === "scored" ? "Results are in" : "Results expected"}</span>
+            <span className="list-row-sub">{event.season_label} results</span>
+          </span>
+          <span className="list-row-value">{formatDay(event.results_date)}</span>
+        </li>
+        <li className="list-row">
+          <span className="list-row-main">
+            <span className="list-row-title">Forecasts</span>
+            <span className="list-row-sub">{formatIst(event.lock_at)}</span>
+          </span>
+          <span className="list-row-value">
             <LockCountdown lockAt={event.lock_at} serverNow={event.server_now} compact />
-          </div>
-          <div className="stat-sub">{formatIst(event.lock_at)}</div>
-        </div>
-      </TileGrid>
+          </span>
+        </li>
+      </ul>
       {history && (
         <p className="footnote">
           * {history.provider_source}. Latest quarter available
@@ -98,6 +106,10 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<EventOutcome | null>(null);
   const [stepsDone, setStepsDone] = useState<number | null>(null);
+  // Condition A (2026-11-15): the form beside the page is pinned only while
+  // it fits on screen, so its Save button can always be reached.
+  const asideRef = useRef<HTMLElement>(null);
+  const pinned = usePinIfFits(asideRef, event !== null && config !== null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -203,70 +215,83 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   }
 
   return (
-    <div className="page">
-      <header className="page-header glass page-hero">
-        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
-        <h1 className="page-title">
-          {event.company.name} <span className="page-title-sub">{event.company.ticker}</span>
-        </h1>
-        <p className="page-meta">
-          {event.season_label} results · quarter ending{" "}
-          {new Date(`${event.period_end_date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+    <div className={`page page-with-aside company-page company-colour ${colourClass(difficultyOf(fromProviderRows(history?.provider_rows)))}`}>
+      <CompanyStory
+        event={event}
+        explainer={explainer}
+        history={history}
+        sectorName={explainer?.display_name ?? event.company.sector}
+        hasForecast={forecast !== null}
+        onJumpToForm={() => document.getElementById("forecast")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+      />
+
+      <header className="glass panel company-facts">
+        <p className="meta">
+          <span>{event.season_label} results</span>
+          <span>
+            quarter ending{" "}
+            {new Date(`${event.period_end_date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+          </span>
         </p>
         <KeyStats event={event} history={history} historyError={historyError} outcome={outcome} />
-        <div className="page-header-actions">
+        <div className="hero-actions">
           {event.status === "open" && (
-            <a className="btn btn-primary page-header-action" href="#forecast" onClick={jumpToForm}>
+            <a className="btn btn-secondary jump-to-form" href="#forecast" onClick={jumpToForm}>
               {forecast ? "Edit your forecast" : "Make your forecast"}
             </a>
           )}
-          <a className="btn btn-secondary page-header-action" href={`#/workspace/${event.id}`}>
+          <a className="btn btn-secondary" href={`#/workspace/${event.id}`}>
             {stepsDone ? `Continue research (${stepsDone} of 10 steps done)` : "Open research workspace"}
           </a>
         </div>
       </header>
 
-      {explainer && <SectorExplainer explainer={explainer} />}
+      <div className="page-main">
 
-      <section className="section glass panel reveal" aria-labelledby="research-title">
-        <h2 className="section-title" id="research-title">
-          Research
-        </h2>
-        <ResearchPanel
-          event={event}
-          theme={theme}
-          history={history}
-          historyError={historyError}
-          onOpenInResearch={(symbol) => onOpenInResearch(symbol, { eventId: event.id, name: event.company.name })}
-        />
-      </section>
+        {explainer && <SectorExplainer explainer={explainer} />}
 
-      {event.status === "scored" ? (
-        <ScoredPanel event={event} outcome={outcome} />
-      ) : (
-      <section id="forecast" className="section glass panel reveal forecast-section" aria-labelledby="forecast-title">
-        <h2 className="section-title" id="forecast-title">
-          Your forecast
-        </h2>
-        {noDisclosedKpi && (
-          <p className="section-text">
-            This company doesn't disclose a sector KPI every quarter, so this event only has the two core numbers.
-          </p>
+        <section className="glass panel" aria-labelledby="research-title">
+          <h2 className="panel-title" id="research-title">
+            Research
+          </h2>
+          <ResearchPanel
+            event={event}
+            theme={theme}
+            history={history}
+            historyError={historyError}
+            onOpenInResearch={(symbol) => onOpenInResearch(symbol, { eventId: event.id, name: event.company.name })}
+          />
+        </section>
+      </div>
+
+      <aside className={`page-aside ${pinned ? "is-pinned" : ""}`} ref={asideRef}>
+        {event.status === "scored" ? (
+          <ScoredPanel event={event} outcome={outcome} />
+        ) : (
+          <section id="forecast" className="glass panel forecast-section" aria-labelledby="forecast-title">
+            <h2 className="panel-title" id="forecast-title">
+              Your forecast
+            </h2>
+            {noDisclosedKpi && (
+              <p className="section-text">
+                This company doesn't disclose a sector KPI every quarter, so this event only has the two core numbers.
+              </p>
+            )}
+            {/* Remount when the loaded state changes so the form picks up the saved values. */}
+            <ForecastForm
+              key={loadedFor ?? "loading"}
+              event={event}
+              config={config}
+              user={user}
+              forecast={forecast}
+              onSaved={setForecast}
+              onNeedProfile={() => (user ? setProfileOpen(true) : onOpenAuth())}
+              onOpenAuth={onOpenAuth}
+              onLocked={load}
+            />
+          </section>
         )}
-        {/* Remount when the loaded state changes so the form picks up the saved values. */}
-        <ForecastForm
-          key={loadedFor ?? "loading"}
-          event={event}
-          config={config}
-          user={user}
-          forecast={forecast}
-          onSaved={setForecast}
-          onNeedProfile={() => (user ? setProfileOpen(true) : onOpenAuth())}
-          onOpenAuth={onOpenAuth}
-          onLocked={load}
-        />
-      </section>
-      )}
+      </aside>
 
       <SiteFooter />
 
@@ -287,15 +312,15 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
 // The company page once results are scored: what happened, and where to see more.
 export function ScoredPanel({ event, outcome }: { event: EventDetail; outcome: EventOutcome | null }) {
   return (
-    <section id="forecast" className="section glass panel reveal" aria-labelledby="outcome-title">
-      <h2 className="section-title" id="outcome-title">
+    <section id="forecast" className="glass panel scored-panel" aria-labelledby="outcome-title">
+      <h2 className="panel-title" id="outcome-title">
         How it turned out
       </h2>
       {outcome ? <OutcomeList metrics={outcome.metrics} /> : <p className="empty-note">Loading...</p>}
       <a className="btn btn-secondary outcome-link" href={`#/results/${event.id}`}>
         {event.submitted ? "See your score" : "See the full results"}
       </a>
-      <p className="panel-footnote">{LEAGUE_FOOTNOTE}</p>
+      <p className="footnote">{LEAGUE_FOOTNOTE}</p>
     </section>
   );
 }

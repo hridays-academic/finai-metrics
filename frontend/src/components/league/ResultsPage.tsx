@@ -98,7 +98,7 @@ function MetricCard({ m }: { m: MetricResult }) {
   const lazyText = m.beat_lazy === null ? "No lazy guess" : m.beat_lazy ? "Beat the lazy guess" : "Didn't beat the lazy guess";
   const u = m.unit;
   return (
-    <li className="results-metric reveal-row">
+    <li className="results-metric">
       <div className="results-metric-head">
         <h3 className="results-metric-title">{m.label}</h3>
         <div className="results-chips">
@@ -244,14 +244,14 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
         </p>
       </header>
 
-      <section className="section glass panel reveal results-score" aria-label="Your score">
+      <section className="section glass panel results-score" aria-label="Your score">
         <div className="results-score-label">Your score</div>
         <div className="results-score-value">{n(result.event_score)}</div>
         <p>{result.event_score_explanation}</p>
         <p>{result.crowd_explanation}</p>
       </section>
 
-      <section className="section glass panel reveal results-list-panel" aria-label="Score by number">
+      <section className="section glass panel results-list-panel" aria-label="Score by number">
         <ul className="group results-list">
           {result.metrics.map((m) => (
             <MetricCard key={m.metric_key} m={m} />
@@ -279,12 +279,12 @@ function OutcomePage({ outcome, personal }: { outcome: EventOutcome; personal: b
       </header>
 
       {personal && (
-        <section className="section glass panel reveal">
+        <section className="section glass panel">
           <p className="section-text">{NO_FORECAST_LINE}</p>
         </section>
       )}
 
-      <section className="section glass panel reveal" aria-labelledby="outcome-title">
+      <section className="section glass panel" aria-labelledby="outcome-title">
         <h2 className="section-title" id="outcome-title">
           How it turned out
         </h2>

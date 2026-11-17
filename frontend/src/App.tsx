@@ -11,7 +11,9 @@ import PaperTrading from "./components/PaperTrading";
 import ResetPasswordPanel from "./components/ResetPasswordPanel";
 import AdminPage from "./components/AdminPage";
 import SiteFooter from "./components/SiteFooter";
-import Wallpaper from "./components/Wallpaper";
+import FreeBall from "./components/FreeBall";
+import PageScrollbar from "./components/PageScrollbar";
+import { ballStore } from "./lib/ballStore";
 import LegalPage from "./components/LegalPage";
 import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
@@ -23,8 +25,7 @@ import ResearchLanding from "./components/news/ResearchLanding";
 import { clearRoute, leaveRoute, navigate, replaceRoute, useHashRoute } from "./lib/router";
 import { clearForecastDrafts } from "./lib/forecastDrafts";
 import { useTheme } from "./hooks/useTheme";
-import { useCursorLight } from "./hooks/useCursorLight";
-import { useRevealFallback } from "./hooks/useRevealFallback";
+import { usePageMotion } from "./hooks/usePageMotion";
 import { markFreshNavigation, scrollPageToTop, useScrollMemory } from "./hooks/useScrollMemory";
 import { SHOW_EXTRA_TOOLS } from "./lib/features";
 import { fetchCompany, fetchMe, recordVisit, ApiError } from "./lib/api";
@@ -43,9 +44,8 @@ function samePage(a: HomePage, b: HomePage): boolean {
 let visitRecorded = false;
 
 export default function App() {
-  const { theme, mode, palette, setMode, setPalette } = useTheme();
-  useCursorLight();
-  useRevealFallback();
+  const { theme, mode, setMode } = useTheme();
+  usePageMotion();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   // Sign-in is purely for activity tracking, not a gate on using the app --
@@ -66,6 +66,10 @@ export default function App() {
   // just another address for Home.
   const route = useHashRoute();
   const showHome = route?.name === "league" || (view === "home" && route === null);
+  // The loose ball plays on Home only: leaving Home puts it back on the slider.
+  useEffect(() => {
+    if (!showHome) ballStore.dock();
+  }, [showHome]);
   const isLegalRoute = route?.name === "privacy" || route?.name === "terms";
   // A company page belongs to Home in the nav; admin and legal pages to nothing.
   const navView: View | null =
@@ -190,24 +194,22 @@ export default function App() {
   }
 
   return (
-    // `lg` = the Liquid Glass layer (2026-11), on every page.
-    <div className="app-shell lg">
-      <Wallpaper />
-
-      <Sidebar
-        view={navView}
-        onChange={handleChangeView}
-        user={user}
-        adminActive={route?.name === "admin"}
-        onOpenAdmin={handleOpenAdmin}
-      />
-
+    <div className="app-shell">
       <div className="app-shell-content">
         <Header
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenAuth={() => setAuthOpen(true)}
           onGoHome={handleGoHome}
           user={user}
+          nav={
+            <Sidebar
+              view={navView}
+              onChange={handleChangeView}
+              user={user}
+              adminActive={route?.name === "admin"}
+              onOpenAdmin={handleOpenAdmin}
+            />
+          }
         />
 
         {/* All four top-level views stay mounted at all times now (2026-09),
@@ -235,20 +237,17 @@ export default function App() {
           )}
 
           <div className={`view-wrapper ${view === "search" && route === null ? "" : "view-hidden"}`}>
-            <CompanySearch
-              onSearch={handleSearch}
-              loading={loading}
-              error={error}
-              prefill={researchPrefill}
-              backTo={researchFrom}
-              onBack={() => setResearchFrom(null)}
-            />
-
-            <div className="content-grid">
-              <div className="metrics-pane">
-                {company ? <MetricsDashboard data={company} theme={theme} /> : <ResearchLanding />}
-                <SiteFooter />
-              </div>
+            <div className="page research-page">
+              <CompanySearch
+                onSearch={handleSearch}
+                loading={loading}
+                error={error}
+                prefill={researchPrefill}
+                backTo={researchFrom}
+                onBack={() => setResearchFrom(null)}
+              />
+              {company ? <MetricsDashboard data={company} theme={theme} /> : <ResearchLanding />}
+              <SiteFooter />
             </div>
           </div>
 
@@ -314,6 +313,10 @@ export default function App() {
             </div>
           )}
         </main>
+        {/* The loose ball, once dragged out of Home's scene: Home only (FreeBall.tsx). */}
+        {showHome && <FreeBall onHome={() => handleChangeView("home")} />}
+        {/* The page's floating scrollbar on mouse devices (PageScrollbar.tsx). */}
+        <PageScrollbar />
       </div>
 
       {settingsOpen && (
@@ -324,8 +327,6 @@ export default function App() {
             setSettingsOpen(false);
           }}
           mode={mode}
-          palette={palette}
-          onSetPalette={setPalette}
           onSetMode={setMode}
           onClose={() => setSettingsOpen(false)}
         />
