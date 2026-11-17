@@ -231,7 +231,10 @@ export default function CompanyStory({
     const n = POSES.length;
     for (let i = 0; i < n; i++) {
       // d: distance from this chapter's middle, in chapters (-0.5..0.5 inside it).
-      const d = p * n - (i + 0.5);
+      // The first chapter is fully shown from the very top (before its
+      // middle) and the last one stays shown to the end (after its middle).
+      const raw = p * n - (i + 0.5);
+      const d = i === 0 ? Math.max(raw, 0) : i === n - 1 ? Math.min(raw, 0) : raw;
       const el = chapterEls.current[i];
       if (el) {
         const vis = clamp((0.5 - Math.abs(d)) / 0.25);
