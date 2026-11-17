@@ -26,6 +26,7 @@ surface to the user as "unavailable," not be silently retried or guessed.
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 import yfinance as yf
 
@@ -319,10 +320,15 @@ class YFinanceProvider(FinancialDataProvider):
         ticker = yf.Ticker(symbol)
         try:
             info = ticker.info or {}
-            income = ticker.financials
-            balance = ticker.balance_sheet
-            cashflow = ticker.cashflow
-            quarterly = ticker.quarterly_income_stmt
+            # The four statements are separate downloads; fetch them at the
+            # same time (2026-11-16) rather than one after another. `info`
+            # goes first, on its own, because it sets up Yahoo's cookie and
+            # crumb that the others reuse. Same requests as before, so the
+            # same load on Yahoo.
+            names = ("financials", "balance_sheet", "cashflow", "quarterly_income_stmt")
+            with ThreadPoolExecutor(max_workers=len(names)) as pool:
+                futures = [pool.submit(getattr, ticker, name) for name in names]
+                income, balance, cashflow, quarterly = (f.result() for f in futures)
         except Exception as exc:
             raise DataProviderError(
                 f"Couldn't fetch financials for '{symbol}'. The data provider "

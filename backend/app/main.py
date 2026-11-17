@@ -9,6 +9,7 @@ app/services/*. Run with:
 import logging
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Optional
 
@@ -388,7 +389,21 @@ def get_company(
         ) from exc
 
     info = bundle.info
-    raw, price_as_of = _with_lagged_price(bundle.symbol, bundle.raw)
+
+    def _profile():
+        try:
+            with get_conn() as conn:
+                return build_profile(conn, info, price_lag.today_in_india())
+        except Exception:  # noqa: BLE001 -- the profile is a bonus; never fail the page for it
+            logger.warning("Profile failed for %s", info.resolved_symbol, exc_info=True)
+            return None
+
+    # The lagged price and the profile don't depend on each other: look them
+    # up at the same time (2026-11-16), each on its own connection.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        profile_job = pool.submit(_profile)
+        raw, price_as_of = _with_lagged_price(bundle.symbol, bundle.raw)
+        profile = profile_job.result()
     # Unchanged: metrics.py stays a pure function over already-fetched
     # numbers and still returns None (rendered "N/A") for anything missing,
     # whether that came from a live fetch or the cache -- the cache
@@ -403,12 +418,6 @@ def get_company(
         analysis = AnalysisOut(**build_analysis(history, table, metric_groups, info.sector, info.industry, price_as_of))
     except Exception:  # noqa: BLE001 -- the analysis is a bonus; never fail the page for it
         logger.warning("Analysis failed for %s", info.resolved_symbol, exc_info=True)
-    profile = None
-    try:
-        with get_conn() as conn:
-            profile = build_profile(conn, info, price_lag.today_in_india())
-    except Exception:  # noqa: BLE001 -- the profile is a bonus; never fail the page for it
-        logger.warning("Profile failed for %s", info.resolved_symbol, exc_info=True)
     response = CompanyFinancialsResponse(
         info=info,
         raw=raw,

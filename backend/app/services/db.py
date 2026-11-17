@@ -20,6 +20,8 @@ change in auth_service.py.
 """
 import logging
 import os
+import threading
+import time
 from contextlib import contextmanager
 from typing import Iterator, Optional
 
@@ -480,11 +482,68 @@ def init_db() -> None:
         )
 
 
+# Connection reuse (2026-11-16). A new TLS connection to Neon costs ~1.7-2.3 s
+# from India and tens of milliseconds from Vercel, and one company search used
+# to open five (rate limit, cache, lagged price, profile, activity). Finished
+# connections now wait in a small idle list and the next get_conn() takes one.
+# Every use still ends its own transaction (commit on success; on an error the
+# connection is closed, which rolls back, and is never reused), so an idle
+# connection never holds a transaction and nothing is held across a yfinance
+# call. The app keeps no connection-level state (its only lock is
+# pg_advisory_xact_lock). A connection idle for over _CHECK_AFTER seconds is
+# checked with SELECT 1 first (a dead one is dropped and replaced); the check
+# starts the caller's transaction, so it costs one round trip, not two.
+_IDLE_MAX = 4
+_CHECK_AFTER = 5.0
+_DROP_AFTER = 240.0
+_idle: list[tuple[psycopg.Connection, float]] = []
+_idle_lock = threading.Lock()
+
+
+def _discard(conn: psycopg.Connection) -> None:
+    try:
+        conn.close()
+    except Exception:  # noqa: BLE001 -- already gone
+        pass
+
+
+def _take() -> psycopg.Connection:
+    while True:
+        with _idle_lock:
+            if not _idle:
+                break
+            conn, since = _idle.pop()
+        age = time.monotonic() - since
+        if conn.closed or conn.broken or age > _DROP_AFTER:
+            _discard(conn)
+            continue
+        if age > _CHECK_AFTER:
+            try:
+                conn.execute("SELECT 1")
+            except psycopg.Error:
+                _discard(conn)
+                continue
+        return conn
+    return psycopg.connect(_dsn(), row_factory=dict_row)
+
+
+def _give_back(conn: psycopg.Connection) -> None:
+    if conn.closed or conn.broken:
+        return
+    with _idle_lock:
+        if len(_idle) < _IDLE_MAX:
+            _idle.append((conn, time.monotonic()))
+            return
+    _discard(conn)
+
+
 @contextmanager
 def get_conn() -> Iterator[psycopg.Connection]:
-    conn = psycopg.connect(_dsn(), row_factory=dict_row)
+    conn = _take()
     try:
         yield conn
         conn.commit()
-    finally:
-        conn.close()
+    except BaseException:
+        _discard(conn)
+        raise
+    _give_back(conn)
