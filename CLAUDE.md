@@ -513,6 +513,142 @@ browser can't); links start a page at the top unless marked
 Unsaved forecast inputs live in `lib/forecastDrafts.ts`: memory only, never
 stored or sent, gone on reload, cleared on sign-out.
 
+## Voice and engagement (Hriday, 2026-11-17; applies to every page)
+
+- **Write for a curious 14-year-old**: short sentences, everyday words, one
+  idea per line, a light and friendly tone. Explain a finance word the first
+  time it appears, or link it to the glossary. Never talk down; no slang
+  that will date.
+- **Accuracy beats simplicity**: definitions, scoring rules, legal text and
+  source notes keep their exact meaning. If a simpler line would change the
+  meaning, keep the original and say so.
+- **Teach step by step**: big ideas arrive as small numbered steps (as in the
+  story, the workspace and the share price chapter), each building on the
+  last.
+- **Colour with purpose**: highlight key words and numbers in the company's
+  own card colour, only for the few things a student must notice, never
+  whole paragraphs. Gold stays only for the student's own range and score.
+- **Link the share price briefly and never as a target**: results can move
+  the share price over time; prices are at least 30 days old; no
+  buy/sell/hold, no predictions.
+- **The ball is a Home-only toy**: it lands on tiles and panels, drops into
+  the gold range to go back on the slider, and docks when you leave Home. No
+  score counter. It must never block a click, cover text or appear on other
+  pages, and it is off under reduced motion.
+- **Every animation either explains something or answers an action**;
+  reveals play once; all motion is off under reduced motion.
+- **New wording follows the approved-wording rule**: drafts go in the vault
+  for approval before they go live.
+
+## Redesign v3 (2026-11-15 to 2026-11-17; wins over every design section below)
+
+Feedback said the site looked AI-generated; Hriday set a "final direction"
+(dark first, Barlow Condensed headlines, frosted glass, sector colour
+blocks). Everything in "Design system", "Liquid Glass" and "Liquid Glass
+polish" below is history: the wallpaper, cursor light, palettes (Aurora/
+Graphite), CountUp, the reveal fallback, tilt and ArrowChip are deleted.
+
+- **Files.** `theme.css` = v3 tokens: dark by default, **light mode**
+  (2026-11-17) under `:root[data-mode="light"]` at its end (first visit
+  follows the device; AA checked by script, numbers in the block's
+  comment), then an alias block mapping old token names that `legacy.css`
+  still reads. `legacy.css` = the old app.css minus every rule the v3 layer
+  owns and every dead class (pruned 2026-11-17, 3,935 lines); it still holds
+  live rules (admin internals, tooltips, worksheet fields, the hidden
+  tools). `app.css` = the v3 layer, loaded last; a `[data-mode="light"]`
+  block near its end covers the few hard-coded tints. Before adding a
+  className, check it has CSS (a script check found the "incomplete" look
+  twice).
+- **Tokens.** Page #0B0D12, text #F7F8FA, secondary #A7B0C0. Glass panels
+  (`.glass.panel`: white 7%, 32px blur, lit top edge, dark bottom edge,
+  24px radius); raised glass inside them; never blur inside blur. Capsule
+  buttons: primary off-white, raised; hover lifts 3px + scale 1.04 (mouse
+  only), press sits 1px below rest; the arrow is a real element
+  (`.btn-arrow-icon`) and tilts to ↗ only while hovered itself. `--gold`
+  only for the student's own range and score; green/red for hit/miss and
+  up/down; orange "locks soon".
+- **Company colour = how hard it is to forecast** (`lib/difficulty.ts`,
+  Hriday 2026-11-17, tested): the harder band of (operating margin's range
+  over Stackly's quarters: <3 / 3-7 / >7 points) and (swing in
+  quarter-to-quarter revenue change: <10 / 10-25 / >25 points). Easy =
+  emerald, medium = cobalt, hard = violet (`.difficulty-*`, reusing the
+  sector token sets); too little data = graphite (`.sector-neutral`).
+  Labels "Easy/Medium/Hard to forecast", the note above Home's tiles and
+  the glossary's "Difficulty" are approved wording (vault: `Areas/Difficulty
+  colours`). Home tiles, both 3D cards, the company page, workspace and
+  Research use it; league companies are always measured on the league's
+  research history so the colour matches everywhere. Pages with a company
+  carry `.company-colour` (a soft glow and tinted panel edges) and the
+  difficulty class, which highlights use (equation terms, last year's
+  numbers, key-insight underline, workspace numbers). The sector tokens
+  (autos #1F4FD6, FMCG #077A4C, IT #6A3FD8, cement #DBA13D, and January's
+  banks, pharma, energy, metals; text checked on all shades) stay in
+  `theme.css`; the `.sector-*` classes except `neutral` were removed.
+- **Type.** Barlow Condensed 700/800 (self-hosted, OFL in `public/fonts/`)
+  for hero/chapter/tile headlines only, uppercase; system font for the rest.
+- **Scroll motion everywhere** (`hooks/usePageMotion.ts`, called once in
+  App): every top-level `.glass.panel` in `.app-main` rises with the scroll
+  (eased, both ways); Home also marks tiles/titles/steps/band with
+  `data-scrub`. Positions come from offsetTop (ignores transforms), reads
+  before writes, and an element's transform is cleared once it has arrived.
+  Never put `overflow` on an ancestor of these.
+- **Company page** (`CompanyStory.tsx`): a pinned story 8 screens tall with
+  six chapters (How it makes money, Last year's numbers, Where it's heading,
+  Your checklist, Results and the share price, Your turn). A CSS 3D card
+  (`CardArt.tsx` artwork: guilloche, grain; light follows its rotation;
+  laid out at 1.2x and scaled down so the per-chapter 1.12x zoom stays
+  sharp) turns continuously; text and the big faded word move with the
+  eased scroll. Chapter 05's steps light up one by one, then a year of
+  weekly prices (30-day lag) draws in. Reduced motion or no sticky: a flat
+  list.
+- **Home hero** (`HeroObject.tsx`): a gold range on a recessed track and a
+  textured ball (`BallSkin` in `FreeBall.tsx`: dimples and seam that turn as
+  it rolls, fixed shading). The range follows the pointer on a spring; the
+  ball rocks in a shallow dip, can be thrown, tapped to hop. Dragged out of
+  the scene it comes loose (`lib/ballStore.ts`, `FreeBall.tsx`, Home only):
+  gravity, lands on tiles/panels, rests at the screen bottom, double tap =
+  top of Home; dropping it into the gold range (or leaving Home) puts it
+  back on the slider. Decorative, aria-hidden, pointer only.
+- **Research** restyled: hero with key figures and a small draggable 3D card
+  (`ResearchCard.tsx`: spins in, coasts, brakes evenly to face you, lets go
+  after 1.5 s held; sector from `lib/leagueSector.ts`, else graphite);
+  sticky section bar (`ResearchSectionNav.tsx`); ratios always shown (no
+  "Show all ratios" toggle) as one panel per group with row lists; thin
+  comparison bars in the ratio lists (same unit only) and the peers table;
+  sparklines/price chart draw in once (`hooks/useOnceVisible.ts`); "Why it
+  matters" chains step in 250 ms apart. Animations play once per visit, are
+  transforms/opacity (plus SVG line drawing and the price chart's clip), and
+  are off under reduced motion.
+- **Workspace** restyled (outlined step numeral, numbered question cards,
+  lettered glossary cards, callouts). Its step titles and "why" lines and
+  the Home/story wording were simplified 2026-11-16 (vault: `Areas/Simpler
+  wording draft (for approval)`, approved); Home's headline is "Forecast
+  company results" (Hriday, 2026-11-17).
+- **The page scrollbar** on mouse devices is `PageScrollbar.tsx`: it floats
+  over the page (the native one is hidden from first paint by
+  `public/theme-init.js`, class `custom-scrollbar`), so full-width parts
+  reach the edge: a semi-transparent frosted pill socket holding a glossy
+  silver pill with a shadow. Drag it or click the track; wheel and keyboard
+  are native. Touch screens keep their own. The peers table keeps a native
+  bar in the same style (WebKit pseudo-elements; Firefox flat colours,
+  since `scrollbar-color` disables the pseudo-elements in Chrome 121+).
+- **Story strip**: one white pill slides between chapters (520 ms) while the
+  current chapter's name opens; the story is full-bleed and starts flush
+  with the screen so the strip sits the page margin above the bottom. On
+  phones the skip button is hidden (the 06 tab does the same) and the strip
+  spreads its six numbers.
+- **Results page**: score in large gold, gold range bars, ticker under the
+  name. **Sheets** (Settings, account, sign-in) float as frosted glass.
+- **Accessibility**: focus ring on everything reachable, 44px targets on
+  touch screens, segmented controls scroll rather than wrap; under reduced
+  motion the hero, the loose ball and the Research card are still.
+- Frame rate at 390px with CPU 4x (2026-11-17): Home 56.8 fps, story 59.3,
+  Research 59.9.
+- **Not built yet**: the three.js Home scene; deleting `legacy.css` (port
+  its live rules first). **Backlog:** return the student's own
+  range inside the recent-results response, so Home stops making up to 5
+  `my-result` calls to draw it.
+
 ## Design system (2026-11 design pass)
 
 Approved by Hriday 2026-11-06 after a screenshot audit. Goal: calm,
@@ -1818,6 +1954,16 @@ one user and real pressure on Neon's pooler with many. The fully-cached path
 costs one short connection; a miss costs two, with the network work between
 them.
 
+**Connections are reused (2026-11-16, `db.get_conn`).** A finished
+connection (committed, so never idle-in-transaction) waits in a small idle
+list (max 4) and the next `get_conn()` takes it; one used for over 5 s idle
+is checked with `SELECT 1` (which starts the caller's transaction, so one
+round trip), one idle over 240 s is dropped, and one that saw an error is
+closed, never reused. Measured locally (India to Neon US): a cached
+`/api/company` went from 11.4 s to 3.7 s. Also: Yahoo's four statements are
+fetched in parallel after `info` (`get_financials_with_history`), and
+`/api/company` looks up the lagged price and the profile at the same time.
+
 ### Renamed / delisted companies
 
 `yfinance_provider.py`'s `_NAME_TO_SYMBOL` is a hand-maintained
@@ -2546,7 +2692,11 @@ Vitest; test files sit next to their component (`*.test.tsx`) and opt into
 jsdom with a `// @vitest-environment jsdom` first line (no vitest config).
 Testing Library renders components with `lib/api` mocked via `vi.mock`.
 Dev dependencies only (vitest, jsdom, @testing-library/react + dom); nothing
-ships in the bundle. Only the results review panel is covered so far.
+ships in the bundle. 63 tests (2026-11-17): results/outcome pages, the
+workspace, RangeLine, the company story (poses, zoom), the sidebar, the
+difficulty rule, the ball store and the ratio bars. The outcome test's
+`lib/api` mock must list every call the company page makes (it gained
+`fetchPriceHistory` for the story's share price chapter).
 `npm run build` (strict `tsc -b` plus `noUnusedLocals`/`noUnusedParameters`,
 which also type-checks the test files) is still the main check. Untested
 pure functions worth covering next: `lib/portfolioHistory.ts` (already had
