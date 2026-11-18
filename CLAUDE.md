@@ -2724,6 +2724,17 @@ Two things worth knowing if this ever needs touching again:
 dependencies with `python -m pip install -r requirements-dev.txt` (Vercel
 never installs that file), then run `python -m pytest` from `backend/`.
 
+**Run them locally: `scripts/test_local.sh -q` from `backend/` (2026-11-18,
+Hriday: "fasten it up").** It starts a local Postgres 17 (Homebrew
+`postgresql@17`, matching Neon's 17.x, port 54329, durability off since the
+data is throwaway), labels its `stackly_test` database 'test' in
+`stackly_env`, runs pytest with `TEST_DATABASE_URL` pointed at it, and stops
+Postgres afterwards. Full suite: 32 s locally vs ~30 min against the Neon
+`test` branch from India (0.3 s per round trip). The conftest guard is
+unchanged and applies the same way. The Neon `test` branch (in
+`backend/.env`) still works with plain `python -m pytest` if a Neon-specific
+check is ever needed.
+
 - **Pure tests** (`test_scoring.py`, `test_league_config.py`) need no
   database.
 - **Database tests** run ONLY against the Neon `test` branch
@@ -2877,8 +2888,8 @@ nav switch is Phase 5 and not urgent.
   Return Calculator is historical-returns only.
 - Not built yet: diagnosis (Phase 3), seed script, profiles/leagues,
   practice. Scoring, the results page and crowd stats shipped 2026-10-20.
-- The full backend suite takes ~30 minutes from India (latency); run a
-  single file while iterating. A lone "server closed the connection
+- The full backend suite takes ~30 minutes from India against Neon; use
+  `scripts/test_local.sh` (32 s) instead. A lone "server closed the connection
   unexpectedly" failure is a dropped Neon connection -- rerun that test.
 
 **Student front end + simplified admin (2026-10-19).**
