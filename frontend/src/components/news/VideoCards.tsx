@@ -15,11 +15,15 @@ function duration(s: number | null): string | null {
   return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
 }
 
-// Our own illustration first; YouTube's player (the privacy-enhanced
-// youtube-nocookie.com domain) loads only when the visitor clicks, so
-// nothing is sent to YouTube or Google before that.
+// The video's thumbnail from our own stored copy (2026-11-18; the backend
+// downloads it once from YouTube, so the page itself asks YouTube for
+// nothing), or our theme illustration if there is no copy or it fails to
+// load. YouTube's player (the privacy-enhanced youtube-nocookie.com domain)
+// loads only when the visitor clicks.
 function VideoCard({ v }: { v: Video }) {
   const [playing, setPlaying] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const thumb = v.has_thumbnail && !thumbFailed;
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it matters", chain: v.chain, explanation: v.explanation });
   const len = duration(v.duration_seconds);
   return (
@@ -37,7 +41,18 @@ function VideoCard({ v }: { v: Video }) {
         </div>
       ) : (
         <button type="button" className="video-poster" onClick={() => setPlaying(true)} aria-label={`Play video: ${v.title}`}>
-          <ThemeIcon theme={v.theme} size={44} />
+          {thumb ? (
+            <img
+              className="video-thumb"
+              src={`/api/videos/${encodeURIComponent(v.video_id)}/thumbnail`}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              onError={() => setThumbFailed(true)}
+            />
+          ) : (
+            <ThemeIcon theme={v.theme} size={44} />
+          )}
           <span className="video-play" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8 5.5v13l11-6.5z" />
@@ -48,7 +63,7 @@ function VideoCard({ v }: { v: Video }) {
       )}
       <div className="news-card-body">
         <div className="news-card-meta">
-          <span>{v.channel}</span>
+          <span>{v.channel} on YouTube</span>
           <span aria-hidden="true">·</span>
           <time dateTime={v.published_at}>{timeAgo(v.published_at)}</time>
         </div>

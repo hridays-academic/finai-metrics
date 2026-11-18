@@ -611,6 +611,7 @@ export interface Video {
   why: string;
   chain?: string | null;
   explanation?: string | null;
+  has_thumbnail?: boolean; // our stored copy, served from /api/videos/{id}/thumbnail
 }
 
 export interface CompanyNews {

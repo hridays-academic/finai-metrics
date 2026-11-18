@@ -298,7 +298,7 @@ function OutcomePage({
 
       <section className="section glass panel" aria-labelledby="outcome-title">
         <h2 className="section-title" id="outcome-title">
-          How it turned out
+          What really happened
         </h2>
         <p className="section-text">{outcome.crowd_explanation}</p>
         <OutcomeList metrics={outcome.metrics} />

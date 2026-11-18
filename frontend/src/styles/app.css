@@ -6102,3 +6102,19 @@ a.news-card-headline:hover {
   color: var(--on-offwhite);
   font-weight: 600;
 }
+
+
+/* A video's thumbnail (our stored copy, 2026-11-18). YouTube's "high" image
+   is 4:3 with black bars; cover in the 16:9 poster crops the bars away. */
+.video-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-poster > .video-play,
+.video-poster > .video-length {
+  z-index: 1;
+}

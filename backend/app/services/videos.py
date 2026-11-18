@@ -7,8 +7,13 @@ are matched to our themes and league companies with the same rules as
 headlines (advice dropped, unmatched hidden). Stored rows are deleted after
 30 days, as YouTube's developer policies require for stored API data.
 
-Pages never contact YouTube: a video card shows our own theme illustration,
-and the player (youtube-nocookie.com) loads only when the visitor clicks.
+Pages never contact YouTube before play: a video card shows the video's
+thumbnail from our own copy (downloaded once by this job from YouTube's image
+server, served by /api/videos/{id}/thumbnail, deleted with the video at 30
+days; Hriday chose this 2026-11-18 over loading thumbnails from YouTube,
+reading the thumbnail as API data under the 30-day rule), or our theme
+illustration when there is no copy. The player (youtube-nocookie.com) loads
+only when the visitor clicks.
 """
 import re
 from datetime import datetime, timedelta
@@ -28,6 +33,10 @@ _ECONOMIC = re.compile(
     r"\b(oil|crude|shipping|trade|tariffs?|prices?|markets?|econom\w*|sanctions?|supply|exports?|imports?|demand|costs?|"
     r"growth|inflation|output|production)\b", re.I)
 NEEDS_ECONOMIC = ("supply", "inputs")
+THUMB_URL = "https://i.ytimg.com/vi/{}/hqdefault.jpg"  # the API's "high" thumbnail
+THUMB_MAX_BYTES = 400_000
+THUMBS_PER_RUN = 40
+_VIDEO_ID = re.compile(r"[A-Za-z0-9_-]{6,20}")
 _DURATION = re.compile(r"P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?")
 
 
@@ -56,6 +65,56 @@ def classify_video(title: str, companies) -> Optional[tuple[str, Optional[int]]]
     if key in NEEDS_ECONOMIC and not _ECONOMIC.search(title):
         return None
     return (key, None) if key else None
+
+
+def fetch_thumbnail(video_id: str) -> Optional[bytes]:
+    """The video's thumbnail as JPEG bytes, or None (bad id, not found, not a
+    JPEG, or too large)."""
+    if not _VIDEO_ID.fullmatch(video_id or ""):
+        return None
+    try:
+        r = requests.get(THUMB_URL.format(video_id), timeout=15)
+    except requests.RequestException:
+        return None
+    body = r.content or b""
+    if r.status_code != 200 or not body.startswith(b"\xff\xd8") or len(body) > THUMB_MAX_BYTES:
+        return None
+    return body
+
+
+def _missing_thumbnail_ids(conn: psycopg.Connection) -> list[str]:
+    return [r["video_id"] for r in conn.execute(
+        """
+        SELECT v.video_id FROM news_videos v
+        LEFT JOIN news_video_thumbnails t ON t.video_id = v.video_id
+        WHERE t.video_id IS NULL ORDER BY v.published_at DESC LIMIT %s
+        """, (THUMBS_PER_RUN,)).fetchall()]
+
+
+def store_missing_thumbnails(conn_factory) -> int:
+    """Copies the thumbnail of each stored video that has none yet (newest
+    first, THUMBS_PER_RUN at most). No connection is held while downloading.
+    Returns 0 if the table isn't there yet: after a deploy, job tables are
+    created by the main app's first request (CLAUDE.md, "Cron runs in its own
+    function")."""
+    try:
+        with conn_factory() as conn:
+            ids = _missing_thumbnail_ids(conn)
+    except psycopg.errors.UndefinedTable:
+        return 0
+    got = {vid: img for vid in ids if (img := fetch_thumbnail(vid)) is not None}
+    stored = 0
+    if got:
+        with conn_factory() as conn:
+            for vid, img in got.items():
+                cur = conn.execute(
+                    """
+                    INSERT INTO news_video_thumbnails (video_id, content_type, image)
+                    SELECT %s, 'image/jpeg', %s WHERE EXISTS (SELECT 1 FROM news_videos WHERE video_id = %s)
+                    ON CONFLICT (video_id) DO NOTHING
+                    """, (vid, img, vid))
+                stored += cur.rowcount
+    return stored
 
 
 def run_videos(conn_factory, *, show_demo: bool) -> dict:
@@ -109,6 +168,7 @@ def run_videos(conn_factory, *, show_demo: bool) -> dict:
                      parse_duration(v.get("contentDetails", {}).get("duration", "")), c["theme"], c["company_id"]),
                 )
                 added += cur.rowcount
+    thumbnails = store_missing_thumbnails(conn_factory)
     with conn_factory() as conn:
         conn.execute("DELETE FROM news_videos WHERE fetched_at < now() - %s::interval", (RETENTION,))
         # Videos stored before a rule was tightened are dropped once they fail it.
@@ -118,7 +178,7 @@ def run_videos(conn_factory, *, show_demo: bool) -> dict:
         if stale:
             conn.execute("DELETE FROM news_videos WHERE video_id = ANY(%s)", (stale,))
         _job_done(conn, "videos", ok=error is None, error=error, items=added)
-    return {"candidates": len(candidates), "added": added, "error": error}
+    return {"candidates": len(candidates), "added": added, "thumbnails": thumbnails, "error": error}
 
 
 def video_out(row: dict, view: str) -> Optional[dict]:
@@ -131,18 +191,25 @@ def video_out(row: dict, view: str) -> Optional[dict]:
         "video_id": row["video_id"], "title": row["title"], "channel": row["channel_title"],
         "published_at": row["published_at"].isoformat(), "duration_seconds": row["duration_seconds"],
         "theme": row["theme"], "theme_label": nc.label_for(row["theme"]), "why": why,
+        "has_thumbnail": bool(row.get("has_thumbnail")),
     }
+
+
+_SELECT = (
+    "SELECT v.*, t.video_id IS NOT NULL AS has_thumbnail FROM news_videos v "
+    "LEFT JOIN news_video_thumbnails t ON t.video_id = v.video_id"
+)
 
 
 def videos_for(conn: psycopg.Connection, view: str, limit: int = 8, company_id: Optional[int] = None) -> list[dict]:
     if company_id is not None:
         rows = conn.execute(
-            "SELECT * FROM news_videos WHERE company_id = %s ORDER BY published_at DESC LIMIT %s", (company_id, limit),
+            f"{_SELECT} WHERE v.company_id = %s ORDER BY v.published_at DESC LIMIT %s", (company_id, limit),
         ).fetchall()
         return [v for v in (video_out(dict(r), view) for r in rows) if v]
     themes = [t.key for t in nc.THEMES if view == "all" or view in t.sentences]
     rows = conn.execute(
-        "SELECT * FROM news_videos WHERE company_id IS NULL AND theme = ANY(%s) ORDER BY published_at DESC LIMIT %s",
+        f"{_SELECT} WHERE v.company_id IS NULL AND v.theme = ANY(%s) ORDER BY v.published_at DESC LIMIT %s",
         (themes, limit),
     ).fetchall()
     out = []

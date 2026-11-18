@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.news_models import NEWS_VIEWS, CompanyNews, MacroSeriesOut, NewsList, Video, WorldEvent, WorldEventIn
 from app.routes.deps import require_admin
@@ -26,6 +26,23 @@ def list_videos(view: str = Query("all"), limit: int = Query(8, ge=1, le=24)) ->
         raise HTTPException(status_code=404, detail="No such news view.")
     with get_conn() as conn:
         return [Video(**v) for v in videos.videos_for(conn, view, limit)]
+
+
+@router.get("/api/videos/{video_id}/thumbnail")
+def video_thumbnail(video_id: str) -> Response:
+    """Our stored copy of a video's thumbnail (services/videos.py). Cached
+    for 6 hours at most, so a copy never outlives its video by much."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT content_type, image FROM news_video_thumbnails WHERE video_id = %s", (video_id,)
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="No thumbnail.")
+    return Response(
+        content=bytes(row["image"]),
+        media_type=row["content_type"],
+        headers={"Cache-Control": "public, max-age=21600, s-maxage=21600"},
+    )
 
 
 @router.get("/api/world-events", response_model=list[WorldEvent])

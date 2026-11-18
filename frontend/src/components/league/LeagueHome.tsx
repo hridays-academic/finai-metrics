@@ -384,11 +384,11 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         </h1>
         {!user && (
           <p className="hero-note">
-            Browse without an account.{" "}
+            Look around for free.{" "}
             <button type="button" className="link-button" onClick={onOpenAuth}>
               Sign in
             </button>{" "}
-            to forecast.
+            to make your forecasts.
           </p>
         )}
         </div>
@@ -402,11 +402,11 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         <section className="section" aria-labelledby="open-title">
           <div className="section-head" data-scrub="title">
             <h2 className="section-title" id="open-title">
-              Open for forecasts
+              Your turn: pick a company
             </h2>
             {open.length > CARD_COUNT && (
               <button type="button" className="btn btn-tertiary" onClick={showOthers}>
-                Show different companies
+                Shuffle companies
               </button>
             )}
           </div>
@@ -451,7 +451,7 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
           {recent.length > 0 && (
             <section className="glass panel" aria-labelledby="recent-title" data-scrub="panel" data-i={0}>
               <h2 className="panel-title" id="recent-title">
-                Recent results
+                Just reported
               </h2>
               <RecentResults results={showAllRecent ? recent : recent.slice(0, 5)} mine={recentMine} />
               {!showAllRecent && recent.length > 5 && (
@@ -483,20 +483,20 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
       <section className="how-band" aria-labelledby="how-title">
         <div className="how-band-bg" data-scrub="band" aria-hidden="true" />
         <h2 className="section-title" id="how-title" data-scrub="title">
-          How it works
+          How to play
         </h2>
         <ol className="how-grid">
           <li data-scrub="step" data-i={0}>
             <h3>Pick a company</h3>
-            <p>Choose one that's about to share its results. We'll show you <span className="hl-gold">how it makes its money</span>.</p>
+            <p>Choose one that reports soon. We'll show you <span className="hl-gold">how it makes money</span>, step by step.</p>
           </li>
           <li data-scrub="step" data-i={1}>
-            <h3>Make your guess</h3>
-            <p>For each number, give <span className="hl-gold">a low and a high</span>. Aim for a range you'd be right about <span className="hl-gold">8 times out of 10</span>.</p>
+            <h3>Set your range</h3>
+            <p>For each number, pick <span className="hl-gold">a low and a high</span>. Make it wide enough that you'd be right <span className="hl-gold">8 times out of 10</span>.</p>
           </li>
           <li data-scrub="step" data-i={2}>
-            <h3>Get your score</h3>
-            <p><span className="hl-gold">Tight ranges that catch the real number</span> win the most points. Miss, and it costs you.</p>
+            <h3>See how close you got</h3>
+            <p>Catch the real number with <span className="hl-gold">a tight range</span> and you score big. Miss it, and you lose points.</p>
           </li>
         </ol>
       </section>

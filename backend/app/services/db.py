@@ -317,6 +317,17 @@ NEWS_SCHEMA_STATEMENTS = [
     # and its cause-and-effect chain, shown in the card's popover.
     "ALTER TABLE world_events ADD COLUMN IF NOT EXISTS why_long TEXT",
     "ALTER TABLE world_events ADD COLUMN IF NOT EXISTS chain TEXT",
+    # v15: a copy of each video's YouTube thumbnail (services/videos.py),
+    # served from our own domain so pages still load nothing from YouTube
+    # before play. Deleted with its video (30 days).
+    """
+    CREATE TABLE IF NOT EXISTS news_video_thumbnails (
+        video_id TEXT PRIMARY KEY REFERENCES news_videos(video_id) ON DELETE CASCADE,
+        content_type TEXT NOT NULL,
+        image BYTEA NOT NULL,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
 ]
 
 
@@ -350,7 +361,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001

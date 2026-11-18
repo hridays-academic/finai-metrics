@@ -307,3 +307,53 @@ def test_videos_job_skips_without_a_key(monkeypatch):
     get_settings.cache_clear()
     assert videos.run_videos(lambda: None, show_demo=True) == {"skipped": "YOUTUBE_API_KEY isn't set"}
     get_settings.cache_clear()
+
+
+JPEG = b"\xff\xd8\xff\xe0" + b"x" * 100
+
+
+class _Resp:
+    def __init__(self, status, body):
+        self.status_code, self.content = status, body
+
+
+def test_fetch_thumbnail_checks_id_type_and_size(monkeypatch):
+    from app.services import videos
+
+    calls = []
+    monkeypatch.setattr(videos.requests, "get", lambda url, timeout: calls.append(url) or _Resp(200, JPEG))
+    assert videos.fetch_thumbnail("abc123XYZ_-") == JPEG
+    assert calls == ["https://i.ytimg.com/vi/abc123XYZ_-/hqdefault.jpg"]
+    assert videos.fetch_thumbnail("../../etc") is None and len(calls) == 1  # never requested
+    monkeypatch.setattr(videos.requests, "get", lambda url, timeout: _Resp(200, b"<html>"))
+    assert videos.fetch_thumbnail("abc123XYZ_-") is None
+    monkeypatch.setattr(videos.requests, "get", lambda url, timeout: _Resp(404, JPEG))
+    assert videos.fetch_thumbnail("abc123XYZ_-") is None
+    monkeypatch.setattr(videos.requests, "get", lambda url, timeout: _Resp(200, JPEG + b"x" * videos.THUMB_MAX_BYTES))
+    assert videos.fetch_thumbnail("abc123XYZ_-") is None
+
+
+def test_thumbnails_are_stored_served_and_deleted_with_the_video(conn, client, monkeypatch):
+    from app.services import videos
+    from app.services.db import get_conn
+
+    conn.execute(
+        "INSERT INTO news_videos (video_id, channel_id, channel_title, title, published_at, theme) VALUES "
+        "('vidAAAAAAA1', 'UCx', 'DW News', 'Oil prices climb', now(), 'crude'),"
+        "('vidBBBBBBB2', 'UCx', 'DW News', 'Rupee slips', now() - interval '1 hour', 'rupee')"
+    )
+    monkeypatch.setattr(videos, "fetch_thumbnail", lambda vid: JPEG if vid == "vidAAAAAAA1" else None)
+    assert videos.store_missing_thumbnails(get_conn) == 1
+    assert videos.store_missing_thumbnails(get_conn) == 0  # nothing new to copy
+
+    listed = {v["video_id"]: v["has_thumbnail"] for v in client.get("/api/videos").json()}
+    assert listed == {"vidAAAAAAA1": True, "vidBBBBBBB2": False}
+    res = client.get("/api/videos/vidAAAAAAA1/thumbnail")
+    assert res.status_code == 200 and res.content == JPEG
+    assert res.headers["content-type"] == "image/jpeg"
+    assert "max-age=21600" in res.headers["cache-control"]
+    assert client.get("/api/videos/vidBBBBBBB2/thumbnail").status_code == 404
+
+    conn.execute("DELETE FROM news_videos WHERE video_id = 'vidAAAAAAA1'")  # as the 30-day cleanup does
+    assert client.get("/api/videos/vidAAAAAAA1/thumbnail").status_code == 404
+    assert conn.execute("SELECT count(*) FROM news_video_thumbnails").fetchone()[0] == 0

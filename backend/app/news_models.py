@@ -106,6 +106,7 @@ class Video(BaseModel):
     why: str
     chain: Optional[str] = None
     explanation: Optional[str] = None
+    has_thumbnail: bool = False
 
 
 class CompanyNews(BaseModel):
