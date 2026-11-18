@@ -3,6 +3,7 @@ import { useOnceVisible } from "../hooks/useOnceVisible";
 import { fetchPeer } from "../lib/api";
 import type { PeerSummary } from "../lib/types";
 import { formatDay } from "../lib/leagueFormat";
+import FinePrint from "./FinePrint";
 
 const COLS: { key: keyof PeerSummary; label: string; unit: "%" | "x" }[] = [
   { key: "revenue_growth", label: "Revenue growth", unit: "%" },
@@ -117,12 +118,12 @@ export default function PeersPanel({ self, peers, rows }: { self: PeerSummary; p
           </tbody>
         </table>
       </div>
-      <p className="footnote">
+      <FinePrint>
         Latest fiscal year from Yahoo Finance; P/E and EV/EBITDA use share prices at least 30 days old. "Reported" means
         Yahoo already has the quarter that ended most recently
         {self.fundamentals_as_of ? ` (checked ${formatDay(self.fundamentals_as_of, true)})` : ""}; Yahoo can lag a filing
         by a few days.
-      </p>
+      </FinePrint>
     </section>
   );
 }

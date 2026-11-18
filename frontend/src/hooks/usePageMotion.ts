@@ -8,7 +8,7 @@ import { useEffect } from "react";
 //
 // What moves: every `.glass.panel` in the main column that isn't inside
 // another glass surface, plus anything marked data-scrub="tile|panel|title|
-// step|band" (data-i: its order). The shown scroll position eases towards
+// step|band|row" (data-i: its order). The shown scroll position eases towards
 // the real one (SMOOTH_MS) so wheel steps glide. Positions come from
 // offsetTop, which ignores transforms, so the motion never feeds back into
 // its own input; reads happen before writes. Once an element has fully
@@ -33,7 +33,7 @@ function layoutTop(el: HTMLElement): number {
 
 // How far into the screen an element has come (0 = just below the bottom,
 // 1 = `span` of the screen height above it), by kind.
-const SPAN: Record<string, number> = { tile: 0.55, panel: 0.45, title: 0.3, step: 0.5, band: 0.75 };
+const SPAN: Record<string, number> = { tile: 0.55, panel: 0.45, title: 0.3, step: 0.5, band: 0.75, row: 0.4 };
 
 // [transform, opacity, arrived]
 function style(kind: string, i: number, t: number, phone: boolean): [string, number, boolean] {
@@ -54,6 +54,11 @@ function style(kind: string, i: number, t: number, phone: boolean): [string, num
     case "step": {
       const e = easeOut(clamp(t * 1.2 - i * 0.12));
       return [`translate3d(0, ${((1 - e) * (70 + i * 40)).toFixed(1)}px, 0)`, clamp(e * 1.4), e >= 0.999];
+    }
+    case "row": {
+      // Rows and small cards inside a panel; side-by-side ones cascade.
+      const e = easeOut(clamp(t * 1.15 - (phone ? 0 : (i % 3) * 0.12)));
+      return [`translate3d(0, ${((1 - e) * 56).toFixed(1)}px, 0) scale(${(0.96 + 0.04 * e).toFixed(4)})`, clamp(e * 1.4), e >= 0.999];
     }
     case "band": {
       const e = easeOut(clamp(t));

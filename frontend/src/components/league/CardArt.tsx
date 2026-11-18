@@ -31,6 +31,34 @@ export function Guilloche() {
   );
 }
 
+// Home's hero backdrop (2026-11-18): the cards' engraving drawn large and
+// faint behind the headline and down to the tiles, every fifth line gold to
+// pick up the slider. Static; decorative only.
+const HW = 1200;
+const HH = 560;
+const HERO_WAVES = Array.from({ length: 26 }, (_, k) => {
+  const pts: string[] = [];
+  for (let x = -20; x <= HW + 20; x += 10) {
+    const y = 20 + k * 21 + 26 * Math.sin(x / 140 + k * 0.28) + 9 * Math.sin(x / 47 + k * 0.7);
+    pts.push(`${x},${y.toFixed(1)}`);
+  }
+  return `M${pts.join("L")}`;
+});
+
+export function HeroWaves() {
+  return (
+    <div className="hero-waves" aria-hidden="true">
+      <svg viewBox={`0 0 ${HW} ${HH}`} preserveAspectRatio="xMidYMid slice">
+        <g fill="none">
+          {HERO_WAVES.map((d, k) => (
+            <path key={k} d={d} className={k % 5 === 2 ? "hero-wave-gold" : "hero-wave"} />
+          ))}
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 // Fine grain: turbulence turned into sparse dark specks.
 export function Grain() {
   const id = `grain${useId().replace(/:/g, "")}`;

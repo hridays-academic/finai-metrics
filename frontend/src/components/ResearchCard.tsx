@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { CardSpark, Grain, Guilloche } from "./league/CardArt";
+import DifficultyEdge from "./DifficultyEdge";
 import { prefersReducedMotion } from "../hooks/useOnceVisible";
 
 // The Research page's company card (2026-11-16): the same material, engraving
@@ -269,12 +270,8 @@ export default function ResearchCard({ name, ticker, colour, difficulty, sectorL
         <div className="card3d-face card3d-front">
           {surface("front")}
           <div className="card3d-content">
-            {(sectorLabel || difficulty) && (
-              <span className="card3d-sector">
-                {sectorLabel}
-                {difficulty && <span className="card3d-difficulty">{difficulty}</span>}
-              </span>
-            )}
+            <DifficultyEdge label={difficulty} />
+            {sectorLabel && <span className="card3d-sector">{sectorLabel}</span>}
             <span className="card3d-mid">
               <span className="card3d-id">
                 <span className="card3d-name">{name}</span>

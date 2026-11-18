@@ -7,6 +7,8 @@ import LockCountdown from "./LockCountdown";
 import QuarterSparkline from "./QuarterSparkline";
 import { Equation } from "./SectorExplainer";
 import { CardSpark, Grain, Guilloche } from "./CardArt";
+import DifficultyEdge from "../DifficultyEdge";
+import { useSlidingPill } from "../../hooks/useSlidingPill";
 import { DIFFICULTY_LABEL, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 
 // The company page's introduction (2026-11-15, v3): a pinned section about
@@ -71,7 +73,6 @@ const SLICES = [-9, -7, -5, -3, -1, 1, 3, 5, 7, 9];
 // zoom it is still at or below its laid-out size and its text stays sharp.
 const BASE = 1 / 1.2;
 const RAD = Math.PI / 180;
-const STRIP_MS = 520;
 
 // How much a chapter's zoom applies at progress p: 1 around the chapter's
 // middle, easing to 0 at its edges, so the card eases back between chapters.
@@ -140,7 +141,6 @@ export default function CompanyStory({
   const chapterRef = useRef(0);
   const stripRef = useRef<HTMLElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
-  const indicatorAt = useRef<{ x: number; w: number } | null>(null);
 
   const scored = event.status === "scored";
   const labels = [
@@ -457,10 +457,8 @@ export default function CompanyStory({
         {face(
           "front",
           <>
-            <span className="card3d-sector">
-              {sectorName}
-              {level && <span className="card3d-difficulty">{DIFFICULTY_LABEL[level]}</span>}
-            </span>
+            <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
+            <span className="card3d-sector">{sectorName}</span>
             <span className="card3d-mid">
               <span className="card3d-id">
                 <span className="card3d-name">{event.company.name}</span>
@@ -498,44 +496,28 @@ export default function CompanyStory({
   );
 
   // The chapter strip's white pill slides from the old chapter to the new
-  // one (ease in and out, STRIP_MS) while the new chapter's name opens and
-  // the old one's closes (CSS). It follows the tabs' live size each frame,
-  // so it always lands exactly on the new tab. Jumps under reduced motion.
-  useEffect(() => {
-    const strip = stripRef.current;
-    const indicator = indicatorRef.current;
-    if (!strip || !indicator) return;
-    const tabFor = () => strip.querySelectorAll<HTMLElement>(".story-tab")[chapter];
-    const place = (x: number, w: number) => {
-      indicator.style.transform = `translateX(${x.toFixed(1)}px)`;
-      indicator.style.width = `${w.toFixed(1)}px`;
-      indicatorAt.current = { x, w };
+  // one (hooks/useSlidingPill) while the new chapter's name opens and the old
+  // one's closes over the same time on the same curve (CSS). Each name opens
+  // to its own measured width (--label-w), so the opening runs evenly for
+  // the whole slide instead of finishing early.
+  useSlidingPill(stripRef, indicatorRef, ".story-tab.is-current", chapter, canPin());
+  // The text's own width (padding is added in CSS), measured again once web
+  // fonts have loaded (a fallback font measures narrower), with 2px to spare.
+  useLayoutEffect(() => {
+    let live = true;
+    const measure = () => {
+      if (!live) return;
+      stripRef.current?.querySelectorAll<HTMLElement>(".story-tab-label").forEach((label) => {
+        const pad = parseFloat(getComputedStyle(label).paddingLeft) || 0;
+        label.style.setProperty("--label-w", `${label.scrollWidth - pad + 2}px`);
+      });
     };
-    const from = indicatorAt.current;
-    const duration = from && canPin() ? STRIP_MS : 0;
-    const start = performance.now();
-    let frame = 0;
-    const step = (now: number) => {
-      const tab = tabFor();
-      if (!tab) return;
-      const t = duration ? Math.min(1, (now - start) / duration) : 1;
-      const e = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
-      const x = from ? from.x + (tab.offsetLeft - from.x) * e : tab.offsetLeft;
-      const w = from ? from.w + (tab.offsetWidth - from.w) * e : tab.offsetWidth;
-      place(x, w);
-      if (t < 1) frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
-    const onResize = () => {
-      const tab = tabFor();
-      if (tab) place(tab.offsetLeft, tab.offsetWidth);
-    };
-    window.addEventListener("resize", onResize);
+    measure();
+    document.fonts?.ready.then(measure).catch(() => {});
     return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("resize", onResize);
+      live = false;
     };
-  }, [chapter]);
+  }, [labels.join("|")]);
 
   const heading = (
     <div className="story-title">

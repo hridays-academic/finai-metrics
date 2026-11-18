@@ -17,6 +17,7 @@ import { fetchResearchHistory } from "../lib/api";
 import { useEffect, useState } from "react";
 import type { PeerSummary } from "../lib/types";
 import type { Theme } from "../hooks/useTheme";
+import FinePrint from "./FinePrint";
 
 // Bars beside the ratios compare values that share a unit within a group
 // (a margin with a margin, days with days); a ratio alone in its unit, or
@@ -60,10 +61,10 @@ function RatioGroup({ group, period, fetched, priceAsOf }: { group: MetricGroup;
           <MetricCard metric={metric} bar={bars[metric.key]} key={metric.key} />
         ))}
       </ul>
-      <p className="footnote">
+      <FinePrint>
         {group.key === "growth" ? `Compares ${period} with earlier years.` : `From ${period}.`} Yahoo Finance, fetched{" "}
         {fetched}. Hover or tap a ratio for its formula.
-      </p>
+      </FinePrint>
     </section>
   );
 }
@@ -192,9 +193,9 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
             </div>
           ))}
         </dl>
-        <p className="footnote">
+        <FinePrint>
           From {period}. Yahoo Finance, fetched {fetched}.
-        </p>
+        </FinePrint>
         <div className="research-price">
           <PriceChart symbol={info.resolved_symbol} currency={raw.currency} theme={theme} />
         </div>

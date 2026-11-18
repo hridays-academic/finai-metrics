@@ -270,6 +270,7 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
       </div>
 
       {!loading && !error && (
+        <div className="price-chart-footer">
         <div className="segmented price-chart-period-row" role="group" aria-label="Period">
           {PERIODS.map((p) => (
             <button
@@ -283,10 +284,6 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
             </button>
           ))}
         </div>
-      )}
-
-      {!loading && !error && (
-        <div className="price-chart-footer">
           <button
             type="button"
             className="btn btn-tertiary price-chart-reset"
@@ -294,7 +291,6 @@ export default function PriceChart({ symbol, currency, theme }: PriceChartProps)
           >
             Reset zoom
           </button>
-          <span className="price-chart-hint">Scroll or pinch to zoom, drag to pan</span>
         </div>
       )}
     </div>

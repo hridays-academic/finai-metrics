@@ -1,10 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ApiError, fetchLeagueEvent, fetchMyResult, fetchOutcome } from "../../lib/api";
 import { formatDay } from "../../lib/leagueFormat";
-import type { EventDetail, EventOutcome, EventResult, MetricResult, UserPublic } from "../../lib/types";
+import type { EventDetail, EventOutcome, EventResult, EventSummary, MetricResult, UserPublic } from "../../lib/types";
+import { colourClass, type Difficulty, DIFFICULTY_LABEL } from "../../lib/difficulty";
+import { useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
 import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, OutcomeList, resultsDateLine } from "./outcome";
 import SiteFooter from "../SiteFooter";
 import { formatIst } from "./LockCountdown";
+import { Grain, Guilloche } from "./CardArt";
+import DifficultyEdge from "../DifficultyEdge";
+import FinePrint from "../FinePrint";
 
 interface ResultsPageProps {
   eventId: number;
@@ -94,11 +99,11 @@ function NumberLine({ m }: { m: MetricResult }) {
   );
 }
 
-function MetricCard({ m }: { m: MetricResult }) {
+function MetricCard({ m, index }: { m: MetricResult; index: number }) {
   const lazyText = m.beat_lazy === null ? "No lazy guess" : m.beat_lazy ? "Beat the lazy guess" : "Didn't beat the lazy guess";
   const u = m.unit;
   return (
-    <li className="results-metric">
+    <li className="results-metric" data-scrub="row" data-i={index}>
       <div className="results-metric-head">
         <h3 className="results-metric-title">{m.label}</h3>
         <div className="results-chips">
@@ -198,17 +203,24 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
     };
   }, [eventId, user?.id]);
 
+  const companyId = result?.event.company.id ?? outcome?.event.company.id ?? event?.company.id ?? null;
+  const level = useCompanyDifficulty(companyId);
+  const pageClass = `page results-page company-colour ${colourClass(level)}`;
+
   if (outcome && !result) {
-    return <OutcomePage outcome={outcome} personal={!!user} />;
+    return <OutcomePage outcome={outcome} personal={!!user} level={level} pageClass={pageClass} />;
   }
 
   if (!user || !result) {
     return (
-      <div className="page">
-        <header className="page-header glass page-hero">
-          <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
-          {event && <h1 className="page-title">{event.company.name}</h1>}
-        </header>
+      <div className={pageClass}>
+        {event ? (
+          <ResultsHero event={event} level={level} meta={null} />
+        ) : (
+          <header className="page-header glass page-hero">
+            <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
+          </header>
+        )}
         {!user && !signedOutNotScored ? (
           <section className="section glass panel">
             <p className="section-text">Loading...</p>
@@ -233,16 +245,12 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
 
   const ev = result.event;
   return (
-    <div className="page">
-      <header className="page-header glass page-hero">
-        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
-        <h1 className="page-title">
-          {ev.company.name} <span className="page-title-sub">{ev.company.ticker}</span>
-        </h1>
-        <p className="page-meta">
-          {ev.season_label} results. Your forecast was locked before they were announced ({formatIst(result.lock_at)}).
-        </p>
-      </header>
+    <div className={pageClass}>
+      <ResultsHero
+        event={ev}
+        level={level}
+        meta={`${ev.season_label} results. Your forecast was locked before they were announced (${formatIst(result.lock_at)}).`}
+      />
 
       <section className="section glass panel results-score" aria-label="Your score">
         <div className="results-score-label">Your score</div>
@@ -253,11 +261,11 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
 
       <section className="section glass panel results-list-panel" aria-label="Score by number">
         <ul className="group results-list">
-          {result.metrics.map((m) => (
-            <MetricCard key={m.metric_key} m={m} />
+          {result.metrics.map((m, i) => (
+            <MetricCard key={m.metric_key} m={m} index={i} />
           ))}
         </ul>
-        <p className="panel-footnote">{LEAGUE_FOOTNOTE}</p>
+        <FinePrint>{LEAGUE_FOOTNOTE}</FinePrint>
       </section>
 
       <SiteFooter />
@@ -266,17 +274,21 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
 }
 
 // A scored company for someone with no score here: what happened, no points.
-function OutcomePage({ outcome, personal }: { outcome: EventOutcome; personal: boolean }) {
+function OutcomePage({
+  outcome,
+  personal,
+  level,
+  pageClass,
+}: {
+  outcome: EventOutcome;
+  personal: boolean;
+  level: Difficulty | null;
+  pageClass: string;
+}) {
   const ev = outcome.event;
   return (
-    <div className="page">
-      <header className="page-header glass page-hero">
-        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
-        <h1 className="page-title">
-          {ev.company.name} <span className="page-title-sub">{ev.company.ticker}</span>
-        </h1>
-        <p className="page-meta">{resultsDateLine(ev)}</p>
-      </header>
+    <div className={pageClass}>
+      <ResultsHero event={ev} level={level} meta={resultsDateLine(ev)} />
 
       {personal && (
         <section className="section glass panel">
@@ -290,10 +302,33 @@ function OutcomePage({ outcome, personal }: { outcome: EventOutcome; personal: b
         </h2>
         <p className="section-text">{outcome.crowd_explanation}</p>
         <OutcomeList metrics={outcome.metrics} />
-        <p className="panel-footnote">{LEAGUE_FOOTNOTE}</p>
+        <FinePrint>{LEAGUE_FOOTNOTE}</FinePrint>
       </section>
 
       <SiteFooter />
     </div>
+  );
+}
+
+
+// The page's header in the company's own colour and card material (the
+// engraving and grain of the 3D card), like the Research top story.
+function ResultsHero({ event, level, meta }: { event: EventSummary; level: Difficulty | null; meta: string | null }) {
+  return (
+    <header className="results-hero">
+      <div className="news-card-material" aria-hidden="true">
+        <Guilloche />
+        <Grain />
+      </div>
+      <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
+      <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
+      <div className="results-hero-chips">
+        <span>{event.season_label}</span>
+      </div>
+      <h1 className="results-hero-title">
+        {event.company.name} <span className="results-hero-ticker">{event.company.ticker}</span>
+      </h1>
+      {meta && <p className="results-hero-meta">{meta}</p>}
+    </header>
   );
 }

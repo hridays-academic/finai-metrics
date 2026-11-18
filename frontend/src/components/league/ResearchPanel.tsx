@@ -3,6 +3,7 @@ import type { ActualRow, EventDetail, ResearchHistory } from "../../lib/types";
 import PriceChart from "../PriceChart";
 import QuarterSparkline from "./QuarterSparkline";
 import { crorePlain, formatCrore, previousQuarterEnds, quarterLabel } from "../../lib/leagueFormat";
+import FinePrint from "../FinePrint";
 
 interface ResearchPanelProps {
   event: EventDetail;
@@ -111,17 +112,17 @@ export function QuartersTable({
               </table>
             </div>
           </div>
-          <p className="footnote">
+          <FinePrint>
             * {history.provider_source}.{" "}
             {history.provider_as_of
               ? `Fetched ${new Date(history.provider_as_of).toLocaleDateString("en-IN")}. `
               : "Not available for this company. "}
             {history.provider_definition}
-          </p>
-          <p className="footnote">
+          </FinePrint>
+          <FinePrint>
             † From the company's filings under this league's definitions (links open the source). These are the same
             definitions your forecast is scored on.
-          </p>
+          </FinePrint>
         </>
       )}
     </>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CompanyProfile } from "../lib/types";
 import { formatDay } from "../lib/leagueFormat";
+import FinePrint from "./FinePrint";
 
 // Distinct, theme-aware shades for up to six segments (tokens in app.css).
 const SEGMENT_CLASSES = ["seg-1", "seg-2", "seg-3", "seg-4", "seg-5", "seg-6"];
@@ -58,9 +59,9 @@ export default function CompanyProfilePanel({
         </p>
       )}
       {profile.description_source && (
-        <p className="footnote">
+        <FinePrint>
           {profile.description_source === "Stackly" ? "Description written by Stackly." : "Description from Yahoo Finance."}
-        </p>
+        </FinePrint>
       )}
 
       <dl className="profile-facts">
@@ -116,7 +117,7 @@ export default function CompanyProfilePanel({
               {profile.segment_note && <p className="section-text">{profile.segment_note}</p>}
             </>
           )}
-          <p className="footnote">
+          <FinePrint>
             {profile.segment_period}, from the company's{" "}
             {profile.segment_source_url ? (
               <a href={profile.segment_source_url} target="_blank" rel="noopener noreferrer">
@@ -126,7 +127,7 @@ export default function CompanyProfilePanel({
               "audited results"
             )}
             .
-          </p>
+          </FinePrint>
         </>
       )}
 

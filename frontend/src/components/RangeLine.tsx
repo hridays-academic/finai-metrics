@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 // The range bar (2026-11-15, v3): a recessed dark track, the student's range
 // as a raised gold capsule, the actual result as a glossy white dot, and last
@@ -98,7 +98,6 @@ export default function RangeLine({
 }: RangeLineProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
-  const uid = useId().replace(/:/g, "");
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -134,18 +133,6 @@ export default function RangeLine({
       {width > 0 && (
         <>
           <svg width={width} height={height} className="range-line-svg" focusable="false">
-            <defs>
-              <linearGradient id={`g${uid}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#ffe08f" />
-                <stop offset="0.5" stopColor="#f2c14e" />
-                <stop offset="1" stopColor="#c8952a" />
-              </linearGradient>
-              <radialGradient id={`w${uid}`} cx="0.35" cy="0.3" r="0.75">
-                <stop offset="0" stopColor="#ffffff" />
-                <stop offset="0.55" stopColor="#e9ecf1" />
-                <stop offset="1" stopColor="#9aa1ad" />
-              </radialGradient>
-            </defs>
             <rect x={inset} y={cy - track / 2} width={usable} height={track} rx={track / 2} className="rl-track" />
             <line x1={inset + track / 2} x2={width - inset - track / 2} y1={cy + track / 2 - 0.5} y2={cy + track / 2 - 0.5} className="rl-track-edge" />
             {ticks.map((t) => (
@@ -160,7 +147,7 @@ export default function RangeLine({
                 width={Math.max(x(high as number) - x(low as number), 0) + track}
                 height={track}
                 rx={track / 2}
-                fill={`url(#g${uid})`}
+                fill="var(--gold)"
                 className="rl-range"
               />
             )}
@@ -172,7 +159,7 @@ export default function RangeLine({
             {marks
               .filter((m) => m.kind === "actual")
               .map((m) => (
-                <circle key={m.key} cx={x(m.value)} cy={cy} r={dot} fill={`url(#w${uid})`} className="rl-actual" />
+                <circle key={m.key} cx={x(m.value)} cy={cy} r={dot} fill="#f7f8fa" className="rl-actual" />
               ))}
           </svg>
           {placed.map((p) => (

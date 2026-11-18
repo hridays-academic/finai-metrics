@@ -146,23 +146,27 @@
   --gap: 24px;
   --panel-pad: 32px;
 
-  --radius-panel: 24px;
-  --radius-control: 14px;
-  --radius-small: 10px;
+  /* Corners (2026-11-18, Hriday: "a bit more round, too blocky", then
+     "slightly rounder" again): 18/12/8, still not capsules. */
+  --radius-panel: 18px;
+  --radius-control: 12px;
+  --radius-small: 8px;
 
   /* Type */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-head: "Barlow Condensed", "Arial Narrow", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --text-xs: 13px;
-  --text-sm: 15px;
-  --text-md: 17px;
-  --text-lg: 20px;
-  --text-xl: 28px;
-  --text-stat: 34px;
-  --head-hero: clamp(56px, 8.4vw, 128px);
-  --head-chapter: clamp(44px, 6vw, 96px);
-  --head-tile: 44px;
+  /* Type sizes (2026-11-18, Hriday: "text smaller everywhere"): about 10%
+     below the v3 sizes. */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-stat: 30px;
+  --head-hero: clamp(48px, 7.2vw, 108px);
+  --head-chapter: clamp(38px, 5.2vw, 82px);
+  --head-tile: 38px;
   --leading-body: 1.47;
   --measure: 66ch;
 
@@ -184,8 +188,8 @@
   :root {
     --gap: 16px;
     --panel-pad: 20px;
-    --head-tile: 36px;
-    --text-stat: 28px;
+    --head-tile: 31px;
+    --text-stat: 25px;
   }
 }
 
@@ -241,9 +245,9 @@
   --shadow-elevated: var(--shadow-float);
   --radius-sm: var(--radius-control);
   --radius-lg: var(--radius-card);
-  --radius-inner: var(--radius-card);
-  --radius-pill: 999px;
-  --text-2xl: 34px;
+  --radius-inner: var(--radius-control);
+  --radius-pill: var(--radius-control);
+  --text-2xl: 30px;
   --radius-card: var(--radius-panel);
   --card-pad: var(--panel-pad);
   --weight-regular: 400;

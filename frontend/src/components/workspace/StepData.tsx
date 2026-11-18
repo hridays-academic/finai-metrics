@@ -14,6 +14,7 @@ import { QuartersTable } from "../league/ResearchPanel";
 import MacroCharts from "../news/MacroCharts";
 import NewsCards from "../news/NewsCards";
 import WorldEvents from "../news/WorldEvents";
+import FinePrint from "../FinePrint";
 
 export interface StepDataProps {
   step: string;
@@ -71,10 +72,10 @@ function FiguresTable({ event, figures }: { event: EventDetail; figures: BaseFig
           </tbody>
         </table>
       </div>
-      <p className="footnote">
+      <FinePrint>
         From the company's filings under this league's definitions (links open the source). These are the same
         definitions your forecast is scored on.
-      </p>
+      </FinePrint>
     </>
   );
 }
@@ -180,12 +181,12 @@ export default function StepData(props: StepDataProps) {
             <Missing name={name} where="The company's investor relations page has its results and presentations." />
           )}
           {news && (
-            <p className="footnote">
+            <FinePrint>
               <a href={news.nse_url} target="_blank" rel="noopener noreferrer">
                 See every filing on NSE
               </a>
               .
-            </p>
+            </FinePrint>
           )}
         </Panel>
       );
@@ -196,12 +197,12 @@ export default function StepData(props: StepDataProps) {
           <p className="section-text">{kpi.definition}</p>
           {kpiTemplate && <p className="field-hint">{kpiTemplate.source_hint}</p>}
           {news && (
-            <p className="footnote">
+            <FinePrint>
               <a href={news.nse_url} target="_blank" rel="noopener noreferrer">
                 See every filing on NSE
               </a>
               .
-            </p>
+            </FinePrint>
           )}
         </Panel>
       ) : null;

@@ -2,6 +2,7 @@ import type { MacroSeries } from "../../lib/types";
 import { formatDay } from "../../lib/leagueFormat";
 import TileGrid from "../TileGrid";
 import { useOnceVisible } from "../../hooks/useOnceVisible";
+import FinePrint from "../FinePrint";
 
 const W = 320;
 const H = 96;
@@ -80,11 +81,11 @@ export default function MacroCharts({ series, title = "Macro context" }: { serie
           </figure>
         ))}
       </TileGrid>
-      <p className="footnote">
+      <FinePrint>
         Like share prices on Stackly, these are shown with a delay of at least 30 days: a monthly average appears once
         the month ended 30 days ago. Commodity prices are monthly averages in US dollars from the World Bank (CC BY 4.0);
         the rupee rate is from the US Federal Reserve via FRED.
-      </p>
+      </FinePrint>
     </section>
   );
 }

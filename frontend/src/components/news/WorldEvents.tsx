@@ -3,6 +3,7 @@ import { formatDay } from "../../lib/leagueFormat";
 import { useWhyItMatters, WhySummary } from "./WhyItMatters";
 import TileGrid from "../TileGrid";
 import { CARD_MIN } from "./NewsCards";
+import FinePrint from "../FinePrint";
 
 function WorldEventCard({ e }: { e: WorldEvent }) {
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it may matter", chain: e.chain, explanation: e.why_long });
@@ -51,7 +52,7 @@ export default function WorldEvents({ events, title = "World events" }: { events
           <WorldEventCard key={e.id} e={e} />
         ))}
       </TileGrid>
-      <p className="footnote">Written by the Stackly team from public reports. Each card links to its source.</p>
+      <FinePrint>Written by the Stackly team from public reports. Each card links to its source.</FinePrint>
     </section>
   );
 }

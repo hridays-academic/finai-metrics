@@ -6,8 +6,12 @@ import SiteFooter from "../SiteFooter";
 import RangeLine from "../RangeLine";
 import { metricShortName, outcomeSummary } from "./outcome";
 import LockCountdown from "./LockCountdown";
-import { colourClass, DIFFICULTY_LABEL, DIFFICULTY_NOTE, difficultyOf, fromProviderRows } from "../../lib/difficulty";
+import { colourClass, DIFFICULTY_LABEL, difficultyOf, fromProviderRows } from "../../lib/difficulty";
+import { useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
+import DifficultyEdge from "../DifficultyEdge";
 import HeroObject from "./HeroObject";
+import FinePrint from "../FinePrint";
+import { Grain, Guilloche, HeroWaves } from "./CardArt";
 
 interface LeagueHomeProps {
   user: UserPublic | null;
@@ -74,11 +78,13 @@ function PickerRow({ event, sectorName, history, index = 0 }: PickerRowProps & {
 
   return (
     <li data-scrub="tile" data-i={index}>
-      <a className={`sector-tile ${colour}`} href={`#/event/${event.id}`}>
-        <span className="tile-sector">
-          {sectorName}
-          {level && <span className="tile-difficulty">{DIFFICULTY_LABEL[level]}</span>}
+      <a className={`sector-tile ${colour} ${level ? "has-edge" : ""}`} href={`#/event/${event.id}`}>
+        <span className="tile-material" aria-hidden="true">
+          <Guilloche />
+          <Grain />
         </span>
+        <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
+        <span className="tile-sector">{sectorName}</span>
         <h3 className="tile-name">{event.company.name}</h3>
         <span className="tile-when">
           {isOpen ? (
@@ -123,10 +129,10 @@ function SourceNote({ events, histories }: { events: EventSummary[]; histories: 
   const quarter = ends.size === 1 ? ` (quarter ending ${formatDay([...ends][0]!, true)})` : "";
   const when = fetched.length ? `, fetched ${formatDay(fetched[fetched.length - 1])}` : "";
   return (
-    <p className="footnote">
+    <FinePrint>
       Revenue and profit are each company's latest quarter{quarter}, from Yahoo Finance{when}. N/A means Yahoo
       doesn't have it.
-    </p>
+    </FinePrint>
   );
 }
 
@@ -136,46 +142,57 @@ function SourceNote({ events, histories }: { events: EventSummary[]; histories: 
 export function RecentResults({ results, mine = {} }: { results: RecentResult[]; mine?: Record<number, MetricResult[]> }) {
   return (
     <ul className="grouped-list recent-results">
-      {results.map(({ event: e, metrics }) => (
-        <li key={e.id}>
-          <a className="list-row recent-row" href={`#/results/${e.id}`}>
-            <span className="recent-row-main">
-              <span className="recent-row-head">
-                <span className="recent-row-name">{e.company.name}</span>
-                <span className={`recent-row-status ${e.submitted && e.my_score !== null ? "own-score" : ""}`}>
-                  {e.submitted && e.my_score !== null ? `Your score ${e.my_score.toFixed(1)}` : "See results"}
-                </span>
-              </span>
-              <span className="meta">
-                <span>{e.season_label}</span>
-                <span>results {formatDay(e.results_date)}</span>
-              </span>
-              <span className="recent-results-summary">{outcomeSummary(metrics, e.company.sector)}</span>
-              <span className="recent-lines" aria-hidden="true">
-                {metrics
-                  .filter((m) => m.actual !== null)
-                  .map((m) => {
-                    const r = mine[e.id]?.find((x) => x.metric_key === m.metric_key);
-                    return (
-                      <span className="recent-line" key={m.metric_key}>
-                        <span className="recent-line-name">{metricShortName(m, e.company.sector)}</span>
-                        <RangeLine
-                          compact
-                          low={r ? r.low : null}
-                          high={r ? r.high : null}
-                          marks={[{ key: "actual", value: m.actual as number, kind: "actual" }]}
-                          minSpan={10}
-                        />
-                      </span>
-                    );
-                  })}
-              </span>
-            </span>
-            <Chevron />
-          </a>
-        </li>
+      {results.map((r, i) => (
+        <RecentRow key={r.event.id} result={r} mine={mine[r.event.id]} index={i} />
       ))}
     </ul>
+  );
+}
+
+// One scored company, in its difficulty colour (a swatch and a label), like
+// its tile, company page and results page.
+function RecentRow({ result: { event: e, metrics }, mine, index }: { result: RecentResult; mine?: MetricResult[]; index: number }) {
+  const level = useCompanyDifficulty(e.company.id);
+  return (
+    <li data-scrub="row" data-i={index}>
+      <a className={`list-row recent-row ${colourClass(level)}`} href={`#/results/${e.id}`}>
+        <span className="recent-row-swatch" aria-hidden="true" />
+        <span className="recent-row-main">
+          <span className="recent-row-head">
+            <span className="recent-row-name">{e.company.name}</span>
+            <span className={`recent-row-status ${e.submitted && e.my_score !== null ? "own-score" : ""}`}>
+              {e.submitted && e.my_score !== null ? `Your score ${e.my_score.toFixed(1)}` : "See results"}
+            </span>
+          </span>
+          <span className="meta">
+            <span>{e.season_label}</span>
+            <span>results {formatDay(e.results_date)}</span>
+            {level && <span className="recent-row-difficulty">{DIFFICULTY_LABEL[level]}</span>}
+          </span>
+          <span className="recent-results-summary">{outcomeSummary(metrics, e.company.sector)}</span>
+          <span className="recent-lines" aria-hidden="true">
+            {metrics
+              .filter((m) => m.actual !== null)
+              .map((m) => {
+                const r = mine?.find((x) => x.metric_key === m.metric_key);
+                return (
+                  <span className="recent-line" key={m.metric_key}>
+                    <span className="recent-line-name">{metricShortName(m, e.company.sector)}</span>
+                    <RangeLine
+                      compact
+                      low={r ? r.low : null}
+                      high={r ? r.high : null}
+                      marks={[{ key: "actual", value: m.actual as number, kind: "actual" }]}
+                      minSpan={10}
+                    />
+                  </span>
+                );
+              })}
+          </span>
+        </span>
+        <Chevron />
+      </a>
+    </li>
   );
 }
 
@@ -360,12 +377,11 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
   return (
     <div className="page home">
       <header className="home-hero">
+        <HeroWaves />
         <div className="home-hero-text">
-        <h1 className="hero-title">Forecast company results</h1>
-        <p className="hero-lede">
-          Pick a company. Guess its next results as a range you're pretty sure about. When the real numbers come out,
-          see how close you got.
-        </p>
+        <h1 className="hero-title">
+          Forecast company <span className="hero-title-gold">results</span>
+        </h1>
         {!user && (
           <p className="hero-note">
             Browse without an account.{" "}
@@ -394,7 +410,6 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
               </button>
             )}
           </div>
-          <p className="section-text difficulty-note">{DIFFICULTY_NOTE}</p>
           <ul className="company-grid">
             {cards.map((e, i) => (
               <PickerRow key={e.id} index={i} event={e} sectorName={sectorName(e.company.sector)} history={histories[e.company.id]} />
@@ -473,15 +488,15 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         <ol className="how-grid">
           <li data-scrub="step" data-i={0}>
             <h3>Pick a company</h3>
-            <p>Choose one that's about to share its results. We'll show you how it makes its money.</p>
+            <p>Choose one that's about to share its results. We'll show you <span className="hl-gold">how it makes its money</span>.</p>
           </li>
           <li data-scrub="step" data-i={1}>
             <h3>Make your guess</h3>
-            <p>For each number, give a low and a high. Aim for a range you'd be right about 8 times out of 10.</p>
+            <p>For each number, give <span className="hl-gold">a low and a high</span>. Aim for a range you'd be right about <span className="hl-gold">8 times out of 10</span>.</p>
           </li>
           <li data-scrub="step" data-i={2}>
             <h3>Get your score</h3>
-            <p>Tight ranges that catch the real number win the most points. Miss, and it costs you.</p>
+            <p><span className="hl-gold">Tight ranges that catch the real number</span> win the most points. Miss, and it costs you.</p>
           </li>
         </ol>
       </section>

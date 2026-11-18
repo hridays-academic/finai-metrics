@@ -57,8 +57,8 @@ function hostOf(url: string): string {
 export function OutcomeList({ metrics }: { metrics: OutcomeMetric[] }) {
   return (
     <ul className="group outcome-list">
-      {metrics.map((m) => (
-        <li key={m.metric_key} className="outcome-metric">
+      {metrics.map((m, i) => (
+        <li key={m.metric_key} className="outcome-metric" data-scrub="row" data-i={i}>
           <div className="outcome-head">
             <h3 className="outcome-label">{m.label}</h3>
             <span className="outcome-value">{formatOutcome(m.actual, m.metric_key, m.unit)}</span>

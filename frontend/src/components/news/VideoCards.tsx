@@ -5,6 +5,7 @@ import ThemeIcon from "./ThemeIcon";
 import TileGrid from "../TileGrid";
 import { CARD_MIN } from "./NewsCards";
 import { useWhyItMatters, WhySummary } from "./WhyItMatters";
+import FinePrint from "../FinePrint";
 
 function duration(s: number | null): string | null {
   if (s === null || s <= 0) return null;
@@ -78,11 +79,11 @@ export default function VideoCards({ videos, title = "Videos" }: { videos: Video
           <VideoCard key={v.video_id} v={v} />
         ))}
       </TileGrid>
-      <p className="footnote">
+      <FinePrint>
         From news channels on YouTube: BBC News, Reuters, DW News, Al Jazeera English, CNBC-TV18, ET Now, NDTV Profit
         and WION. Nothing loads from YouTube until you press play; then YouTube's player (its privacy-enhanced mode)
         loads and YouTube's own privacy policy applies. Picked by topic, not endorsed by Stackly.
-      </p>
+      </FinePrint>
     </section>
   );
 }

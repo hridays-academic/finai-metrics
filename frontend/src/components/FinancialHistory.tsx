@@ -2,6 +2,7 @@ import type { HistoryRow, HistoryTable } from "../lib/types";
 import { formatDay } from "../lib/leagueFormat";
 import { formatAmount } from "../lib/format";
 import QuarterSparkline from "./league/QuarterSparkline";
+import FinePrint from "./FinePrint";
 
 const NA = <span className="cell-na">N/A</span>;
 
@@ -97,13 +98,13 @@ export default function FinancialHistory({ history, fetchedAt, currency }: Finan
         <p className="empty-note">Yahoo Finance has no yearly figures for this company.</p>
       )}
       <Period rows={history.quarterly} title="Last 8 quarters" label={monthYear} currency={currency} />
-      <p className="footnote">
+      <FinePrint>
         Yahoo Finance, consolidated figures as Yahoo reports them, fetched {formatDay(fetchedAt ?? new Date().toISOString(), true)}.
         EBITDA is operating profit plus depreciation and amortisation, so it leaves out other income. Yahoo's revenue can
         be up to about 3% below the revenue from operations in the company's own filing, which makes margins look slightly
         higher. N/A means Yahoo doesn't have that period.
         {currency !== "INR" && ` Yahoo reports this company's accounts in ${currency}, so amounts are in ${currency}.`}
-      </p>
+      </FinePrint>
     </section>
   );
 }

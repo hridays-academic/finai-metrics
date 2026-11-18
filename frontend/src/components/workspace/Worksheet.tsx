@@ -6,6 +6,7 @@ import {
   FORMULA_TEXT, SECTOR_INPUTS, type Result, type Sector, operatingMargin, rangeFrom, revenueGrowth, sectorKpi,
   startingMargin, unitsGrowth,
 } from "../../lib/worksheet";
+import FinePrint from "../FinePrint";
 
 // Wording approved 2026-11-13 (Areas/Research workspace wording).
 const PERCENT_HINT = "Change against the same quarter last year, in %. Use a minus sign for a fall.";
@@ -158,10 +159,6 @@ export default function Worksheet({ sector, event, worksheet, onChange, lastYear
       <h2 className="panel-title" id={`${pid}-title`}>
         Driver worksheet
       </h2>
-      <p className="section-text">
-        Type your own assumptions. Stackly works out what they mean for revenue growth and the margin, and shows the
-        formula. It never fills in a number for you.
-      </p>
 
       <h3 className="subsection-title">Revenue</h3>
       <div className="worksheet-grid">
@@ -251,13 +248,13 @@ export default function Worksheet({ sector, event, worksheet, onChange, lastYear
         {results.map((r) => (
           <div className="worksheet-result-block" key={r.key}>
             <ResultRow label={r.label} result={r.result} formulaText={r.formula} />
-            {r.key === "operating_margin" && sector !== "it" && <p className="footnote">{MARGIN_PLAIN}</p>}
+            {r.key === "operating_margin" && sector !== "it" && <FinePrint>{MARGIN_PLAIN}</FinePrint>}
             <NumberField id={`${pid}-unsure-${r.key}`} label="How unsure are you? ± percentage points" unit="pts"
               hint="Half the width of your range." value={text[`unsure:${r.key}`] ?? ""} onChange={setUnsure(r.key)} />
           </div>
         ))}
       </div>
-      <p className="footnote">{EXAMPLE}</p>
+      <FinePrint>{EXAMPLE}</FinePrint>
 
       {confirmReplace && (
         <div className="callout worksheet-confirm" role="alertdialog" aria-label="Replace unsaved numbers">

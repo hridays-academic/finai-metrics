@@ -8,6 +8,7 @@ import WorldEvents from "./WorldEvents";
 import MacroCharts from "./MacroCharts";
 import VideoCards from "./VideoCards";
 import { useWhyItMatters, WhySummary } from "./WhyItMatters";
+import FinePrint from "../FinePrint";
 
 function FilingRow({ f }: { f: Filing }) {
   const why = useWhyItMatters<HTMLButtonElement>({ title: "Why it matters", chain: f.chain, explanation: f.explanation });
@@ -63,14 +64,14 @@ export default function CompanyNewsPanel({ symbol, name }: { symbol: string; nam
                 <FilingRow key={f.url} f={f} />
               ))}
             </ul>
-            <p className="footnote">
+            <FinePrint>
               Filings we captured from NSE's announcements feed
               {data.filings_since ? ` since ${formatDay(data.filings_since, true)}` : ""}.{" "}
               <a href={data.nse_url} target="_blank" rel="noopener noreferrer">
                 See every filing on NSE
               </a>
               .
-            </p>
+            </FinePrint>
           </>
         ) : (
           <p className="empty-note">

@@ -1,4 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { useSlidingPill } from "../hooks/useSlidingPill";
+
+function motionOk(): boolean {
+  try {
+    return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
 
 // The Research company page's section bar (2026-11-16): sticks under the top
 // bar, highlights the section in view and jumps to a section on click. The
@@ -15,7 +24,10 @@ function scroller(): HTMLElement | null {
 export default function ResearchSectionNav({ sections }: { sections: ResearchSection[] }) {
   const [active, setActive] = useState(sections[0]?.id ?? "");
   const navRef = useRef<HTMLElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLSpanElement>(null);
   const ids = sections.map((s) => s.id).join(",");
+  useSlidingPill(stripRef, pillRef, ".research-section-tab.is-current", active, motionOk());
 
   useEffect(() => {
     const box = scroller();
@@ -72,7 +84,8 @@ export default function ResearchSectionNav({ sections }: { sections: ResearchSec
 
   return (
     <nav className="research-sections" aria-label="Sections" ref={navRef}>
-      <div className="research-sections-strip">
+      <div className="research-sections-strip" ref={stripRef}>
+        <span className="research-sections-pill" ref={pillRef} aria-hidden="true" />
         {sections.map((s) => (
           <button
             type="button"

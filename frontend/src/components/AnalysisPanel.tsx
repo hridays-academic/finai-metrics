@@ -2,6 +2,7 @@ import type { Analysis, AnalysisLine } from "../lib/types";
 import type { PeerRows } from "./PeersPanel";
 import { formatDay } from "../lib/leagueFormat";
 import TileGrid from "./TileGrid";
+import FinePrint from "./FinePrint";
 
 const PEER_MIN = 2;
 
@@ -76,11 +77,11 @@ export default function AnalysisPanel({
           </ul>
         </div>
       )}
-      <p className="footnote">
+      <FinePrint>
         Written by fixed rules from the figures on this page (Yahoo Finance
         {fetchedAt ? `, fetched ${formatDay(fetchedAt, true)}` : ""}), not by a person or AI. A sentence is left out when
         a figure it needs is N/A. It describes the past and is not advice.
-      </p>
+      </FinePrint>
     </section>
   );
 }

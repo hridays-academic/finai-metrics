@@ -15,10 +15,30 @@ export function pickColumns(n: number, max: number): { cols: number; spanLast: b
   return best ? { cols: best, spanLast: false } : { cols: 2, spanLast: true };
 }
 
-// Lays out a grid of equal tiles (app.css: .tile-grid). Each tile spans two
-// half-columns, so a short last row can be centred by starting it half a
-// column in per missing tile; every row is the height of the tallest tile.
-// Also gives each tile its column as --col, which staggers the scroll entry.
+// Each tile's share of its row's width (2026-11-18, Hriday: grids looked
+// "too symmetrical"): one wide tile per row, and its place moves from row to
+// row (left, right, middle). Five or more across stay equal.
+const PATTERNS: Record<number, number[]> = {
+  1: [1],
+  2: [0.58, 0.42],
+  3: [0.42, 0.29, 0.29],
+  4: [0.31, 0.23, 0.23, 0.23],
+};
+
+export function rowShares(length: number, row: number): number[] {
+  const base = PATTERNS[length];
+  if (!base) return Array(length).fill(1 / length);
+  if (length === 1) return base;
+  const wideAt = length === 2 ? row % 2 : [0, length - 1, 1][row % 3];
+  const rest = base.slice(1);
+  return [...rest.slice(0, wideAt), base[0], ...rest.slice(wideAt)];
+}
+
+// Lays out a grid of cards (app.css: .tile-grid, a wrapping flex row). Rows
+// are filled as pickColumns says, each row's widths from rowShares; a share
+// that would make a card much narrower than minTile falls back to equal
+// widths for that row. Every row is as tall as its tallest card. Also gives
+// each card its place in the row as --col, which staggers the scroll entry.
 export function useBalancedGrid<T extends HTMLElement>(count: number, minTile: number, pairOnPhones = true) {
   const ref = useRef<T>(null);
 
@@ -37,16 +57,20 @@ export function useBalancedGrid<T extends HTMLElement>(count: number, minTile: n
       const max = Math.max(1, Math.floor((width + gap) / (min + gap)));
       const tiles = Array.from(grid.children) as HTMLElement[];
       const { cols, spanLast } = pickColumns(tiles.length, max);
-      const rest = tiles.length % cols;
-      grid.style.setProperty("--half-cols", String(cols * 2));
+      const rows: HTMLElement[][] = [];
       tiles.forEach((tile, i) => {
-        tile.style.setProperty("--col", String(i % cols));
-        const firstOfShortRow = rest > 0 && i === tiles.length - rest;
-        tile.style.gridColumn = spanLast && i === tiles.length - 1
-          ? "1 / -1"
-          : firstOfShortRow
-            ? `${cols - rest + 1} / span 2`
-            : "";
+        if (spanLast && i === tiles.length - 1) rows.push([tile]);
+        else if (i % cols === 0) rows.push([tile]);
+        else rows[rows.length - 1].push(tile);
+      });
+      rows.forEach((row, r) => {
+        const inner = width - (row.length - 1) * gap;
+        let shares = rowShares(row.length, r);
+        if (Math.min(...shares) * inner < min * 0.85) shares = shares.map(() => 1 / row.length);
+        row.forEach((tile, i) => {
+          tile.style.setProperty("--col", String(i));
+          tile.style.flex = `0 0 calc((100% - ${(row.length - 1) * gap}px) * ${shares[i]} - 0.5px)`;
+        });
       });
     };
     layout();

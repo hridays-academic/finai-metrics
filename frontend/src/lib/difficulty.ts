@@ -12,7 +12,8 @@
 // (the neutral graphite colour).
 // Colours: easy = emerald, medium = cobalt, hard = violet (app.css,
 // .difficulty-*). The words below were approved by Hriday on 2026-11-17
-// (vault: Areas/Difficulty colours (for approval)); change only with approval.
+// (vault: Areas/Difficulty colours (for approval)) and shortened to one
+// word by him on 2026-11-18; change only with approval.
 
 export type Difficulty = "easy" | "medium" | "hard";
 
@@ -56,13 +57,11 @@ export function difficultyOf(rows: DifficultyRow[]): Difficulty | null {
 }
 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
-  easy: "Easy to forecast",
-  medium: "Medium to forecast",
-  hard: "Hard to forecast",
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
 };
 
-export const DIFFICULTY_NOTE =
-  "Colours show how much a company's numbers jump around from quarter to quarter. The more they jump, the harder it is to forecast.";
 
 // The colour class for a company's tile, card and pages.
 export function colourClass(level: Difficulty | null): string {

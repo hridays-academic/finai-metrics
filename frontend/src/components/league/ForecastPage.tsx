@@ -16,6 +16,7 @@ import CompanyStory from "./CompanyStory";
 import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import SiteFooter from "../SiteFooter";
 import { LEAGUE_FOOTNOTE, OutcomeList, yahooLeagueNote } from "./outcome";
+import FinePrint from "../FinePrint";
 
 function quarterName(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
@@ -71,14 +72,14 @@ export function KeyStats({ event, history, historyError, outcome }: {
         </li>
       </ul>
       {history && (
-        <p className="footnote">
+        <FinePrint>
           * {history.provider_source}. Latest quarter available
           {history.provider_as_of ? `, fetched ${formatDay(history.provider_as_of, true)}` : ""}. Definitions are in Research below.
-        </p>
+        </FinePrint>
       )}
       {(() => {
         const note = yahooLeagueNote(margin, latest?.period_end_date, event, outcome?.metrics ?? null);
-        return note && <p className="footnote yahoo-league-note">{note}</p>;
+        return note && <FinePrint>{note}</FinePrint>;
       })()}
     </div>
   );
@@ -320,7 +321,7 @@ export function ScoredPanel({ event, outcome }: { event: EventDetail; outcome: E
       <a className="btn btn-secondary outcome-link" href={`#/results/${event.id}`}>
         {event.submitted ? "See your score" : "See the full results"}
       </a>
-      <p className="footnote">{LEAGUE_FOOTNOTE}</p>
+      <FinePrint>{LEAGUE_FOOTNOTE}</FinePrint>
     </section>
   );
 }

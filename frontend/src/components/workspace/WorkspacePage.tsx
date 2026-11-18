@@ -254,10 +254,6 @@ export default function WorkspacePage({ eventId, user, onUserChange, onOpenAuth,
           ← {name}
         </a>
         <h1 className="page-title">Research workspace: {name}</h1>
-        <p className="page-lede">
-          Ten steps that analysts follow before results. Each step shows what Stackly already has, a few questions to
-          think about, and space for your notes. The forecast itself is yours.
-        </p>
         {canSave && (
           <div className="workspace-progress">
             <div className="workspace-progress-bar" aria-hidden="true">
