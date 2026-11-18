@@ -527,7 +527,10 @@ stored or sent, gone on reload, cleared on sign-out.
   last.
 - **Colour with purpose**: highlight key words and numbers in the company's
   own card colour, only for the few things a student must notice, never
-  whole paragraphs. Gold stays only for the student's own range and score.
+  whole paragraphs. Gold stays only for the student's own range and score,
+  plus Home's decorative accents (Hriday, 2026-11-17: the headline's
+  "results", capsules under Home's titles, "How it works" numerals, a glow
+  behind the hero toy).
 - **Link the share price briefly and never as a target**: results can move
   the share price over time; prices are at least 30 days old; no
   buy/sell/hold, no predictions.
@@ -539,6 +542,60 @@ stored or sent, gone on reload, cleared on sign-out.
   reveals play once; all motion is off under reduced motion.
 - **New wording follows the approved-wording rule**: drafts go in the vault
   for approval before they go live.
+
+## Flat and sharp pass (2026-11-18, Hriday; wins over Redesign v3 below)
+
+- **Corners**: softened twice the same day (Hriday: "a bit more round,
+  too blocky", then "slightly rounder"): `--radius-panel` 18px (cards,
+  panels, tiles), controls and buttons 12px (`--radius-control`,
+  `--radius-pill`), small badges 8px (`--radius-small`); every literal radius in app.css now reads a token.
+  Only objects stay fully round: the hero track/range/ball, scrollbars,
+  thin value/range bars, dots.
+- **Home texture** (2026-11-18): Home tiles carry the 3D card's engraving
+  and grain (`.tile-material`), and a faint field of the same engraved
+  lines (`HeroWaves` in `CardArt.tsx`, every fifth line gold) sits behind
+  the headline and runs down under "Open for forecasts", its edges faded by
+  a mask (the page itself stays flat).
+- **Less symmetry** (2026-11-18, Hriday: boxes "too symmetrical, in a line
+  and grid"): `TileGrid` (`useBalancedGrid.rowShares`) is now a wrapping
+  flex row with one wide card per row whose place moves each row (2 across
+  58/42 then 42/58; 3 across 42/29/29; 4 across 31/23/23/23; 5+ equal;
+  equal for a row where a share would go well under `minTile`); short last
+  rows fill the width instead of being centred. Home's tiles pair 7/5 then
+  5/7 columns with a shorter second row (a narrow tile's button wraps under
+  its figures), and the results
+  page's "How it turned out" is 5/4/3. Wide screens only; phones keep one
+  column. The Home hero lines were made fainter so the front pops. "How it
+  works" stays in one line (a staircase was tried and reverted).
+- **Smaller type** (Hriday, "text smaller everywhere"): the type tokens are
+  about 10% smaller (body 15px, small 14px, hero clamp(48px, 7.2vw, 108px))
+  and literal sizes in app.css were scaled to match.
+- **Slow movement** (Hriday, "make them move slowly"; his exception to "every
+  animation explains something"): Home's tiles float a few pixels on long
+  out-of-step cycles (`translate`, so hover still works), and the tile and
+  hero engraving drifts sideways. Off under reduced motion.
+- **Highlights**: gold marker (`.hl-gold`) under a few words in "How it
+  works", words unchanged. Catchier wording is drafted in the vault
+  (`Areas/Catchier wording (for approval)`), not live.
+- **No gradients on surfaces**: tiles, 3D cards, the results header, the
+  top story, news/video/macro cards, panels and gold accents are flat
+  colour. The company colour now shows as flat fills, a faint flat tint on
+  panels, solid top edges and the difficulty band. Gradients left on
+  purpose: the hero slider and ball, the 3D card's moving light and rims,
+  soft shadows, scrollbar thumbs, hard-stop stripes (`.hl-under`, the news
+  title strip).
+- **Difficulty words** are "Easy / Medium / Hard" (Hriday, 2026-11-18) on
+  a see-through dark band (black 26%, so the card's engraving and grain
+  show through it) down the left edge (`DifficultyEdge.tsx`,
+  `.edge-label`; screen readers hear "... to forecast"): Home tiles, both
+  3D cards, the results header. The colour note above Home's tiles is gone.
+- **No captions or intros**: footnotes and source lines are folded into a
+  "Sources and notes" toggle (`FinePrint.tsx`, native `<details>`, text
+  unchanged). Removed: Home's hero lede, the workspace and worksheet
+  intros, the chart's "scroll or pinch" hint. Kept visible on purpose: the
+  "at least 30 days old" price labels and the search page's liability line.
+- Open: Hriday saw an empty "tab" at the bottom of Research; not found in
+  checks (live, desktop and phone), left for him to point at.
 
 ## Redesign v3 (2026-11-15 to 2026-11-17; wins over every design section below)
 
@@ -632,13 +689,21 @@ Graphite), CountUp, the reveal fallback, tilt and ArrowChip are deleted.
   are native. Touch screens keep their own. The peers table keeps a native
   bar in the same style (WebKit pseudo-elements; Firefox flat colours,
   since `scrollbar-color` disables the pseudo-elements in Chrome 121+).
-- **Story strip**: one white pill slides between chapters (520 ms) while the
-  current chapter's name opens; the story is full-bleed and starts flush
+- **Story strip**: one white pill slides between chapters while the
+  current chapter's name opens (900 ms, ease-in-out sine, since 2026-11-18:
+  Hriday asked for "smoother and slower"; `hooks/useSlidingPill.ts`, each
+  name opens to its measured width `--label-w` so the opening runs evenly).
+  Research's section bar uses the same hook and pill (company colour); the story is full-bleed and starts flush
   with the screen so the strip sits the page margin above the bottom. On
   phones the skip button is hidden (the 06 tab does the same) and the strip
   spreads its six numbers.
 - **Results page**: score in large gold, gold range bars, ticker under the
-  name. **Sheets** (Settings, account, sign-in) float as frosted glass.
+  name. Since 2026-11-17 it is in the company's difficulty colour
+  (`hooks/useCompanyDifficulty.ts`, cached per company): a card-material
+  header with the season and difficulty label, numbered metric badges, and
+  "How it turned out" as cards with the result on a colour marker. Home's
+  "Recent results" rows carry the same colour (swatch + label). Rows rise
+  with the scroll (`data-scrub="row"` in `usePageMotion`). **Sheets** (Settings, account, sign-in) float as frosted glass.
 - **Accessibility**: focus ring on everything reachable, 44px targets on
   touch screens, segmented controls scroll rather than wrap; under reduced
   motion the hero, the loose ball and the Research card are still.
@@ -773,7 +838,8 @@ at the end of `app.css`.
   `--panel-pad` 32px (20px) inside every panel, `--tile-gap` 12px,
   `--title-gap` 16px under every panel/section title. Stacked children get
   their spacing from the gap only (margins zeroed).
-- **Tiles** (`TileGrid.tsx` + `hooks/useBalancedGrid.ts`): equal-height rows,
+- **Tiles** (`TileGrid.tsx` + `hooks/useBalancedGrid.ts`; widths now uneven,
+  see "Flat and sharp pass"): equal-height rows,
   column count chosen per section so no tile sits alone (5 tiles: 5 across,
   else 3 + 2 centred; two columns on phones, an odd last tile spans the row).
   Every ratio tile has a status line: Healthy/Watch/Weak, or "No benchmark"
