@@ -574,9 +574,12 @@ stored or sent, gone on reload, cleared on sign-out.
   animation explains something"): Home's tiles float a few pixels on long
   out-of-step cycles (`translate`, so hover still works), and the tile and
   hero engraving drifts sideways. Off under reduced motion.
-- **Highlights**: gold marker (`.hl-gold`) under a few words in "How it
-  works", words unchanged. Catchier wording is drafted in the vault
-  (`Areas/Catchier wording (for approval)`), not live.
+- **Highlights and wording**: gold marker (`.hl-gold`) under a few words in
+  "How to play". Catchier Home wording approved and live 2026-11-18 (vault:
+  `Areas/Catchier wording (for approval)`): "Look around for free", "Your
+  turn: pick a company", "Shuffle companies", "Just reported", "How to
+  play" and its three steps; the results page's section is "What really
+  happened" (the company page keeps "How it turned out").
 - **No gradients on surfaces**: tiles, 3D cards, the results header, the
   top story, news/video/macro cards, panels and gold accents are flat
   colour. The company colour now shows as flat fills, a faint flat tint on
@@ -1271,7 +1274,17 @@ routes in `routes/news.py` + `routes/cron.py`, tables in `db.NEWS_SCHEMA_STATEME
   deleted after 30 days (YouTube developer policy). Skips without
   `YOUTUBE_API_KEY`. Measured yield is low (1 of ~120 recent videos matched):
   expect a few a day.
-- **Privacy:** a video card shows our own illustration; nothing loads from
+- **Thumbnails (2026-11-18, Hriday chose this):** the video job copies each
+  video's thumbnail (i.ytimg.com hqdefault, JPEG, <=400 KB, 40 per run) into
+  `news_video_thumbnails` (schema v15, deleted with its video by cascade at
+  30 days) and `/api/videos/{id}/thumbnail` serves it (cached 6 h). Read as
+  API data under YouTube's 30-day storage rule; YouTube's III.E.1 ("no
+  caching audiovisual content") is ambiguous for stills, accepted risk.
+  Cards fall back to our illustration without a copy. Each card credits
+  "<channel> on YouTube" (YouTube policy III.F.2.a). Privacy Policy line
+  updated to match (approved 2026-11-18; LEGAL_UPDATED 18 Nov 2026,
+  TERMS_VERSION unchanged since nothing new is shared about visitors).
+- **Privacy:** nothing loads from
   YouTube or Google until the visitor presses play, then the
   youtube-nocookie.com player loads (CSP `frame-src` allows only that). The
   Privacy Policy says so (LEGAL_UPDATED 11 Nov 2026, TERMS_VERSION 2026-11-11,
