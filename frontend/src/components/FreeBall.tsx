@@ -21,7 +21,7 @@ const ROLL_FRICTION = 1.3; // per second, on the floor
 const MAX_THROW = 3200;
 const DOUBLE_TAP_MS = 320;
 // What the ball can land on (one-way: only when falling onto the top).
-const SURFACES = ".home .sector-tile, .home .glass.panel, .home .how-band-bg";
+const SURFACES = ".home .sector-tile, .home .glass.panel, .home .guide-strip";
 
 export function BallSkin() {
   return (

@@ -1,7 +1,7 @@
 import { SHOW_EXTRA_TOOLS } from "../lib/features";
 import type { UserPublic } from "../lib/types";
 
-export type View = "home" | "search" | "calculator" | "simulator" | "trading";
+export type View = "home" | "practice" | "search" | "calculator" | "simulator" | "trading";
 
 interface SidebarProps {
   view: View | null;
@@ -15,8 +15,8 @@ interface SidebarProps {
 }
 
 // The app's primary nav: text tabs in the top bar on desktop, and a labelled
-// bottom tab bar with icons on phones (see .primary-nav in app.css). Home (the league stock picker) and
-// Research (company search); the Return Calculator, Market Simulator and
+// bottom tab bar with icons on phones (see .primary-nav in app.css). Home (the league stock picker),
+// Practice (past quarters, 2026-11-18) and Research (company search); the Return Calculator, Market Simulator and
 // Paper Trading only appear when SHOW_EXTRA_TOOLS is on. Icons match
 // Header.tsx's gear icon: 1.6-1.8 stroke width, currentColor, no fill.
 export default function Sidebar({ view, onChange, user, adminActive = false, onOpenAdmin }: SidebarProps) {
@@ -38,6 +38,22 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
           />
         </svg>
         <span className="nav-tab-label">Home</span>
+      </button>
+
+      <button
+        type="button"
+        className={`nav-tab ${view === "practice" ? "active" : ""}`}
+        aria-label="Practice"
+        aria-current={view === "practice"}
+        onClick={() => onChange("practice")}
+      >
+        {/* A target: practise on quarters whose answer is already known. */}
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+          <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.8" />
+          <circle cx="12" cy="12" r="1.1" fill="currentColor" />
+        </svg>
+        <span className="nav-tab-label">Practice</span>
       </button>
 
       <button

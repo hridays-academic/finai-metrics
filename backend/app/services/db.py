@@ -220,6 +220,9 @@ _SCHEMA_STATEMENTS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version TEXT",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
+    # Added 2026-11-18 (v16) -- the first-visit guide is shown once per
+    # account, not just once per browser (auth_service.mark_guide_seen).
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS guide_seen_at TIMESTAMPTZ",
     # Before v8 the rate limiter stored raw IPs; it stores keyed hashes now.
     # Rows only live for an hour, so dropping them all just resets counts.
     "DELETE FROM rate_limit_buckets",
@@ -361,7 +364,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 17
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001

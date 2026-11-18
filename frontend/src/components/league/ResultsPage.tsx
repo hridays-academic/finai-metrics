@@ -17,7 +17,7 @@ interface ResultsPageProps {
   onOpenAuth: () => void;
 }
 
-function n(value: number): string {
+export function n(value: number): string {
   const text = value.toFixed(1);
   return text.endsWith(".0") ? text.slice(0, -2) : text;
 }
@@ -99,8 +99,18 @@ function NumberLine({ m }: { m: MetricResult }) {
   );
 }
 
-function MetricCard({ m, index }: { m: MetricResult; index: number }) {
-  const lazyText = m.beat_lazy === null ? "No lazy guess" : m.beat_lazy ? "Beat the lazy guess" : "Didn't beat the lazy guess";
+export function MetricCard({ m, index }: { m: MetricResult; index: number }) {
+  // Green dot when beaten; grey "Lazy guess was closer" when it was (2026-11-18,
+  // Hriday). A tie isn't "closer", so it keeps the old wording.
+  const tie = m.lazy !== null && Math.abs(Math.abs((m.low + m.high) / 2 - m.actual) - Math.abs(m.lazy - m.actual)) < 1e-9;
+  const lazyText =
+    m.beat_lazy === null
+      ? "No lazy guess"
+      : m.beat_lazy
+        ? "Beat the lazy guess"
+        : tie
+          ? "Didn't beat the lazy guess"
+          : "Lazy guess was closer";
   const u = m.unit;
   return (
     <li className="results-metric" data-scrub="row" data-i={index}>
@@ -109,7 +119,7 @@ function MetricCard({ m, index }: { m: MetricResult; index: number }) {
         <div className="results-chips">
           <span className="results-points">{n(m.points)} points</span>
           <span className={`status-text ${m.hit ? "positive" : "negative"}`}>{m.hit ? "Hit" : "Miss"}</span>
-          <span className="status-text">{lazyText}</span>
+          <span className={`status-text ${m.beat_lazy ? "dot-positive" : ""}`}>{lazyText}</span>
         </div>
       </div>
       <NumberLine m={m} />

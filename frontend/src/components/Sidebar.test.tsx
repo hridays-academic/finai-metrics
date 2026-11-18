@@ -21,7 +21,7 @@ import Sidebar from "./Sidebar";
 const user = (is_admin: boolean): UserPublic => ({
   id: 1, email: "a@example.com", name: "A", created_at: "2026-09-01T00:00:00Z", has_password: true, handle: "a",
   age_band: "18_plus", guardian_consent_status: "not_required", school_name: null, is_admin,
-  terms_accepted_at: "2026-11-11T00:00:00Z", needs_terms: false,
+  terms_accepted_at: "2026-11-11T00:00:00Z", needs_terms: false, guide_seen: true,
 });
 
 afterEach(() => {
@@ -49,7 +49,7 @@ describe("Admin button in the main navigation", () => {
     const { container } = render(<Sidebar view="home" onChange={vi.fn()} user={who} onOpenAdmin={vi.fn()} />);
     expect(screen.queryByRole("button", { name: "Admin" })).toBeNull();
     expect(container.textContent).not.toMatch(/admin/i);
-    expect(screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Home", "Research"]);
+    expect(screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Home", "Practice", "Research"]);
   });
 });
 

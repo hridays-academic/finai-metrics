@@ -78,8 +78,7 @@ button {
 /* Headline face: hero, chapters and tiles only. */
 .hero-title,
 .chapter-head,
-.tile-name,
-.how-grid > li::before {
+.tile-name {
   font-family: var(--font-head);
   font-weight: 800;
   text-transform: uppercase;
@@ -1472,62 +1471,6 @@ textarea.input {
   font-size: var(--text-sm);
 }
 
-/* "How it works": three large numerals on a full-width band. The band's
-   colour is its own layer (.how-band-bg) so the scroll motion can grow it
-   from an inset card to full width without scaling the text. */
-.how-band {
-  position: relative;
-  isolation: isolate;
-  margin: var(--space-9) calc(50% - 50vw) 0;
-  padding: var(--space-10) max(var(--space-6), calc((100vw - var(--max)) / 2));
-  color: var(--on-offwhite);
-}
-
-.how-band-bg {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: var(--radius-panel);
-  background: var(--offwhite);
-  will-change: transform;
-}
-
-.how-band .section-title {
-  margin-bottom: var(--space-7);
-  color: var(--on-offwhite);
-}
-
-.how-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
-}
-
-.how-grid > li {
-  counter-increment: step;
-}
-
-.how-grid > li::before {
-  content: counter(step, decimal-leading-zero);
-  display: block;
-  margin-bottom: var(--space-4);
-  font-size: 106px;
-}
-
-.how-grid h3 {
-  margin-bottom: var(--space-2);
-  color: var(--on-offwhite);
-  font-size: var(--text-lg);
-}
-
-.how-grid p {
-  color: #3d4350; /* 10:1 on the band */
-}
-
 /* ---------- Company page: the story ---------- */
 
 .company-page {
@@ -2438,8 +2381,7 @@ textarea.input {
 }
 
 @media (max-width: 860px) {
-  .company-grid,
-  .how-grid {
+  .company-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2453,15 +2395,6 @@ textarea.input {
     --cap-h: 28px;
     --track-h: 18px;
     height: 200px;
-  }
-
-  .how-grid {
-    gap: var(--space-6);
-  }
-
-  .how-grid > li::before {
-    font-size: 70px;
-    margin-bottom: var(--space-2);
   }
 }
 
@@ -2545,10 +2478,6 @@ textarea.input {
 
   .section-head .btn-tertiary {
     margin-left: calc(-1 * var(--space-4));
-  }
-
-  .how-band {
-    padding: var(--space-9) var(--space-4);
   }
 
   /* Story on phones: the card on top, smaller; the text under it. */
@@ -5196,10 +5125,6 @@ a.news-card-headline:hover {
   background: rgba(15, 23, 42, 0.3);
 }
 
-[data-mode="light"] .how-grid p {
-  color: rgba(255, 255, 255, 0.8);
-}
-
 [data-mode="light"] .ratio-bar-track,
 [data-mode="light"] .peers-reported,
 [data-mode="light"] .theme-chip,
@@ -5820,10 +5745,6 @@ a.news-card-headline:hover {
     0 2px 6px rgba(242, 193, 78, 0.35);
 }
 
-.home .how-grid > li::before {
-  color: #8a6100; /* the light-mode gold; 5.4:1 on the band */
-}
-
 .home .hero-object::before {
   content: "";
   position: absolute;
@@ -6093,17 +6014,6 @@ a.news-card-headline:hover {
   width: calc(100% + 60px);
 }
 
-/* Highlights in "How it works" (2026-11-18, Hriday: "more highlights"): a
-   gold marker under the few words to notice; the words are unchanged. */
-.how-grid .hl-gold {
-  background: linear-gradient(transparent 58%, rgba(242, 193, 78, 0.75) 58%);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-  color: var(--on-offwhite);
-  font-weight: 600;
-}
-
-
 /* A video's thumbnail (our stored copy, 2026-11-18). YouTube's "high" image
    is 4:3 with black bars; cover in the 16:9 poster crops the bars away. */
 .video-thumb {
@@ -6117,4 +6027,1231 @@ a.news-card-headline:hover {
 .video-poster > .video-play,
 .video-poster > .video-length {
   z-index: 1;
+}
+
+/* ==========================================================================
+   First-visit guide (2026-11-18): Home's guide strip, the spotlight, the
+   guide page (#/learn) and its pinned object, the Practice page shell.
+   ========================================================================== */
+
+/* Home: the slim way into the guide, under the headline. */
+.guide-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+  border: 1px solid var(--edge-side);
+  border-top-color: var(--edge-lit);
+  border-radius: var(--radius-panel);
+  background: var(--raised-fill);
+  max-width: 640px;
+}
+
+.guide-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.guide-strip-title {
+  font-weight: 600;
+}
+
+.guide-strip-line {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.guide-strip-button {
+  flex: none;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .guide-strip {
+    flex-wrap: wrap;
+    padding: var(--space-4);
+  }
+
+  .guide-strip-button {
+    margin-left: 0;
+  }
+}
+
+/* The spotlight: one dark layer with a cut-out (the hole's huge shadow is
+   the dim), above everything, including the header. */
+.spotlight {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.spotlight-hole {
+  position: fixed;
+  border-radius: calc(var(--radius-panel) + 8px);
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 0 0 200vmax rgba(3, 4, 7, 0.78);
+  pointer-events: none;
+}
+
+.spotlight-card {
+  position: fixed;
+  padding: var(--space-5);
+  border-radius: var(--radius-panel);
+  background: #151821;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  color: #f7f8fa;
+}
+
+.spotlight-line {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.spotlight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.spotlight-card .btn-tertiary {
+  color: #f7f8fa;
+}
+
+/* Phones: the strip itself says it, so the box holds only the buttons (the
+   line stays for screen readers). */
+@media (max-width: 640px) {
+  .spotlight-line {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .spotlight-card {
+    padding: var(--space-4);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .spotlight-hole,
+  .spotlight-card {
+    animation: spotlight-in 400ms var(--ease) backwards;
+  }
+}
+
+@keyframes spotlight-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The guide page. */
+.guide-title {
+  margin: 0;
+}
+
+.guide-lede {
+  max-width: 60ch;
+  margin-top: var(--space-3);
+  color: var(--text-2);
+}
+
+.guide-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: var(--space-8);
+}
+
+/* The left column runs the full height of the steps, so the object can stay
+   pinned inside it the whole way down. */
+.guide-object-col {
+  align-self: stretch;
+}
+
+/* A panel whose top lines up with step 1's. */
+.guide-object-pin {
+  position: sticky;
+  top: calc(var(--topbar-height) + var(--space-6));
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-panel);
+}
+
+.guide-steps-col {
+  position: relative;
+  padding-left: var(--space-7);
+  /* Room for the last card to reach the focus line, 40% down the screen. */
+  padding-bottom: calc(60vh - 64px);
+}
+
+.guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The cord hangs from the top of the column; its knot sits beside the step
+   in focus and glides (transform and height only) to the next one. */
+.guide-cord {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  width: 12px;
+  height: 0;
+  pointer-events: none;
+}
+
+.guide-cord-line {
+  position: absolute;
+  top: 0;
+  left: 5px;
+  width: 2px;
+  height: var(--cord-y);
+  border-radius: 1px;
+  background: linear-gradient(180deg, rgba(242, 193, 78, 0), var(--gold) 60px);
+}
+
+.guide-knot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.25);
+  transform: translateY(calc(var(--cord-y) - 6px));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guide-cord-line {
+    transition: height 700ms cubic-bezier(0.45, 0, 0.25, 1);
+  }
+
+  .guide-knot {
+    transition: transform 700ms cubic-bezier(0.45, 0, 0.25, 1);
+  }
+}
+
+.guide-card {
+  transition: border-color 300ms var(--ease);
+}
+
+.guide-card.is-focus {
+  border-color: rgba(242, 193, 78, 0.45);
+}
+
+.guide-card-heading {
+  margin: 0;
+  font-size: inherit;
+}
+
+.guide-card-head {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  border-radius: var(--radius-panel);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.guide-card-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-control);
+  background: var(--raised-fill);
+  color: var(--gold);
+}
+
+.guide-card-num {
+  color: var(--text-2);
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.guide-card-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* + turns into x when open. */
+.guide-card-plus {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--raised-fill);
+}
+
+.guide-card-plus::before,
+.guide-card-plus::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 2px;
+  margin: -1px 0 0 -6px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform 250ms var(--ease);
+}
+
+.guide-card-plus::after {
+  transform: rotate(90deg);
+}
+
+.guide-card.is-open .guide-card-plus::before {
+  transform: rotate(45deg);
+}
+
+.guide-card.is-open .guide-card-plus::after {
+  transform: rotate(135deg);
+}
+
+.guide-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--space-5) var(--space-5) calc(var(--space-5) + 40px + var(--space-4));
+  color: var(--text-2);
+  line-height: 1.55;
+}
+
+.guide-card-body strong {
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guide-card-detail:not([hidden]) {
+    animation: guide-open 350ms var(--ease);
+  }
+}
+
+@keyframes guide-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.guide-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.guide-try {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--raised-fill);
+}
+
+.guide-try-prompt {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.guide-try-result {
+  min-height: 1.5em;
+}
+
+.guide-try-score {
+  color: var(--text-2);
+}
+
+.guide-try-points {
+  color: var(--gold);
+  font-family: var(--font-head);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.guide-try .segmented {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.guide-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.guide-try-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  background: none;
+  padding: 0;
+}
+
+/* The two-handled range. Native range inputs sit on the bar so keyboard
+   and screen readers work; only their thumbs take the pointer. */
+.guide-slider-bar {
+  position: relative;
+  height: 64px;
+  margin: 0 11px;
+}
+
+.guide-slider-track,
+.guide-slider-fill {
+  position: absolute;
+  top: 40px;
+  height: 12px;
+  border-radius: 6px;
+}
+
+.guide-slider-track {
+  left: 0;
+  right: 0;
+  background: var(--recessed-fill);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.guide-slider-fill {
+  background: var(--gold);
+}
+
+.guide-dot {
+  position: absolute;
+  top: 41px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: var(--text-2);
+  box-shadow: 0 0 0 2px var(--recessed-fill);
+}
+
+.guide-dot.is-caught {
+  background: var(--on-gold);
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+.guide-slider-ball {
+  position: absolute;
+  top: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.guide-slider-ball .ball-skin {
+  width: 26px;
+  height: 26px;
+  box-shadow: 2px 5px 8px -3px rgba(0, 0, 0, 0.55);
+}
+
+.guide-slider-ball-label {
+  position: absolute;
+  top: -2px;
+  left: calc(100% + 4px);
+  color: var(--text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.guide-slider-lazy {
+  position: absolute;
+  top: 30px;
+  width: 2px;
+  height: 32px;
+  margin-left: -1px;
+  background: var(--text-2);
+  pointer-events: none;
+}
+
+.guide-slider-lazy span {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.guide-slider-bar input[type="range"] {
+  position: absolute;
+  left: -11px;
+  top: 30px;
+  width: calc(100% + 22px);
+  height: 32px;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.guide-slider-bar input[type="range"]::-webkit-slider-runnable-track {
+  background: none;
+}
+
+.guide-slider-bar input[type="range"]::-moz-range-track {
+  background: none;
+}
+
+.guide-slider-bar input[type="range"]::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--offwhite);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 4px var(--gold);
+  cursor: grab;
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.guide-slider-bar input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--offwhite);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 4px var(--gold);
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.guide-slider-bar input[type="range"]:focus-visible {
+  outline: none;
+}
+
+.guide-slider-bar input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.guide-slider-bar input[type="range"]:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.guide-slider-scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.guide-slider-value {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* The pinned object: a recessed track, the gold range and the ball, in one
+   of six states (GuideObject.tsx). Same materials as Home's hero. */
+.guide-object {
+  --ball: 72px;
+  --cap-h: 34px;
+  --track-h: 22px;
+  position: relative;
+  height: 168px;
+}
+
+.guide-scene {
+  position: absolute;
+  inset: 0;
+}
+
+.guide-scene > span {
+  position: absolute;
+}
+
+.guide-track {
+  top: calc(50% - var(--track-h) / 2);
+  left: 0;
+  right: 0;
+  height: var(--track-h);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #000000 0%, #05070a 50%, #11141a 100%);
+  box-shadow:
+    inset 0 5px 8px rgba(0, 0, 0, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-mode="light"] .guide-track {
+  background: linear-gradient(180deg, #b9bec6 0%, #cfd3d9 50%, #e1e4e8 100%);
+  box-shadow:
+    inset 0 5px 8px rgba(15, 23, 42, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 0 #ffffff;
+}
+
+.guide-range {
+  top: calc(50% - var(--cap-h) / 2);
+  height: var(--cap-h);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 18%, rgba(0, 0, 0, 0) 82%, rgba(60, 30, 0, 0.18) 100%),
+    linear-gradient(180deg, #fbe7b0 0%, #f8d373 14%, #f2c14e 34%, #dba53b 60%, #a8741a 86%, #bf8a2c 100%);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.6),
+    inset 0 -4px 6px rgba(90, 50, 0, 0.42),
+    3px 9px 12px -5px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transform: scaleX(0.2);
+}
+
+.guide-range.is-on {
+  opacity: 1;
+  transform: none;
+}
+
+/* The ball rests on the range, or on the track when it lands outside. */
+.guide-ball {
+  width: var(--ball);
+  height: var(--ball);
+  margin-left: calc(var(--ball) / -2);
+  top: calc(50% - var(--cap-h) / 2 - var(--ball) + 3px);
+  opacity: 0;
+  transform: translateY(-220px);
+}
+
+.guide-ball.on-track {
+  top: calc(50% - var(--track-h) / 2 - var(--ball) + 6px);
+}
+
+.guide-ball.is-on {
+  opacity: 1;
+  transform: none;
+}
+
+.guide-ball-skin {
+  width: 100%;
+  height: 100%;
+}
+
+.guide-ball .ball-texture {
+  transform: rotate(var(--spin));
+}
+
+.guide-lazy {
+  top: calc(50% - 46px);
+  width: 2px;
+  height: 92px;
+  margin-left: -1px;
+  background: repeating-linear-gradient(180deg, var(--text-2) 0 6px, transparent 6px 10px);
+  opacity: 0;
+}
+
+.guide-lazy.is-on {
+  opacity: 1;
+}
+
+/* Left of its mark, so the ball (always to the right in the guide) never
+   covers it. */
+.guide-lazy-label {
+  position: absolute;
+  top: -2px;
+  right: calc(100% + 6px);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.guide-ticks {
+  top: calc(50% + 34px);
+  left: 0;
+  right: 0;
+  opacity: 0;
+}
+
+.guide-ticks.is-on {
+  opacity: 1;
+}
+
+.guide-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+/* Step 1: four quarters along the track, one glowing as results day. */
+.guide-quarters {
+  top: 50%;
+  left: 0;
+  right: 0;
+  opacity: 0;
+}
+
+.guide-quarters.is-on {
+  opacity: 1;
+}
+
+.guide-quarter {
+  position: absolute;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: var(--text-2);
+  box-shadow: 0 0 0 3px #05070a;
+}
+
+[data-mode="light"] .guide-quarter {
+  box-shadow: 0 0 0 3px #cfd3d9;
+}
+
+.guide-quarter.is-lit {
+  background: var(--gold);
+  box-shadow:
+    0 0 0 3px rgba(242, 193, 78, 0.3),
+    0 0 18px 4px rgba(242, 193, 78, 0.55);
+}
+
+.guide-quarter-label,
+.guide-quarter-day {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.guide-quarter-label {
+  top: calc(100% + 12px);
+  color: var(--text-2);
+}
+
+.guide-quarter.is-lit .guide-quarter-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.guide-quarter-day {
+  bottom: calc(100% + 12px);
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* Step 2: the three numbers you forecast, as chips above the track. */
+.guide-chips-row {
+  top: calc(50% - 64px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  opacity: 0;
+}
+
+.guide-chips-row.is-on {
+  opacity: 1;
+}
+
+.guide-object-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--edge-side);
+  border-radius: var(--radius-pill);
+  background: var(--raised-fill);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.guide-object-chip.is-lit {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--on-gold);
+}
+
+.guide-object-chip .chip-short {
+  display: none;
+}
+
+/* A miss: a thin bracket from the ball to the range's edge, below the
+   track, with what each point of it costs. */
+.guide-gap {
+  top: calc(50% + 15px);
+  height: 8px;
+  border: 1.5px solid var(--negative);
+  border-top: 0;
+  opacity: 0;
+}
+
+.guide-gap.is-on {
+  opacity: 1;
+}
+
+.guide-gap-label {
+  position: absolute;
+  top: -3px;
+  color: var(--negative);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.guide-gap.is-below .guide-gap-label {
+  right: calc(100% + 6px);
+}
+
+.guide-gap.is-above .guide-gap-label {
+  left: calc(100% + 6px);
+}
+
+.guide-object.has-gap .guide-ticks {
+  opacity: 0.35;
+}
+
+/* Step 3's made-up results, on the range. */
+.guide-object-dot {
+  top: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: var(--text-2);
+  box-shadow: 0 0 0 2px #05070a;
+}
+
+.guide-object-dot.is-caught {
+  background: #fff8e6;
+  box-shadow: 0 0 0 2px #a8741a;
+}
+
+[data-mode="light"] .guide-object-dot:not(.is-caught) {
+  box-shadow: 0 0 0 2px #cfd3d9;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Short left/width easing so a dragged range follows the finger. */
+  .guide-range {
+    transition:
+      opacity 500ms var(--ease),
+      transform 700ms cubic-bezier(0.34, 1.4, 0.64, 1),
+      left 180ms var(--ease),
+      width 180ms var(--ease);
+  }
+
+  .guide-ball {
+    transition:
+      left 600ms cubic-bezier(0.45, 0, 0.25, 1),
+      top 300ms cubic-bezier(0.5, 0, 0.75, 0),
+      opacity 200ms linear,
+      transform 750ms cubic-bezier(0.34, 1.3, 0.64, 1);
+  }
+
+  .guide-ball .ball-texture {
+    transition: transform 1100ms cubic-bezier(0.45, 0, 0.25, 1);
+  }
+
+  .guide-lazy,
+  .guide-ticks,
+  .guide-object-dot,
+  .guide-quarters,
+  .guide-chips-row,
+  .guide-gap {
+    transition: opacity 500ms var(--ease), background-color 180ms var(--ease);
+  }
+
+  .guide-quarter,
+  .guide-object-chip {
+    transition:
+      background-color 300ms var(--ease),
+      box-shadow 300ms var(--ease),
+      border-color 300ms var(--ease),
+      color 300ms var(--ease);
+  }
+}
+
+/* Phones and narrow windows: the object small at the top, cards below. */
+@media (max-width: 900px) {
+  .guide-lede {
+    margin-top: var(--space-2);
+  }
+
+  .guide-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .guide-object-col {
+    position: sticky;
+    top: var(--topbar-height);
+    z-index: 2;
+    margin: 0 calc(-1 * var(--space-4));
+    padding: var(--space-2) var(--space-4);
+    background: var(--page);
+  }
+
+  /* About 96px tall in all: a plain strip, not a panel. */
+  .guide-object-pin.glass {
+    position: static;
+    padding: 0 var(--space-2);
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .guide-object {
+    --ball: 26px;
+    --cap-h: 14px;
+    --track-h: 9px;
+    height: 80px;
+  }
+
+  .guide-object-dot {
+    top: calc(50% - 3px);
+    width: 6px;
+    height: 6px;
+    margin-left: -3px;
+  }
+
+  .guide-lazy {
+    top: calc(50% - 20px);
+    height: 40px;
+  }
+
+  .guide-lazy-label {
+    right: calc(100% + 4px);
+  }
+
+  .guide-lazy-label,
+  .guide-tick {
+    font-size: 10px;
+  }
+
+  .guide-ticks {
+    top: calc(50% + 11px);
+  }
+
+  .guide-object.has-gap .guide-ticks {
+    opacity: 0;
+  }
+
+  .guide-gap {
+    top: calc(50% + 7px);
+    height: 6px;
+  }
+
+  .guide-gap-label,
+  .guide-quarter-label,
+  .guide-quarter-day {
+    font-size: 10px;
+  }
+
+  .guide-quarter {
+    top: -5px;
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+  }
+
+  .guide-quarter-label {
+    top: calc(100% + 6px);
+  }
+
+  .guide-quarter-day {
+    bottom: calc(100% + 6px);
+  }
+
+  .guide-chips-row {
+    top: calc(50% - 36px);
+    gap: 6px;
+  }
+
+  .guide-object-chip {
+    padding: 3px 9px;
+    font-size: 10px;
+  }
+
+  .guide-object-chip .chip-long {
+    display: none;
+  }
+
+  .guide-object-chip .chip-short {
+    display: inline;
+  }
+
+  .guide-ball {
+    transform: translateY(-80px);
+  }
+
+  .guide-steps-col {
+    padding-left: var(--space-6);
+  }
+
+  .guide-steps {
+    gap: 12px;
+  }
+
+  .guide-cord {
+    left: 2px;
+  }
+
+  .guide-card-head {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .guide-card-num {
+    font-size: 18px;
+  }
+
+  .guide-card-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .guide-card-plus {
+    width: 28px;
+    height: 28px;
+  }
+
+  .guide-card-title {
+    font-size: var(--text-base, 15px);
+  }
+
+  .guide-card-body {
+    padding: 0 var(--space-4) var(--space-4);
+  }
+}
+
+/* ==========================================================================
+   Practice (2026-11-18, phase B): the picker, its tiles, a practice
+   company page (banner, form, result) and Home's "Practice while you wait".
+   ========================================================================== */
+.practice-line {
+  max-width: var(--measure, 60ch);
+  margin-top: var(--space-3);
+  color: var(--text-2);
+}
+
+.practice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  margin-top: var(--space-5);
+}
+
+/* Mystery mode: a real checkbox (role=switch) drawn as a switch. */
+.practice-switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+
+.practice-switch input {
+  position: absolute;
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.practice-switch-track {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--recessed-fill);
+  box-shadow: inset 0 0 0 1px var(--edge-side);
+}
+
+.practice-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-2);
+}
+
+.practice-switch input:checked + .practice-switch-track {
+  background: var(--text);
+}
+
+.practice-switch input:checked + .practice-switch-track::after {
+  background: var(--page);
+  transform: translateX(18px);
+}
+
+.practice-switch input:focus-visible + .practice-switch-track {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .practice-switch-track::after {
+    transition: transform 200ms var(--ease), background-color 200ms var(--ease);
+  }
+}
+
+.practice-switch-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.practice-switch-label {
+  font-weight: 600;
+}
+
+.practice-switch-hint {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.practice-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-2);
+  padding: 2px 8px;
+  border: 1px solid var(--edge-side);
+  border-radius: var(--radius-small);
+  background: var(--raised-fill);
+  color: var(--text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.practice-grid {
+  margin-top: var(--space-6);
+}
+
+.practice-tile-line {
+  margin: var(--space-2) 0 var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  opacity: 0.9;
+}
+
+.practice-tile-score {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.practice-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.practice-banner .practice-badge {
+  margin: 2px 0 0;
+  flex: none;
+}
+
+.practice-banner p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.practice-banner-sub {
+  display: block;
+  color: var(--text-2);
+  font-weight: 400;
+}
+
+.practice-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
+}
+
+.practice-reveal {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* Two notes in one "Sources and notes" (practice's research table). */
+.fine-print-line {
+  display: block;
+}
+
+.fine-print-line + .fine-print-line {
+  margin-top: var(--space-2);
+}
+
+/* "Beat the lazy guess": a green dot, the words stay neutral. */
+.status-text.dot-positive::before {
+  background: var(--positive);
+}
+
+/* Its own line under the score, never beside the explanation. */
+.results-score > .practice-replay {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  margin-top: var(--space-2);
+  color: var(--text-2);
+}
+
+.practice-not-saved {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.practice-sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.practice-wait .section-text {
+  margin-top: var(--space-2);
 }

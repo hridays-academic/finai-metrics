@@ -409,6 +409,8 @@ class UserPublic(BaseModel):
     # until they agree to the current version (auth_service.TERMS_VERSION).
     terms_accepted_at: Optional[str] = None
     needs_terms: bool = False
+    # The first-visit guide's spotlight was opened or skipped on this account.
+    guide_seen: bool = False
 
 
 class AuthResponse(BaseModel):

@@ -96,6 +96,10 @@ class MarketConfig:
     # Default one-line card descriptions by ticker; a description saved on
     # the company row (admin form) takes precedence.
     company_descriptions: dict[str, str] = field(default_factory=dict)
+    # Practice's Mystery mode: one line per company with no brand, product
+    # or place name that gives it away (approved 2026-11-18, vault: Areas/
+    # First-visit guide and Practice).
+    mystery_descriptions: dict[str, str] = field(default_factory=dict)
 
 
 _IN_CORE_METRICS = (
@@ -376,6 +380,18 @@ _IN_COMPANY_DESCRIPTIONS = {
     "MPHASIS": "IT services company that builds and runs software for banks, insurers and tech firms, mostly in the Americas.",
 }
 
+# Approved 2026-11-18 (decision 5). MPHASIS reuses its card line, which
+# already names no brand.
+_IN_MYSTERY_DESCRIPTIONS = {
+    "MARUTI": "A car maker selling mostly in India, from small hatchbacks to SUVs.",
+    "SAGCEM": "A cement maker with plants in the south, centre and east of India.",
+    "ESCORTS": "Makes tractors for Indian farmers, plus cranes and other construction machines.",
+    "DABUR": "Sells ayurvedic health products, juices, toothpaste and hair oils.",
+    "MARICO": "Sells hair oils, cooking oils and healthy foods.",
+    "JYOTHYLAB": "Sells household cleaning products: fabric whitener, detergents, dishwash and soap.",
+    "MPHASIS": _IN_COMPANY_DESCRIPTIONS["MPHASIS"],
+}
+
 _IN_REASON_TAGS = (
     ReasonTag("more_volume", "More volume"),
     ReasonTag("price_increases", "Price increases"),
@@ -398,6 +414,7 @@ MARKETS: dict[str, MarketConfig] = {
         excluded_sectors=frozenset({"banks", "nbfc"}),
         sector_explainers=_IN_SECTOR_EXPLAINERS,
         company_descriptions=_IN_COMPANY_DESCRIPTIONS,
+        mystery_descriptions=_IN_MYSTERY_DESCRIPTIONS,
     ),
 }
 

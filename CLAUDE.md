@@ -513,6 +513,69 @@ browser can't); links start a page at the top unless marked
 Unsaved forecast inputs live in `lib/forecastDrafts.ts`: memory only, never
 stored or sent, gone on reload, cleared on sign-out.
 
+## First-visit guide and Practice (2026-11-18, phases A and B built, not deployed)
+
+Plan, decisions and wording approved by Hriday (vault: `Areas/First-visit
+guide and Practice (plan and wording, for approval)`). Phases: A spotlight +
+guide (built), B practice on the 7 scored Q2 FY27 events, C extra quarters
+after he approves a proposal file. Each phase stops for screenshots and
+approval; no deploy without it.
+
+- **Spotlight** (`SpotlightIntro.tsx`, rule in `lib/guideSeen.ts`
+  `spotlightDecision`): once per browser (`stackly_guide_seen`, unreadable
+  storage counts as seen) and once per account (`users.guide_seen_at`,
+  schema v16, `POST /api/league/me/guide-seen`, `UserPublic.guide_seen`,
+  cleared by delete_account). Only when the page load started on Home (a
+  shared link first = never that visit), never over the reset or terms
+  prompts. The app behind is `inert`, focus starts on "Show me", Escape skips.
+- **Home**: the "How to play" band is gone (CSS too); a slim guide strip
+  (`GuideStrip`, `#guide-entry`) sits under the headline.
+- **Guide** `#/learn` (`components/guide/`): six cards 16px apart (+ opens
+  each, the header is the button). The step in focus is the card crossing a
+  line 40% down the screen; at the top the line starts at step 1 and moves
+  down with the scroll, so step 1 leads on arrival. A card you open or drag
+  in leads until scrolling moves the focus. A gold cord's knot follows it.
+  `GuideObject` is a separate, scripted ball (Hriday's exception to "the
+  ball is Home-only": same `BallSkin`, never loose, no `ballStore`) that
+  draws exactly what the focused card shows (`objectView`), live while its
+  range is dragged (steps 3-5's ranges live in `GuidePage`); no score in it.
+  Phones: a 96px sticky strip, step numbers shown. Reduced motion: the
+  object and cord change in place. Step 2's sector numbers are read from the league
+  config (approved definitions, never rewritten). `lib/scoring.ts` mirrors
+  `scoring.py` and its sentences for the live examples only; its test holds
+  Python's output.
+- Guide object states (Hriday's phase A fixes): step 1 four quarter markers
+  (newest, or the tapped one, glows as "Results day"); step 2 three chips
+  (sector chip lit once a sector is picked); a miss rests the ball on the
+  track clear of the range with a red bracket and "−20 per point". On
+  phones the spotlight box holds only the buttons. No nav tab lit on
+  `#/learn`. Step 2 shows the approved plain sector lines
+  (`GuidePieces.SECTOR_LINES`), falling back to the league definition.
+- **Practice** (phase B, `routes/practice.py`, `services/practice.py`,
+  `components/practice/`, schema v17): scored, complete, non-demo league
+  events; address `#/practice/<code>` (6-char code from the event id).
+  Everything is cut on the server to the lock (quarters before the period,
+  prices to min(lock, today-30) with the weekly rule). Mystery mode (default,
+  `stackly_practice_mystery` in localStorage): no name/ticker/season/results
+  date/source links/tip/fetch date, and dates on a relative calendar (the
+  forecast quarter sits in year 100; months kept). Revenue and share price are
+  always indexed (first = 100); no profit. The page reuses `CompanyStory`
+  and `QuartersTable` via a `practice` prop (`lib/practice.ts` adapts the
+  case). Attempts: `practice_attempts` (old Time Machine tables dropped only
+  if empty, else the migration stops); first try per user+event enforced by a
+  partial unique index, later ones `is_replay`; signed out / consent pending
+  / no profile = scored, not saved. Never touches forecasts or scores. Home
+  always shows "Practice while you wait" (below the open companies, or above
+  "No companies are open" between seasons); the "Practice" badge is on
+  Home's tiles only. The practice research table hides all-N/A quarters and
+  has one "Sources and notes". Results tag (league and practice): green dot
+  "Beat the lazy guess", grey "Lazy guess was closer", a tie keeps "Didn't
+  beat the lazy guess". The prices route is in `main.py` (next to the price
+  cache). Phase B wording approved 2026-11-18.
+- `TERMS_VERSION` is 2026-11-18 (guide line added to the Privacy Policy).
+  `LEGAL_UPDATED` moves to the deploy date. The "Your browser" line lacks
+  "and your Mystery mode setting" until phase B adds that setting.
+
 ## Voice and engagement (Hriday, 2026-11-17; applies to every page)
 
 - **Write for a curious 14-year-old**: short sentences, everyday words, one

@@ -64,9 +64,11 @@ from app.services import db as db_module
 from app.services.db import get_conn, init_db
 from app.routes import (
     admin as admin_routes, cron as cron_routes, league as league_routes, news as news_routes, visits as visit_routes,
-    workspace as workspace_routes,
+    practice as practice_routes, workspace as workspace_routes,
 )
 from app.services.league_service import LeagueError
+from app.services import practice as practice_service
+from app.league_models import PracticePricesOut
 from app.routes.deps import optional_user as _current_user, require_user
 
 logging.basicConfig(level=logging.INFO)
@@ -561,6 +563,27 @@ def _yfinance_price_symbol(symbol: str) -> str:
         fundamentals_cache.put_resolution(
             symbol, resolved, exchange, conn=conn)
     return resolved
+
+
+# Practice (2026-11-18): every practice route is rate-limited per IP like the
+# other keyless data endpoints. The share price lives here, next to the price
+# cache it reads; practice.cut_prices cuts it to the moment forecasts closed.
+app.include_router(practice_routes.router, dependencies=[Depends(_rate_limited)])
+
+
+@app.get("/api/practice/cases/{code}/prices", response_model=PracticePricesOut)
+def get_practice_prices(code: str, mystery: bool = True, _rl: None = Depends(_rate_limited)) -> PracticePricesOut:
+    with get_conn() as conn:
+        symbol, _company = practice_service.provider_symbol(conn, code)
+    if not symbol:
+        return PracticePricesOut(points=[])
+    try:
+        series = _load_price_series(_yfinance_price_symbol(symbol))
+    except (CompanyNotFoundError, DataProviderError):
+        logger.warning("No practice prices for code=%s", code, exc_info=True)
+        return PracticePricesOut(points=[])
+    with get_conn() as conn:
+        return practice_service.cut_prices(conn, code, mystery, series.points, price_lag.today_in_india())
 
 
 @app.get("/api/price-history/{symbol}", response_model=PriceHistoryResponse)

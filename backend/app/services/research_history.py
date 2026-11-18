@@ -10,6 +10,7 @@ held across the yfinance call.
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from app.league_models import QuarterRow, ResearchHistoryOut
 from app.services import league_admin
@@ -44,9 +45,22 @@ def company_history(company_id: int) -> ResearchHistoryOut:
         if company is None:
             raise LeagueError(404, "company_not_found", "No such company.")
         actuals = league_admin.list_actuals(conn, company_id)
-        symbol = company["provider_symbol"]
-        cached = None
-        if symbol:
+    quarters, as_of = provider_quarters(company["provider_symbol"])
+    return ResearchHistoryOut(
+        provider_rows=_rows(quarters),
+        provider_source=PROVIDER_SOURCE,
+        provider_definition=PROVIDER_DEFINITION,
+        provider_as_of=as_of,
+        actuals=actuals,
+    )
+
+
+def provider_quarters(symbol: Optional[str]) -> tuple[list[dict], Optional[datetime]]:
+    """Yahoo's quarterly figures for a symbol, cache-first (7 days), with the
+    time they were fetched. Also used by Practice, which cuts them to a date."""
+    cached = None
+    if symbol:
+        with get_conn() as conn:
             cached = conn.execute(
                 "SELECT quarters_json, fetched_at FROM statement_history_cache WHERE symbol = %s", (symbol,)
             ).fetchone()
@@ -73,11 +87,4 @@ def company_history(company_id: int) -> ResearchHistoryOut:
         except DataProviderError:
             logger.warning("Quarterly history unavailable for %s; serving %s", symbol,
                            "stale cache" if cached else "nothing", exc_info=True)
-
-    return ResearchHistoryOut(
-        provider_rows=_rows(quarters),
-        provider_source=PROVIDER_SOURCE,
-        provider_definition=PROVIDER_DEFINITION,
-        provider_as_of=as_of,
-        actuals=actuals,
-    )
+    return quarters, as_of

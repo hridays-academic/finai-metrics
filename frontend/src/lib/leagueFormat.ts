@@ -45,7 +45,8 @@ export function previousQuarterEnds(periodEnd: string, count: number): string[] 
       idx = 3;
       year -= 1;
     }
-    out.push(`${year}-${QUARTER_ENDS[idx]}`);
+    // Padded, so Practice's relative calendar (year 100) stays YYYY-MM-DD.
+    out.push(`${String(year).padStart(4, "0")}-${QUARTER_ENDS[idx]}`);
   }
   return out;
 }

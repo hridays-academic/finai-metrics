@@ -223,3 +223,22 @@ def test_purge_removes_expired_sessions_and_old_activity(conn, client):
     assert conn.execute("SELECT count(*) FROM sessions WHERE token = 'old'").fetchone()[0] == 0
     # signed_up (now) + the 11-month-old search survive.
     assert conn.execute("SELECT count(*) FROM activity_log WHERE user_id = %s", (uid,)).fetchone()[0] == 2
+
+
+# ---------- First-visit guide (2026-11-18) ----------
+
+def test_guide_seen_is_kept_on_the_account(conn, client):
+    user = _headers(_signup(client, "g@example.com"))
+    assert client.get("/api/auth/me", headers=user).json()["guide_seen"] is False
+    assert client.post("/api/league/me/guide-seen").status_code == 401
+
+    res = client.post("/api/league/me/guide-seen", headers=user)
+    assert res.status_code == 200 and res.json()["guide_seen"] is True
+    first = conn.execute("SELECT guide_seen_at FROM users WHERE email = 'g@example.com'").fetchone()[0]
+    client.post("/api/league/me/guide-seen", headers=user)
+    assert conn.execute("SELECT guide_seen_at FROM users WHERE email = 'g@example.com'").fetchone()[0] == first
+    assert client.get("/api/auth/me", headers=user).json()["guide_seen"] is True
+
+    uid = _uid(conn, "g@example.com")
+    assert client.post("/api/auth/delete-account", json={"confirm": "DELETE"}, headers=user).status_code == 204
+    assert conn.execute("SELECT guide_seen_at FROM users WHERE id = %s", (uid,)).fetchone()[0] is None

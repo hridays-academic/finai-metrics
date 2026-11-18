@@ -29,6 +29,8 @@ const PRIVACY: Section[] = [
           "League profile: your handle (a public nickname), your age band (under 18, or 18 and over), your school if you choose to give it, and, for under-18 players, a record of a parent or guardian's consent: their name, how they gave it and the date.",
           "Forecasts: the ranges you submit, any reason tags or short note, when you submitted them, and the scores they earn.",
           "Research workspace: if you're signed in, the notes you write, the steps you tick and the numbers you type into the driver worksheet, for each company. They're linked to your account so you can see them on any device.",
+          "Practice: if you're signed in, the ranges you enter for past quarters and the scores they get. Your first try at each company is your practice score; later tries are kept too, marked as replays. If you're not signed in, our server scores your answers and doesn't keep them.",
+          "Whether you've seen or skipped the welcome guide, linked to your account if you're signed in, so it doesn't show again on another device.",
           "Sign-in sessions: a random code that keeps you signed in for up to 30 days.",
           "Activity: when you sign up or sign in, and which companies you look up on the Research page while signed in. You can see this list in your account panel.",
           "Password resets: a one-time link that works for 30 minutes.",
@@ -64,7 +66,7 @@ const PRIVACY: Section[] = [
   {
     heading: "Your browser",
     body: [
-      "We save your sign-in code and display settings in your browser's local storage. We don't use advertising or tracking cookies.",
+      "We save your sign-in code, display settings, whether you've seen the welcome guide and your Mystery mode setting in your browser's local storage. We don't use advertising or tracking cookies.",
     ],
   },
   {
@@ -74,6 +76,7 @@ const PRIVACY: Section[] = [
         list: [
           "Account and profile: until you delete your account.",
           "Workspace notes, ticks and worksheet numbers are kept until you clear that company's workspace or delete your account. Deleting your account deletes them.",
+          "Practice ranges and scores are kept until you delete your account. Deleting your account deletes them.",
           "Activity: 12 months, then deleted automatically.",
           "Sign-in sessions: 30 days, or until you sign out.",
           "Password-reset links: 30 minutes.",
@@ -97,6 +100,7 @@ const PRIVACY: Section[] = [
           "Other players: your handle and scores may appear on results and leaderboards. Group (\"crowd\") figures combine many people's forecasts and only appear once at least 5 people have forecast. Other players never see your email, name, age band or school.",
           "The people who run Stackly: they can see account details to run the league, record consent and deal with abuse.",
           "Your workspace is private. Other students can't see it, and it isn't shown on the admin pages.",
+          "Your practice scores are private. Other students can't see them, and they never appear on results pages, season scores or leaderboards.",
         ],
       },
     ],

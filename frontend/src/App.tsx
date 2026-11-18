@@ -15,6 +15,11 @@ import FreeBall from "./components/FreeBall";
 import PageScrollbar from "./components/PageScrollbar";
 import { ballStore } from "./lib/ballStore";
 import LegalPage from "./components/LegalPage";
+import GuidePage from "./components/guide/GuidePage";
+import PracticePage from "./components/practice/PracticePage";
+import PracticeCasePage from "./components/practice/PracticeCasePage";
+import SpotlightIntro from "./components/SpotlightIntro";
+import { guideFlagStored, guideSeenHere, markGuideSeenHere, spotlightDecision, startedOnHome } from "./lib/guideSeen";
 import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
 import ForecastPage from "./components/league/ForecastPage";
@@ -28,7 +33,7 @@ import { useTheme } from "./hooks/useTheme";
 import { usePageMotion } from "./hooks/usePageMotion";
 import { markFreshNavigation, scrollPageToTop, useScrollMemory } from "./hooks/useScrollMemory";
 import { SHOW_EXTRA_TOOLS } from "./lib/features";
-import { fetchCompany, fetchMe, recordVisit, ApiError } from "./lib/api";
+import { fetchCompany, fetchMe, markGuideSeen, recordVisit, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
 import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
 
@@ -51,6 +56,9 @@ export default function App() {
   // Sign-in is purely for activity tracking, not a gate on using the app --
   // every existing feature works fully signed-out, this is additive.
   const [user, setUser] = useState<UserPublic | null>(null);
+  // False until a stored sign-in has been checked, so the first-visit
+  // spotlight can wait to learn whether this account has already seen it.
+  const [authChecked, setAuthChecked] = useState(() => !getAuthToken());
   // Set once, synchronously, from the URL a password-reset email links to
   // (main.py's /api/auth/forgot-password builds "<origin>/?reset_token=...").
   // Read directly from location.search rather than a router -- this app has
@@ -71,9 +79,17 @@ export default function App() {
     if (!showHome) ballStore.dock();
   }, [showHome]);
   const isLegalRoute = route?.name === "privacy" || route?.name === "terms";
-  // A company page belongs to Home in the nav; admin and legal pages to nothing.
+  // A company page belongs to Home in the nav; admin, legal pages and the
+  // guide to nothing.
+  const showPractice = route?.name === "practice" || (route === null && view === "practice");
   const navView: View | null =
-    route?.name === "admin" || isLegalRoute ? null : route !== null ? "home" : view;
+    route?.name === "admin" || isLegalRoute || route?.name === "learn"
+      ? null
+      : showPractice
+        ? "practice"
+        : route !== null
+          ? "home"
+          : view;
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +114,9 @@ export default function App() {
       ? "home"
       : "id" in route
         ? `${route.name}:${route.id}`
-        : route.name
+        : route.name === "practice" && route.code
+          ? `practice:${route.code}`
+          : route.name
     : view;
   useScrollMemory(pageKey);
 
@@ -131,9 +149,49 @@ export default function App() {
     // this is safe to call unconditionally rather than checking the token
     // exists first.
     if (getAuthToken()) {
-      fetchMe().then(setUser);
+      fetchMe()
+        .then(setUser)
+        .finally(() => setAuthChecked(true));
     }
   }, []);
+
+  // First-visit spotlight (2026-11-18): once per browser and once per
+  // account, only when this page load started on Home (never after a shared
+  // link), and never on top of the reset-password or terms prompts. Decided
+  // once per page load.
+  const [spotlight, setSpotlight] = useState(false);
+  const spotlightDecided = useRef(false);
+  useEffect(() => {
+    if (spotlightDecided.current || !authChecked || !showHome) return;
+    spotlightDecided.current = true;
+    const decision = spotlightDecision({
+      startedOnHome: startedOnHome(),
+      seenHere: guideSeenHere(),
+      resetToken: resetToken !== null,
+      user,
+    });
+    if (decision === "remember") markGuideSeenHere();
+    if (decision === "show") setSpotlight(true);
+  }, [authChecked, showHome, resetToken, user]);
+
+  // Seen in this browser before signing in: the account remembers it too.
+  useEffect(() => {
+    if (user && !user.guide_seen && !spotlight && guideFlagStored()) {
+      markGuideSeen().then(setUser).catch(() => {});
+    }
+  }, [user, spotlight]);
+
+  function closeSpotlight(showMe: boolean) {
+    setSpotlight(false);
+    markGuideSeenHere();
+    if (user) markGuideSeen().then(setUser).catch(() => {});
+    if (showMe) {
+      markFreshNavigation();
+      navigate("#/learn");
+    } else {
+      requestAnimationFrame(() => document.querySelector<HTMLElement>("#guide-entry a")?.focus());
+    }
+  }
 
   // A company page's "Open in Research": load that company on Research and
   // remember the page, for "Back to forecast".
@@ -177,6 +235,7 @@ export default function App() {
     }
     setView(next);
     if (next === "home" && homeAt) replaceRoute(`#/${homeAt.name}/${homeAt.id}`);
+    else if (next === "practice") replaceRoute("#/practice");
     else clearRoute();
   }
 
@@ -270,6 +329,23 @@ export default function App() {
             </>
           )}
 
+          {route?.name === "learn" && (
+            <div className="view-wrapper">
+              <GuidePage />
+            </div>
+          )}
+          {showPractice && route?.name === "practice" && route.code ? (
+            <div className="view-wrapper">
+              <PracticeCasePage key={route.code} code={route.code} onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          ) : (
+            showPractice && (
+              <div className="view-wrapper">
+                <PracticePage user={user} />
+              </div>
+            )
+          )}
+
           {route?.name === "admin" && (
             <div className="view-wrapper">
               <AdminPage user={user} onOpenAuth={() => setAuthOpen(true)} />
@@ -345,6 +421,10 @@ export default function App() {
           their latest version) agree here on their next visit. Hidden on
           the legal pages themselves so they can be read first. */}
       {user?.needs_terms && !isLegalRoute && <TermsPrompt onAgreed={setUser} onSignedOut={() => setUser(null)} />}
+
+      {spotlight && showHome && (
+        <SpotlightIntro targetId="guide-entry" onShowMe={() => closeSpotlight(true)} onSkip={() => closeSpotlight(false)} />
+      )}
 
       {/* Shown when a visitor arrives from a password-reset email link
           ("?reset_token=..."), read once on mount -- see the state

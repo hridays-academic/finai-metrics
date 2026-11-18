@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMyResult, fetchMySeason, fetchResearchHistory, fetchRecentResults } from "../../lib/api";
+import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMyResult, fetchMySeason, fetchPracticeCases, fetchResearchHistory, fetchRecentResults } from "../../lib/api";
 import { daysUntil, formatCrore, formatDay } from "../../lib/leagueFormat";
-import type { EventSummary, LeagueConfig, MetricResult, ResearchHistory, Season, UserPublic, RecentResult } from "../../lib/types";
+import type { EventSummary, LeagueConfig, MetricResult, PracticeCard, ResearchHistory, Season, UserPublic, RecentResult } from "../../lib/types";
+import PracticeTile from "../practice/PracticeTile";
 import SiteFooter from "../SiteFooter";
 import RangeLine from "../RangeLine";
 import { metricShortName, outcomeSummary } from "./outcome";
@@ -391,12 +392,15 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
             to make your forecasts.
           </p>
         )}
+        <GuideStrip />
         </div>
         <HeroObject />
       </header>
 
       {error && <div className="form-error">{error}</div>}
       {upcoming === null && !error && <p className="empty-note">Loading companies...</p>}
+
+      {upcoming !== null && open.length === 0 && <PracticeWhileYouWait />}
 
       {cards.length > 0 && (
         <section className="section" aria-labelledby="open-title">
@@ -418,6 +422,10 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
           <SourceNote events={cards} histories={histories} />
         </section>
       )}
+
+      {/* Always shown (2026-11-18): below the open companies, or above
+          "No companies are open right now" when none are. */}
+      {cards.length > 0 && <PracticeWhileYouWait />}
 
       {upcoming !== null && open.length === 0 && (
         <section className="section" aria-labelledby="waiting-title">
@@ -480,28 +488,65 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         </div>
       )}
 
-      <section className="how-band" aria-labelledby="how-title">
-        <div className="how-band-bg" data-scrub="band" aria-hidden="true" />
-        <h2 className="section-title" id="how-title" data-scrub="title">
-          How to play
-        </h2>
-        <ol className="how-grid">
-          <li data-scrub="step" data-i={0}>
-            <h3>Pick a company</h3>
-            <p>Choose one that reports soon. We'll show you <span className="hl-gold">how it makes money</span>, step by step.</p>
-          </li>
-          <li data-scrub="step" data-i={1}>
-            <h3>Set your range</h3>
-            <p>For each number, pick <span className="hl-gold">a low and a high</span>. Make it wide enough that you'd be right <span className="hl-gold">8 times out of 10</span>.</p>
-          </li>
-          <li data-scrub="step" data-i={2}>
-            <h3>See how close you got</h3>
-            <p>Catch the real number with <span className="hl-gold">a tight range</span> and you score big. Miss it, and you lose points.</p>
-          </li>
-        </ol>
-      </section>
 
       <SiteFooter />
     </div>
+  );
+}
+
+// The short way into the guide (replaced the "How to play" band, 2026-11-18).
+// The first-visit spotlight circles it (SpotlightIntro.tsx, id below).
+export function GuideStrip() {
+  return (
+    <div className="guide-strip" id="guide-entry">
+      <span className="guide-strip-text">
+        <span className="guide-strip-title">New to forecasting?</span>
+        <span className="guide-strip-line">Six short steps: what results are, how ranges work and how you score.</span>
+      </span>
+      <a className="btn btn-secondary btn-compact guide-strip-button" href="#/learn">
+        Start the guide
+      </a>
+    </div>
+  );
+}
+
+// Three practice companies in Mystery mode (2026-11-18, wording approved):
+// right under the hero between seasons, below the open companies otherwise.
+// Hidden if there are none or they can't load.
+function PracticeWhileYouWait() {
+  const [cards, setCards] = useState<PracticeCard[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchPracticeCases(true)
+      .then((all) => {
+        if (cancelled) return;
+        const pool = [...all];
+        const picked: PracticeCard[] = [];
+        while (picked.length < 3 && pool.length) picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+        setCards(picked);
+      })
+      .catch(() => !cancelled && setCards([]));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (!cards || cards.length === 0) return null;
+  return (
+    <section className="section practice-wait" aria-labelledby="practice-wait-title">
+      <div className="section-head" data-scrub="title">
+        <h2 className="section-title" id="practice-wait-title">
+          Practice while you wait
+        </h2>
+        <a className="btn btn-tertiary" href="#/practice">
+          All practice companies
+        </a>
+      </div>
+      <p className="section-text">Try a past quarter. You'll see your score straight away.</p>
+      <ul className="company-grid practice-grid">
+        {cards.map((c, i) => (
+          <PracticeTile key={c.code} card={c} index={i} badge />
+        ))}
+      </ul>
+    </section>
   );
 }

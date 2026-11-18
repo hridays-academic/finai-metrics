@@ -9,20 +9,27 @@ export type Route =
   | { name: "results"; id: number }
   | { name: "workspace"; id: number }
   | { name: "admin" }
+  | { name: "learn" }
+  | { name: "practice"; code?: string }
   | { name: "privacy" }
   | { name: "terms" }
   | null;
 
 export function parseHash(hash: string): Route {
-  const path = hash.replace(/^#/, "").replace(/\/+$/, "");
+  // A query after the route (#/practice?surprise=1) is the page's own business.
+  const path = hash.replace(/^#/, "").split("?")[0].replace(/\/+$/, "");
   if (path === "/league") return { name: "league" };
   if (path === "/admin") return { name: "admin" };
+  if (path === "/learn") return { name: "learn" };
+  if (path === "/practice") return { name: "practice" };
   if (path === "/privacy") return { name: "privacy" };
   if (path === "/terms") return { name: "terms" };
   const event = /^\/event\/(\d+)$/.exec(path);
   if (event) return { name: "event", id: Number(event[1]) };
   const results = /^\/results\/(\d+)$/.exec(path);
   if (results) return { name: "results", id: Number(results[1]) };
+  const practiceCase = /^\/practice\/([0-9a-z]{6})$/.exec(path);
+  if (practiceCase) return { name: "practice", code: practiceCase[1] };
   const workspace = /^\/workspace\/(\d+)$/.exec(path);
   if (workspace) return { name: "workspace", id: Number(workspace[1]) };
   return null;

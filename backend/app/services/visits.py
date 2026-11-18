@@ -23,6 +23,8 @@ PAGES = frozenset({
     "privacy", "terms",
     # research workspace (2026-11-13)
     "workspace",
+    # first-visit guide (2026-11-18)
+    "learn",
 })
 
 

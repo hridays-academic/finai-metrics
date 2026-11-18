@@ -53,7 +53,7 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # The Terms of Use / Privacy Policy version a user agrees to (the date the
 # pages were last changed). Bump it when either page changes materially:
 # every account whose terms_version differs is asked to agree again.
-TERMS_VERSION = "2026-11-13"
+TERMS_VERSION = "2026-11-18"
 _TERMS_REQUIRED = "Please agree to the Terms of Use and Privacy Policy to create an account."
 
 
@@ -254,7 +254,7 @@ def log_out(token: str) -> None:
 
 
 _USER_COLUMNS = """u.id, u.email, u.name, u.created_at, u.password_hash, u.handle, u.age_band,
-    u.guardian_consent_status, u.school_name, u.terms_accepted_at, u.terms_version"""
+    u.guardian_consent_status, u.school_name, u.terms_accepted_at, u.terms_version, u.guide_seen_at"""
 
 
 def _user_dict(row: dict) -> dict:
@@ -271,6 +271,7 @@ def _user_dict(row: dict) -> dict:
         "is_admin": row["email"].strip().lower() in get_settings().admin_email_set,
         "terms_accepted_at": row["terms_accepted_at"].isoformat() if row["terms_accepted_at"] else None,
         "needs_terms": row["terms_version"] != TERMS_VERSION,
+        "guide_seen": row["guide_seen_at"] is not None,
     }
 
 
@@ -315,6 +316,13 @@ def accept_terms(user_id: int) -> None:
         )
 
 
+def mark_guide_seen(user_id: int) -> None:
+    """The first-visit guide was opened or skipped: never show it again on
+    any device. Keeps the first time it was seen."""
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET guide_seen_at = COALESCE(guide_seen_at, NOW()) WHERE id = %s", (user_id,))
+
+
 def delete_account(user_id: int) -> None:
     """Deletes a user's personal data, keeping their forecasts anonymised.
 
@@ -346,7 +354,7 @@ def delete_account(user_id: int) -> None:
                 handle = NULL, school_name = NULL, age_band = NULL,
                 guardian_consent_status = NULL, guardian_consent_by = NULL,
                 guardian_consent_method = NULL, guardian_consent_date = NULL,
-                terms_accepted_at = NULL, terms_version = NULL, deleted_at = NOW()
+                terms_accepted_at = NULL, terms_version = NULL, guide_seen_at = NULL, deleted_at = NOW()
             WHERE id = %s
             """,
             (user_id,),

@@ -24,6 +24,17 @@ import { DIFFICULTY_LABEL, difficultyOf, fromProviderRows } from "../../lib/diff
 // Reduced motion, or no sticky support: the chapters as a plain stacked list
 // with the card flat. Scroll work touches transforms and opacity only.
 
+// Practice (2026-11-18) reuses the story: its own back link, quarter names
+// (Mystery mode's relative calendar), a share price already cut to the date
+// and indexed (first week = 100), and revenue as an index.
+export interface StoryPractice {
+  backHref: string;
+  backLabel: string;
+  quarterName: (end: string) => string;
+  prices: { date: string; index: number }[] | null;
+  hideDates: boolean;
+}
+
 interface CompanyStoryProps {
   event: EventDetail;
   explainer: SectorExplainer | undefined;
@@ -31,6 +42,7 @@ interface CompanyStoryProps {
   sectorName: string;
   hasForecast: boolean;
   onJumpToForm: () => void;
+  practice?: StoryPractice;
 }
 
 // [rotateX, rotateY, rotateZ, scale] at the middle of each chapter. Chapter 2
@@ -114,7 +126,7 @@ function canPin(): boolean {
 }
 
 function yearAgo(iso: string): string {
-  return `${Number(iso.slice(0, 4)) - 1}${iso.slice(4)}`;
+  return `${String(Number(iso.slice(0, 4)) - 1).padStart(4, "0")}${iso.slice(4)}`;
 }
 
 function value(v: number | undefined, unit: string): string {
@@ -129,6 +141,7 @@ export default function CompanyStory({
   sectorName,
   hasForecast,
   onJumpToForm,
+  practice,
 }: CompanyStoryProps) {
   const [pinned] = useState(canPin);
   const [chapter, setChapter] = useState(0);
@@ -154,10 +167,16 @@ export default function CompanyStory({
 
   // The share price, at least 30 days old, for chapter 05. Its line draws in
   // the first time the chapter comes up.
-  const [prices, setPrices] = useState<{ points: PricePoint[]; asOf: string | null } | null>(null);
+  const [fetchedPrices, setPrices] = useState<{ points: PricePoint[]; asOf: string | null } | null>(null);
+  const prices = practice
+    ? practice.prices && {
+        points: practice.prices.map((p) => ({ date: p.date, open: p.index, high: p.index, low: p.index, close: p.index, volume: null })),
+        asOf: null,
+      }
+    : fetchedPrices;
   const symbol = event.company.provider_symbol;
   useEffect(() => {
-    if (!symbol) return;
+    if (!symbol || practice) return;
     let cancelled = false;
     fetchPriceHistory(symbol)
       .then((r) => !cancelled && setPrices({ points: r.points.slice(-52), asOf: r.price_as_of }))
@@ -325,7 +344,10 @@ export default function CompanyStory({
 
   const quarters = [...previousQuarterEnds(event.period_end_date, 8)].reverse();
   const byEnd = new Map(history?.provider_rows.map((r) => [r.period_end_date, r]));
-  const quarterLabels = quarters.map(quarterLabel);
+  const quarterName = practice?.quarterName ?? quarterLabel;
+  const quarterLabels = quarters.map(quarterName);
+  const revenueLabel = practice ? "Revenue index*" : "Revenue*";
+  const revenueFormat = practice ? (v: number) => v.toFixed(0) : crorePlain;
 
   const chapters = [
     <>
@@ -349,10 +371,10 @@ export default function CompanyStory({
     history ? (
       <div className="chapter-trends">
         <QuarterSparkline
-          label="Revenue*"
+          label={revenueLabel}
           values={quarters.map((end) => byEnd.get(end)?.revenue ?? null)}
           quarterLabels={quarterLabels}
-          format={crorePlain}
+          format={revenueFormat}
         />
         <QuarterSparkline
           label="Op. margin*"
@@ -397,7 +419,15 @@ export default function CompanyStory({
           not a tip.
         </li>
       </ol>
-      {prices && prices.points.length > 1 && <PriceLine points={prices.points} asOf={prices.asOf} drawn={priceSeen || !pinned} />}
+      {prices && prices.points.length > 1 && (
+        <PriceLine
+          points={prices.points}
+          asOf={prices.asOf}
+          drawn={priceSeen || !pinned}
+          indexed={!!practice}
+          hideDates={practice?.hideDates ?? false}
+        />
+      )}
     </>,
     scored ? (
       <a className="btn btn-primary btn-arrow" href={`#/results/${event.id}`}>
@@ -462,17 +492,17 @@ export default function CompanyStory({
             <span className="card3d-mid">
               <span className="card3d-id">
                 <span className="card3d-name">{event.company.name}</span>
-                <span className="card3d-ticker">{event.company.ticker}</span>
+                {event.company.ticker && <span className="card3d-ticker">{event.company.ticker}</span>}
               </span>
               {hasSpark && (
                 <span className="card3d-spark">
-                  <span className="card3d-spark-label">Revenue*</span>
+                  <span className="card3d-spark-label">{revenueLabel}</span>
                   <CardSpark values={revenues} />
                 </span>
               )}
             </span>
             <span className="card3d-foot">
-              <span>Results {formatDay(event.results_date)}</span>
+              {event.results_date && <span>Results {formatDay(event.results_date)}</span>}
               {event.status === "open" && <LockCountdown lockAt={event.lock_at} serverNow={event.server_now} compact />}
             </span>
           </>
@@ -521,11 +551,11 @@ export default function CompanyStory({
 
   const heading = (
     <div className="story-title">
-      <a className="back-link" href="#/league" data-keep-scroll>
-        ← Companies
+      <a className="back-link" href={practice?.backHref ?? "#/league"} data-keep-scroll>
+        {practice?.backLabel ?? "← Companies"}
       </a>
       <h1 className="story-company">
-        {event.company.name} <span className="story-ticker">{event.company.ticker}</span>
+        {event.company.name} {event.company.ticker && <span className="story-ticker">{event.company.ticker}</span>}
       </h1>
     </div>
   );
@@ -618,7 +648,15 @@ export default function CompanyStory({
 
 // A year of weekly closing prices (each at least 30 days old) as one line,
 // drawn in from the left the first time its chapter comes up.
-function PriceLine({ points, asOf, drawn }: { points: PricePoint[]; asOf: string | null; drawn: boolean }) {
+// Practice: `indexed` (first week = 100, never rupees) and, in Mystery mode,
+// `hideDates`.
+function PriceLine({ points, asOf, drawn, indexed = false, hideDates = false }: {
+  points: PricePoint[];
+  asOf: string | null;
+  drawn: boolean;
+  indexed?: boolean;
+  hideDates?: boolean;
+}) {
   const W = 320;
   const H = 72;
   const PAD = 6;
@@ -629,30 +667,42 @@ function PriceLine({ points, asOf, drawn }: { points: PricePoint[]; asOf: string
   const y = (v: number) => (hi === lo ? H / 2 : PAD + ((hi - v) * (H - 2 * PAD)) / (hi - lo));
   const d = closes.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join("");
   const last = points[points.length - 1];
-  const rupees = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  const rupees = (v: number) =>
+    indexed ? v.toFixed(0) : `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  const day = (iso: string) => (hideDates ? "" : formatDay(iso, true));
   return (
     <figure className={`sparkline chapter-price ${drawn ? "is-drawn" : "draw-pending"}`}>
       <figcaption className="sparkline-head">
-        <span className="sparkline-label">Share price*</span>
+        <span className="sparkline-label">{indexed ? "Share price index*" : "Share price*"}</span>
         <span className="sparkline-value">
-          {rupees(last.close)} <span className="sparkline-when">{formatDay(asOf ?? last.date, true)}</span>
+          {rupees(last.close)} <span className="sparkline-when">{day(asOf ?? last.date)}</span>
         </span>
       </figcaption>
       <svg
         className="sparkline-svg"
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        aria-label={`Share price, weekly closes from ${formatDay(points[0].date, true)} to ${formatDay(last.date, true)}: from ${rupees(points[0].close)} to ${rupees(last.close)}.`}
+        aria-label={
+          hideDates
+            ? `Share price index, a year of weekly closes before the results: from ${rupees(points[0].close)} to ${rupees(last.close)}.`
+            : `Share price, weekly closes from ${formatDay(points[0].date, true)} to ${formatDay(last.date, true)}: from ${rupees(points[0].close)} to ${rupees(last.close)}.`
+        }
       >
         <line className="sparkline-base" x1={PAD} x2={W - PAD} y1={H - 1} y2={H - 1} />
         <path className="sparkline-line" d={d} pathLength={1} />
         <circle className="sparkline-dot is-last" cx={x(points.length - 1)} cy={y(last.close)} r={4.5} style={{ animationDelay: "600ms" }} />
       </svg>
-      <div className="sparkline-range" aria-hidden="true">
-        <span>{formatDay(points[0].date, true)}</span>
-        <span>{formatDay(last.date, true)}</span>
-      </div>
-      <p className="footnote">*Weekly closes, each at least 30 days old.</p>
+      {!hideDates && (
+        <div className="sparkline-range" aria-hidden="true">
+          <span>{formatDay(points[0].date, true)}</span>
+          <span>{formatDay(last.date, true)}</span>
+        </div>
+      )}
+      <p className="footnote">
+        {indexed
+          ? "*Weekly closes in the year before the results, as an index: the first week = 100."
+          : "*Weekly closes, each at least 30 days old."}
+      </p>
     </figure>
   );
 }

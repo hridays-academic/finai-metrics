@@ -452,4 +452,112 @@ class AuditEntryOut(BaseModel):
     details: Optional[dict]
 
 
+
+# ---------- Practice (2026-11-18) ----------
+# Everything a practice page gets is already cut to the moment forecasts for
+# that quarter closed. In Mystery mode nothing identifies the company: no
+# name, ticker, season, results date, source link or research tip, and dates
+# are on a relative calendar (see practice.py: the quarter being forecast is
+# placed in year 100, so months and quarter order stay true but the year is
+# hidden). Revenue and the share price are always indexed (first = 100).
+
+class PracticeCardOut(BaseModel):
+    code: str
+    sector: str
+    sector_name: str
+    difficulty: Optional[str]  # "easy" | "medium" | "hard" | None (too little data)
+    mystery_line: Optional[str]  # Mystery mode only
+    name: Optional[str] = None  # the rest only when Mystery mode is off
+    ticker: Optional[str] = None
+    season_label: Optional[str] = None
+    description: Optional[str] = None
+    first_score: Optional[float] = None  # signed in, after a saved first try
+    attempts: int = 0
+
+
+class PracticeQuarterOut(BaseModel):
+    period_end_date: str
+    revenue_index: Optional[float]  # first quarter shown = 100
+    operating_margin_pct: Optional[float]
+
+
+class PracticeActualOut(BaseModel):
+    period_end_date: str
+    metric_key: str
+    value: float
+    source_url: Optional[str]  # None in Mystery mode
+
+
+class PracticeCaseOut(BaseModel):
+    code: str
+    mystery: bool
+    sector: str
+    sector_name: str
+    description: Optional[str]
+    name: Optional[str]
+    ticker: Optional[str]
+    season_label: Optional[str]
+    results_date: Optional[date]
+    period_end_date: str
+    metrics: list[MetricDefinitionOut]
+    research_notes: Optional[str]
+    quarters: list[PracticeQuarterOut]
+    actuals: list[PracticeActualOut]
+    provider_source: str
+    provider_definition: str
+    provider_as_of: Optional[datetime]  # None in Mystery mode
+
+
+class PracticePricePoint(BaseModel):
+    date: str
+    index: float
+
+
+class PracticePricesOut(BaseModel):
+    points: list[PracticePricePoint]  # weekly, up to a year, before the cut
+
+
+class PracticeRangeIn(BaseModel):
+    metric_key: str
+    low: float
+    high: float
+
+    @model_validator(mode="after")
+    def _ordered(self):
+        if self.low > self.high:
+            raise ValueError("low must not be above high")
+        return self
+
+
+class PracticeAttemptIn(BaseModel):
+    ranges: list[PracticeRangeIn]
+    mystery: bool = True
+
+
+class PracticeRevealOut(BaseModel):
+    name: str
+    ticker: str
+    season_label: str
+    results_date: date
+    sources: dict[str, str]  # metric_key -> the filing the result came from
+
+
+class PracticeAttemptOut(BaseModel):
+    metrics: list[MetricResultOut]
+    event_score: float
+    event_score_explanation: str
+    reveal: PracticeRevealOut
+    saved: bool
+    # "signed_out" | "consent_pending" | "profile_required" | "terms_required" when not saved
+    not_saved_reason: Optional[str]
+    is_replay: bool
+    first_score: Optional[float]  # the saved first try's score, on a replay
+
+
+class PracticeMineOut(BaseModel):
+    code: str
+    first_score: Optional[float]
+    attempts: int
+
+
 ResearchHistoryOut.model_rebuild()

@@ -205,6 +205,8 @@ export interface UserPublic {
   // version is accepted (App.tsx then shows TermsPrompt).
   terms_accepted_at: string | null;
   needs_terms: boolean;
+  // The first-visit guide's spotlight was opened or skipped on this account.
+  guide_seen?: boolean;
 }
 
 export interface AuthResponse {
@@ -674,4 +676,60 @@ export interface Workspace {
   news_since: string | null;
   save_blocked: "sign_in" | "terms_required" | "profile_required" | "guardian_consent_pending" | null;
   state: WorkspaceState | null;
+}
+
+// ---------- Practice (2026-11-18) ----------
+// Everything comes cut to the moment forecasts for that quarter closed. In
+// Mystery mode the server leaves out the name, ticker, season, results date,
+// source links and research tip, and puts dates on a relative calendar (the
+// quarter being forecast sits in year 100). Revenue and the share price are
+// indexes (first = 100).
+
+export interface PracticeCard {
+  code: string;
+  sector: string;
+  sector_name: string;
+  difficulty: "easy" | "medium" | "hard" | null;
+  mystery_line: string | null;
+  name: string | null;
+  ticker: string | null;
+  season_label: string | null;
+  description: string | null;
+  first_score: number | null;
+  attempts: number;
+}
+
+export interface PracticeCase {
+  code: string;
+  mystery: boolean;
+  sector: string;
+  sector_name: string;
+  description: string | null;
+  name: string | null;
+  ticker: string | null;
+  season_label: string | null;
+  results_date: string | null;
+  period_end_date: string;
+  metrics: LeagueMetric[];
+  research_notes: string | null;
+  quarters: { period_end_date: string; revenue_index: number | null; operating_margin_pct: number | null }[];
+  actuals: { period_end_date: string; metric_key: string; value: number; source_url: string | null }[];
+  provider_source: string;
+  provider_definition: string;
+  provider_as_of: string | null;
+}
+
+export interface PracticePrices {
+  points: { date: string; index: number }[];
+}
+
+export interface PracticeAttempt {
+  metrics: MetricResult[];
+  event_score: number;
+  event_score_explanation: string;
+  reveal: { name: string; ticker: string; season_label: string; results_date: string; sources: Record<string, string> };
+  saved: boolean;
+  not_saved_reason: "signed_out" | "consent_pending" | "profile_required" | "terms_required" | null;
+  is_replay: boolean;
+  first_score: number | null;
 }

@@ -1,6 +1,10 @@
 import type {
   Video,
   PeerSummary,
+  PracticeAttempt,
+  PracticeCard,
+  PracticeCase,
+  PracticePrices,
   CompanyNews,
   MacroSeries,
   NewsList,
@@ -249,6 +253,16 @@ export async function acceptTerms(): Promise<UserPublic> {
   return res.json();
 }
 
+// The first-visit spotlight was opened or skipped: remember it on the account.
+export async function markGuideSeen(): Promise<UserPublic> {
+  const res = await fetch(`${BASE_URL}/league/me/guide-seen`, { method: "POST", headers: authHeaders() });
+  if (!res.ok) {
+    const { message } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status);
+  }
+  return res.json();
+}
+
 // Settings -> Delete my account. `confirm` must be the typed word "DELETE".
 export async function deleteAccount(confirm: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/auth/delete-account`, {
@@ -291,6 +305,8 @@ export type VisitPage =
   | "reset_password"
   | "admin"
   | "league"
+  | "learn"
+  | "practice"
   | "workspace"
   | "event"
   | "results"
@@ -350,6 +366,17 @@ export const fetchMyResult = (id: number) => leagueRequest<EventResult>("GET", `
 export const fetchOutcome = (id: number) => leagueRequest<EventOutcome>("GET", `/league/events/${id}/outcome`);
 export const fetchRecentResults = () => leagueRequest<RecentResult[]>("GET", "/league/recent-results");
 export const fetchMySeason = () => leagueRequest<Season>("GET", "/league/me/season");
+
+// ---------- Practice (2026-11-18) ----------
+const mysteryQuery = (mystery: boolean) => `mystery=${mystery ? "true" : "false"}`;
+export const fetchPracticeCases = (mystery: boolean) =>
+  leagueRequest<PracticeCard[]>("GET", `/practice/cases?${mysteryQuery(mystery)}`);
+export const fetchPracticeCase = (code: string, mystery: boolean) =>
+  leagueRequest<PracticeCase>("GET", `/practice/cases/${code}?${mysteryQuery(mystery)}`);
+export const fetchPracticePrices = (code: string, mystery: boolean) =>
+  leagueRequest<PracticePrices>("GET", `/practice/cases/${code}/prices?${mysteryQuery(mystery)}`);
+export const submitPracticeAttempt = (code: string, ranges: ForecastValue[], mystery: boolean) =>
+  leagueRequest<PracticeAttempt>("POST", `/practice/cases/${code}/attempt`, { ranges, mystery });
 export const fetchResearchHistory = (companyId: number) =>
   leagueRequest<ResearchHistory>("GET", `/league/companies/${companyId}/history`);
 // Research workspace: steps for anyone, saved notes/ticks/worksheet for the student.

@@ -76,6 +76,12 @@ def company_history(company_id: int) -> ResearchHistoryOut:
     return research_history.company_history(company_id)
 
 
+@router.post("/me/guide-seen", response_model=UserPublic)
+def guide_seen(user: dict = Depends(require_user)) -> UserPublic:
+    auth_service.mark_guide_seen(user["id"])
+    return UserPublic(**auth_service.get_user_by_id(user["id"]))
+
+
 @router.patch("/me", response_model=UserPublic)
 def update_me(body: ProfileIn, user: dict = Depends(require_user)) -> UserPublic:
     with get_conn() as conn:

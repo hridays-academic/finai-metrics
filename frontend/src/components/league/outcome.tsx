@@ -46,7 +46,7 @@ export function outcomeSummary(metrics: OutcomeMetric[], sector: string): string
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function hostOf(url: string): string {
+export function hostOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
   } catch {

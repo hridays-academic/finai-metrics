@@ -197,29 +197,44 @@ LEAGUE_SCHEMA_STATEMENTS = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_league_members_user_id ON league_members(user_id)",
-    # ---------- Practice (Time Machine) ----------
-    # Kept entirely apart from forecasts/scores so practice can never leak
-    # into league or season scores. The attempt's values column is
-    # submitted_values (not "values", a reserved SQL word).
+    # ---------- Practice (2026-11-18, schema v17) ----------
+    # Practice reuses scored league events (their approved results and the
+    # lazy guesses as scored), so it only stores attempts. Kept entirely apart
+    # from forecasts/scores so practice can never reach results pages, season
+    # scores or leaderboards. The old yearly "Time Machine" tables were never
+    # read or written by any code; they are dropped only when empty, and the
+    # migration stops (never deletes data) if either has rows.
     """
-    CREATE TABLE IF NOT EXISTS practice_cases (
-        id SERIAL PRIMARY KEY,
-        company_id INTEGER NOT NULL REFERENCES companies(id),
-        years_json JSONB NOT NULL,
-        target_year_actuals JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
+    DO $$
+    BEGIN
+        IF to_regclass('practice_cases') IS NOT NULL THEN
+            IF EXISTS (SELECT 1 FROM practice_cases)
+               OR (to_regclass('practice_attempts') IS NOT NULL AND EXISTS (SELECT 1 FROM practice_attempts)) THEN
+                RAISE EXCEPTION 'practice_old_tables_not_empty: practice_cases/practice_attempts hold rows; '
+                                'not dropping them. Move the rows aside, then redeploy.';
+            END IF;
+            DROP TABLE IF EXISTS practice_attempts;
+            DROP TABLE practice_cases;
+        END IF;
+    END $$
     """,
     """
     CREATE TABLE IF NOT EXISTS practice_attempts (
         id SERIAL PRIMARY KEY,
-        case_id INTEGER NOT NULL REFERENCES practice_cases(id),
         user_id INTEGER NOT NULL REFERENCES users(id),
-        submitted_values JSONB NOT NULL,
-        points DOUBLE PRECISION NOT NULL,
+        event_id INTEGER NOT NULL REFERENCES forecast_events(id),
+        ranges JSONB NOT NULL,
+        points JSONB NOT NULL,
+        total_points DOUBLE PRECISION NOT NULL,
+        is_replay BOOLEAN NOT NULL,
+        mystery BOOLEAN NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
     """,
+    # The database itself guarantees one first try per student and company.
+    """CREATE UNIQUE INDEX IF NOT EXISTS practice_attempts_first_try
+       ON practice_attempts(user_id, event_id) WHERE NOT is_replay""",
+    "CREATE INDEX IF NOT EXISTS idx_practice_attempts_user ON practice_attempts(user_id)",
     # ---------- Audit log ----------
     """
     CREATE TABLE IF NOT EXISTS audit_log (
