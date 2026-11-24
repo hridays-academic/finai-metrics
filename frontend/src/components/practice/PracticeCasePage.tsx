@@ -3,7 +3,7 @@ import {
   ApiError, fetchLeagueConfig, fetchPracticeCase, fetchPracticeCases, fetchPracticePrices, submitPracticeAttempt,
 } from "../../lib/api";
 import { asEvent, asHistory, mysteryOn, practiceQuarterLabel, surprise } from "../../lib/practice";
-import { formatDay } from "../../lib/leagueFormat";
+import { formatDay, lastYearValues, scaleAround } from "../../lib/leagueFormat";
 import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import type { LeagueConfig, PracticeAttempt, PracticeCase, PracticePrices } from "../../lib/types";
 import CompanyStory from "../league/CompanyStory";
@@ -151,7 +151,11 @@ export default function PracticeCasePage({ code, onOpenAuth }: Props) {
             <h2 className="panel-title" id="forecast-title">
               Your forecast
             </h2>
-            <PracticeForm practice={practice} onScored={showResult} />
+            <PracticeForm
+              practice={practice}
+              onScored={showResult}
+              lastYear={lastYearValues(history.actuals, event.period_end_date, practice.metrics.map((m) => m.key))}
+            />
           </section>
         )}
       </aside>
@@ -161,7 +165,16 @@ export default function PracticeCasePage({ code, onOpenAuth }: Props) {
   );
 }
 
-function PracticeForm({ practice, onScored }: { practice: PracticeCase; onScored: (r: PracticeAttempt) => void }) {
+function PracticeForm({
+  practice,
+  onScored,
+  lastYear,
+}: {
+  practice: PracticeCase;
+  onScored: (r: PracticeAttempt) => void;
+  lastYear?: Record<string, number | null>;
+}) {
+  const [tried, setTried] = useState(false);
   const [ranges, setRanges] = useState<Ranges>(() =>
     Object.fromEntries(practice.metrics.map((m) => [m.key, { low: "", high: "" }]))
   );
@@ -170,6 +183,7 @@ function PracticeForm({ practice, onScored }: { practice: PracticeCase; onScored
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    setTried(true);
     const values = practice.metrics.map((m) => ({
       metric_key: m.key,
       low: Number(ranges[m.key].low),
@@ -230,10 +244,18 @@ function PracticeForm({ practice, onScored }: { practice: PracticeCase; onScored
                 </div>
               ))}
             </div>
-            <RangeLine low={valid ? Number(r.low) : null} high={valid ? Number(r.high) : null} minSpan={20} />
-            <p className={`field-hint ${width !== null && width < 0 ? "field-hint-error" : ""}`}>
+            <RangeLine
+              low={valid ? Number(r.low) : null}
+              high={valid ? Number(r.high) : null}
+              minSpan={valid ? 20 : 2}
+              domain={valid ? undefined : scaleAround(m.key, lastYear?.[m.key])}
+            />
+            {/* T11: "Enter both numbers." only after an attempt to submit. */}
+            <p className={`field-hint ${(width !== null && width < 0) || (width === null && tried) ? "field-hint-error" : ""}`}>
               {width === null
-                ? "Enter both numbers."
+                ? tried
+                  ? "Enter both numbers."
+                  : ""
                 : width < 0
                   ? "Low is above high. Swap them."
                   : `Range width: ${width.toFixed(1)} points.`}

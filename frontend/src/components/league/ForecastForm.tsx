@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { ApiError, saveForecast } from "../../lib/api";
 import { clearForecastDraft, getForecastDraft, setForecastDraft, type Range } from "../../lib/forecastDrafts";
-import { formatDay } from "../../lib/leagueFormat";
+import { formatDay, scaleAround } from "../../lib/leagueFormat";
 import type { EventDetail, Forecast, LeagueConfig, UserPublic } from "../../lib/types";
 import RangeLine from "../RangeLine";
 
@@ -14,6 +14,8 @@ interface ForecastFormProps {
   onNeedProfile: () => void;
   onOpenAuth: () => void;
   onLocked: () => void;
+  // Last year's league figure per metric: the scale centres on it (T10).
+  lastYear?: Record<string, number | null>;
 }
 
 // The saved forecast's values, with any unsaved draft from earlier in this tab on top.
@@ -27,7 +29,8 @@ function initialRanges(event: EventDetail, forecast: Forecast | null, draft?: Re
 }
 
 export default function ForecastForm(props: ForecastFormProps) {
-  const { event, config, user, forecast, onSaved, onNeedProfile, onOpenAuth, onLocked } = props;
+  const { event, config, user, forecast, onSaved, onNeedProfile, onOpenAuth, onLocked, lastYear } = props;
+  const [tried, setTried] = useState(false);
   const readOnly = event.status !== "open" || forecast?.locked === true;
   const needsConsent = user?.age_band === "under_18" && user.guardian_consent_status !== "granted";
 
@@ -69,6 +72,7 @@ export default function ForecastForm(props: ForecastFormProps) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setTried(true);
     if (!user) return onOpenAuth();
     if (!user.handle || !user.age_band) return onNeedProfile();
     const values = event.metrics.map((m) => ({
@@ -152,10 +156,18 @@ export default function ForecastForm(props: ForecastFormProps) {
               </div>
             </div>
             {/* Redrawn as you type, once both ends make a range. */}
-            <RangeLine low={valid ? Number(r.low) : null} high={valid ? Number(r.high) : null} minSpan={20} />
-            <p className={`field-hint ${width !== null && width < 0 ? "field-hint-error" : ""}`}>
+            <RangeLine
+              low={valid ? Number(r.low) : null}
+              high={valid ? Number(r.high) : null}
+              minSpan={valid ? 20 : 2}
+              domain={valid ? undefined : scaleAround(m.key, lastYear?.[m.key])}
+            />
+            {/* T11: "Enter both numbers." only after an attempt to submit. */}
+            <p className={`field-hint ${(width !== null && width < 0) || (width === null && tried) ? "field-hint-error" : ""}`}>
               {width === null
-                ? "Enter both numbers."
+                ? tried
+                  ? "Enter both numbers."
+                  : ""
                 : width < 0
                   ? "Low is above high. Swap them."
                   : `Range width: ${width.toFixed(1)} points.`}

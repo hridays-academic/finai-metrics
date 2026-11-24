@@ -80,3 +80,28 @@ export function latestLeague(
 }
 
 export const signedPct = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}%`;
+
+// The same quarter end a year earlier ("2026-09-30" -> "2025-09-30").
+export function yearAgoEnd(iso: string): string {
+  return `${String(Number(iso.slice(0, 4)) - 1).padStart(4, "0")}${iso.slice(4)}`;
+}
+
+// Last year's league figure for each metric (the lazy guess), or null.
+export function lastYearValues(
+  actuals: { period_end_date: string; metric_key: string; value: number }[] | undefined,
+  periodEnd: string,
+  keys: string[]
+): Record<string, number | null> {
+  const end = yearAgoEnd(periodEnd);
+  return Object.fromEntries(
+    keys.map((k) => [k, actuals?.find((a) => a.period_end_date === end && a.metric_key === k)?.value ?? null])
+  );
+}
+
+// T10/F5 (master plan): before any typing, a metric's scale centres on last
+// year's value: +-8 points for the margin, +-10 for growth figures.
+export function scaleAround(key: string, lastYear: number | null | undefined): [number, number] | undefined {
+  if (lastYear === null || lastYear === undefined) return undefined;
+  const half = key === "operating_margin" ? 8 : 10;
+  return [lastYear - half, lastYear + half];
+}

@@ -21,6 +21,9 @@ interface RangeLineProps {
   // reads as narrow instead of filling the whole line.
   minSpan?: number;
   compact?: boolean;
+  // Values the scale must always include (T10: last year +-8 or +-10), so
+  // the line fits the metric before anything is typed.
+  domain?: [number, number];
   // With a label the line is an image for screen readers; without one it is
   // decorative (the same figures are in the text next to it).
   ariaLabel?: string;
@@ -95,6 +98,7 @@ export default function RangeLine({
   minSpan = 2,
   compact = false,
   ariaLabel,
+  domain,
 }: RangeLineProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -110,7 +114,7 @@ export default function RangeLine({
   }, []);
 
   const hasRange = low !== null && high !== null && Number.isFinite(low) && Number.isFinite(high) && low <= high;
-  const values = [...(hasRange ? [low as number, high as number] : []), ...marks.map((m) => m.value)];
+  const values = [...(hasRange ? [low as number, high as number] : []), ...marks.map((m) => m.value), ...(domain ?? [])];
   const inset = 10; // room for the dot and the edge numbers
   const usable = Math.max(width - inset * 2, 1);
   const { lo, hi, step, ticks } = lineScale(values, minSpan, compact ? 3 : Math.max(3, Math.round(usable / 70)));

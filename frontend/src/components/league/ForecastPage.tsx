@@ -5,7 +5,7 @@ import {
 import { takeFormJump } from "../../lib/forecastDrafts";
 import type { Theme } from "../../hooks/useTheme";
 import type { EventDetail, EventOutcome, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
-import { formatCrore, formatDay, latestLeague } from "../../lib/leagueFormat";
+import { formatCrore, formatDay, lastYearValues, latestLeague } from "../../lib/leagueFormat";
 import { usePinIfFits } from "../../hooks/usePinIfFits";
 import ForecastForm from "./ForecastForm";
 import LockCountdown, { formatIst } from "./LockCountdown";
@@ -279,6 +279,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
             <ForecastForm
               key={loadedFor ?? "loading"}
               event={event}
+              lastYear={lastYearValues(history?.actuals, event.period_end_date, event.metrics.map((m) => m.key))}
               config={config}
               user={user}
               forecast={forecast}

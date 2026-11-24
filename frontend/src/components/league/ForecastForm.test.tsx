@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EventDetail, LeagueConfig } from "../../lib/types";
 
@@ -37,5 +37,14 @@ describe("forecast form started from the worksheet", () => {
     setForecastDraft(3, { ranges: { revenue_growth_yoy: { low: "1", high: "2" } }, tags: [], note: "" });
     renderForm();
     expect(screen.queryByText(/Started from your worksheet/)).toBeNull();
+  });
+});
+
+describe("before typing (T10, T11)", () => {
+  it("shows no error until a submit is tried", () => {
+    renderForm();
+    expect(screen.queryByText("Enter both numbers.")).toBeNull();
+    fireEvent.submit(document.querySelector("form.league-form") as HTMLFormElement);
+    expect(screen.getByText("Enter both numbers.")).toBeTruthy();
   });
 });
