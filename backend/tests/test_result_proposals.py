@@ -106,4 +106,7 @@ def test_pilot_student_notes_are_the_approved_wording():
         ("JYOTHYLAB", "sector_kpi"): "Jyothy stopped selling Pril and Fa on 31 May 2026. Its volume growth leaves "
                                      "them out, as Jyothy reports it.",
         ("JYOTHYLAB", "revenue_growth_yoy"): "Includes Pril and Fa sales only until 31 May 2026, as reported.",
+        # DRAFT 24 Nov (audit T1), awaiting approval in "Decisions for Hriday (master plan)".
+        ("JYOTHYLAB", "operating_margin"): "Raw material and packaging costs rose unusually fast this quarter, "
+                                           "Jyothy says, so its margin fell from 16.1% to 2.5%.",
     }

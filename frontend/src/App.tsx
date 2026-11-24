@@ -316,6 +316,7 @@ export default function App() {
           <div className={`view-wrapper ${showResearch ? "" : "view-hidden"}`}>
             <div className="page research-page">
               <CompanySearch
+                visible={showResearch}
                 onSearch={handleSearch}
                 loading={loading}
                 error={error}

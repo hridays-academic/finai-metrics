@@ -9,9 +9,12 @@ interface CompanySearchProps {
   // Set when the visitor arrived from a company page, for the way back.
   backTo?: { eventId: number; name: string } | null;
   onBack?: () => void;
+  // A2: the page's only h1 while Research is shown; an h2 while it waits hidden.
+  visible?: boolean;
 }
 
-export default function CompanySearch({ onSearch, loading, error, prefill, backTo, onBack }: CompanySearchProps) {
+export default function CompanySearch({ onSearch, loading, error, prefill, backTo, onBack, visible = true }: CompanySearchProps) {
+  const Title = visible ? "h1" : "h2";
   const [query, setQuery] = useState(prefill ?? "");
 
   useEffect(() => {
@@ -36,9 +39,9 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
           ← Back to forecast: {backTo.name}
         </a>
       )}
-      <h1 className="research-title" id="research-title">
+      <Title className="research-title" id="research-title">
         Research
-      </h1>
+      </Title>
       <form className="search-form" onSubmit={handleSubmit}>
         <input
           className="input search-input"
