@@ -13,11 +13,17 @@ export type Route =
   | { name: "practice"; code?: string }
   | { name: "privacy" }
   | { name: "terms" }
+  | { name: "research" }
+  // T16: an address that isn't a page gets "page not found", never Home.
+  | { name: "notfound" }
   | null;
 
 export function parseHash(hash: string): Route {
   // A query after the route (#/practice?surprise=1) is the page's own business.
   const path = hash.replace(/^#/, "").split("?")[0].replace(/\/+$/, "");
+  // No hash, "#" or "#/": Home (and the hidden extra tools' views).
+  if (path === "") return null;
+  if (path === "/research") return { name: "research" };
   if (path === "/league") return { name: "league" };
   if (path === "/admin") return { name: "admin" };
   if (path === "/learn") return { name: "learn" };
@@ -32,7 +38,7 @@ export function parseHash(hash: string): Route {
   if (practiceCase) return { name: "practice", code: practiceCase[1] };
   const workspace = /^\/workspace\/(\d+)$/.exec(path);
   if (workspace) return { name: "workspace", id: Number(workspace[1]) };
-  return null;
+  return { name: "notfound" };
 }
 
 export function useHashRoute(): Route {

@@ -39,7 +39,9 @@ describe("Admin button in the main navigation", () => {
 
   it("marks itself current on the admin page", () => {
     render(<Sidebar view={null} onChange={vi.fn()} user={user(true)} adminActive onOpenAdmin={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "Admin" }).getAttribute("aria-current")).toBe("true");
+    expect(screen.getByRole("button", { name: "Admin" }).getAttribute("aria-current")).toBe("page");
+    // T22: nothing else is lit.
+    expect(document.querySelectorAll(".nav-tab.active")).toHaveLength(1);
   });
 
   it.each([
@@ -49,7 +51,8 @@ describe("Admin button in the main navigation", () => {
     const { container } = render(<Sidebar view="home" onChange={vi.fn()} user={who} onOpenAdmin={vi.fn()} />);
     expect(screen.queryByRole("button", { name: "Admin" })).toBeNull();
     expect(container.textContent).not.toMatch(/admin/i);
-    expect(screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Home", "Practice", "Research"]);
+    expect(screen.queryAllByRole("button")).toEqual([]);
+    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "Practice", "Research"]);
   });
 });
 
@@ -73,5 +76,20 @@ describe("Admin page for visitors who aren't admins", () => {
   it("loads the Companies board for an admin", () => {
     render(<AdminPage user={user(true)} onOpenAuth={vi.fn()} />);
     expect(api.adminListEvents).toHaveBeenCalled();
+  });
+});
+
+describe("Home, Practice and Research are real links (I1, T17, T22)", () => {
+  it("have addresses, so Back works and they open in a new tab", () => {
+    render(<Sidebar view="search" onChange={vi.fn()} hrefs={{ home: "#/event/3" }} />);
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(["#/event/3", "#/practice", "#/research"]);
+    expect(screen.getByRole("link", { name: "Research" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Home" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it("lights nothing on pages outside the three tabs", () => {
+    render(<Sidebar view={null} onChange={vi.fn()} />);
+    expect(document.querySelectorAll(".nav-tab.active, [aria-current='page']")).toHaveLength(0);
   });
 });

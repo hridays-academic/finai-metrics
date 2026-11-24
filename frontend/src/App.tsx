@@ -27,7 +27,8 @@ import ResultsPage from "./components/league/ResultsPage";
 import WorkspacePage from "./components/workspace/WorkspacePage";
 import { clearWorkspaceMemory } from "./lib/workspaceMemory";
 import ResearchLanding from "./components/news/ResearchLanding";
-import { clearRoute, leaveRoute, navigate, replaceRoute, useHashRoute } from "./lib/router";
+import { clearRoute, leaveRoute, navigate, useHashRoute } from "./lib/router";
+import NotFound from "./components/NotFound";
 import { clearForecastDrafts } from "./lib/forecastDrafts";
 import { useTheme } from "./hooks/useTheme";
 import { usePageMotion } from "./hooks/usePageMotion";
@@ -82,14 +83,24 @@ export default function App() {
   // A company page belongs to Home in the nav; admin, legal pages and the
   // guide to nothing.
   const showPractice = route?.name === "practice" || (route === null && view === "practice");
+  // T17 (master plan): Research has its own address, #/research.
+  const showResearch = route?.name === "research" || (route === null && view === "search");
+  // T22: exactly one tab lit; none on the guide, legal, admin or not-found pages.
   const navView: View | null =
-    route?.name === "admin" || isLegalRoute || route?.name === "learn"
+    route?.name === "admin" || isLegalRoute || route?.name === "learn" || route?.name === "notfound"
       ? null
       : showPractice
         ? "practice"
-        : route !== null
-          ? "home"
-          : view;
+        : showResearch
+          ? "search"
+          : route !== null
+            ? "home"
+            : view;
+  // Back/Forward between tabs: the view follows the address.
+  useEffect(() => {
+    if (route?.name === "research") setView("search");
+    else if (route === null) setView((v) => (v === "search" || v === "practice" ? "home" : v));
+  }, [route]);
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +146,8 @@ export default function App() {
   useEffect(() => {
     if (!visitRecorded) {
       visitRecorded = true;
-      recordVisit(resetToken ? "reset_password" : route ? route.name : "home");
+      if (route?.name !== "notfound")
+        recordVisit(resetToken ? "reset_password" : route ? (route.name === "research" ? "search" : route.name) : "home");
     }
     // The app used to keep a user's own Tapetide API key here. That
     // integration is gone; delete any key a previous version left behind.
@@ -201,7 +213,7 @@ export default function App() {
     setResearchFrom(from);
     setResearchPrefill(symbol);
     markFreshNavigation();
-    leaveRoute();
+    navigate("#/research");
     setView("search");
     handleSearch(symbol);
   }
@@ -222,7 +234,7 @@ export default function App() {
 
   // Tabs keep their place. Tapping the tab you're on goes back to its start:
   // Home's company page returns to the list, anything else scrolls to the top.
-  function handleChangeView(next: View) {
+  function handleChangeView(next: View, viaLink = false) {
     setResearchFrom(null);
     if (next === navView) {
       if (next === "home" && homePage) {
@@ -234,9 +246,14 @@ export default function App() {
       return;
     }
     setView(next);
-    if (next === "home" && homeAt) replaceRoute(`#/${homeAt.name}/${homeAt.id}`);
-    else if (next === "practice") replaceRoute("#/practice");
-    else clearRoute();
+    // Home, Practice and Research are links (Sidebar): the click itself moves
+    // to their address. The logo and the hidden extra tools come through here.
+    if (!viaLink) {
+      if (next === "home") navigate(homeAt ? `#/${homeAt.name}/${homeAt.id}` : "#/");
+      else if (next === "practice") navigate("#/practice");
+      else if (next === "search") navigate("#/research");
+      else clearRoute();
+    }
   }
 
   // Only reachable for admins (Sidebar renders the button for is_admin only).
@@ -263,7 +280,8 @@ export default function App() {
           nav={
             <Sidebar
               view={navView}
-              onChange={handleChangeView}
+              onChange={(v) => handleChangeView(v, true)}
+              hrefs={{ home: homeAt ? `#/${homeAt.name}/${homeAt.id}` : "#/" }}
               user={user}
               adminActive={route?.name === "admin"}
               onOpenAdmin={handleOpenAdmin}
@@ -295,7 +313,7 @@ export default function App() {
             </div>
           )}
 
-          <div className={`view-wrapper ${view === "search" && route === null ? "" : "view-hidden"}`}>
+          <div className={`view-wrapper ${showResearch ? "" : "view-hidden"}`}>
             <div className="page research-page">
               <CompanySearch
                 onSearch={handleSearch}
@@ -329,6 +347,7 @@ export default function App() {
             </>
           )}
 
+          {route?.name === "notfound" && <NotFound />}
           {route?.name === "learn" && (
             <div className="view-wrapper">
               <GuidePage onOpenResearch={() => handleChangeView("search")} />

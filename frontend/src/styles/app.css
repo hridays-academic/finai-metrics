@@ -7600,3 +7600,22 @@ a.news-card-headline:hover {
   font-size: var(--text-sm);
   line-height: 1.4;
 }
+
+/* T16: page not found. */
+.not-found {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-top: var(--space-10);
+}
+
+.not-found .page-lede {
+  max-width: 60ch;
+  color: var(--text-2);
+}
+
+.not-found-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

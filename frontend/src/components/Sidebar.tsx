@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { SHOW_EXTRA_TOOLS } from "../lib/features";
 import type { UserPublic } from "../lib/types";
 
@@ -12,23 +13,34 @@ interface SidebarProps {
   user?: UserPublic | null;
   adminActive?: boolean;
   onOpenAdmin?: () => void;
+  // I1 (master plan): Home, Practice and Research are real links, so Back and
+  // Forward move between them and they open in a new tab. Home's href is
+  // wherever Home was last (its list, or a company page opened from it).
+  hrefs?: Partial<Record<View, string>>;
 }
+
+const DEFAULT_HREFS: Partial<Record<View, string>> = { home: "#/", practice: "#/practice", search: "#/research" };
 
 // The app's primary nav: text tabs in the top bar on desktop, and a labelled
 // bottom tab bar with icons on phones (see .primary-nav in app.css). Home (the league stock picker),
 // Practice (past quarters, 2026-11-18) and Research (company search); the Return Calculator, Market Simulator and
 // Paper Trading only appear when SHOW_EXTRA_TOOLS is on. Icons match
 // Header.tsx's gear icon: 1.6-1.8 stroke width, currentColor, no fill.
-export default function Sidebar({ view, onChange, user, adminActive = false, onOpenAdmin }: SidebarProps) {
+export default function Sidebar({ view, onChange, user, adminActive = false, onOpenAdmin, hrefs = {} }: SidebarProps) {
+  // A plain click follows the link (a history entry); the tab you're already
+  // on goes back to its start instead. Modified clicks open a new tab as usual.
+  const link = (key: View) => ({
+    href: hrefs[key] ?? DEFAULT_HREFS[key],
+    "aria-current": view === key ? ("page" as const) : undefined,
+    onClick: (e: MouseEvent<HTMLAnchorElement>) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      if (view === key) e.preventDefault();
+      onChange(key);
+    },
+  });
   return (
     <nav className="primary-nav" aria-label="Primary">
-      <button
-        type="button"
-        className={`nav-tab ${view === "home" ? "active" : ""}`}
-        aria-label="Home"
-        aria-current={view === "home"}
-        onClick={() => onChange("home")}
-      >
+      <a className={`nav-tab ${view === "home" ? "active" : ""}`} {...link("home")}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
             d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H14.5v-6h-5v6H5.5A1.5 1.5 0 0 1 4 19z"
@@ -38,15 +50,9 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
           />
         </svg>
         <span className="nav-tab-label">Home</span>
-      </button>
+      </a>
 
-      <button
-        type="button"
-        className={`nav-tab ${view === "practice" ? "active" : ""}`}
-        aria-label="Practice"
-        aria-current={view === "practice"}
-        onClick={() => onChange("practice")}
-      >
+      <a className={`nav-tab ${view === "practice" ? "active" : ""}`} {...link("practice")}>
         {/* A target: practise on quarters whose answer is already known. */}
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
@@ -54,21 +60,15 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
           <circle cx="12" cy="12" r="1.1" fill="currentColor" />
         </svg>
         <span className="nav-tab-label">Practice</span>
-      </button>
+      </a>
 
-      <button
-        type="button"
-        className={`nav-tab ${view === "search" ? "active" : ""}`}
-        aria-label="Research"
-        aria-current={view === "search"}
-        onClick={() => onChange("search")}
-      >
+      <a className={`nav-tab ${view === "search" ? "active" : ""}`} {...link("search")}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
           <path d="M20 20L15.8 15.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
         <span className="nav-tab-label">Research</span>
-      </button>
+      </a>
 
       {SHOW_EXTRA_TOOLS && (
         <>
@@ -76,7 +76,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
         type="button"
         className={`nav-tab ${view === "calculator" ? "active" : ""}`}
         aria-label="Return calculator"
-        aria-current={view === "calculator"}
+        aria-current={view === "calculator" ? "page" : undefined}
         onClick={() => onChange("calculator")}
       >
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -95,7 +95,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
         type="button"
         className={`nav-tab ${view === "simulator" ? "active" : ""}`}
         aria-label="Market simulator"
-        aria-current={view === "simulator"}
+        aria-current={view === "simulator" ? "page" : undefined}
         onClick={() => onChange("simulator")}
       >
         {/* Solid bars (real past history) crossed by a dashed rising line
@@ -119,7 +119,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
         type="button"
         className={`nav-tab ${view === "trading" ? "active" : ""}`}
         aria-label="Paper trading"
-        aria-current={view === "trading"}
+        aria-current={view === "trading" ? "page" : undefined}
         onClick={() => onChange("trading")}
       >
         {/* A candlestick pair -- the most unambiguous "trading" glyph,
@@ -142,7 +142,7 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
           type="button"
           className={`nav-tab ${adminActive ? "active" : ""}`}
           aria-label="Admin"
-          aria-current={adminActive}
+          aria-current={adminActive ? "page" : undefined}
           onClick={onOpenAdmin}
         >
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
