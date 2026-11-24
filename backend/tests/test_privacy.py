@@ -8,6 +8,7 @@ import pytest
 
 from app.config import get_settings
 from app.services import auth_service, db
+from future_dates import RESULTS_DATE
 
 ADMIN = "admin@example.com"
 PASSWORD = "longenough1"
@@ -41,7 +42,7 @@ def _event(client, admin):
     res = client.post("/api/admin/events/quick", headers=admin, json={
         "exchange": "NSE", "ticker": "DEMOCEM", "company_name": "Demo Cement (fictional)", "sector": "cement",
         "fiscal_year_label": "FY27", "fiscal_quarter": 2, "period_end_date": "2026-09-30",
-        "results_date": "2026-11-20", "season_label": "Q2 FY27", "include_kpi": False, "open_now": True,
+        "results_date": RESULTS_DATE, "season_label": "Q2 FY27", "include_kpi": False, "open_now": True,
     })
     assert res.status_code == 200, res.text
     return res.json()["id"]

@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.models import PricePoint
 from app.services import practice, scoring
 from app.services.league_schema import LEAGUE_SCHEMA_STATEMENTS
+from future_dates import RESULTS_DATE
 
 ADMIN = "admin@example.com"
 SRC = "https://www.nseindia.com/q2fy27.pdf"
@@ -61,7 +62,7 @@ def scored(conn, client):
     res = client.post("/api/admin/events/quick", headers=admin, json={
         "exchange": "NSE", "ticker": "DEMOCEM", "company_name": "Demo Cement (fictional)", "sector": "cement",
         "fiscal_year_label": "FY27", "fiscal_quarter": 2, "period_end_date": "2026-09-30",
-        "results_date": "2026-11-20", "season_label": "Q2 FY27", "include_kpi": True, "open_now": True,
+        "results_date": RESULTS_DATE, "season_label": "Q2 FY27", "include_kpi": True, "open_now": True,
     })
     assert res.status_code == 200, res.text
     event = res.json()["id"]
@@ -215,7 +216,7 @@ def test_signed_out_attempt_is_scored_like_the_league_and_not_saved(conn, client
     assert out["event_score"] == pytest.approx((102 + 106 + 106) / 3)
     assert (out["saved"], out["not_saved_reason"], out["is_replay"]) == (False, "signed_out", False)
     assert out["reveal"] == {"name": "Demo Cement (fictional)", "ticker": "DEMOCEM", "season_label": "Q2 FY27",
-                             "results_date": "2026-11-20", "sources": {k: SRC for k in DEFS}}
+                             "results_date": RESULTS_DATE, "sources": {k: SRC for k in DEFS}}
     assert conn.execute("SELECT count(*) FROM practice_attempts").fetchone()[0] == 0
 
 

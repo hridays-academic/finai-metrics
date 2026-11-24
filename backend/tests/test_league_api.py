@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.config import get_settings
+from future_dates import LOCK_DAY, RESULTS_DATE
 
 ADMIN = "admin@example.com"
 
@@ -35,7 +36,7 @@ def _quick(client, admin, **overrides):
     body = {
         "exchange": "NSE", "ticker": "DEMOCEM", "company_name": "Demo Cement (fictional)", "sector": "cement",
         "fiscal_year_label": "FY27", "fiscal_quarter": 2, "period_end_date": "2026-09-30",
-        "results_date": "2026-11-20", "season_label": "Q2 FY27", "include_kpi": True,
+        "results_date": RESULTS_DATE, "season_label": "Q2 FY27", "include_kpi": True,
         # Most tests want an open event; the hidden-by-default flow has its own tests.
         "open_now": True,
     }
@@ -71,7 +72,7 @@ def test_quick_event_snapshots_definitions_and_default_lock(conn, client, setup)
         "SELECT lock_at, status, metric_definitions FROM forecast_events WHERE id = %s", (setup["event"],)
     ).fetchone()
     lock_ist = row[0].astimezone(ZoneInfo("Asia/Kolkata"))
-    assert (lock_ist.date().isoformat(), lock_ist.hour, lock_ist.minute) == ("2026-11-19", 23, 59)
+    assert (lock_ist.date().isoformat(), lock_ist.hour, lock_ist.minute) == (LOCK_DAY, 23, 59)
     assert row[1] == "open"
     keys = [m["definition_key"] for m in row[2]["metrics"]]
     assert keys == ["in.revenue_growth_yoy.v1", "in.operating_margin.v1", "in.cement.volume_growth_yoy.v1"]
@@ -287,7 +288,7 @@ def test_new_company_hidden_until_last_years_numbers_then_opens(conn, client, se
     body = {
         "exchange": "NSE", "ticker": "HIDDENCO", "company_name": "Hidden Co", "sector": "cement",
         "fiscal_year_label": "FY27", "fiscal_quarter": 2, "period_end_date": "2026-09-30",
-        "results_date": "2026-11-20", "season_label": "Q2 FY27", "include_kpi": True,
+        "results_date": RESULTS_DATE, "season_label": "Q2 FY27", "include_kpi": True,
     }
     event = client.post("/api/admin/events/quick", json=body, headers=admin).json()["id"]
     row = _board_row(client, admin, event)

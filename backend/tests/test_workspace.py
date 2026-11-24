@@ -10,6 +10,7 @@ from app.league_config import market_config
 from app.news_explanations import EVENT_EXPLANATIONS
 from app.workspace_config import REUSED_FROM_EXPLAINERS, REUSED_FROM_NEWS, STEP_KEYS, STEPS, steps_for
 from app.workspace_models import WorkspaceIn, Worksheet
+from future_dates import RESULTS_DATE
 
 ADMIN = "admin@example.com"
 SRC = "https://www.example.com/q2.pdf"
@@ -114,7 +115,7 @@ def ws(conn, client):
     body = {
         "exchange": "NSE", "ticker": "DEMOCEM", "company_name": "Demo Cement (fictional)", "sector": "cement",
         "fiscal_year_label": "FY27", "fiscal_quarter": 3, "period_end_date": "2026-12-31",
-        "results_date": "2027-01-20", "season_label": "Q3 FY27", "include_kpi": True, "open_now": True,
+        "results_date": RESULTS_DATE, "season_label": "Q3 FY27", "include_kpi": True, "open_now": True,
     }
     res = client.post("/api/admin/events/quick", json=body, headers=admin)
     assert res.status_code == 200, res.text
