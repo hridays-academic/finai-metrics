@@ -342,6 +342,8 @@ export async function fetchAdminVisits(days: number): Promise<{ days: number; ro
 // ---------- Results League ----------
 
 async function leagueRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // S2: signed-in GETs never share an edge-cache entry with anonymous ones.
+  if (method === "GET" && getAuthToken()) path += `${path.includes("?") ? "&" : "?"}a=1`;
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: { ...(body !== undefined ? { "Content-Type": "application/json" } : {}), ...authHeaders() },

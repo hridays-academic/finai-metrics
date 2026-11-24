@@ -70,6 +70,7 @@ from app.services.league_service import LeagueError
 from app.services import practice as practice_service
 from app.league_models import PracticePricesOut
 from app.routes.deps import optional_user as _current_user, require_user
+from app.cache_headers import cache_control
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("finai")
@@ -84,6 +85,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def _cache_headers(request, call_next):
+    """S2: public GETs cache at Vercel's edge; anything personal never does."""
+    response = await call_next(request)
+    if "cache-control" not in response.headers:
+        value = cache_control(request.method, request.url.path, response.status_code,
+                              {k.lower(): v for k, v in request.headers.items()})
+        if value:
+            response.headers["Cache-Control"] = value
+    return response
+
 
 init_db()
 # Confirms after a deploy that backend/data shipped with the function.
