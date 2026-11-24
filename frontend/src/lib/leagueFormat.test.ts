@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastYearValues, latestLeague, leagueSeries, scaleAround, yearAgoEnd } from "./leagueFormat";
+import { lastYearValues, latestLeague, leagueSeries, scaleAround, withoutInsight, yearAgoEnd } from "./leagueFormat";
 
 const actuals = [
   { period_end_date: "2025-09-30", metric_key: "operating_margin", value: 16.1 },
@@ -26,5 +26,15 @@ describe("league figures (T2, T10)", () => {
     expect(leagueSeries(actuals, "operating_margin", ["2025-09-30", "2025-12-31", "2026-06-30"])).toEqual([16.1, null, 14.0]);
     expect(latestLeague(actuals, "operating_margin")).toEqual({ value: 14.0, end: "2026-06-30" });
     expect(latestLeague(actuals, "sector_kpi")).toBeNull();
+  });
+});
+
+describe("no repeated lines (T14)", () => {
+  it("drops the key insight from a checklist item that repeats it", () => {
+    const insight = "Revenue growth is roughly volume growth plus price increases.";
+    expect(
+      withoutInsight([`${insight} Did the company raise prices in the past year?`, "What about villages?", insight], insight)
+    ).toEqual(["Did the company raise prices in the past year?", "What about villages?"]);
+    expect(withoutInsight(["A?"], "")).toEqual(["A?"]);
   });
 });

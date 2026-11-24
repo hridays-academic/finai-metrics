@@ -337,7 +337,7 @@ function ResultsHero({ event, level, meta }: { event: EventSummary; level: Diffi
         <span>{event.season_label}</span>
       </div>
       <h1 className="results-hero-title">
-        {event.company.name} <span className="results-hero-ticker">{event.company.ticker}</span>
+        {event.company.name}
       </h1>
       {meta && <p className="results-hero-meta">{meta}</p>}
     </header>

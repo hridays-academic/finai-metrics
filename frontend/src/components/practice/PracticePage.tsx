@@ -62,7 +62,7 @@ export default function PracticePage({ user }: { user: UserPublic | null }) {
             </span>
           </label>
           <button type="button" className="btn btn-primary" onClick={goSurprise} disabled={!cards?.length}>
-            Surprise me
+            Random company
           </button>
         </div>
       </header>

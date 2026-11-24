@@ -105,3 +105,13 @@ export function scaleAround(key: string, lastYear: number | null | undefined): [
   const half = key === "operating_margin" ? 8 : 10;
   return [lastYear - half, lastYear + half];
 }
+
+// T14 (master plan): a checklist item that opens with the key insight shown
+// just above it drops that repeated sentence (the rest of its words stay).
+export function withoutInsight(checklist: string[], insight: string | null | undefined): string[] {
+  const lead = (insight ?? "").trim();
+  if (!lead) return checklist;
+  return checklist
+    .map((item) => (item.trim().startsWith(lead) ? item.trim().slice(lead.length).trim() : item))
+    .filter((item) => item.length > 0);
+}

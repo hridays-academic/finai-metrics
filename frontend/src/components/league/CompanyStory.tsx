@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { EventDetail, ResearchHistory, SectorExplainer } from "../../lib/types";
-import { formatDay, leagueSeries, previousQuarterEnds, quarterLabel, signedPct } from "../../lib/leagueFormat";
+import { formatDay, leagueSeries, previousQuarterEnds, quarterLabel, signedPct, withoutInsight } from "../../lib/leagueFormat";
 import { fetchPriceHistory } from "../../lib/api";
 import type { PricePoint } from "../../lib/types";
 import LockCountdown from "./LockCountdown";
@@ -392,7 +392,7 @@ export default function CompanyStory({
           </blockquote>
         )}
         <ul className="checklist">
-          {explainer.checklist.map((item) => (
+          {withoutInsight(explainer.checklist, explainer.key_insight).map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -544,7 +544,7 @@ export default function CompanyStory({
         {practice?.backLabel ?? "← Companies"}
       </a>
       <h1 className="story-company">
-        {event.company.name} {event.company.ticker && <span className="story-ticker">{event.company.ticker}</span>}
+        {event.company.name}
       </h1>
     </div>
   );

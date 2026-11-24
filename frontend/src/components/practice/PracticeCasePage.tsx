@@ -309,7 +309,7 @@ const PracticeResult = forwardRef<HTMLElement, ResultProps>(function PracticeRes
     <section id="forecast" className="glass panel practice-result" aria-labelledby="practice-score-title" ref={ref} tabIndex={-1}>
       {practice.mystery && (
         <p className="practice-reveal" aria-live="polite">
-          It was {r.name} ({r.ticker}): {r.season_label} results, out on {formatDay(r.results_date, true)}.
+          It was {r.name}: {r.season_label} results, out on {formatDay(r.results_date, true)}.
         </p>
       )}
       <div className="results-score">

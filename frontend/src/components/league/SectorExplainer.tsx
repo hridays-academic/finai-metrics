@@ -1,3 +1,4 @@
+import { withoutInsight } from "../../lib/leagueFormat";
 import type { SectorExplainer as Explainer } from "../../lib/types";
 
 // "How this business makes money" for the company's sector, written for
@@ -71,7 +72,7 @@ export default function SectorExplainer({ explainer }: { explainer: Explainer })
       <div className="explainer-check">
         <h3>What to check before forecasting</h3>
         <ul className="checklist">
-          {explainer.checklist.map((item) => (
+          {withoutInsight(explainer.checklist, explainer.key_insight).map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>

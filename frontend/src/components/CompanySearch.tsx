@@ -60,9 +60,8 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
       </form>
       {error && <div className="form-error">{error}</div>}
       <p className="footnote">
-        For the most reliable match, use the exact ticker, such as RELIANCE.NS or TATASTEEL.BO. Stackly is for education
-        only. Any financial decisions you make are your own responsibility, and Stackly and its owner accept no liability
-        for them.
+        {/* RW6/W5 (master plan): the liability line lives in the Terms and the footer, not here. */}
+        For the most reliable match, use the exact ticker, such as RELIANCE.NS or TATASTEEL.BO.
       </p>
     </section>
   );

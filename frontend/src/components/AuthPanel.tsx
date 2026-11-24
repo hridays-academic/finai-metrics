@@ -4,6 +4,9 @@ import { setAuthToken, clearAuthToken } from "../lib/auth";
 import type { ActivityEntry, UserPublic } from "../lib/types";
 import GoogleSignInButton from "./GoogleSignInButton";
 import { useSheet } from "../hooks/useSheet";
+
+// T18: reset emails only work once the Gmail settings exist in Vercel.
+const RESET_EMAIL_ON = import.meta.env.VITE_RESET_EMAIL === "true";
 import { isGoogleSignInConfigured } from "../lib/googleAuth";
 import ForgotPasswordForm from "./ForgotPasswordForm";
 
@@ -200,11 +203,16 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               {mode === "signup" && <span className="field-hint">At least 8 characters.</span>}
             </label>
 
-            {mode === "signin" && (
-              <button type="button" className="btn btn-tertiary auth-forgot" onClick={() => setMode("forgot")}>
-                Forgot password?
-              </button>
-            )}
+            {/* T18 (master plan): reset emails need GMAIL_ADDRESS and GMAIL_APP_PASSWORD in
+                Vercel. Until then (VITE_RESET_EMAIL unset) the link is hidden. DRAFT wording. */}
+            {mode === "signin" &&
+              (RESET_EMAIL_ON ? (
+                <button type="button" className="btn btn-tertiary auth-forgot" onClick={() => setMode("forgot")}>
+                  Forgot password?
+                </button>
+              ) : (
+                <p className="field-hint auth-forgot-note">Forgot your password? Sign in with Google, or ask your teacher.</p>
+              ))}
 
             {mode === "signup" && (
               <label className="checkbox-row">
@@ -224,16 +232,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
 
             {error && <div className="form-error">{error}</div>}
 
-            {/* Directly above the submit button, not after the Google
-                button/divider below -- it was easy to miss down there
-                (past a visual divider, reads as belonging to the "or"
-                alternative rather than the form itself). This placement
-                means it's in the way of every submit path, password or
-                Google. */}
-            <p className="footnote">
-              Stackly is for education only. Any financial decisions you make are your own responsibility, and Stackly
-              and its owner accept no liability for them.
-            </p>
+            {/* RW6/W5 (master plan): no liability line here; it's in the Terms and the footer. */}
 
             <button
               type="submit"
