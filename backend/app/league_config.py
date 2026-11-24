@@ -380,16 +380,18 @@ _IN_COMPANY_DESCRIPTIONS = {
     "MPHASIS": "IT services company that builds and runs software for banks, insurers and tech firms, mostly in the Americas.",
 }
 
-# Approved 2026-11-18 (decision 5). MPHASIS reuses its card line, which
-# already names no brand.
+# T9 (master plan, DRAFT 2026-11-24, awaiting approval): each line fits at
+# least two companies in its sector, so Mystery mode doesn't give the company
+# away. Replaces the lines approved 2026-11-18 (decision 5), which named a
+# company's own mix ("ayurvedic health products, juices"; "tractors plus cranes").
 _IN_MYSTERY_DESCRIPTIONS = {
-    "MARUTI": "A car maker selling mostly in India, from small hatchbacks to SUVs.",
-    "SAGCEM": "A cement maker with plants in the south, centre and east of India.",
-    "ESCORTS": "Makes tractors for Indian farmers, plus cranes and other construction machines.",
-    "DABUR": "Sells ayurvedic health products, juices, toothpaste and hair oils.",
-    "MARICO": "Sells hair oils, cooking oils and healthy foods.",
-    "JYOTHYLAB": "Sells household cleaning products: fabric whitener, detergents, dishwash and soap.",
-    "MPHASIS": _IN_COMPANY_DESCRIPTIONS["MPHASIS"],
+    "MARUTI": "A vehicle maker that sells mostly in India.",
+    "SAGCEM": "A cement maker with plants in several parts of India.",
+    "ESCORTS": "Makes farm and building machines, sold mostly in India.",
+    "DABUR": "Sells health, personal-care and food products across India.",
+    "MARICO": "Sells personal-care products and packaged foods across India.",
+    "JYOTHYLAB": "Sells household cleaning and personal-care products across India.",
+    "MPHASIS": "An IT services company that builds and runs software for clients, mostly in the Americas.",
 }
 
 _IN_REASON_TAGS = (
