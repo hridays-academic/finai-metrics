@@ -520,6 +520,45 @@ def _score_demo(conn, client, setup, forecasters, actual=(12.0, 14.0, 8.0)):
     return client.post(f"/api/admin/events/{event}/score", headers=admin)
 
 
+def test_recheck_script_finds_an_old_decimal_tie_bonus(conn, client, setup):
+    # 2026-11-24: midpoint 38.9 and lazy 13.1 are both 12.9 from 26. Today's
+    # scorer gives no bonus; plant the old +10 and the read-only recheck
+    # script (scripts/recheck_lazy_ties.py) must report it.
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "recheck_lazy_ties", Path(__file__).resolve().parent.parent / "scripts" / "recheck_lazy_ties.py")
+    recheck = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(recheck)
+
+    admin, event, user = setup["admin"], setup["event"], setup["user"]
+    client.put(f"/api/admin/events/{event}/last-year",
+               json=[_actual(k, v) for k, v in zip(CEMENT_DEFS, (13.1, 15.0, 5.0))], headers=admin)
+    assert _profile(client, user, "tied").status_code == 200
+    assert client.put(f"/api/league/events/{event}/forecast", headers=user, json={"values": [
+        {"metric_key": "revenue_growth_yoy", "low": 36.9, "high": 40.9},
+        {"metric_key": "operating_margin", "low": 13.0, "high": 15.0},
+        {"metric_key": "sector_kpi", "low": 7.0, "high": 9.0}]}).status_code == 200
+    client.patch(f"/api/admin/events/{event}", json={"lock_at": _db_now_plus(conn, "-1 second")}, headers=admin)
+    client.put(f"/api/admin/events/{event}/results", json=[_actual(k, v) for k, v in zip(CEMENT_DEFS, (26.0, 14.0, 8.0))],
+               headers=admin)
+    assert client.post(f"/api/admin/events/{event}/score", headers=admin).json() == {"scored": 1}
+    rev = conn.execute("SELECT points, beat_lazy FROM scores WHERE metric_key = 'revenue_growth_yoy'").fetchone()
+    assert rev[1] is False  # the fixed rule: a tie, no bonus
+
+    from psycopg.rows import dict_row
+
+    conn.row_factory = dict_row
+    assert recheck.find_changes(conn)[2] == []
+    conn.execute("UPDATE scores SET points = points + 10, beat_lazy = TRUE WHERE metric_key = 'revenue_growth_yoy'")
+    rows, forecasts, [change] = recheck.find_changes(conn)
+    assert (rows, forecasts) == (3, 1)
+    assert (change["company"], change["quarter"], change["handle"]) == ("Demo Cement (fictional)", "FY27 Q2", "tied")
+    assert change["old"] - change["new"] == pytest.approx(10 / 3)
+    assert [(m["metric"], m["old"] - m["new"]) for m in change["metrics"]] == [("revenue_growth_yoy", pytest.approx(10))]
+
+
 def test_outcome_for_everyone_after_scoring(conn, client, setup, monkeypatch):
     from app.services import result_proposals
 

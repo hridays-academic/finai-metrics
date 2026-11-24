@@ -15,6 +15,7 @@ Lower is better. It's a proper scoring rule: a forecaster minimises their
 expected score by reporting their honest 80% range, so neither sandbagging
 with wide ranges nor bravado with narrow ones pays off.
 """
+import math
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from statistics import mean
@@ -57,6 +58,17 @@ def interval_score(low: float, high: float, actual: float, alpha: float) -> floa
     return width
 
 
+def _micro(distance: float) -> int:
+    """A distance rounded to 6 decimal places, as whole millionths.
+
+    Raw floats make decimal ties unequal (|38.9 - 26| is 12.899999999999999,
+    |13.1 - 26| is 12.9), which gave a tie the +10 bonus. A tie never earns it
+    (2026-11-24). lib/scoring.ts does the same float operations, so the two
+    always agree.
+    """
+    return math.floor(distance * 1_000_000 + 0.5)
+
+
 def score_metric(
     metric_key: str,
     low: float,
@@ -68,7 +80,7 @@ def score_metric(
     score = interval_score(low, high, actual, config.alpha)
     midpoint = (low + high) / 2
     abs_error_mid = abs(midpoint - actual)
-    beat_lazy = None if lazy_value is None else abs_error_mid < abs(lazy_value - actual)
+    beat_lazy = None if lazy_value is None else _micro(abs_error_mid) < _micro(abs(lazy_value - actual))
     points = max(0.0, 100.0 - config.k_for(metric_key) * score)
     if beat_lazy:
         points += config.beat_lazy_bonus

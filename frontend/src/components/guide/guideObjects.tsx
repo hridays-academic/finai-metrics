@@ -1,7 +1,7 @@
 import { type KeyboardEvent, type PointerEvent, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fetchLeagueEvents, fetchPracticeCases } from "../../lib/api";
 import { setMystery } from "../../lib/practice";
-import { ALPHA, K, n, scoreMetric, widthCost } from "../../lib/scoring";
+import { ALPHA, K, micro, n, scoreMetric, widthCost } from "../../lib/scoring";
 import type { PracticeCard } from "../../lib/types";
 import PracticeTile from "../practice/PracticeTile";
 import GuideRail, { type Range, SegmentRail, useWidth } from "./GuideRail";
@@ -480,7 +480,7 @@ export const MARUTI_GROWTH = 26;
 export function lazyLines(range: Range, actual = MARUTI_GROWTH, lazy = MARUTI_LAZY): string[] {
   const middle = (range[0] + range[1]) / 2;
   const { beatLazy } = scoreMetric(range[0], range[1], actual, lazy);
-  const tie = Math.abs(Math.abs(middle - actual) - Math.abs(lazy - actual)) < 1e-9;
+  const tie = micro(Math.abs(middle - actual)) === micro(Math.abs(lazy - actual));
   return [
     `Your middle: ${n(middle)}%, ${points(Math.abs(middle - actual))} from the result.`,
     `Lazy guess: ${n(lazy)}%, ${points(Math.abs(lazy - actual))} from the result.`,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { explain, n, scoreMetric } from "./scoring";
+import { explain, micro, n, scoreMetric } from "./scoring";
 
 // Generated 2026-11-18 from backend/app/services/scoring.py (score_metric and
 // explain_metric's first two lines), so the guide says exactly what a real
@@ -93,5 +93,25 @@ describe("the guide's scoring mirror", () => {
 
   it("rounds like Python's _n", () => {
     expect([n(4), n(7.25), n(0.15), n(-7.25), n(-0.04), n(102)]).toEqual(["4", "7.3", "0.2", "-7.3", "0", "102"]);
+  });
+
+  // Decimal ties that raw floats got wrong (2026-11-24): equal in decimals,
+  // but the midpoint's distance came out a hair smaller as a float.
+  it.each([
+    { low: 36.9, high: 40.9, actual: 26, lazy: 13.1 }, // midpoint 38.9: both 12.9 from 26
+    { low: 4.6, high: 8.6, actual: 5, lazy: 3.4 }, // midpoint 6.6: both 1.6 from 5
+    { low: 6.1, high: 10.1, actual: 5, lazy: 1.9 }, // midpoint 8.1: both 3.1 from 5
+  ])("a decimal tie ($low to $high, result $actual, lazy $lazy) earns no bonus", (c) => {
+    const mid = (c.low + c.high) / 2;
+    expect(Math.abs(mid - c.actual)).toBeLessThan(Math.abs(c.lazy - c.actual)); // the float trap is real
+    const s = scoreMetric(c.low, c.high, c.actual, c.lazy);
+    expect(s.beatLazy).toBe(false);
+    expect(s.points).toBe(scoreMetric(c.low, c.high, c.actual, null).points);
+    expect(explain(c.low, c.high, c.actual, c.lazy)[1]).toContain("at least as close");
+  });
+
+  it("still gives the bonus when closer by a millionth", () => {
+    expect(scoreMetric(18, 22, 21, 22.000002).beatLazy).toBe(true);
+    expect(micro(12.899999999999999)).toBe(micro(12.9));
   });
 });

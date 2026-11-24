@@ -106,6 +106,29 @@ class TestScoreMetric:
         s = score_metric("operating_margin", 18.0, 22.0, 21.0, lazy_value=22.0, config=CFG)
         assert s.beat_lazy is False
 
+    # Decimal ties that raw floats got wrong (2026-11-24): each pair of
+    # distances is equal in decimals, but the midpoint's came out a hair
+    # smaller as a float, which used to earn +10.
+    @pytest.mark.parametrize(
+        "low, high, actual, lazy",
+        [
+            (36.9, 40.9, 26.0, 13.1),  # midpoint 38.9: both 12.9 from 26
+            (4.6, 8.6, 5.0, 3.4),  # midpoint 6.6: both 1.6 from 5
+            (6.1, 10.1, 5.0, 1.9),  # midpoint 8.1: both 3.1 from 5
+        ],
+    )
+    def test_decimal_tie_with_lazy_earns_no_bonus(self, low, high, actual, lazy):
+        mid = (low + high) / 2
+        assert abs(mid - actual) < abs(lazy - actual)  # the float trap is real
+        s = score_metric("revenue_growth_yoy", low, high, actual, lazy_value=lazy, config=CFG)
+        assert s.beat_lazy is False
+        no_lazy = score_metric("revenue_growth_yoy", low, high, actual, lazy_value=None, config=CFG)
+        assert s.points == no_lazy.points  # no +10
+
+    def test_closer_by_a_millionth_still_beats_lazy(self):
+        s = score_metric("operating_margin", 18.0, 22.0, 21.0, lazy_value=22.000002, config=CFG)
+        assert s.beat_lazy is True
+
     def test_k_is_configurable_per_metric(self):
         cfg = ScoringConfig(k_by_metric={"sector_kpi": 1.0})
         kpi = score_metric("sector_kpi", 0.0, 10.0, 5.0, lazy_value=None, config=cfg)

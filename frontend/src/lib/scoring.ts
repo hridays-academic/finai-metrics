@@ -14,6 +14,14 @@ export function intervalScore(low: number, high: number, actual: number): number
   return width;
 }
 
+// A distance rounded to 6 decimal places, as whole millionths (scoring.py's
+// _micro, same float operations). Raw floats made decimal ties unequal
+// (|38.9 - 26| is 12.899999999999999, |13.1 - 26| is 12.9) and gave a tie
+// the +10 bonus; a tie never earns it (2026-11-24).
+export function micro(distance: number): number {
+  return Math.floor(distance * 1_000_000 + 0.5);
+}
+
 // What a range's width costs before any miss: K points per point of width.
 export function widthCost(low: number, high: number): number {
   return K * (high - low);
@@ -29,7 +37,7 @@ export interface MetricScore {
 export function scoreMetric(low: number, high: number, actual: number, lazy: number | null): MetricScore {
   const base = Math.max(0, 100 - K * intervalScore(low, high, actual));
   const midpoint = (low + high) / 2;
-  const beatLazy = lazy === null ? null : Math.abs(midpoint - actual) < Math.abs(lazy - actual);
+  const beatLazy = lazy === null ? null : micro(Math.abs(midpoint - actual)) < micro(Math.abs(lazy - actual));
   return { points: base + (beatLazy ? BONUS : 0), base, hit: low <= actual && actual <= high, beatLazy };
 }
 

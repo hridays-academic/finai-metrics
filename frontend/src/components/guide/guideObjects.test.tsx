@@ -57,6 +57,8 @@ describe("score sums come from lib/scoring.ts", () => {
     expect(lazyLines([10, 14])[2]).toBe("The lazy guess is closer: no bonus.");
     // A tie says so: middle 21 and a lazy guess of 31 are both 5 from 26.
     expect(lazyLines([20, 22], 26, 31)[2]).toBe("Equally close: no bonus.");
+    // Maruti's own numbers: a middle of 38.9 is 12.9 from 26, like the lazy 13.1.
+    expect(lazyLines([36.9, 40.9])[2]).toBe("Equally close: no bonus.");
     expect(scoreMetric(20, 28, 26, 13.1).beatLazy).toBe(true);
   });
 
