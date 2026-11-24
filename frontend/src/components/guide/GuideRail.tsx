@@ -23,6 +23,9 @@ export interface RailBall {
   value: number;
   // A word above the ball ("Results day").
   label?: string;
+  // Where it comes from (page 1: the picked quarter): a short arrowed arc
+  // from there to the ball, so the two read as one.
+  from?: number;
 }
 
 interface RailProps {
@@ -53,7 +56,7 @@ interface RailProps {
 const clampTo = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 // Picker tiles (layout pass): Home's card material, taller on desktop.
-const TILE_H = { desk: 96, phone: 76 };
+const TILE_H = { desk: 116, phone: 76 };
 
 // An element's left edge as laid out, ignoring transforms between it and
 // `outer` (the tilt): offsets are layout positions, so this is the flat
@@ -372,6 +375,24 @@ export default function GuideRail(props: RailProps) {
             <span className="g2-lazy-post" />
           </span>
         )}
+        {balls.length === 1 && balls[0].from !== undefined && width > 0 && (() => {
+          // From the picked tile's top centre up and over to the ball's side.
+          const x0 = px(balls[0].from as number);
+          const bx = px(places[0].at);
+          const dir = bx >= x0 ? 1 : -1;
+          const x1 = bx - dir * (S.ball / 2 + 6);
+          const y0 = -6;
+          const y1 = slabGround - S.ball / 2;
+          const top = Math.min(y0, y1) - S.ball * 0.9;
+          const d = `M ${x0} ${y0} Q ${(x0 + x1) / 2} ${top} ${x1} ${y1}`;
+          const ah = 7;
+          return (
+            <svg className="g2-arc" width={width} height={1} style={{ overflow: "visible" }} aria-hidden="true">
+              <path d={d} fill="none" />
+              <path className="g2-arc-head" d={`M ${x1 - dir * ah} ${y1 - ah} L ${x1} ${y1} L ${x1 - dir * ah} ${y1 + ah * 0.4}`} fill="none" />
+            </svg>
+          );
+        })()}
         {balls.map((b, i) => {
           // Only a ball resting on the slab or the capsule casts a shadow there.
           const resting = places[i].lift <= raise + 0.5;

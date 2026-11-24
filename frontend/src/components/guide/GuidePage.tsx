@@ -41,9 +41,8 @@ interface Page {
   company?: GuideCompany;
   // "clues" is filled in by GuidePage (it needs the Research link).
   object: ReactNode | "clues";
-  // The layout pass (2026-11-24): pages with one use it; the rest keep the
-  // v3 template until approved.
-  layout?: GuideLayout;
+  // The layout pass (2026-11-24): Home's hero composition, per object.
+  layout: GuideLayout;
 }
 
 // Wording approved by Hriday 2026-11-19 (vault: Areas/Guide v2 wording (for
@@ -72,6 +71,7 @@ const PAGES: Page[] = [
     text:
       "Revenue is the money a company receives from its sales, before any costs. Revenue growth compares a quarter with the same quarter a year earlier: (this year − last year) ÷ last year. Maruti Suzuki's revenue rose from ₹42,344 crore to ₹53,356 crore, so it grew 26%. One crore is 1,00,00,000 rupees.",
     object: <RevenueObject />,
+    layout: "split",
   },
   {
     title: ["Operating", "margin"],
@@ -84,6 +84,7 @@ const PAGES: Page[] = [
     text:
       "Operating margin is the share of sales left after paying for materials, staff and other running costs. From July to September 2026, Marico had about ₹18 left from every ₹100 of sales, so its operating margin was 18.2%. A higher margin means more of each sale is left over.",
     object: <MarginObject />,
+    layout: "split",
   },
   {
     title: ["Sector", "number"],
@@ -95,6 +96,7 @@ const PAGES: Page[] = [
     text:
       "Each sector has one number that says the most about its quarter, and you forecast it as well. Not every company publishes this number, so some companies have only two numbers to forecast.",
     object: <SectorObject />,
+    layout: "picker",
   },
   {
     title: ["Your", "range"],
@@ -132,6 +134,7 @@ const PAGES: Page[] = [
     text:
       "The lazy guess assumes the number will be the same as last year. If the middle of your range is closer to the result than the lazy guess, you earn 10 bonus points. If it is equally close, there is no bonus. For Maruti Suzuki, the lazy guess was 13.1%; its revenue actually grew 26%.",
     object: <LazyObject />,
+    layout: "split",
   },
   {
     title: ["Where to", "look"],
@@ -143,6 +146,7 @@ const PAGES: Page[] = [
     text:
       "Good forecasts start from facts. Begin with the same quarter last year, because seasonal patterns repeat: festivals, monsoons and harvests come round every year. Then look at what has changed since.",
     object: "clues",
+    layout: "picker",
   },
   {
     title: ["Check", "yourself"],
@@ -153,6 +157,7 @@ const PAGES: Page[] = [
     ],
     text: "Three questions to check your understanding. Choose an answer to see the working.",
     object: <QuizObject />,
+    layout: "stage",
   },
   {
     title: ["First", "forecast"],
@@ -164,10 +169,32 @@ const PAGES: Page[] = [
     text:
       "Start with a practice company. Its results are already published, so you see your score immediately. Mystery mode hides the company's name, so you forecast from the numbers alone. When a company opens for forecasts, you can forecast it in the league.",
     object: <YourTurnObject />,
+    layout: "stage",
   },
 ];
 
 export const PAGE_COUNT = PAGES.length;
+
+// The page a visitor reached, 1-based, kept in this browser only. Cleared on
+// the first and last pages (nothing to come back to).
+const GUIDE_PAGE_KEY = "stackly_guide_page";
+export function readGuidePage(): number | null {
+  try {
+    const v = Number(localStorage.getItem(GUIDE_PAGE_KEY));
+    return Number.isInteger(v) && v >= 2 && v < PAGE_COUNT ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveGuidePage(index: number) {
+  try {
+    if (index === 0) return;
+    if (index >= PAGE_COUNT - 1) localStorage.removeItem(GUIDE_PAGE_KEY);
+    else localStorage.setItem(GUIDE_PAGE_KEY, String(index + 1));
+  } catch {
+    // storage unavailable: nothing to resume
+  }
+}
 
 function scroller(): HTMLElement | null {
   return document.querySelector(".app-shell-content");
@@ -199,9 +226,9 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
     const stack = stackRef.current;
     if (!stack) return;
     const tighten = (inner: HTMLElement) => {
-      // Layout-pass pages drop the facts panel (kept for screen readers);
-      // v3 pages hide the prompt, then move the made-up note.
-      const steps = inner.classList.contains("g3-inner") ? ["is-tight-facts"] : ["is-tight-a", "is-tight-b"];
+      // Drop the facts panel (kept for screen readers), then the prompt
+      // (the control says it), then move the made-up note under the scale.
+      const steps = ["is-tight-facts", "is-tight-a", "is-tight-b"];
       inner.classList.remove(...steps);
       const phone = window.matchMedia?.("(max-width: 640px)").matches ?? false;
       if (!phone || inner.clientHeight === 0 || inner.closest(".is-last")) return;
@@ -211,7 +238,7 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
         (inner.clientHeight - pad);
       for (const step of steps) if (over() > 0) inner.classList.add(step);
     };
-    const fitAll = () => stack.querySelectorAll<HTMLElement>(".g2-inner, .g3-inner").forEach(tighten);
+    const fitAll = () => stack.querySelectorAll<HTMLElement>(".g3-inner").forEach(tighten);
     fitAll();
     document.fonts?.ready.then(fitAll).catch(() => {});
     window.addEventListener("resize", fitAll);
@@ -219,7 +246,7 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
     if (typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver((entries) => {
         for (const e of entries) {
-          const inner = (e.target as HTMLElement).closest<HTMLElement>(".g2-inner, .g3-inner");
+          const inner = (e.target as HTMLElement).closest<HTMLElement>(".g3-inner");
           if (inner) tighten(inner);
         }
       });
@@ -236,6 +263,12 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
   const dimRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const spacerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const currentRef = useRef(0);
+  // Where a visitor left off (G6). Read once; saved as they move.
+  const [resumeAt, setResumeAt] = useState<number | null>(readGuidePage);
+  useEffect(() => {
+    if (current > 0) setResumeAt(null);
+    saveGuidePage(current);
+  }, [current]);
 
   // Each page's resting scroll position: its top at the top of the visible area.
   function restingTop(i: number): number | null {
@@ -338,7 +371,7 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
       <h1 className="visually-hidden">How to play</h1>
       <div className={`g2-stack ${still ? "is-still" : ""}`} ref={stackRef}>
         {PAGES.map((page, i) => (
-          <PageSection
+          <LayoutSection
             key={page.title.join(" ")}
             page={
               page.object === "clues"
@@ -363,6 +396,21 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
           />
         ))}
       </div>
+      {resumeAt !== null && current === 0 && (
+        <div className="g2-resume">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              const top = restingTop(resumeAt - 1);
+              const box = scroller();
+              if (top !== null && box) box.scrollTo({ top, behavior: still ? "auto" : "smooth" });
+            }}
+          >
+            Continue from page {resumeAt}
+          </button>
+        </div>
+      )}
       <p className="g2-counter" aria-hidden="true">
         {current + 1} / {PAGES.length}
       </p>
@@ -382,10 +430,6 @@ interface SectionProps {
   spacerRef: (el: HTMLDivElement | null) => void;
 }
 
-function PageSection(props: SectionProps) {
-  return props.page.layout ? <LayoutSection {...props} /> : <V3Section {...props} />;
-}
-
 // The layout pass (2026-11-24): Home's hero composition. Desktop: title,
 // paragraph and facts on the left; the object at Home's scale on the right
 // with its readout panel under it; the block centred in the screen. Phones:
@@ -394,7 +438,7 @@ function PageSection(props: SectionProps) {
 function LayoutSection({ page, index, sectionRef, sheetRef, dimRef, spacerRef }: SectionProps) {
   const id = `g2-title-${index + 1}`;
   const last = index === PAGE_COUNT - 1;
-  const layout = page.layout as GuideLayout;
+  const layout = page.layout;
   const [lead, rest] = firstSentence(page.text);
   return (
     <>
@@ -426,51 +470,6 @@ function LayoutSection({ page, index, sectionRef, sheetRef, dimRef, spacerRef }:
               {page.company && <GuideCompanyCard company={page.company} className="g3-company" />}
               <GuideLayoutContext.Provider value={layout}>{page.object as ReactNode}</GuideLayoutContext.Provider>
             </div>
-          </div>
-          <span className="g2-dim" ref={dimRef} aria-hidden="true" />
-        </div>
-      </section>
-      {!last && <div className="g2-dwell" ref={spacerRef} aria-hidden="true" />}
-    </>
-  );
-}
-
-function V3Section({ page, index, sectionRef, sheetRef, dimRef, spacerRef }: SectionProps) {
-  const id = `g2-title-${index + 1}`;
-  const last = index === PAGE_COUNT - 1;
-  return (
-    <>
-      <section className={`g2-page ${last ? "is-last" : ""}`} aria-labelledby={id} ref={sectionRef}>
-        <div className="g2-sheet" ref={sheetRef}>
-          <HeroWaves />
-          {/* Phones: how far through the guide, as a hairline along the top. */}
-          <span className="g2-progress" style={{ ["--share" as string]: (index + 1) / PAGE_COUNT }} aria-hidden="true" />
-          <div className="g2-inner">
-            <p className="visually-hidden">
-              Page {index + 1} of {PAGE_COUNT}
-            </p>
-            <div className="g2-top">
-              <h2 className="hero-title g2-title" id={id}>
-                {page.title[0]} <span className="hero-title-gold">{page.title[1]}</span>
-              </h2>
-              {/* Desktop: the company's card beside the facts. */}
-              <div className="g2-facts-row">
-                <ul className="g2-facts strip-panel">
-                  {page.facts.map((f) => (
-                    <li key={f.line}>
-                      <span className="g2-fact-num">{f.num}</span> <span className="g2-fact-line">{f.line}</span>
-                    </li>
-                  ))}
-                </ul>
-                {page.company && <GuideCompanyCard company={page.company} className="g2-company-desk" />}
-              </div>
-            </div>
-            {/* Phones: the card sits at the right of the text, which flows round it. */}
-            <div className="g2-text">
-              {page.company && <GuideCompanyCard company={page.company} className="g2-company-phone" />}
-              <p>{page.text}</p>
-            </div>
-            {page.object as ReactNode}
           </div>
           <span className="g2-dim" ref={dimRef} aria-hidden="true" />
         </div>

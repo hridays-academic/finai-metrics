@@ -61,11 +61,11 @@ describe("the guide", () => {
     const sections = [...container.querySelectorAll("section.g2-page")];
     const names = sections.map((s) => s.querySelector(".g2-company-desk .tile-name, .g3-company .tile-name")?.textContent ?? null);
     expect(names).toEqual([null, "Maruti Suzuki", "Marico", null, null, "Marico", "Maruti Suzuki", null, null, null]);
-    // Layout-pass pages: one card, as the object's label (never in the paragraph).
-    expect(sections[5].querySelectorAll(".g2-company")).toHaveLength(1);
-    expect(sections[5].querySelector(".g3-stage > .g3-company")).not.toBeNull();
-    // One card for phones (beside the title), one for desktop (beside the facts).
-    expect(sections[1].querySelectorAll(".g2-company")).toHaveLength(2);
+    // One card per page, as the object's label (never in the paragraph).
+    for (const i of [1, 2, 5, 6]) {
+      expect(sections[i].querySelectorAll(".g2-company")).toHaveLength(1);
+      expect(sections[i].querySelector(".g3-stage > .g3-company")).not.toBeNull();
+    }
     expect(sections[1].querySelector(".g2-company .card3d-guilloche")).not.toBeNull();
   });
 
@@ -92,12 +92,13 @@ describe("the guide", () => {
     expect((container.querySelector(".g2-sheet") as HTMLElement).style.transform).toBe("");
   });
 
-  it("uses the layout pass on pages 1, 5 and 6 only, with the words unchanged", () => {
+  it("puts every page on a layout, with the words unchanged", () => {
     motion(false);
     const { container } = render(<GuidePage />);
     const sections = [...container.querySelectorAll("section.g2-page")];
     expect(sections.map((s) => (s.querySelector(".g3-inner") ? s.querySelector(".g3-inner")!.className : "v3"))).toEqual([
-      "g3-inner is-picker", "v3", "v3", "v3", "g3-inner is-split", "g3-inner is-split", "v3", "v3", "v3", "v3",
+      "g3-inner is-picker", "g3-inner is-split", "g3-inner is-split", "g3-inner is-picker", "g3-inner is-split",
+      "g3-inner is-split", "g3-inner is-split", "g3-inner is-picker", "g3-inner is-stage", "g3-inner is-stage",
     ]);
     // The approved paragraphs, word for word; the first sentence is the lead.
     const para = (i: number) => sections[i].querySelector(".g3-para") as HTMLElement;
@@ -116,6 +117,40 @@ describe("the guide", () => {
     // Page 1's picker: four card tiles; page 5's slab tilts (CSS flattens it when held).
     expect(sections[0].querySelectorAll(".g3-tile.sector-neutral .tile-material")).toHaveLength(4);
     expect(sections[4].querySelector(".g2-rail-wrap.is-tilted .g2-tilt .g2-rail")).not.toBeNull();
+    // Page 2's bars are a chart: flat. Page 7's slab tilts like page 5's.
     expect(sections[1].querySelector(".is-tilted")).toBeNull();
+    expect(sections[6].querySelector(".g2-rail-wrap.is-tilted")).not.toBeNull();
+  });
+
+  // jsdom here has no localStorage: a small in-memory one.
+  function memoryStorage() {
+    const m = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => m.get(k) ?? null,
+      setItem: (k: string, v: string) => void m.set(k, String(v)),
+      removeItem: (k: string) => void m.delete(k),
+    });
+  }
+
+  it("offers to continue from the page a visitor reached (G6)", () => {
+    motion(false);
+    memoryStorage();
+    localStorage.setItem("stackly_guide_page", "6");
+    render(<GuidePage />);
+    expect(screen.getByRole("button", { name: "Continue from page 6" })).toBeTruthy();
+    localStorage.removeItem("stackly_guide_page");
+  });
+
+  it("offers nothing to continue on a first visit or past the end", () => {
+    motion(false);
+    memoryStorage();
+    for (const v of [null, "1", "10", "x"]) {
+      if (v === null) localStorage.removeItem("stackly_guide_page");
+      else localStorage.setItem("stackly_guide_page", v);
+      const { unmount } = render(<GuidePage />);
+      expect(screen.queryByRole("button", { name: /Continue from page/ })).toBeNull();
+      unmount();
+    }
+    localStorage.removeItem("stackly_guide_page");
   });
 });

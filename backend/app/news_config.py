@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 # Sector keys used on the news screens. "economy" is the general list.
 NEWS_SECTORS = ("cement", "autos", "fmcg", "it")
-SECTOR_LABELS = {"economy": "Economy & policy", "cement": "Cement", "autos": "Autos", "fmcg": "FMCG", "it": "IT"}
+SECTOR_LABELS = {"economy": "Economy & policy", "cement": "Cement", "autos": "Autos", "fmcg": "Everyday goods", "it": "IT"}
 
 # Publishers whose headlines may appear (GDELT is filtered to these).
 PUBLISHERS = {

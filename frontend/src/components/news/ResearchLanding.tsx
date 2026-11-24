@@ -12,7 +12,7 @@ const VIEWS: { key: NewsView; label: string }[] = [
   { key: "economy", label: "Economy & policy" },
   { key: "cement", label: "Cement" },
   { key: "autos", label: "Autos" },
-  { key: "fmcg", label: "FMCG" },
+  { key: "fmcg", label: "Everyday goods" },
   { key: "it", label: "IT" },
 ];
 

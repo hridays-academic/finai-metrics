@@ -278,7 +278,7 @@ _IN_SECTOR_EXPLAINERS = {
     ),
     "fmcg": SectorExplainer(
         sector="fmcg",
-        display_name="Everyday goods (FMCG)",
+        display_name="Everyday goods",
         lead=(
             "Things people buy again and again: soap, shampoo, toothpaste, biscuits, tea and packaged "
             "food."

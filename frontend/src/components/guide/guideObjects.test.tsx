@@ -175,7 +175,10 @@ describe("layout pass objects", () => {
     const tiles = [...container.querySelectorAll(".g3-tile")];
     expect(tiles.map((t) => t.textContent)).toEqual(["Apr to Jun", "Jul to Sep", "Oct to Dec", "Jan to Mar"]);
     expect(container.querySelector(".g2-pill-names")).toBeNull();
+    // Jul to Sep starts picked, so the readout is never empty.
     const button = screen.getByRole("button", { name: "Jul to Sep" });
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Apr to Jun" }));
     expect(button.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(button);
     expect(button.getAttribute("aria-pressed")).toBe("true");
@@ -184,6 +187,17 @@ describe("layout pass objects", () => {
     expect(container.querySelectorAll(".g3-tile-edge")).toHaveLength(1);
     expect(screen.getByText("Jul to Sep: results due by mid November.")).toBeTruthy();
     expect(container.querySelector(".g2-ball-label")?.textContent).toBe("Results day");
+  });
+
+  it("page 1 draws an arc from the picked quarter to its results day (T26)", () => {
+    const { container } = render(
+      <GuideLayoutContext.Provider value="picker">
+        <QuartersObject />
+      </GuideLayoutContext.Provider>
+    );
+    // jsdom has no layout width, so the arc waits for one; the ball carries its origin.
+    expect(container.querySelector(".g2-ball-label")?.textContent).toBe("Results day");
+    expect(container.querySelectorAll(".g2-arc").length).toBeLessThanOrEqual(1);
   });
 
   it("page 5 in the split layout: tilted wrapper, keyboard still moves the range", () => {

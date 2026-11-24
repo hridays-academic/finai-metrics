@@ -107,7 +107,8 @@ export const QUARTERS = [
 ];
 
 export function QuartersObject() {
-  const [picked, setPicked] = useState<number | null>(null);
+  // Jul to Sep starts picked, so the readout is never empty (phones).
+  const [picked, setPicked] = useState<number | null>(1);
   const q = picked === null ? null : QUARTERS[picked];
   return (
     <>
@@ -123,7 +124,7 @@ export function QuartersObject() {
           names={QUARTERS.map((item) => item.label)}
           picked={picked}
           onPick={setPicked}
-          ball={q ? { key: picked as number, value: q.results, label: "Results day" } : undefined}
+          ball={q ? { key: picked as number, value: q.results, label: "Results day", from: (picked as number) * 3 + 1.5 } : undefined}
           room={1.7}
         />
       </div>
@@ -173,7 +174,7 @@ function useOneLine(text: string) {
 export function RevenueObject() {
   const [now, setNow] = useState(MARUTI_NOW);
   const [dragging, setDragging] = useState(false);
-  const S = useSliderSizes();
+  const S = useSliderSizes(true);
   const barsRef = useRef<HTMLDivElement>(null);
   const drag = useBarDrag(barsRef, 1000, BAR_MAX, 100, setNow, setDragging);
   const madeUp = now !== MARUTI_NOW;
@@ -267,7 +268,7 @@ const SPLIT_TONE: Record<string, string> = { materials: "tone-4", staff: "tone-3
 export function MarginObject() {
   const [left, setLeft] = useState(18);
   const [dragging, setDragging] = useState(false);
-  const S = useSliderSizes();
+  const S = useSliderSizes(true);
   const [barRef, width] = useWidth<HTMLDivElement>();
   // The knob sits where costs end, so its value is 100 minus what's left.
   const drag = useBarDrag(barRef, 40, 100, 1, (costsEnd) => setLeft(100 - costsEnd), setDragging);

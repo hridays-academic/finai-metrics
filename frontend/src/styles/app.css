@@ -7377,12 +7377,31 @@ a.news-card-headline:hover {
   padding: var(--space-4);
 }
 
+/* Sentence case in the body font (Hriday, master plan phase 0). */
 .g3-tile > .g3-tile-name {
-  font-family: var(--font-head);
-  font-size: var(--text-xl);
-  font-weight: 800;
-  line-height: 1;
-  text-transform: uppercase;
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+/* Page 1: from the picked quarter to its results day. */
+.g2-arc {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.g2-arc path {
+  stroke: var(--text-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.g2-arc path:first-child {
+  stroke-dasharray: 4 5;
 }
 
 .g3-tile > .g3-tile-edge {
@@ -7412,6 +7431,82 @@ a.news-card-headline:hover {
 
 .is-tiles .g2-segment.is-picked {
   translate: 0 -6px;
+}
+
+/* G2: on desktop the block fills about 70% of the screen's height. The
+   title, text and gaps grow with the height (capped), so 1280x720 still fits. */
+@media (min-width: 641px) {
+  .g3-inner .g3-title {
+    font-size: clamp(48px, min(9vw, 15vh), 144px);
+  }
+
+  .g3-copy {
+    gap: clamp(var(--space-6), 4vh, var(--space-8));
+  }
+
+  .g3-para {
+    font-size: clamp(var(--text-md), 2vh, var(--text-lg));
+  }
+
+  .g3-facts .g2-fact-num {
+    font-size: clamp(var(--text-xl), 3.6vh, 34px);
+  }
+
+  .g3-stage {
+    gap: clamp(var(--space-5), 3vh, var(--space-7));
+  }
+}
+
+/* "Continue from page N", over page 1 only. */
+.g2-resume {
+  position: fixed;
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  z-index: 5;
+  translate: -50% 0;
+}
+
+@media (max-width: 640px) {
+  .g2-resume {
+    bottom: calc(var(--tabbar-height) + var(--space-3) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Stage pages: the question or buttons first, then the slider or tiles. */
+  .is-stage .g3-stage > .g2-side {
+    order: 0;
+  }
+}
+
+/* Stage (pages 9 and 10): the question or buttons on the right, above the
+   slider; page 10's practice tiles run under both columns. */
+@media (min-width: 641px) {
+  .g3-inner.is-stage {
+    align-items: start;
+  }
+
+  .is-stage .g3-stage {
+    display: contents;
+  }
+
+  .is-stage .g3-copy {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .is-stage .g3-stage > .g2-side {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .is-stage .g3-stage > .g2-bottom {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .is-stage .g3-stage > .g2-practice {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
 }
 
 @media (max-width: 640px) {
@@ -7466,7 +7561,7 @@ a.news-card-headline:hover {
   }
 
   .g3-tile > .g3-tile-name {
-    font-size: var(--text-lg);
+    font-size: var(--text-sm);
   }
 
   .sector-tile.g3-tile {
