@@ -24,7 +24,7 @@ vi.mock("./ForecastForm", () => ({ default: () => <form aria-label="forecast for
 import * as api from "../../lib/api";
 import ForecastPage, { KeyStats, ScoredPanel } from "./ForecastPage";
 import { RecentResults } from "./LeagueHome";
-import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, formatOutcome, outcomeSummary } from "./outcome";
+import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, formatOutcome, outcomeSummary, rupeeNote } from "./outcome";
 import ResultsPage from "./ResultsPage";
 
 const mocked = vi.mocked(api);
@@ -66,6 +66,20 @@ describe("formatting", () => {
     expect(formatOutcome(-2.4, "sector_kpi", "%")).toBe("-2.4%");
     expect(formatOutcome(18.2, "operating_margin", "%")).toBe("18.2%");
     expect(formatOutcome(null, "operating_margin", "%")).toBe("N/A");
+  });
+
+  it("explains the rupee for IT when reported and constant-currency growth differ by over 2 points (T23)", () => {
+    const m = (r: number, c: number) => [
+      { metric_key: "revenue_growth_yoy", actual: r },
+      { metric_key: "sector_kpi", actual: c },
+    ];
+    expect(rupeeNote(m(17.4, 9.7), "it")).toBe(
+      "Revenue grew +17.4% in rupees but +9.7% in constant currency. The 7.7-point gap is the rupee: it was weaker against the dollar, so each dollar earned was worth more rupees."
+    );
+    expect(rupeeNote(m(4, 7), "it")).toContain("stronger against the dollar");
+    expect(rupeeNote(m(10, 8.5), "it")).toBeNull(); // within 2 points
+    expect(rupeeNote(m(10, 8), "it")).toBeNull(); // exactly 2: no note
+    expect(rupeeNote(m(17.4, 9.7), "fmcg")).toBeNull();
   });
 
   it("writes Home's summary with each sector's KPI name", () => {

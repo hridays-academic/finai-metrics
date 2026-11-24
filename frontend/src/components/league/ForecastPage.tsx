@@ -314,7 +314,7 @@ export function ScoredPanel({ event, outcome }: { event: EventDetail; outcome: E
       <h2 className="panel-title" id="outcome-title">
         How it turned out
       </h2>
-      {outcome ? <OutcomeList metrics={outcome.metrics} /> : <p className="empty-note">Loading...</p>}
+      {outcome ? <OutcomeList metrics={outcome.metrics} sector={event.company.sector} /> : <p className="empty-note">Loading...</p>}
       <a className="btn btn-secondary outcome-link" href={`#/results/${event.id}`}>
         {event.submitted ? "See your score" : "See the full results"}
       </a>

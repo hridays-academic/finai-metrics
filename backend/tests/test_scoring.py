@@ -233,3 +233,11 @@ class TestExplanations:
         text = " ".join(explain_metric(s, "Revenue growth", 8.0, 12.0, 13.0, 9.0, "%", CFG)).lower()
         for banned in ("buy", "sell", "hold", "price target", "stock"):
             assert banned not in text
+
+
+def test_crowd_line_is_silent_below_the_minimum():
+    # T12 (master plan): never print a small forecaster count such as "0 did here".
+    from app.services.scoring import explain_crowd
+    for n in (0, 1, 4):
+        assert explain_crowd(n, False, 5) == ""
+    assert explain_crowd(7, True, 5).startswith("7 people forecast")

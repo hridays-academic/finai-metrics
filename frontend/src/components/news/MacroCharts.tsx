@@ -54,7 +54,10 @@ function MacroLine({ s }: { s: MacroSeries }) {
   );
 }
 
-export default function MacroCharts({ series, title = "Macro context" }: { series: MacroSeries[]; title?: string }) {
+export default function MacroCharts({ series: all, title = "Macro context" }: { series: MacroSeries[]; title?: string }) {
+  // T3 (master plan): a card without data is hidden, never shown empty; with
+  // none, the whole section goes.
+  const series = all.filter((s) => s.status === "ok" && s.points.length > 0);
   if (series.length === 0) return null;
   return (
     <section className="glass panel news-panel" aria-labelledby="macro-title">
@@ -67,11 +70,7 @@ export default function MacroCharts({ series, title = "Macro context" }: { serie
             <figcaption className="sparkline-head">
               <span className="sparkline-label">{s.label}</span>
             </figcaption>
-            {s.status === "ok" ? (
-              <MacroLine s={s} />
-            ) : (
-              <p className="sparkline-empty">{s.status === "coming_soon" ? "Coming soon" : "Not available right now"}</p>
-            )}
+            <MacroLine s={s} />
             <p className="macro-meta">
               Matters for: {s.sectors.join(", ")}.{" "}
               <a href={s.source_url} target="_blank" rel="noopener noreferrer">

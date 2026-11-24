@@ -54,7 +54,25 @@ export function hostOf(url: string): string {
   }
 }
 
-export function OutcomeList({ metrics }: { metrics: OutcomeMetric[] }) {
+// T23 (master plan, DRAFT wording): IT companies earn mostly in dollars, so
+// when reported growth and constant-currency growth differ by more than 2
+// points, say it was the rupee and give the gap. Null otherwise.
+export function rupeeNote(metrics: { metric_key: string; actual: number | null }[], sector: string): string | null {
+  if (sector !== "it") return null;
+  const reported = metrics.find((m) => m.metric_key === "revenue_growth_yoy")?.actual ?? null;
+  const cc = metrics.find((m) => m.metric_key === "sector_kpi")?.actual ?? null;
+  if (reported === null || cc === null) return null;
+  const gap = Math.round(Math.abs(reported - cc) * 10) / 10;
+  if (gap <= 2) return null;
+  const r = formatOutcome(reported, "revenue_growth_yoy", "%");
+  const c = formatOutcome(cc, "sector_kpi", "%");
+  return reported > cc
+    ? `Revenue grew ${r} in rupees but ${c} in constant currency. The ${gap.toFixed(1)}-point gap is the rupee: it was weaker against the dollar, so each dollar earned was worth more rupees.`
+    : `Revenue grew ${r} in rupees but ${c} in constant currency. The ${gap.toFixed(1)}-point gap is the rupee: it was stronger against the dollar, so each dollar earned was worth fewer rupees.`;
+}
+
+export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]; sector?: string }) {
+  const rupee = rupeeNote(metrics, sector);
   return (
     <ul className="group outcome-list">
       {metrics.map((m, i) => (
@@ -74,6 +92,7 @@ export function OutcomeList({ metrics }: { metrics: OutcomeMetric[] }) {
             )}
           </div>
           {m.note && <p className="outcome-note">{m.note}</p>}
+          {rupee && m.metric_key === "sector_kpi" && <p className="outcome-note">{rupee}</p>}
           {m.source_url && (
             <p className="outcome-source">
               Source:{" "}

@@ -4,7 +4,7 @@ import { formatDay } from "../../lib/leagueFormat";
 import type { EventDetail, EventOutcome, EventResult, EventSummary, MetricResult, UserPublic } from "../../lib/types";
 import { colourClass, type Difficulty, DIFFICULTY_LABEL } from "../../lib/difficulty";
 import { useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
-import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, OutcomeList, resultsDateLine } from "./outcome";
+import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, OutcomeList, resultsDateLine, rupeeNote } from "./outcome";
 import SiteFooter from "../SiteFooter";
 import { formatIst } from "./LockCountdown";
 import { Grain, Guilloche } from "./CardArt";
@@ -266,7 +266,7 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
         <div className="results-score-label">Your score</div>
         <div className="results-score-value">{n(result.event_score)}</div>
         <p>{result.event_score_explanation}</p>
-        <p>{result.crowd_explanation}</p>
+        {result.crowd_explanation && <p>{result.crowd_explanation}</p>}
       </section>
 
       <section className="section glass panel results-list-panel" aria-label="Score by number">
@@ -275,6 +275,7 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
             <MetricCard key={m.metric_key} m={m} index={i} />
           ))}
         </ul>
+        {rupeeNote(result.metrics, ev.company.sector) && <p className="outcome-note">{rupeeNote(result.metrics, ev.company.sector)}</p>}
         <FinePrint>{LEAGUE_FOOTNOTE}</FinePrint>
       </section>
 
@@ -310,8 +311,8 @@ function OutcomePage({
         <h2 className="section-title" id="outcome-title">
           What really happened
         </h2>
-        <p className="section-text">{outcome.crowd_explanation}</p>
-        <OutcomeList metrics={outcome.metrics} />
+        {outcome.crowd_explanation && <p className="section-text">{outcome.crowd_explanation}</p>}
+        <OutcomeList metrics={outcome.metrics} sector={ev.company.sector} />
         <FinePrint>{LEAGUE_FOOTNOTE}</FinePrint>
       </section>
 

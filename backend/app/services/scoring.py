@@ -220,5 +220,6 @@ def explain_event_score(points: Sequence[float]) -> str:
 def explain_crowd(forecasters: int, shown: bool, minimum: int) -> str:
     if shown:
         return f"{forecasters} people forecast this company. The crowd median is the middle of their midpoints."
-    did = "1 did" if forecasters == 1 else f"{forecasters} did"
-    return f"The crowd median appears once at least {minimum} people forecast a company; {did} here."
+    # T12 (master plan): below the minimum, say nothing. Never print a small
+    # forecaster count (it announced "0 did here" on public pages).
+    return ""
