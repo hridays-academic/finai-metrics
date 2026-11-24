@@ -13,7 +13,7 @@ import { Grain, Guilloche } from "../league/CardArt";
 
 export const GUIDE_COMPANIES = {
   maruti: { ticker: "MARUTI", name: "Maruti Suzuki", sector: "Autos" },
-  marico: { ticker: "MARICO", name: "Marico", sector: "Everyday goods (FMCG)" },
+  marico: { ticker: "MARICO", name: "Marico", sector: "Everyday goods" },
 } as const;
 
 export type GuideCompany = keyof typeof GUIDE_COMPANIES;
