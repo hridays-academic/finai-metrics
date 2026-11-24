@@ -479,8 +479,19 @@ def _item_out(row: dict, view: str) -> Optional[dict]:
         "publisher_domain": nc.domain_for(row["publisher"]),
         "published_at": row["published_at"].isoformat(), "theme": row["theme"],
         "theme_label": nc.label_for(row["theme"]), "why": why,
-        "sectors": [nc.SECTOR_LABELS[v] for v in nc.views_for(row["theme"]) if v != "economy"],
+        "sectors": [nc.SECTOR_LABELS[v] for v in nc.sectors_for(row["theme"], row["title"])],
     }
+
+
+def _still_fits(row: dict, view: str) -> bool:
+    """Stored headlines are re-checked against today's rules (T4-T7): the
+    theme must still match the title (no violence, no loose matches), and a
+    sector view only shows headlines about that sector."""
+    if nc.classify(row["title"], company=False) != row["theme"]:
+        return False
+    if view in nc.NEWS_SECTORS:
+        return view in nc.sectors_for(row["theme"], row["title"])
+    return True
 
 
 def news_list(conn: psycopg.Connection, view: str, limit: int, offset: int) -> dict:
@@ -492,10 +503,13 @@ def news_list(conn: psycopg.Connection, view: str, limit: int, offset: int) -> d
         """
         SELECT title, url, publisher, published_at, theme FROM news_items
         WHERE company_id IS NULL AND theme = ANY(%s)
-        ORDER BY published_at DESC LIMIT %s OFFSET %s
+        ORDER BY published_at DESC LIMIT %s
         """,
-        (themes, limit + 1, offset),
+        # Some stored rows no longer fit the rules and are skipped, so filter
+        # from the start and slice afterwards (offsets count shown items).
+        (themes, (offset + limit) * 4 + 1),
     ).fetchall()
+    rows = [r for r in rows if _still_fits(dict(r), view)][offset:]
     items = []
     for r in rows[:limit]:
         v = view
@@ -598,6 +612,8 @@ def company_news(conn: psycopg.Connection, symbol: str, today: date) -> dict:
             "SELECT title, url, publisher, published_at, theme FROM news_items WHERE company_id = %s "
             "ORDER BY published_at DESC LIMIT 10", (company["id"],),
         ).fetchall():
+            if nc.BLOCKED.search(r["title"]):
+                continue
             out = _item_out(dict(r), view)
             if out:
                 headlines.append(out)
@@ -621,6 +637,9 @@ def company_news(conn: psycopg.Connection, symbol: str, today: date) -> dict:
 
 def _company_videos(conn: psycopg.Connection, company: Optional[dict], view: str) -> list[dict]:
     from app.services.videos import videos_for  # videos imports this module
+
+    if not get_settings().enable_news_videos:  # T8: news videos are off the site
+        return []
 
     out = videos_for(conn, view, 4, company["id"]) if company else []
     return out + videos_for(conn, view, 6 - len(out))

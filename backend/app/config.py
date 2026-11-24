@@ -102,6 +102,10 @@ class Settings(BaseSettings):
     # /api/chat calls a paid LLM API and has no UI caller (see CLAUDE.md's
     # "AI assistant"), so it 404s unless this is true (2026-11).
     enable_chat: bool = False
+    # News videos (WION, CNBC-TV18 ...) are off the site (audit T8, master
+    # plan phase 1): /api/videos and company pages return none unless this is
+    # true. Phase 7 brings back a curated teaching set instead.
+    enable_news_videos: bool = False
 
     # Secret key for hashing client IPs before the rate limiter stores them
     # (rate_limit.py). Set in Vercel; without it each process makes up its

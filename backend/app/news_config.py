@@ -131,15 +131,18 @@ THEMES: tuple[Theme, ...] = (
         "fmcg": "A weaker rupee may raise the cost of imported inputs such as palm oil.",
         "cement": "A weaker rupee may raise the cost of imported coal and petcoke used to fire kilns.",
     }),
-    Theme("tariffs", "Tariffs and trade", _rx(r"tariffs?|trade deal|import duty|export duty|anti-dumping|visas?|h-1b"), {
+    # Work visas only (H-1B and the like); tourist visas aren't a sector driver (T4).
+    Theme("tariffs", "Tariffs and trade", _rx(r"tariffs?|trade deal|import duty|export duty|anti-dumping|h-1b|work visas?"), {
         "economy": "Tariff changes may affect India's exports, imports and the companies that depend on them.",
         "it": "Trade and visa rules in the US and Europe may affect demand for Indian IT services and the cost of staff abroad.",
         "autos": "Tariffs may change export demand and the cost of imported components.",
         "fmcg": "Import duties on edible oils and other inputs may change raw material costs.",
     }),
-    # "war" but not a figurative one ("turf war", "price war").
+    # Supply disruptions only (T4, master plan): "war" and "conflict" alone no
+    # longer match, so the theme is about freight and parts, not fighting.
+    # Violent headlines are dropped before any theme (BLOCKED).
     Theme("supply", "War and supply",
-          _rx(r"(?<!turf )(?<!price )(?<!talent )(?<!bidding )war|conflict|sanctions?|red sea|shipping|chip shortage|supply chain"), {
+          _rx(r"red sea|freight rates?|shipping (costs?|rates?|disruptions?|routes?)|chip shortage|supply chain|supply disruptions?"), {
         "economy": "Conflicts and shipping disruptions may raise freight costs and commodity prices worldwide.",
         "autos": "Supply disruptions may delay parts such as chips, which can slow vehicle production.",
         "cement": "Disruptions may raise freight and raw material costs.",
@@ -207,8 +210,36 @@ def is_advice(title: str) -> bool:
     return bool(ADVICE.search(title))
 
 
+# T7 (master plan): a learning site for 13 to 17-year-olds shows no violence.
+# Any headline with one of these words is dropped, whatever else it says.
+BLOCKED = _rx(
+    r"kill(s|ed|ing)?|dead|deaths?|died|shelling|shell(s|ed)|war crimes?|massacres?|genocide|bomb(s|ed|ing|ings)?|"
+    r"missiles?|air ?strikes?|drone strikes?|terror(ist|ists|ism)?|attacks?|attacked|shooting|shot dead|murder(s|ed)?|"
+    r"rape[sd]?|hostages?|invasion|invades?|troops|militants?|soldiers?|casualt(y|ies)|wounded|injured|blast|explosion"
+)
+
+# T6 (master plan): a card is tagged with a sector only when its headline names
+# something from that sector, never every sector the theme has a line for.
+SECTOR_HINTS: dict[str, re.Pattern] = {
+    "cement": _rx(r"cement|construction|housing|home loans?|real estate|infrastructure|coal|petcoke|kilns?"),
+    "autos": _rx(r"autos?|automobiles?|cars?|vehicles?|two-wheelers?|tractors?|evs?|electric vehicles?|chips?|semiconductors?|steel|aluminium|aluminum|emis?"),
+    "fmcg": _rx(r"fmcg|consumer goods|consumer demand|households?|rural|villages?|palm oil|edible oils?|copra|food prices?|packaged|shelf prices?"),
+    "it": _rx(r"it services|software|technology|tech|outsourcing|h-1b|work visas?|dollar|us demand|clients?"),
+}
+
+
+def sectors_for(key: str, title: str) -> tuple[str, ...]:
+    """The sectors a theme headline is about: those with an approved line for
+    the theme whose own words appear in the title."""
+    if key not in THEMES_BY_KEY:
+        return ()
+    return tuple(v for v in THEMES_BY_KEY[key].sentences if v != "economy" and SECTOR_HINTS[v].search(title))
+
+
 def classify(title: str, *, company: bool) -> str | None:
     """Theme or event-type key for a headline, or None (then it's hidden)."""
+    if BLOCKED.search(title):
+        return None
     if company:
         for e in EVENT_TYPES:
             if e.pattern.search(title):

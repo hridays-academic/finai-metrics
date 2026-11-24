@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { ApiError, fetchMacro, fetchNews, fetchVideos, fetchWorldEvents } from "../../lib/api";
-import type { MacroSeries, NewsItem, NewsView, Video, WorldEvent } from "../../lib/types";
-import VideoCards from "./VideoCards";
+import { ApiError, fetchMacro, fetchNews, fetchWorldEvents } from "../../lib/api";
+import type { MacroSeries, NewsItem, NewsView, WorldEvent } from "../../lib/types";
 import NewsSourceNote from "./NewsSourceNote";
 import NewsCards from "./NewsCards";
 import WorldEvents from "./WorldEvents";
@@ -26,7 +25,6 @@ export default function ResearchLanding() {
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [macro, setMacro] = useState<MacroSeries[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
 
   useEffect(() => {
     fetchWorldEvents().then(setEvents).catch(() => {});
@@ -37,9 +35,6 @@ export default function ResearchLanding() {
     let cancelled = false;
     setItems(null);
     setError(null);
-    fetchVideos(view)
-      .then((v) => !cancelled && setVideos(v))
-      .catch(() => !cancelled && setVideos([]));
     fetchNews(view)
       .then((r) => {
         if (cancelled) return;
@@ -99,7 +94,6 @@ export default function ResearchLanding() {
         <NewsSourceNote updatedAt={updatedAt} />
       </section>
 
-      <VideoCards videos={videos} />
 
       <MacroCharts series={macro} />
     </div>

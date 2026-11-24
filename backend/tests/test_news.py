@@ -27,7 +27,11 @@ ADMIN = "admin@example.com"
     ("Cement maker to commission new plant in Odisha", True, "capacity"),
     ("Celebrity attends film premiere", False, None),
     ("Mumbai redevelopment turf war: BMC and SRA clash", False, None),
-    ("Iran sets conditions as the war may not resume", False, "supply"),
+    # T4/T7 (master plan): "war" alone is no longer a theme, and violence is dropped.
+    ("Iran sets conditions as the war may not resume", False, None),
+    ("Amnesty alleges possible war crimes in Ethiopia shelling", False, None),
+    ("Travel agents ask Malaysia govt to extend visa free entry for Indian tourists", False, None),
+    ("Red Sea disruption pushes up freight rates for exporters", False, "supply"),
 ])
 def test_classify(title, company, expected):
     assert nc.classify(title, company=company) == expected
@@ -226,12 +230,16 @@ def test_news_list_shows_sector_lines(conn, client):
     conn.execute(
         "INSERT INTO news_items (url, title, publisher, published_at, source, theme) VALUES "
         "('https://www.livemint.com/a', 'Brent crude jumps', 'Mint', now(), 'gdelt', 'crude'),"
+        "('https://www.livemint.com/c', 'Oil prices lift cement makers freight bills', 'Mint', now() - interval '2 hours', 'gdelt', 'crude'),"
         "('https://www.livemint.com/b', 'Tech spending rises', 'Mint', now() - interval '1 hour', 'gdelt', 'tech')"
     )
     allv = client.get("/api/news?view=all").json()["items"]
-    assert [i["theme"] for i in allv] == ["crude", "tech"]
+    assert [i["theme"] for i in allv] == ["crude", "tech", "crude"]
     assert allv[0]["why"] == nc.sentence_for("crude", "economy") and allv[1]["sector_label"] == "IT"
+    # T6: sector tags only where the headline names the sector.
+    assert allv[0]["sectors"] == [] and allv[2]["sectors"] == ["Cement"]
     cement = client.get("/api/news?view=cement").json()["items"]
+    assert [i["title"] for i in cement] == ["Oil prices lift cement makers freight bills"]
     assert [i["why"] for i in cement] == [nc.sentence_for("crude", "cement")]
     assert client.get("/api/news?view=nope").status_code == 404
 
@@ -295,7 +303,9 @@ def test_video_duration_and_classification():
     assert videos.classify_video("Buy these 3 stocks now", companies) is None
     assert videos.classify_video("Cricket highlights", companies) is None
     assert videos.classify_video("Iran unveils secret missile city as war fears grow", companies) is None
-    assert videos.classify_video("Red Sea attacks push up shipping costs", companies) == ("supply", None)
+    # "attacks" is blocked outright (T7); a disruption story without violence still counts.
+    assert videos.classify_video("Red Sea attacks push up shipping costs", companies) is None
+    assert videos.classify_video("Red Sea disruption pushes up shipping costs", companies) == ("supply", None)
     assert videos.classify_video("Deadly blast at Turkey steel factory", companies) is None
     assert videos.classify_video("Assent Steel on Growth, Green Steel and Global Demand", companies) == ("inputs", None)
 
@@ -333,7 +343,20 @@ def test_fetch_thumbnail_checks_id_type_and_size(monkeypatch):
     assert videos.fetch_thumbnail("abc123XYZ_-") is None
 
 
+def test_news_videos_are_off_by_default(conn, client, monkeypatch):
+    # T8 (master plan): the news-video feed is off the site until phase 7.
+    monkeypatch.delenv("ENABLE_NEWS_VIDEOS", raising=False)
+    get_settings.cache_clear()
+    conn.execute(
+        "INSERT INTO news_videos (video_id, channel_id, channel_title, title, published_at, theme) "
+        "VALUES ('vidOFFOFF01', 'c', 'WION', 'Oil prices rise', now(), 'crude')"
+    )
+    assert client.get("/api/videos").json() == []
+
+
 def test_thumbnails_are_stored_served_and_deleted_with_the_video(conn, client, monkeypatch):
+    monkeypatch.setenv("ENABLE_NEWS_VIDEOS", "true")
+    get_settings.cache_clear()
     from app.services import videos
     from app.services.db import get_conn
 

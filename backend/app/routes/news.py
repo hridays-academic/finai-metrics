@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.news_models import NEWS_VIEWS, CompanyNews, MacroSeriesOut, NewsList, Video, WorldEvent, WorldEventIn
+from app.config import get_settings
 from app.routes.deps import require_admin
 from app.services import audit, news, price_lag, videos
 from app.services.db import get_conn
@@ -24,6 +25,8 @@ def list_news(
 def list_videos(view: str = Query("all"), limit: int = Query(8, ge=1, le=24)) -> list[Video]:
     if view not in NEWS_VIEWS:
         raise HTTPException(status_code=404, detail="No such news view.")
+    if not get_settings().enable_news_videos:
+        return []
     with get_conn() as conn:
         return [Video(**v) for v in videos.videos_for(conn, view, limit)]
 
