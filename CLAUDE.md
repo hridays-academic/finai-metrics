@@ -589,6 +589,21 @@ approval; no deploy without it.
   equal values 4px apart. Its prompt line ("Drag your range to see how many
   of the 10 results fall inside it.") is a draft awaiting approval (vault
   note, "24 Nov" section).
+- **Guide layout pass** (2026-11-24, branch `guide-layout`, pages 1, 5 and 6
+  only; the rest wait for Hriday's approval). A page with `layout` in
+  `GuidePage.tsx` (`split` / `picker` / `stage`, `guideLayout.ts`) uses Home's
+  hero composition (`LayoutSection`, `.g3-*` at the end of app.css): two-line
+  title, 60ch paragraph with the first sentence in `--text`, facts panel, and
+  on the right the object at Home's scale (`useSliderSizes(true)`) with its
+  readout as a `.strip-panel`; centred vertically. Phones: title, company
+  label, object, readout, paragraph, facts; the facts panel is hidden
+  (screen readers keep it) when a page doesn't fit (`is-tight-facts`: pages
+  1 and 6). Split slabs rest at Home's -6deg and flatten while held or
+  keyboard-focused; touch screens and reduced motion keep them flat. Pointer
+  maths reads the unrotated `.g2-rail-wrap` (`flatLeft`; the wrap must stay
+  positioned). Picker = four graphite card tiles (`.g3-tile`), same toggle
+  buttons. `.g3-sheet` isolates so HeroWaves show (they were painted under
+  the opaque sheet). Plan: vault `Areas/Guide layout pass (24 Nov)`.
 - **Practice** (phase B, `routes/practice.py`, `services/practice.py`,
   `components/practice/`, schema v17): scored, complete, non-demo league
   events; address `#/practice/<code>` (6-char code from the event id).

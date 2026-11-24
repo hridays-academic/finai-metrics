@@ -33,7 +33,7 @@ describe("the guide", () => {
     ]);
     for (const s of sections) {
       expect(s.querySelectorAll(".g2-facts li")).toHaveLength(3);
-      expect(s.querySelector(".g2-text")?.textContent?.length).toBeGreaterThan(40);
+      expect(s.querySelector(".g2-text, .g3-para")?.textContent?.length).toBeGreaterThan(40);
       expect(s.querySelector(".g2-side")).not.toBeNull();
       // Home's parts: background lines, headline with a gold last word, the strip's panel.
       expect(s.querySelector(".hero-waves")).not.toBeNull();
@@ -59,8 +59,11 @@ describe("the guide", () => {
     motion(false);
     const { container } = render(<GuidePage />);
     const sections = [...container.querySelectorAll("section.g2-page")];
-    const names = sections.map((s) => s.querySelector(".g2-company-desk .tile-name")?.textContent ?? null);
+    const names = sections.map((s) => s.querySelector(".g2-company-desk .tile-name, .g3-company .tile-name")?.textContent ?? null);
     expect(names).toEqual([null, "Maruti Suzuki", "Marico", null, null, "Marico", "Maruti Suzuki", null, null, null]);
+    // Layout-pass pages: one card, as the object's label (never in the paragraph).
+    expect(sections[5].querySelectorAll(".g2-company")).toHaveLength(1);
+    expect(sections[5].querySelector(".g3-stage > .g3-company")).not.toBeNull();
     // One card for phones (beside the title), one for desktop (beside the facts).
     expect(sections[1].querySelectorAll(".g2-company")).toHaveLength(2);
     expect(sections[1].querySelector(".g2-company .card3d-guilloche")).not.toBeNull();
@@ -87,5 +90,32 @@ describe("the guide", () => {
     const { container } = render(<GuidePage />);
     expect(container.querySelector(".g2-stack")?.classList.contains("is-still")).toBe(true);
     expect((container.querySelector(".g2-sheet") as HTMLElement).style.transform).toBe("");
+  });
+
+  it("uses the layout pass on pages 1, 5 and 6 only, with the words unchanged", () => {
+    motion(false);
+    const { container } = render(<GuidePage />);
+    const sections = [...container.querySelectorAll("section.g2-page")];
+    expect(sections.map((s) => (s.querySelector(".g3-inner") ? s.querySelector(".g3-inner")!.className : "v3"))).toEqual([
+      "g3-inner is-picker", "v3", "v3", "v3", "g3-inner is-split", "g3-inner is-split", "v3", "v3", "v3", "v3",
+    ]);
+    // The approved paragraphs, word for word; the first sentence is the lead.
+    const para = (i: number) => sections[i].querySelector(".g3-para") as HTMLElement;
+    expect(para(4).textContent).toBe(
+      "No one knows the exact number before results day, so you give a range: a low and a high. Aim for a range that would contain the actual result 8 times out of 10. A narrow range misses often. A wide range rarely misses, but width reduces your score."
+    );
+    expect(para(4).querySelector(".g3-lead")?.textContent).toBe(
+      "No one knows the exact number before results day, so you give a range: a low and a high."
+    );
+    expect(para(0).querySelector(".g3-lead")?.textContent).toBe(
+      "A company's financial year is divided into four quarters of three months."
+    );
+    expect(para(5).querySelector(".g3-lead")?.textContent).toBe("Each number you forecast starts at 100 points.");
+    // Waves show: the sheet isolates, as Home's hero does.
+    expect(sections[4].querySelector(".g2-sheet")?.classList.contains("g3-sheet")).toBe(true);
+    // Page 1's picker: four card tiles; page 5's slab tilts (CSS flattens it when held).
+    expect(sections[0].querySelectorAll(".g3-tile.sector-neutral .tile-material")).toHaveLength(4);
+    expect(sections[4].querySelector(".g2-rail-wrap.is-tilted .g2-tilt .g2-rail")).not.toBeNull();
+    expect(sections[1].querySelector(".is-tilted")).toBeNull();
   });
 });

@@ -18,6 +18,7 @@ import {
   keepSums, MarginObject, QuizObject, RevenueObject, ScoreObject, scoreSum, SectorObject, YourTurnObject,
 } from "./guideObjects";
 import { markPlaces, restingPlaces, thinTicks } from "./GuideRail";
+import { GuideLayoutContext } from "./guideLayout";
 
 beforeEach(() => {
   window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia;
@@ -161,6 +162,41 @@ describe("page 5: ten made-up results as a dot plot", () => {
     const near = markPlaces([10, 10, 10, 10.1], px);
     const s2 = [...near].sort((a, b) => a - b);
     s2.slice(1).forEach((v, i) => expect(v - s2[i]).toBeCloseTo(4, 9));
+  });
+});
+
+describe("layout pass objects", () => {
+  it("page 1's picker: four card tiles, same buttons, labels and keyboard", () => {
+    const { container } = render(
+      <GuideLayoutContext.Provider value="picker">
+        <QuartersObject />
+      </GuideLayoutContext.Provider>
+    );
+    const tiles = [...container.querySelectorAll(".g3-tile")];
+    expect(tiles.map((t) => t.textContent)).toEqual(["Apr to Jun", "Jul to Sep", "Oct to Dec", "Jan to Mar"]);
+    expect(container.querySelector(".g2-pill-names")).toBeNull();
+    const button = screen.getByRole("button", { name: "Jul to Sep" });
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(button);
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(tiles[1].classList.contains("is-picked")).toBe(true);
+    expect(tiles[1].querySelector(".slab-range.is-steel.g3-tile-edge")).not.toBeNull();
+    expect(container.querySelectorAll(".g3-tile-edge")).toHaveLength(1);
+    expect(screen.getByText("Jul to Sep: results due by mid November.")).toBeTruthy();
+    expect(container.querySelector(".g2-ball-label")?.textContent).toBe("Results day");
+  });
+
+  it("page 5 in the split layout: tilted wrapper, keyboard still moves the range", () => {
+    const { container } = render(
+      <GuideLayoutContext.Provider value="split">
+        <DropObject />
+      </GuideLayoutContext.Provider>
+    );
+    expect(container.querySelector(".g2-rail-wrap.is-tilted > .g2-tilt > .g2-rail")).not.toBeNull();
+    const high = screen.getByRole("slider", { name: "High" });
+    fireEvent.keyDown(high, { key: "ArrowRight" });
+    fireEvent.keyDown(high, { key: "ArrowRight" });
+    expect(screen.getByText("Caught 8 of 10")).toBeTruthy();
   });
 });
 

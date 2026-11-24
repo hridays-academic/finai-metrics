@@ -5,6 +5,7 @@ import { HeroWaves } from "../league/CardArt";
 import { coverAt, currentPage, riseProgress, tiltAt } from "./guideMotion";
 import { fetchPracticeCases } from "../../lib/api";
 import GuideCompanyCard, { type GuideCompany } from "./GuideCompanyCard";
+import { firstSentence, type GuideLayout, GuideLayoutContext } from "./guideLayout";
 import {
   CluesObject, DropObject, LazyObject, MarginObject, QuartersObject, QuizObject, RevenueObject, ScoreObject, SectorObject,
   YourTurnObject,
@@ -40,6 +41,9 @@ interface Page {
   company?: GuideCompany;
   // "clues" is filled in by GuidePage (it needs the Research link).
   object: ReactNode | "clues";
+  // The layout pass (2026-11-24): pages with one use it; the rest keep the
+  // v3 template until approved.
+  layout?: GuideLayout;
 }
 
 // Wording approved by Hriday 2026-11-19 (vault: Areas/Guide v2 wording (for
@@ -55,6 +59,7 @@ const PAGES: Page[] = [
     text:
       "A company's financial year is divided into four quarters of three months. After each quarter, the company publishes its results: how much it sold and how much profit it made. Companies listed in India must report within 45 days, or within 60 days after the last quarter of the year. You forecast three numbers before results day.",
     object: <QuartersObject />,
+    layout: "picker",
   },
   {
     title: ["Revenue", "growth"],
@@ -101,6 +106,7 @@ const PAGES: Page[] = [
     text:
       "No one knows the exact number before results day, so you give a range: a low and a high. Aim for a range that would contain the actual result 8 times out of 10. A narrow range misses often. A wide range rarely misses, but width reduces your score.",
     object: <DropObject />,
+    layout: "split",
   },
   {
     title: ["How you", "score"],
@@ -113,6 +119,7 @@ const PAGES: Page[] = [
     text:
       "Each number you forecast starts at 100 points. Each percentage point of your range's width costs 2 points. If the result falls outside your range, each point you missed by costs 20 more. Scores cannot go below 0. Here the result is Marico's actual operating margin: 18.2%.",
     object: <ScoreObject />,
+    layout: "split",
   },
   {
     title: ["The lazy", "guess"],
@@ -192,17 +199,19 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
     const stack = stackRef.current;
     if (!stack) return;
     const tighten = (inner: HTMLElement) => {
-      inner.classList.remove("is-tight-a", "is-tight-b");
+      // Layout-pass pages drop the facts panel (kept for screen readers);
+      // v3 pages hide the prompt, then move the made-up note.
+      const steps = inner.classList.contains("g3-inner") ? ["is-tight-facts"] : ["is-tight-a", "is-tight-b"];
+      inner.classList.remove(...steps);
       const phone = window.matchMedia?.("(max-width: 640px)").matches ?? false;
       if (!phone || inner.clientHeight === 0 || inner.closest(".is-last")) return;
       const pad = parseFloat(getComputedStyle(inner).paddingBottom);
       const over = () =>
-        Math.max(...[...inner.children].map((c) => (c as HTMLElement).offsetTop + (c as HTMLElement).offsetHeight)) -
+        Math.max(...[...inner.querySelectorAll<HTMLElement>(":scope > *, :scope > .g3-copy > *")].map((c) => c.offsetTop + c.offsetHeight)) -
         (inner.clientHeight - pad);
-      if (over() > 0) inner.classList.add("is-tight-a");
-      if (over() > 0) inner.classList.add("is-tight-b");
+      for (const step of steps) if (over() > 0) inner.classList.add(step);
     };
-    const fitAll = () => stack.querySelectorAll<HTMLElement>(".g2-inner").forEach(tighten);
+    const fitAll = () => stack.querySelectorAll<HTMLElement>(".g2-inner, .g3-inner").forEach(tighten);
     fitAll();
     document.fonts?.ready.then(fitAll).catch(() => {});
     window.addEventListener("resize", fitAll);
@@ -210,7 +219,7 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
     if (typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver((entries) => {
         for (const e of entries) {
-          const inner = (e.target as HTMLElement).closest<HTMLElement>(".g2-inner");
+          const inner = (e.target as HTMLElement).closest<HTMLElement>(".g2-inner, .g3-inner");
           if (inner) tighten(inner);
         }
       });
@@ -373,7 +382,60 @@ interface SectionProps {
   spacerRef: (el: HTMLDivElement | null) => void;
 }
 
-function PageSection({ page, index, sectionRef, sheetRef, dimRef, spacerRef }: SectionProps) {
+function PageSection(props: SectionProps) {
+  return props.page.layout ? <LayoutSection {...props} /> : <V3Section {...props} />;
+}
+
+// The layout pass (2026-11-24): Home's hero composition. Desktop: title,
+// paragraph and facts on the left; the object at Home's scale on the right
+// with its readout panel under it; the block centred in the screen. Phones:
+// title, object (with the company card as its label), readout, paragraph,
+// facts. Words as approved; only the first sentence changes colour.
+function LayoutSection({ page, index, sectionRef, sheetRef, dimRef, spacerRef }: SectionProps) {
+  const id = `g2-title-${index + 1}`;
+  const last = index === PAGE_COUNT - 1;
+  const layout = page.layout as GuideLayout;
+  const [lead, rest] = firstSentence(page.text);
+  return (
+    <>
+      <section className={`g2-page ${last ? "is-last" : ""}`} aria-labelledby={id} ref={sectionRef}>
+        <div className="g2-sheet g3-sheet" ref={sheetRef}>
+          <HeroWaves />
+          <span className="g2-progress" style={{ ["--share" as string]: (index + 1) / PAGE_COUNT }} aria-hidden="true" />
+          <div className={`g3-inner is-${layout}`}>
+            <p className="visually-hidden">
+              Page {index + 1} of {PAGE_COUNT}
+            </p>
+            <div className="g3-copy">
+              <h2 className="hero-title g3-title" id={id}>
+                {page.title[0]} <span className="hero-title-gold">{page.title[1]}</span>
+              </h2>
+              <p className="g3-para">
+                <span className="g3-lead">{lead}</span>
+                {rest && ` ${rest}`}
+              </p>
+              <ul className="g2-facts g3-facts strip-panel">
+                {page.facts.map((f) => (
+                  <li key={f.line}>
+                    <span className="g2-fact-num">{f.num}</span> <span className="g2-fact-line">{f.line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="g3-stage">
+              {page.company && <GuideCompanyCard company={page.company} className="g3-company" />}
+              <GuideLayoutContext.Provider value={layout}>{page.object as ReactNode}</GuideLayoutContext.Provider>
+            </div>
+          </div>
+          <span className="g2-dim" ref={dimRef} aria-hidden="true" />
+        </div>
+      </section>
+      {!last && <div className="g2-dwell" ref={spacerRef} aria-hidden="true" />}
+    </>
+  );
+}
+
+function V3Section({ page, index, sectionRef, sheetRef, dimRef, spacerRef }: SectionProps) {
   const id = `g2-title-${index + 1}`;
   const last = index === PAGE_COUNT - 1;
   return (

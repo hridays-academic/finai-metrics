@@ -30,13 +30,31 @@ function pick(): SliderSizes {
   return DESKTOP;
 }
 
-// The sizes for this screen, updated when it crosses a breakpoint.
-export function useSliderSizes(): SliderSizes {
-  const [sizes, setSizes] = useState(pick);
+// Home's hero object (layout pass, 2026-11-24): its desktop sizes everywhere
+// but phones, where Home uses its smaller set (.hero-object at <=860px).
+function pickHome(): SliderSizes {
+  return isPhone() ? DESKTOP : TALL;
+}
+
+function isPhone(): boolean {
+  try {
+    return window.matchMedia(PHONE_QUERY).matches;
+  } catch {
+    return false;
+  }
+}
+
+// The sizes for this screen, updated when it crosses a breakpoint. `home`:
+// the layout-pass pages, at Home's hero scale. `phone` is the screen, not
+// the size set (the Home set is the same object on a phone and a desktop).
+export function useSliderSizes(home = false): SliderSizes & { phone: boolean } {
+  const read = () => ({ ...(home ? pickHome() : pick()), phone: isPhone() });
+  const [sizes, setSizes] = useState(read);
   useEffect(() => {
-    const on = () => setSizes(pick());
+    const on = () => setSizes(read());
+    on();
     window.addEventListener("resize", on);
     return () => window.removeEventListener("resize", on);
-  }, []);
+  }, [home]);
   return sizes;
 }

@@ -1,7 +1,9 @@
 import { type KeyboardEvent, type PointerEvent, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { n } from "../../lib/scoring";
 import { BallSkin } from "../FreeBall";
-import { PHONE, useSliderSizes } from "./GuideSvg";
+import { Grain, Guilloche } from "../league/CardArt";
+import { useGuideLayout } from "./guideLayout";
+import { useSliderSizes } from "./GuideSvg";
 
 // The guide's slider (v3, 2026-11-19, Hriday: "the same 3D object as Home's
 // hero"). Home's own materials, in CSS (gradients and shadows, so sharp at any
@@ -49,6 +51,25 @@ interface RailProps {
 }
 
 const clampTo = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+// Picker tiles (layout pass): Home's card material, taller on desktop.
+const TILE_H = { desk: 96, phone: 76 };
+
+// An element's left edge as laid out, ignoring transforms between it and
+// `outer` (the tilt): offsets are layout positions, so this is the flat
+// position even while the object is turned.
+function flatLeft(el: HTMLElement, outer: HTMLElement): number {
+  let x = 0;
+  let node: HTMLElement | null = el;
+  while (node && node !== outer) {
+    x += node.offsetLeft;
+    node = node.offsetParent as HTMLElement | null;
+  }
+  // `outer` must be a positioned ancestor (.g2-rail-wrap is); if the chain
+  // ever skips it, the element's own box is the next best thing.
+  if (node !== outer) return el.getBoundingClientRect().left;
+  return outer.getBoundingClientRect().left + outer.clientLeft + x;
+}
 export const SEGMENT_GAP = 6;
 export const MARK_GAP = 4;
 
@@ -125,7 +146,12 @@ export default function GuideRail(props: RailProps) {
     min, max, step = 0.5, ticks = [], unit = "%", labels, range, onRange, balls = [], marks = [], lazy, gapLabel,
     headroom = 1, segments, children,
   } = props;
-  const S = useSliderSizes();
+  const layout = useGuideLayout();
+  const S = useSliderSizes(layout === "split" || layout === "picker");
+  const tiles = !!segments && layout === "picker";
+  // Home's tilt (-6deg) on split pages; flat while held or focused (CSS).
+  const tilts = layout === "split";
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [railRef, width] = useWidth<HTMLDivElement>();
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ part: "low" | "high" | "body"; startX: number; start: Range } | null>(null);
@@ -134,10 +160,13 @@ export default function GuideRail(props: RailProps) {
   const px = (v: number) => frac(v) * width;
   const x = (v: number) => `${frac(v) * 100}%`;
   const snap = (v: number) => Math.round(v / step) * step;
+  // Pointer maths on the flat position (the wrapper isn't turned), so a
+  // drag is exact whether or not the object has finished flattening.
   const valueAt = (clientX: number) => {
-    const r = railRef.current?.getBoundingClientRect();
-    if (!r || r.width === 0) return min;
-    return min + ((clientX - r.left) / r.width) * (max - min);
+    const rail = railRef.current;
+    const wrap = wrapRef.current;
+    if (!rail || !wrap || rail.offsetWidth === 0) return min;
+    return min + ((clientX - flatLeft(rail, wrap)) / rail.offsetWidth) * (max - min);
   };
 
   function set(next: Range) {
@@ -203,18 +232,21 @@ export default function GuideRail(props: RailProps) {
     };
   }
 
-  const cy = S.box / 2;
-  const trackTop = cy - S.track / 2;
+  const tileH = S.phone ? TILE_H.phone : TILE_H.desk;
+  const box = tiles ? tileH : S.box;
+  const cy = box / 2;
+  const trackTop = tiles ? 0 : cy - S.track / 2;
   const capTop = cy - S.capsule / 2;
   // Where a ball's bottom rests: sunk a little into the slab's channel, or on
-  // top of the capsule (Home's hero: 10 of 24px into the slab, 3px into the range).
-  const slabGround = trackTop + S.track * 0.42;
+  // top of the capsule (Home's hero: 10 of 24px into the slab, 3px into the
+  // range); on picker tiles, on the tiles' top edge.
+  const slabGround = tiles ? 2 : trackTop + S.track * 0.42;
   const capGround = capTop + 3;
-  const raise = slabGround - capGround;
+  const raise = tiles ? 0 : slabGround - capGround;
   const inRange = (v: number) => !!range && v >= range[0] && v <= range[1];
   const places = restingPlaces(balls.map((b) => b.value), px, inRange, S.ball, raise);
   // Marks: 2px wide on phones, 3px elsewhere, standing a little proud of the capsule.
-  const phone = S.ball === PHONE.ball;
+  const phone = S.phone;
   const markW = phone ? 2 : 3;
   const markH = S.capsule + (phone ? 6 : 10);
 
@@ -227,9 +259,30 @@ export default function GuideRail(props: RailProps) {
   const shadowH = Math.max(8, Math.round(S.ball * 0.18));
 
   return (
-    <div className="g2-rail-wrap" style={{ ["--headroom" as string]: headroom, ["--ball" as string]: `${S.ball}px` }}>
-      <div className={`g2-rail ${dragging ? "is-dragging" : ""}`} ref={railRef} style={{ height: S.box }}>
-        {segments ? (
+    <div
+      className={`g2-rail-wrap ${tilts ? "is-tilted" : ""} ${tiles ? "is-tiles" : ""} ${dragging ? "is-held" : ""}`}
+      ref={wrapRef}
+      style={{ ["--headroom" as string]: headroom, ["--ball" as string]: `${S.ball}px` }}
+    >
+      <div className="g2-tilt">
+      <div className={`g2-rail ${dragging ? "is-dragging" : ""}`} ref={railRef} style={{ height: box }}>
+        {segments && tiles ? (
+          Array.from({ length: segments.count }, (_, i) => (
+            <span
+              key={i}
+              className={`sector-tile sector-neutral g3-tile ${segments.picked === i ? "is-picked" : ""}`}
+              style={{ left: i * (segW + SEGMENT_GAP), width: segW, height: tileH }}
+              aria-hidden="true"
+            >
+              <span className="tile-material">
+                <Guilloche />
+                <Grain />
+              </span>
+              <span className="g3-tile-name">{labels?.[i]?.text}</span>
+              {segments.picked === i && <span className="slab-range is-steel g3-tile-edge" />}
+            </span>
+          ))
+        ) : segments ? (
           Array.from({ length: segments.count }, (_, i) => (
             <span key={i} className="slab g2-slab" style={{ left: i * (segW + SEGMENT_GAP), width: segW, top: trackTop, height: S.track }} aria-hidden="true">
               {segments.picked === i && (
@@ -360,7 +413,7 @@ export default function GuideRail(props: RailProps) {
           ))}
         </div>
       )}
-      {labels && (
+      {labels && !tiles && (
         // Pill names in a grid of equal columns (one per pill, same 6px gaps),
         // so a long name wraps and the row grows with it.
         <div className="g2-pill-names" style={{ gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))` }} aria-hidden="true">
@@ -369,6 +422,7 @@ export default function GuideRail(props: RailProps) {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
