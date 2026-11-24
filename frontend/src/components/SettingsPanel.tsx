@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
+import { useSheet } from "../hooks/useSheet";
 import type { ThemeMode } from "../hooks/useTheme";
 import { deleteAccount, ApiError } from "../lib/api";
 import { clearAuthToken } from "../lib/auth";
@@ -27,6 +28,8 @@ export default function SettingsPanel({
   onSetMode,
   onClose,
 }: SettingsPanelProps) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useSheet(sheetRef, onClose);
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState(() => String(getStartingBalance()));
   const [startingBalance, setStartingBalanceState] = useState(getStartingBalance);
@@ -64,8 +67,8 @@ export default function SettingsPanel({
 
   return (
     <>
-      <div className="settings-backdrop" onClick={onClose} />
-      <div className="settings-panel sheet" role="dialog" aria-modal="true" aria-label="Settings">
+      <div className="settings-backdrop" onClick={onClose} aria-hidden="true" />
+      <div className="settings-panel sheet" role="dialog" aria-modal="true" aria-label="Settings" ref={sheetRef} tabIndex={-1}>
         <div className="settings-panel-header">
           <h2>Settings</h2>
           <button type="button" className="icon-button" aria-label="Close settings" onClick={onClose}>

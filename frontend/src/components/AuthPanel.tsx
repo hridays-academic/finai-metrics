@@ -3,6 +3,7 @@ import { signUp, logIn, logOut, loginWithGoogle, fetchActivity, ApiError } from 
 import { setAuthToken, clearAuthToken } from "../lib/auth";
 import type { ActivityEntry, UserPublic } from "../lib/types";
 import GoogleSignInButton from "./GoogleSignInButton";
+import { useSheet } from "../hooks/useSheet";
 import { isGoogleSignInConfigured } from "../lib/googleAuth";
 import ForgotPasswordForm from "./ForgotPasswordForm";
 
@@ -30,6 +31,8 @@ function formatTimestamp(sqliteUtc: string): string {
 }
 
 export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProps) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useSheet(sheetRef, onClose);
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -104,8 +107,8 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
 
   return (
     <>
-      <div className="settings-backdrop" onClick={onClose} />
-      <div className="settings-panel sheet" role="dialog" aria-modal="true" aria-label="Account">
+      <div className="settings-backdrop" onClick={onClose} aria-hidden="true" />
+      <div className="settings-panel sheet" role="dialog" aria-modal="true" aria-label="Account" ref={sheetRef} tabIndex={-1}>
         <div className="settings-panel-header">
           <h2>
             {user ? "Your account" : mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset password" : "Welcome back"}

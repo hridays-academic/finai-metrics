@@ -151,7 +151,7 @@ button {
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-nav);
   display: flex;
   align-items: center;
   gap: var(--space-6);
@@ -1103,7 +1103,7 @@ textarea.input {
 .free-ball-layer {
   position: fixed;
   inset: 0;
-  z-index: 45;
+  z-index: var(--z-ball);
   pointer-events: none;
 }
 
@@ -2426,7 +2426,7 @@ textarea.input {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 60;
+    z-index: var(--z-nav);
     gap: 0;
     height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
     padding: 0 var(--space-2) env(safe-area-inset-bottom);
@@ -4448,7 +4448,7 @@ a.news-card-headline:hover {
   top: calc(var(--topbar-height) + 12px);
   right: 10px;
   bottom: 12px;
-  z-index: 48;
+  z-index: var(--z-scrollbar);
   width: 20px;
   border-radius: 999px;
   background: rgba(5, 7, 10, 0.55);
@@ -6102,7 +6102,7 @@ a.news-card-headline:hover {
 .spotlight {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--z-modal);
 }
 
 .spotlight-hole {
@@ -6714,7 +6714,7 @@ a.news-card-headline:hover {
   position: fixed;
   right: 24px;
   bottom: 18px;
-  z-index: 30;
+  z-index: var(--z-float);
   margin: 0;
   padding: 6px 12px;
   border-radius: var(--radius-pill);
@@ -7618,4 +7618,15 @@ a.news-card-headline:hover {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+/* T20: while a sheet is open the page behind can't scroll and doesn't move. */
+.app-shell-content.is-behind-sheet {
+  overflow: hidden;
+}
+
+.is-behind-sheet *,
+.is-behind-sheet *::before,
+.is-behind-sheet *::after {
+  animation-play-state: paused !important;
 }

@@ -31,6 +31,17 @@
 }
 
 :root {
+  /* One layer scale (T21, master plan phase 1). In-page layers stay below
+     40; sheets and their backdrop sit above every in-page layer. */
+  --z-raised: 3;
+  --z-float: 30;
+  --z-ball: 35;
+  --z-scrollbar: 38;
+  --z-nav: 40;
+  --z-backdrop: 90;
+  --z-sheet: 100;
+  --z-modal: 200;
+  --z-tooltip: 1000;
   color-scheme: dark;
 
   --page: #0b0d12;
