@@ -14,10 +14,10 @@ vi.mock("../../lib/api", () => ({
 
 import { n, scoreMetric } from "../../lib/scoring";
 import {
-  caught, caughtLine, CluesObject, DropObject, growthSum, lazyLines, marginSplit, QuartersObject, quizQuestions,
+  caught, caughtLine, CluesObject, DROP_RESULTS, DropObject, growthSum, lazyLines, marginSplit, QuartersObject, quizQuestions,
   keepSums, MarginObject, QuizObject, RevenueObject, ScoreObject, scoreSum, SectorObject, YourTurnObject,
 } from "./guideObjects";
-import { restingPlaces, thinTicks } from "./GuideRail";
+import { markPlaces, restingPlaces, thinTicks } from "./GuideRail";
 
 beforeEach(() => {
   window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia;
@@ -127,13 +127,38 @@ describe("page 5: ten made-up results as a dot plot", () => {
     expect([places[0], places[2], places[4]]).toEqual([{ at: 10, lift: 4 }, { at: 10, lift: 34 }, { at: 10, lift: 64 }]);
   });
 
-  it("tests the range on request and states the count", () => {
+  it("marks the ten results and updates the count live as the range moves", () => {
     const { container } = render(<DropObject />);
-    expect(container.querySelector(".g2-stat")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Test this range" }));
-    expect(container.querySelector(".g2-stat")?.textContent).toBe("7 of 10 results fall inside your range.");
+    const marks = [...container.querySelectorAll<HTMLElement>(".g2-mark")];
+    expect(marks).toHaveLength(10);
+    expect(container.querySelectorAll(".g2-mark.is-in")).toHaveLength(7);
+    expect(container.querySelector(".g2-ball")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Test/ })).toBeNull();
+    expect(screen.getByText("Caught 7 of 10")).toBeTruthy();
+    expect(screen.getByText("Width cost: 8 points")).toBeTruthy();
     expect(screen.getByText("For 80%, widen it slightly.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Test it again" })).toBeTruthy();
+    // Widen the high end from 12 to 13 (two half-point steps): 13 comes inside.
+    const high = screen.getByRole("slider", { name: "High" });
+    fireEvent.keyDown(high, { key: "ArrowRight" });
+    fireEvent.keyDown(high, { key: "ArrowRight" });
+    expect(screen.getByText("Caught 8 of 10")).toBeTruthy();
+    expect(screen.getByText("Width cost: 10 points")).toBeTruthy();
+    expect(screen.getByText("This matches the 80% target.")).toBeTruthy();
+    expect(container.querySelectorAll(".g2-mark.is-in")).toHaveLength(8);
+  });
+
+  it("sets equal results 4px apart and never lets marks touch", () => {
+    const px = (v: number) => v * 31;
+    const at = markPlaces(DROP_RESULTS, px);
+    // The three 10s: centred on 10, 4px apart; the two 9s either side of 9.
+    expect([at[4], at[5], at[6]]).toEqual([306, 310, 314]);
+    expect([at[2], at[3]]).toEqual([277, 281]);
+    const sorted = [...at].sort((a, b) => a - b);
+    sorted.slice(1).forEach((v, i) => expect(v - sorted[i]).toBeGreaterThanOrEqual(4));
+    // Values closer than 4px merge into one evenly spread group.
+    const near = markPlaces([10, 10, 10, 10.1], px);
+    const s2 = [...near].sort((a, b) => a - b);
+    s2.slice(1).forEach((v, i) => expect(v - s2[i]).toBeCloseTo(4, 9));
   });
 });
 

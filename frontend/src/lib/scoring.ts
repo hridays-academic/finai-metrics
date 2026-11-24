@@ -14,6 +14,11 @@ export function intervalScore(low: number, high: number, actual: number): number
   return width;
 }
 
+// What a range's width costs before any miss: K points per point of width.
+export function widthCost(low: number, high: number): number {
+  return K * (high - low);
+}
+
 export interface MetricScore {
   points: number;
   base: number; // before the bonus
@@ -63,24 +68,24 @@ function dist(value: number): string {
 export function explain(low: number, high: number, actual: number, lazy: number | null): string[] {
   const score = scoreMetric(low, high, actual, lazy);
   const width = high - low;
-  const widthCost = K * width;
+  const widthPts = widthCost(low, high);
   let pointsLine: string;
   if (score.hit) {
-    let ending = `100 - ${n(widthCost)} = ${n(100 - widthCost)}.`;
-    if (widthCost > 100) ending += " Scores can't go below 0, so this counts as 0.";
+    let ending = `100 - ${n(widthPts)} = ${n(100 - widthPts)}.`;
+    if (widthPts > 100) ending += " Scores can't go below 0, so this counts as 0.";
     pointsLine =
       `Your range was ${dist(width)} wide and the result (${n(actual)}%) landed inside it, ` +
-      `so you lost ${pts(widthCost)} for width: ${ending}`;
+      `so you lost ${pts(widthPts)} for width: ${ending}`;
   } else {
     const side = actual < low ? "below" : "above";
     const miss = actual < low ? low - actual : actual - high;
     const perPoint = (K * 2) / ALPHA;
-    const total = widthCost + perPoint * miss;
+    const total = widthPts + perPoint * miss;
     let ending = `100 - ${n(total)} = ${n(100 - total)}.`;
     if (total > 100) ending += " Scores can't go below 0, so this counts as 0.";
     pointsLine =
       `The result (${n(actual)}%) landed ${dist(miss)} ${side} your range, so on top of ` +
-      `${pts(widthCost)} for your range's width you lost ${pts(perPoint * miss)} for the miss ` +
+      `${pts(widthPts)} for your range's width you lost ${pts(perPoint * miss)} for the miss ` +
       `(${n(perPoint)} for each percentage point you missed by): ${ending}`;
   }
   const midpoint = (low + high) / 2;

@@ -1,7 +1,7 @@
 import { type KeyboardEvent, type PointerEvent, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fetchLeagueEvents, fetchPracticeCases } from "../../lib/api";
 import { setMystery } from "../../lib/practice";
-import { ALPHA, K, n, scoreMetric } from "../../lib/scoring";
+import { ALPHA, K, n, scoreMetric, widthCost } from "../../lib/scoring";
 import type { PracticeCard } from "../../lib/types";
 import PracticeTile from "../practice/PracticeTile";
 import GuideRail, { type Range, SegmentRail, useWidth } from "./GuideRail";
@@ -386,11 +386,12 @@ export function SectorObject() {
   );
 }
 
-// ---------- Page 5: set a range, drop 10 made-up results ----------
+// ---------- Page 5: set a range; ten made-up results as marks ----------
 
-// Whole numbers, so equal results stack straight up like a dot plot (at most
-// three high) and neighbours sit side by side even on a phone (5% to 16% is
-// 11 points: at least 31px a point at 390px). 7 land in the starting range.
+// Ten thin marks on the slider (2026-11-24, Hriday: no balls, no test
+// button). Marks inside the gold range glow gold and the count updates as
+// you drag. Whole numbers, so equal results sit side by side 4px apart
+// (markPlaces). 7 fall in the starting range.
 export const DROP_RESULTS = [6, 8, 9, 9, 10, 10, 10, 11, 13, 15];
 export const DROP_START: Range = [8, 12];
 
@@ -409,38 +410,17 @@ export function caughtLine(count: number): string {
 
 export function DropObject() {
   const [range, setRange] = useState<Range>(DROP_START);
-  const [dropped, setDropped] = useState(false);
-  const [round, setRound] = useState(0);
   const count = caught(range);
-
-  function drop() {
-    if (dropped) {
-      setDropped(false);
-      setRound((r) => r + 1);
-      requestAnimationFrame(() => requestAnimationFrame(() => setDropped(true)));
-    } else {
-      setDropped(true);
-    }
-  }
-
   return (
     <>
       <div className="g2-side">
-        <p className="g2-prompt">Set your range, then test it against 10 results.</p>
-        <div className="g2-readout">
-          <button type="button" className="btn btn-secondary" onClick={drop}>
-            {dropped ? "Test it again" : "Test this range"}
-          </button>
-          <div className="g2-count" aria-live="polite">
-            {dropped && (
-              <>
-                <p className="g2-stat">
-                  <strong>{count} of 10</strong> results fall inside your range.
-                </p>
-                <p className="g2-answer">{caughtLine(count)}</p>
-              </>
-            )}
-          </div>
+        <p className="g2-prompt">Drag your range to see how many of the 10 results fall inside it.</p>
+        <div className="g2-count" aria-live="polite">
+          <p className="g2-stat">
+            <strong>Caught {count} of 10</strong>
+          </p>
+          <p className="g2-stat">Width cost: {points(widthCost(range[0], range[1]))}</p>
+          <p className="g2-answer">{caughtLine(count)}</p>
         </div>
         <MadeUpNote text="The 10 results are a made-up example." />
       </div>
@@ -451,9 +431,8 @@ export function DropObject() {
           ticks={[6, 8, 10, 12, 14, 16]}
           range={range}
           onRange={setRange}
-          balls={DROP_RESULTS.map((v, i) => ({ key: `${round}-${i}`, value: v, delay: i * 90 }))}
-          dropped={dropped}
-          headroom={3}
+          marks={DROP_RESULTS}
+          headroom={0}
         />
         <MadeUpNote under text="The 10 results are a made-up example." />
       </div>

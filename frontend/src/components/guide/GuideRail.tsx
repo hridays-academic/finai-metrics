@@ -11,15 +11,14 @@ import { PHONE, useSliderSizes } from "./GuideSvg";
 // transparent 44px hit areas, which are also keyboard sliders. On a mouse,
 // a small knob shows at each end only while you hover, focus or drag; on
 // touch screens the capsule's ends are the handles. Balls stack like a dot
-// plot. Gold is only ever the range.
+// plot; page 5's results are thin marks instead (`marks`). Gold is only ever
+// the range, and the marks it holds.
 
 export type Range = [number, number];
 
 export interface RailBall {
   key: string | number;
   value: number;
-  // Delay before it drops, in ms (the balls fall one after another).
-  delay?: number;
   // A word above the ball ("Results day").
   label?: string;
 }
@@ -35,8 +34,9 @@ interface RailProps {
   range?: Range;
   onRange?: (r: Range) => void;
   balls?: RailBall[];
-  // False: the balls wait above the rail (before "Drop 10 results").
-  dropped?: boolean;
+  // Thin marks on the slab at these values (page 5's ten results): gold
+  // inside the range, dim steel outside.
+  marks?: number[];
   lazy?: number;
   // A red bracket from the ball to the range's nearest edge, with its cost.
   gapLabel?: string;
@@ -50,6 +50,7 @@ interface RailProps {
 
 const clampTo = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 export const SEGMENT_GAP = 6;
+export const MARK_GAP = 4;
 
 // Where each ball rests, like a dot plot: balls that would overlap share one
 // column (the first ball's position) and stack straight up, so no ball ever
@@ -74,6 +75,34 @@ export function restingPlaces(
   return out;
 }
 
+// Where each mark sits, in px (2026-11-24, Hriday: thin marks never
+// overlap; equal values sit `gap` px apart). Marks closer than `gap` form a
+// group, spread evenly around the group's average; groups that then touch
+// merge, until every pair of neighbours is at least `gap` apart.
+export function markPlaces(values: number[], px: (v: number) => number, gap = 4): number[] {
+  const order = values.map((_, i) => i).sort((a, b) => values[a] - values[b]);
+  let groups = order.map((i) => ({ members: [i], centre: px(values[i]) }));
+  const left = (g: { members: number[]; centre: number }) => g.centre - ((g.members.length - 1) / 2) * gap;
+  const right = (g: { members: number[]; centre: number }) => g.centre + ((g.members.length - 1) / 2) * gap;
+  for (let merged = true; merged; ) {
+    merged = false;
+    const next: typeof groups = [];
+    for (const g of groups) {
+      const prev = next[next.length - 1];
+      if (prev && left(g) - right(prev) < gap - 1e-9) {
+        const count = prev.members.length + g.members.length;
+        prev.centre = (prev.centre * prev.members.length + g.centre * g.members.length) / count;
+        prev.members.push(...g.members);
+        merged = true;
+      } else next.push({ members: [...g.members], centre: g.centre });
+    }
+    groups = next;
+  }
+  const out = new Array<number>(values.length);
+  for (const g of groups) g.members.forEach((i, j) => (out[i] = left(g) + j * gap));
+  return out;
+}
+
 // Pixel width of an element, kept up to date.
 export function useWidth<T extends HTMLElement>(): [React.RefObject<T>, number] {
   const ref = useRef<T>(null);
@@ -93,7 +122,7 @@ export function useWidth<T extends HTMLElement>(): [React.RefObject<T>, number] 
 
 export default function GuideRail(props: RailProps) {
   const {
-    min, max, step = 0.5, ticks = [], unit = "%", labels, range, onRange, balls = [], dropped = true, lazy, gapLabel,
+    min, max, step = 0.5, ticks = [], unit = "%", labels, range, onRange, balls = [], marks = [], lazy, gapLabel,
     headroom = 1, segments, children,
   } = props;
   const S = useSliderSizes();
@@ -184,6 +213,10 @@ export default function GuideRail(props: RailProps) {
   const raise = slabGround - capGround;
   const inRange = (v: number) => !!range && v >= range[0] && v <= range[1];
   const places = restingPlaces(balls.map((b) => b.value), px, inRange, S.ball, raise);
+  // Marks: 2px wide on phones, 3px elsewhere, standing a little proud of the capsule.
+  const phone = S.ball === PHONE.ball;
+  const markW = phone ? 2 : 3;
+  const markH = S.capsule + (phone ? 6 : 10);
 
   const result = balls.length === 1 ? balls[0].value : null;
   const gapFrom =
@@ -217,6 +250,15 @@ export default function GuideRail(props: RailProps) {
             aria-hidden="true"
           />
         )}
+        {marks.length > 0 &&
+          markPlaces(marks, px, MARK_GAP).map((at, i) => (
+            <span
+              key={i}
+              className={`g2-mark ${inRange(marks[i]) ? "is-in" : ""}`}
+              style={{ left: at - markW / 2, width: markW, top: cy - markH / 2, height: markH }}
+              aria-hidden="true"
+            />
+          ))}
         {children?.(x)}
         {range && (
           <>
@@ -283,7 +325,7 @@ export default function GuideRail(props: RailProps) {
           return (
             <span
               key={b.key}
-              className={`g2-ball ${dropped ? "is-down" : ""}`}
+              className="g2-ball"
               style={{
                 left: x(places[i].at),
                 top: slabGround - S.ball,
@@ -291,7 +333,6 @@ export default function GuideRail(props: RailProps) {
                 height: S.ball,
                 marginLeft: -S.ball / 2,
                 ["--lift" as string]: `${places[i].lift}px`,
-                transitionDelay: dropped ? `${b.delay ?? 0}ms` : "0ms",
               }}
               aria-hidden="true"
             >
@@ -311,7 +352,7 @@ export default function GuideRail(props: RailProps) {
       </div>
       {ticks.length > 0 && (
         <div className="g2-scale" aria-hidden="true">
-          {(S.ball === PHONE.ball ? thinTicks(ticks, px) : ticks).map((t) => (
+          {(phone ? thinTicks(ticks, px) : ticks).map((t) => (
             <span key={t} className={edgeClass(frac(t))} style={{ left: x(t) }}>
               {n(t)}
               {unit}
