@@ -513,6 +513,31 @@ browser can't); links start a page at the top unless marked
 Unsaved forecast inputs live in `lib/forecastDrafts.ts`: memory only, never
 stored or sent, gone on reload, cleared on sign-out.
 
+## Master plan (2026-11-24, in progress)
+
+Hriday's plan and audit are in the vault: `Areas/Stackly master plan (24 Nov)`,
+`Areas/Site audit (24 Nov)` (225 IDs); per-ID status in `Areas/Master plan
+progress` (read it first when told "continue the master plan"); open
+decisions in `Areas/Decisions for Hriday (master plan)`. One branch per phase
+(`phase-0`, `phase-1`, ... each from the previous), pushed, not deployed.
+Never `git stash`. Things the code now relies on:
+
+- **Root `requirements.txt` must list everything in `backend/requirements.txt`**
+  (`tests/test_requirements_sync.py`). It lacked `openpyxl`, so the macro cron
+  failed daily from at least 2026-11-20.
+- League figures only next to league numbers: `lib/leagueFormat.ts`
+  `leagueSeries` / `latestLeague` / `lastYearValues` / `scaleAround`; Yahoo's
+  margin is no longer shown beside the league's (Research keeps Yahoo ratios).
+- News: `news_config.BLOCKED` drops violent headlines; `sectors_for` tags a
+  sector only when the headline names it; stored rows are re-checked at read
+  (`news._still_fits`). News videos are off unless `ENABLE_NEWS_VIDEOS=true`.
+- Addresses: `#/research` and a `notfound` route; Home/Practice/Research tabs
+  are links (`Sidebar` `hrefs`), the view follows the address.
+- Sheets use `hooks/useSheet.ts` (Escape, focus trap, inert page, focus back);
+  layers use the `--z-*` tokens in theme.css.
+- "Forgot password?" shows only when the build has `VITE_RESET_EMAIL=true`.
+- `scoring.explain_crowd` returns "" below the crowd minimum (never a count).
+
 ## First-visit guide and Practice (2026-11-18, phases A and B built, not deployed)
 
 Plan, decisions and wording approved by Hriday (vault: `Areas/First-visit
