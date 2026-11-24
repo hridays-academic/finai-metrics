@@ -519,7 +519,8 @@ Hriday's plan and audit are in the vault: `Areas/Stackly master plan (24 Nov)`,
 `Areas/Site audit (24 Nov)` (225 IDs); per-ID status in `Areas/Master plan
 progress` (read it first when told "continue the master plan"); open
 decisions in `Areas/Decisions for Hriday (master plan)`. One branch per phase
-(`phase-0`, `phase-1`, ... each from the previous), pushed, not deployed.
+(`phase-0`, `phase-1`, ... each from the previous), pushed. Phases 0 and 1
+were deployed 2026-11-24 (rollback target stackly-i5q2pqoj5).
 Never `git stash`. Things the code now relies on:
 
 - **Root `requirements.txt` must list everything in `backend/requirements.txt`**
