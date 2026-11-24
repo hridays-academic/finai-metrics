@@ -68,6 +68,7 @@ function LooseBall({ onHome }: { onHome: () => void }) {
     let surfaceTop = 0;
     let surfaceMoved = false;
     let frame = 0;
+    let homeTimer = 0;
     let last = 0;
 
     // The floor: the bottom of the screen, or the top of the phone tab bar.
@@ -194,7 +195,14 @@ function LooseBall({ onHome }: { onHome: () => void }) {
       step(dt / 2);
       apply();
       if (!atRest()) frame = requestAnimationFrame(tick);
-      else last = 0;
+      else {
+        last = 0;
+        // T27: a loose ball left at rest goes back to the slider after 3 s.
+        clearTimeout(homeTimer);
+        homeTimer = window.setTimeout(() => {
+          if (atRest()) ballStore.dock();
+        }, 3000);
+      }
     };
     const run = () => {
       if (!frame) frame = requestAnimationFrame(tick);
@@ -202,6 +210,7 @@ function LooseBall({ onHome }: { onHome: () => void }) {
 
     const beginDrag = (id: number, gx: number, gy: number, at: { t: number; x: number; y: number }) => {
       dragging = true;
+      clearTimeout(homeTimer);
       pointerId = id;
       grabX = gx;
       grabY = gy;
@@ -291,6 +300,7 @@ function LooseBall({ onHome }: { onHome: () => void }) {
       window.removeEventListener("resize", resized);
       box?.removeEventListener("scroll", run);
       if (frame) cancelAnimationFrame(frame);
+      clearTimeout(homeTimer);
     };
   }, []);
 

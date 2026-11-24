@@ -1158,20 +1158,8 @@ textarea.input {
   cursor: grabbing;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .hero-object-track {
-    animation: hero-fade 500ms var(--ease) backwards;
-  }
-  .hero-object-range {
-    animation: hero-range-settle 850ms cubic-bezier(0.34, 1.4, 0.64, 1) 200ms backwards;
-  }
-  .hero-object-ball {
-    animation: hero-ball-drop 1200ms linear 1000ms backwards;
-  }
-  .hero-object-ball-shadow {
-    animation: hero-ball-shadow 1200ms linear 1000ms backwards;
-  }
-}
+/* T27 (master plan): no load animation. The toy is on screen at rest from the
+   first frame (it used to fade and drop in, and sometimes showed an empty band). */
 
 /* The contact shadow gathers as the ball falls and spreads on the bounce. */
 @keyframes hero-ball-shadow {

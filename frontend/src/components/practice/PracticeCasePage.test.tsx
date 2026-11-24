@@ -91,7 +91,7 @@ describe("a practice company page", () => {
     expect(submit.mock.calls[0]).toEqual(["k3x9a0", [
       { metric_key: "revenue_growth_yoy", low: 10, high: 14 },
       { metric_key: "operating_margin", low: 10, high: 12 }], true]);
-    await screen.findByText("It was Maruti Suzuki (MARUTI): Q2 FY27 results, out on 31 Oct 2026.");
+    await screen.findByText("It was Maruti Suzuki: Q2 FY27 results, out on 31 Oct 2026.");
     expect(screen.getByText("Sign in to keep your practice scores. This one isn't saved.")).toBeTruthy();
     expect(screen.getByText("Revenue growth sentence.")).toBeTruthy();
     expect(screen.getByText("Beat the lazy guess").className).toContain("dot-positive");
