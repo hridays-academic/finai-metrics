@@ -564,7 +564,7 @@ approval; no deploy without it.
   built (`guideObjects.tsx`; quiz answers and score sums from
   `lib/scoring.ts`, tested). Wording approved 2026-11-19 (vault:
   `Areas/Guide v2 wording (for approval)`).
-- **Guide v3** (2026-11-19, all ten pages built; not deployed). Replaces
+- **Guide v3** (2026-11-19; approved 2026-11-24, committed, not deployed). Replaces
   v2's look (the v2 bullet above is history for the look; the stack motion
   is unchanged). Hriday: the guide must look like Home. Every page reuses
   Home's parts: page colour + `HeroWaves`, `.hero-title` (gold last word) as
@@ -579,6 +579,16 @@ approval; no deploy without it.
   PracticeTiles (`scrub={false}`, no badge) and is not sticky (`.is-last`).
   Spare height is shared between gaps (rule: no blank band over a quarter of
   the page). Wording approved 2026-11-19 (vault note, "v3 restyle").
+  Decisions 2026-11-24: page 4 is "Sector number" with the pill "Everyday
+  goods"; page 10's tiles keep Home's "Forecast" button and arrow. **Page 5
+  has no balls and no test button** (Hriday 2026-11-24): ten thin marks
+  (`GuideRail` `marks`, `.g2-mark`) at the made-up results, gold inside the
+  range, dim steel outside, live while dragging; readout "Caught n of 10",
+  "Width cost: n points" (`widthCost` in `lib/scoring.ts`) and the 80% line.
+  Marks are 2px (phone) / 3px wide and never overlap: `markPlaces` spreads
+  equal values 4px apart. Its prompt line ("Drag your range to see how many
+  of the 10 results fall inside it.") is a draft awaiting approval (vault
+  note, "24 Nov" section).
 - **Practice** (phase B, `routes/practice.py`, `services/practice.py`,
   `components/practice/`, schema v17): scored, complete, non-demo league
   events; address `#/practice/<code>` (6-char code from the event id).
@@ -2828,6 +2838,9 @@ check is ever needed.
 
 - **Pure tests** (`test_scoring.py`, `test_league_config.py`) need no
   database.
+- **Test events use `tests/future_dates.py`** (IST today + 60 days), never
+  a fixed results date: a hard-coded 2026-11-20 broke 41 tests once it
+  passed (the default lock was then in the past).
 - **Database tests** run ONLY against the Neon `test` branch
   (`TEST_DATABASE_URL` in `backend/.env`). They truncate tables. The guard in
   `tests/conftest.py` refuses to run unless that URL differs from
@@ -2873,7 +2886,7 @@ Vitest; test files sit next to their component (`*.test.tsx`) and opt into
 jsdom with a `// @vitest-environment jsdom` first line (no vitest config).
 Testing Library renders components with `lib/api` mocked via `vi.mock`.
 Dev dependencies only (vitest, jsdom, @testing-library/react + dom); nothing
-ships in the bundle. 63 tests (2026-11-17): results/outcome pages, the
+ships in the bundle. 121 tests (2026-11-24; 63 on 2026-11-17): results/outcome pages, the guide, the
 workspace, RangeLine, the company story (poses, zoom), the sidebar, the
 difficulty rule, the ball store and the ratio bars. The outcome test's
 `lib/api` mock must list every call the company page makes (it gained
@@ -3043,6 +3056,16 @@ the maths in `scoring.py` is unchanged.
   margin -> last year's margin; KPI -> last year's KPI value. Missing or
   differently defined -> NULL -> N/A, no bonus. Never estimated. Computed
   at each scoring run and written to `baselines`.
+- **A tie with the lazy guess never earns the bonus, including decimal ties
+  (fixed 2026-11-24).** Both distances are compared rounded to 6 decimal
+  places, as whole millionths (`scoring._micro` / `lib/scoring.ts`'s
+  `micro`, the same float operations so the two agree); raw floats made
+  |38.9 - 26| (12.899999999999999) smaller than |13.1 - 26| (12.9).
+  `backend/scripts/recheck_lazy_ties.py` re-scores every stored score
+  read-only (`RECHECK_DATABASE_URL`; production's string is Sensitive in
+  Vercel, so only Hriday can run it there). On 2026-11-24 production's 7
+  scored events had 0 forecasts (public `outcome` counts), so nothing
+  changed.
 - `POST /api/admin/events/{id}/score` refuses before the lock
   (`not_locked`) or with any result missing (`results_missing`, naming
   them); returns `{"scored": n}`. Each run deletes and rewrites the event's
