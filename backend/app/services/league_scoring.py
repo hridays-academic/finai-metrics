@@ -16,6 +16,7 @@ N/A, no bonus possible. Never estimated.
 Scoring is idempotent: a run replaces every score for the event in one
 transaction, and each run is audited.
 """
+import json
 import statistics
 from typing import Optional
 
@@ -23,6 +24,7 @@ import psycopg
 
 from app.league_config import market_config
 from app.league_models import (
+    QuarterRow,
     EventOutcomeOut, MetricResultOut, OutcomeMetricOut, RecentResultOut, ResultOut, SeasonOut,
 )
 from app.services import audit, result_proposals, scoring
@@ -170,13 +172,30 @@ def outcome(conn: psycopg.Connection, user_id: Optional[int], event_id: int) -> 
     )
 
 
+def _quarter_rows(quarters: list[dict]) -> list[QuarterRow]:
+    """Same rows as research_history._rows (not imported: that module pulls in yfinance)."""
+    out = []
+    for q in quarters:
+        rev, op = q.get("revenue"), q.get("operating_income")
+        margin = (op / rev * 100) if rev not in (None, 0) and op is not None else None
+        out.append(QuarterRow(period_end_date=q["period_end_date"], revenue=rev, operating_margin_pct=margin,
+                              net_income=q.get("net_income")))
+    return out
+
+
 def recent_results(conn: psycopg.Connection, user_id: Optional[int], limit: int = 20) -> list[RecentResultOut]:
     """Scored companies, newest results first, with their actual numbers."""
     rows = conn.execute(
         _EVENT_SELECT + " AND e.status = 'scored' ORDER BY e.results_date DESC, c.name LIMIT %(limit)s",
         {"user_id": user_id or 0, "show_demo": _show_demo(), "limit": limit},
     ).fetchall()
-    return [RecentResultOut(event=_summary(r), metrics=_outcome_metrics(conn, r, {})) for r in rows]
+    symbols = [r["provider_symbol"] for r in rows if r["provider_symbol"]]
+    cached = {c["symbol"]: json.loads(c["quarters_json"]) for c in conn.execute(
+        "SELECT symbol, quarters_json FROM statement_history_cache WHERE symbol = ANY(%s)", (symbols,)
+    ).fetchall()} if symbols else {}
+    return [RecentResultOut(event=_summary(r), metrics=_outcome_metrics(conn, r, {}),
+                            provider_rows=_quarter_rows(cached.get(r["provider_symbol"], [])))
+            for r in rows]
 
 
 def my_result(conn: psycopg.Connection, user_id: int, event_id: int) -> ResultOut:

@@ -22,6 +22,12 @@ function levelFor(companyId: number): Promise<Difficulty | null> {
   return p;
 }
 
+// S4 (master plan): Home primes the level from rows it already has (the
+// recent-results response), so it makes no history request per company.
+export function primeDifficulty(companyId: number, rows: Parameters<typeof fromProviderRows>[0]): void {
+  if (!known.has(companyId) && rows && rows.length) known.set(companyId, Promise.resolve(difficultyOf(fromProviderRows(rows))));
+}
+
 export function useCompanyDifficulty(companyId: number | null | undefined): Difficulty | null {
   const [level, setLevel] = useState<Difficulty | null>(null);
   useEffect(() => {

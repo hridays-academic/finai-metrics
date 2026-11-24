@@ -504,6 +504,8 @@ export interface EventOutcome {
 export interface RecentResult {
   event: EventSummary;
   metrics: OutcomeMetric[];
+  // S4: Yahoo's cached quarters, for the difficulty colour without another request.
+  provider_rows?: QuarterRow[];
 }
 
 export interface EventResult {

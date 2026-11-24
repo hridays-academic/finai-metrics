@@ -355,6 +355,9 @@ class RecentResultOut(BaseModel):
 
     event: EventSummary
     metrics: list[OutcomeMetricOut]
+    # S4 (master plan): Yahoo's cached quarters for the difficulty colour, so
+    # Home needs no extra history request per company. Cache only, never fetched.
+    provider_rows: list[QuarterRow] = []
 
 
 class ResultOut(BaseModel):

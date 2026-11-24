@@ -117,8 +117,6 @@ export default function App() {
   const [keptPage, setKeptPage] = useState<HomePage>(homePage);
   if (homePage && !samePage(keptPage, homePage)) setKeptPage(homePage);
   // Home's list mounts on first view and then stays, like Research.
-  const [homeListMounted, setHomeListMounted] = useState(showHome);
-  if (showHome && !homeListMounted) setHomeListMounted(true);
 
   const pageKey = route
     ? route.name === "league"
@@ -305,15 +303,12 @@ export default function App() {
             `visible` (this view being the active one) for the same reason --
             see PaperTrading.tsx/useLiveQuotes.ts. */}
         <main className="app-main">
-          {/* Kept mounted once seen (it refetches its lists each time it's
-              shown), so its scroll position and companies survive. */}
-          {homeListMounted && (
-            <div className={`view-wrapper ${showHome ? "" : "view-hidden"}`}>
-              <LeagueHome user={user} onOpenAuth={() => setAuthOpen(true)} visible={showHome} />
-            </div>
-          )}
+          {/* S3/S8 (master plan): only the page on screen is mounted, so hidden
+              pages make no requests and run no effects. Places survive through
+              useScrollMemory and lib/forecastDrafts; Research's company lives here. */}
+          {showHome && <LeagueHome user={user} onOpenAuth={() => setAuthOpen(true)} visible />}
 
-          <div className={`view-wrapper ${showResearch ? "" : "view-hidden"}`}>
+          {showResearch && (
             <div className="page research-page">
               <CompanySearch
                 visible={showResearch}
@@ -327,24 +322,17 @@ export default function App() {
               {company ? <MetricsDashboard data={company} theme={theme} /> : <ResearchLanding />}
               <SiteFooter />
             </div>
-          </div>
+          )}
 
           {/* Hidden behind a flag while the league is the focus (lib/features.ts). */}
           {SHOW_EXTRA_TOOLS && (
             <>
-              <div className={`view-wrapper ${view === "calculator" && route === null ? "" : "view-hidden"}`}>
-                <ReturnCalculator theme={theme} />
-              </div>
-
-              <div className={`view-wrapper ${view === "simulator" && route === null ? "" : "view-hidden"}`}>
-                <StockMarketSimulator theme={theme} />
-              </div>
+              {view === "calculator" && route === null && <ReturnCalculator theme={theme} />}
+              {view === "simulator" && route === null && <StockMarketSimulator theme={theme} />}
 
               {/* Also hidden because it shows ~15-minute-delayed prices; its
                   backend endpoints need ENABLE_PAPER_TRADING too. */}
-              <div className={`view-wrapper ${view === "trading" && route === null ? "" : "view-hidden"}`}>
-                <PaperTrading theme={theme} visible={view === "trading" && route === null} />
-              </div>
+              {view === "trading" && route === null && <PaperTrading theme={theme} visible />}
             </>
           )}
 
@@ -376,37 +364,31 @@ export default function App() {
               <LegalPage kind={route.name} />
             </div>
           )}
-          {keptPage?.name === "results" && (
-            <div className={`view-wrapper ${route?.name === "results" ? "" : "view-hidden"}`}>
-              <ResultsPage key={keptPage.id} eventId={keptPage.id} user={user} onOpenAuth={() => setAuthOpen(true)} />
-            </div>
+          {route?.name === "results" && (
+            <ResultsPage key={route.id} eventId={route.id} user={user} onOpenAuth={() => setAuthOpen(true)} />
           )}
-          {keptPage?.name === "workspace" && (
-            <div className={`view-wrapper ${route?.name === "workspace" ? "" : "view-hidden"}`}>
+          {route?.name === "workspace" && (
               <WorkspacePage
-                key={keptPage.id}
-                eventId={keptPage.id}
+                key={route.id}
+                eventId={route.id}
                 user={user}
                 onUserChange={setUser}
                 onOpenAuth={() => setAuthOpen(true)}
                 theme={theme}
-                visible={route?.name === "workspace"}
+                visible
               />
-            </div>
           )}
-          {keptPage?.name === "event" && (
-            <div className={`view-wrapper ${route?.name === "event" ? "" : "view-hidden"}`}>
+          {route?.name === "event" && (
               <ForecastPage
-                key={keptPage.id}
-                eventId={keptPage.id}
+                key={route.id}
+                eventId={route.id}
                 user={user}
                 onUserChange={setUser}
                 onOpenAuth={() => setAuthOpen(true)}
                 theme={theme}
                 onOpenInResearch={openInResearch}
-                visible={route?.name === "event"}
+                visible
               />
-            </div>
           )}
         </main>
         {/* The loose ball, once dragged out of Home's scene: Home only (FreeBall.tsx). */}

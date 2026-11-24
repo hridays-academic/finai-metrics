@@ -593,6 +593,8 @@ def test_outcome_for_everyone_after_scoring(conn, client, setup, monkeypatch):
     recent = client.get("/api/league/recent-results").json()
     assert [r["event"]["id"] for r in recent] == [event]
     assert [m["actual"] for m in recent[0]["metrics"]] == [12.0, 14.0, 8.0]
+    # S4: cached Yahoo quarters ride along (none cached in this test); never fetched here.
+    assert recent[0]["provider_rows"] == []
 
 
 def test_outcome_shows_crowd_median_from_five_forecasters(conn, client, setup):

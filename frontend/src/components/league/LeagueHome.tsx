@@ -8,7 +8,7 @@ import RangeLine from "../RangeLine";
 import { formatOutcome, metricShortName, outcomeSummary } from "./outcome";
 import LockCountdown from "./LockCountdown";
 import { colourClass, DIFFICULTY_LABEL, difficultyOf, fromProviderRows } from "../../lib/difficulty";
-import { useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
+import { primeDifficulty, useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
 import DifficultyEdge from "../DifficultyEdge";
 import HeroObject from "./HeroObject";
 import FinePrint from "../FinePrint";
@@ -302,7 +302,12 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
     let cancelled = false;
     fetchLeagueConfig().then((c) => !cancelled && setConfig(c)).catch(() => {});
     if (user) fetchMySeason().then((s) => !cancelled && setSeason(s)).catch(() => {});
-    fetchRecentResults().then((r) => !cancelled && setRecent(r)).catch(() => {});
+    fetchRecentResults()
+      .then((r) => {
+        r.forEach((x) => primeDifficulty(x.event.company.id, x.provider_rows));
+        if (!cancelled) setRecent(r);
+      })
+      .catch(() => {});
     Promise.all([fetchLeagueEvents("upcoming"), fetchLeagueEvents("scored")])
       .then(([u, s]) => {
         if (cancelled) return;
