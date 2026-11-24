@@ -27,6 +27,7 @@ export default function MetricCard({ metric, bar }: { metric: Metric; bar?: numb
     <li {...triggerProps} className={`ratio-row ${metric.status}`} aria-label={`${metric.label}: ${formatMetricValue(metric)}`}>
       <span className="ratio-label">
         {metric.label}
+        {metric.note && <span className="ratio-note">{metric.note}</span>}
         {metric.parts && (
           <span className="metric-parts">
             {metric.parts.map((p, i) => (

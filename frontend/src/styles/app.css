@@ -7618,3 +7618,17 @@ a.news-card-headline:hover {
 .is-behind-sheet *::after {
   animation-play-state: paused !important;
 }
+
+/* T2: Research's Yahoo margin tile carries a one-line note under its label. */
+.ratio-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+/* T23: the rupee line runs under all three result cards. */
+.outcome-rupee {
+  margin-top: var(--space-4);
+}

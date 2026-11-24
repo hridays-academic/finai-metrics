@@ -74,7 +74,7 @@ describe("formatting", () => {
       { metric_key: "sector_kpi", actual: c },
     ];
     expect(rupeeNote(m(17.4, 9.7), "it")).toBe(
-      "Revenue grew +17.4% in rupees but +9.7% in constant currency. The 7.7-point gap is the rupee: it was weaker against the dollar, so each dollar earned was worth more rupees."
+      "Revenue grew +17.4% in rupees but +9.7% in constant currency. Most of the 7.7-point gap is the rupee: it was weaker against the dollar, so each dollar earned was worth more rupees."
     );
     expect(rupeeNote(m(4, 7), "it")).toContain("stronger against the dollar");
     expect(rupeeNote(m(10, 8.5), "it")).toBeNull(); // within 2 points

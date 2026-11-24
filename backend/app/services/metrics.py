@@ -421,8 +421,10 @@ def _profitability_group(r: RawFinancials, h: Optional[FinancialHistory], compan
                 company_name,
                 good=em_good, warn=em_warn, na_reason=FINANCIAL_NA if fin else None,
             ),
+            # T2 (master plan, Hriday 2026-11-24): kept on Research, labelled as
+            # Yahoo's, with a note that the league's margin comes from the filing.
             _metric(
-                "operating_margin", "Operating Margin", operating_margin, "%",
+                "operating_margin", "Operating margin (Yahoo Finance)", operating_margin, "%",
                 "The percentage of revenue left after covering both direct costs and day-to-day "
                 "operating expenses, before interest and taxes, a measure of core business "
                 "efficiency.",
@@ -432,7 +434,7 @@ def _profitability_group(r: RawFinancials, h: Optional[FinancialHistory], compan
                 "business itself is run, separate from how it's financed or taxed.",
                 company_name,
                 good=15, warn=5,
-            ),
+            ).model_copy(update={"note": "The league's operating margin comes from the company's own filing, so it can differ."}),
             _metric(
                 "net_margin", "Net Profit Margin", net_margin, "%",
                 "The percentage of revenue that ultimately becomes profit, after every expense, "

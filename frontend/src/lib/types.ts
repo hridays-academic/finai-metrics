@@ -23,6 +23,7 @@ export interface Metric {
   definition: string;
   assessment: string;
   parts?: MetricPart[] | null;
+  note?: string;
 }
 
 // One period of the Research page's history tables; all null when Yahoo has

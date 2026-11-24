@@ -240,6 +240,7 @@ class Metric(BaseModel):
     definition: str = ""  # plain-English explanation of what the metric measures
     assessment: str = ""  # value-aware "is this company's number good or bad, and why"
     parts: Optional[list[MetricPart]] = None
+    note: str = ""  # a one-line note shown under the label (e.g. Yahoo vs the league's figure)
 
 
 class MetricGroup(BaseModel):

@@ -67,14 +67,15 @@ export function rupeeNote(metrics: { metric_key: string; actual: number | null }
   const r = formatOutcome(reported, "revenue_growth_yoy", "%");
   const c = formatOutcome(cc, "sector_kpi", "%");
   return reported > cc
-    ? `Revenue grew ${r} in rupees but ${c} in constant currency. The ${gap.toFixed(1)}-point gap is the rupee: it was weaker against the dollar, so each dollar earned was worth more rupees.`
-    : `Revenue grew ${r} in rupees but ${c} in constant currency. The ${gap.toFixed(1)}-point gap is the rupee: it was stronger against the dollar, so each dollar earned was worth fewer rupees.`;
+    ? `Revenue grew ${r} in rupees but ${c} in constant currency. Most of the ${gap.toFixed(1)}-point gap is the rupee: it was weaker against the dollar, so each dollar earned was worth more rupees.`
+    : `Revenue grew ${r} in rupees but ${c} in constant currency. Most of the ${gap.toFixed(1)}-point gap is the rupee: it was stronger against the dollar, so each dollar earned was worth fewer rupees.`;
 }
 
 export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]; sector?: string }) {
   const rupee = rupeeNote(metrics, sector);
   return (
-    <ul className="group outcome-list">
+    <>
+      <ul className="group outcome-list">
       {metrics.map((m, i) => (
         <li key={m.metric_key} className="outcome-metric" data-scrub="row" data-i={i}>
           <div className="outcome-head">
@@ -92,7 +93,6 @@ export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]
             )}
           </div>
           {m.note && <p className="outcome-note">{m.note}</p>}
-          {rupee && m.metric_key === "sector_kpi" && <p className="outcome-note">{rupee}</p>}
           {m.source_url && (
             <p className="outcome-source">
               Source:{" "}
@@ -103,7 +103,10 @@ export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]
           )}
         </li>
       ))}
-    </ul>
+      </ul>
+      {/* Hriday 2026-11-24: one full-width line under the cards, not inside one. */}
+      {rupee && <p className="outcome-note outcome-rupee">{rupee}</p>}
+    </>
   );
 }
 
