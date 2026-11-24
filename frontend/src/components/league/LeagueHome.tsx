@@ -5,7 +5,7 @@ import type { EventSummary, LeagueConfig, MetricResult, PracticeCard, ResearchHi
 import PracticeTile from "../practice/PracticeTile";
 import SiteFooter from "../SiteFooter";
 import RangeLine from "../RangeLine";
-import { metricShortName, outcomeSummary } from "./outcome";
+import { formatOutcome, metricShortName, outcomeSummary } from "./outcome";
 import LockCountdown from "./LockCountdown";
 import { colourClass, DIFFICULTY_LABEL, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import { useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
@@ -171,6 +171,14 @@ function RecentRow({ result: { event: e, metrics }, mine, index }: { result: Rec
             {level && <span className="recent-row-difficulty">{DIFFICULTY_LABEL[level]}</span>}
           </span>
           <span className="recent-results-summary">{outcomeSummary(metrics, e.company.sector)}</span>
+          {/* T1: an approved note (an unusual quarter, a like-for-like basis) wherever the number shows. */}
+          {metrics
+            .filter((m) => m.note)
+            .map((m) => (
+              <span className="recent-row-note" key={m.metric_key}>
+                {m.note}
+              </span>
+            ))}
           <span className="recent-lines" aria-hidden="true">
             {metrics
               .filter((m) => m.actual !== null)
@@ -183,7 +191,14 @@ function RecentRow({ result: { event: e, metrics }, mine, index }: { result: Rec
                       compact
                       low={r ? r.low : null}
                       high={r ? r.high : null}
-                      marks={[{ key: "actual", value: m.actual as number, kind: "actual" }]}
+                      // T24: the result beside last year's, both labelled, so the
+                      // line means something without a forecast of your own.
+                      marks={[
+                        { key: "actual", value: m.actual as number, kind: "actual", label: `Result ${formatOutcome(m.actual, m.metric_key, m.unit)}` },
+                        ...(m.lazy !== null
+                          ? [{ key: "lazy", value: m.lazy, kind: "ref" as const, label: `Last year ${formatOutcome(m.lazy, m.metric_key, m.unit)}` }]
+                          : []),
+                      ]}
                       minSpan={10}
                     />
                   </span>

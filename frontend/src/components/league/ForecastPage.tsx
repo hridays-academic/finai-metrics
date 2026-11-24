@@ -5,7 +5,7 @@ import {
 import { takeFormJump } from "../../lib/forecastDrafts";
 import type { Theme } from "../../hooks/useTheme";
 import type { EventDetail, EventOutcome, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
-import { formatCrore, formatDay } from "../../lib/leagueFormat";
+import { formatCrore, formatDay, latestLeague } from "../../lib/leagueFormat";
 import { usePinIfFits } from "../../hooks/usePinIfFits";
 import ForecastForm from "./ForecastForm";
 import LockCountdown, { formatIst } from "./LockCountdown";
@@ -15,7 +15,7 @@ import SectorExplainer from "./SectorExplainer";
 import CompanyStory from "./CompanyStory";
 import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import SiteFooter from "../SiteFooter";
-import { LEAGUE_FOOTNOTE, OutcomeList, yahooLeagueNote } from "./outcome";
+import { LEAGUE_FOOTNOTE, OutcomeList } from "./outcome";
 import FinePrint from "../FinePrint";
 
 function quarterName(iso: string): string {
@@ -23,17 +23,18 @@ function quarterName(iso: string): string {
 }
 
 // The numbers a forecaster wants first, as big figures with their source.
-export function KeyStats({ event, history, historyError, outcome }: {
+export function KeyStats({ event, history, historyError }: {
   event: EventDetail;
   history: ResearchHistory | null;
   historyError: string | null;
-  outcome: EventOutcome | null;
+  outcome?: EventOutcome | null;
 }) {
   const loading = !history && !historyError;
   const latest = history?.provider_rows[0];
   const when = latest ? `Quarter to ${quarterName(latest.period_end_date)}` : loading ? "Loading" : "Not available";
   const show = (text: string | null) => (loading ? "..." : text ?? "N/A");
-  const margin = latest?.operating_margin_pct;
+  // T2: the league's newest margin, never Yahoo's (a different definition).
+  const margin = latestLeague(history?.actuals, "operating_margin");
   return (
     <div className="key-stats">
       <dl className="hero-stats">
@@ -48,9 +49,9 @@ export function KeyStats({ event, history, historyError, outcome }: {
           <dd className="hero-stat-sub">{when}</dd>
         </div>
         <div>
-          <dt>Op. margin*</dt>
-          <dd>{show(margin === null || margin === undefined ? null : `${margin.toFixed(1)}%`)}</dd>
-          <dd className="hero-stat-sub">{when}</dd>
+          <dt>Op. margin†</dt>
+          <dd>{show(margin ? `${margin.value.toFixed(1)}%` : null)}</dd>
+          <dd className="hero-stat-sub">{margin ? `Quarter to ${quarterName(margin.end)}` : when}</dd>
         </div>
       </dl>
       <ul className="grouped-list hero-dates">
@@ -77,10 +78,6 @@ export function KeyStats({ event, history, historyError, outcome }: {
           {history.provider_as_of ? `, fetched ${formatDay(history.provider_as_of, true)}` : ""}. Definitions are in Research below.
         </FinePrint>
       )}
-      {(() => {
-        const note = yahooLeagueNote(margin, latest?.period_end_date, event, outcome?.metrics ?? null);
-        return note && <FinePrint>{note}</FinePrint>;
-      })()}
     </div>
   );
 }

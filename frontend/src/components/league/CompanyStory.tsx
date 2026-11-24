@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { EventDetail, ResearchHistory, SectorExplainer } from "../../lib/types";
-import { crorePlain, formatDay, previousQuarterEnds, quarterLabel } from "../../lib/leagueFormat";
+import { formatDay, leagueSeries, previousQuarterEnds, quarterLabel, signedPct } from "../../lib/leagueFormat";
 import { fetchPriceHistory } from "../../lib/api";
 import type { PricePoint } from "../../lib/types";
 import LockCountdown from "./LockCountdown";
 import QuarterSparkline from "./QuarterSparkline";
 import { Equation } from "./SectorExplainer";
-import { CardSpark, Grain, Guilloche } from "./CardArt";
+import { Grain, Guilloche } from "./CardArt";
 import DifficultyEdge from "../DifficultyEdge";
 import { useSlidingPill } from "../../hooks/useSlidingPill";
 import { DIFFICULTY_LABEL, difficultyOf, fromProviderRows } from "../../lib/difficulty";
@@ -343,11 +343,8 @@ export default function CompanyStory({
   }));
 
   const quarters = [...previousQuarterEnds(event.period_end_date, 8)].reverse();
-  const byEnd = new Map(history?.provider_rows.map((r) => [r.period_end_date, r]));
   const quarterName = practice?.quarterName ?? quarterLabel;
   const quarterLabels = quarters.map(quarterName);
-  const revenueLabel = practice ? "Revenue index*" : "Revenue*";
-  const revenueFormat = practice ? (v: number) => v.toFixed(0) : crorePlain;
 
   const chapters = [
     <>
@@ -370,15 +367,16 @@ export default function CompanyStory({
     </ul>,
     history ? (
       <div className="chapter-trends">
+        {/* T2/T25: the league's own numbers, never Yahoo's margin or a revenue index. */}
         <QuarterSparkline
-          label={revenueLabel}
-          values={quarters.map((end) => byEnd.get(end)?.revenue ?? null)}
+          label="Revenue growth YoY†"
+          values={leagueSeries(history.actuals, "revenue_growth_yoy", quarters)}
           quarterLabels={quarterLabels}
-          format={revenueFormat}
+          format={signedPct}
         />
         <QuarterSparkline
-          label="Op. margin*"
-          values={quarters.map((end) => byEnd.get(end)?.operating_margin_pct ?? null)}
+          label="Op. margin†"
+          values={leagueSeries(history.actuals, "operating_margin", quarters)}
           quarterLabels={quarterLabels}
           format={(v) => `${v.toFixed(1)}%`}
         />
@@ -448,9 +446,7 @@ export default function CompanyStory({
     ),
   ];
 
-  const revenues = quarters.map((end) => byEnd.get(end)?.revenue ?? null);
   const level = difficultyOf(fromProviderRows(history?.provider_rows));
-  const hasSpark = revenues.filter((v) => v !== null).length >= 2;
 
   const face = (side: "front" | "back", content: ReactNode) => (
     <div className={`card3d-face card3d-${side}`}>
@@ -492,14 +488,7 @@ export default function CompanyStory({
             <span className="card3d-mid">
               <span className="card3d-id">
                 <span className="card3d-name">{event.company.name}</span>
-                {event.company.ticker && <span className="card3d-ticker">{event.company.ticker}</span>}
               </span>
-              {hasSpark && (
-                <span className="card3d-spark">
-                  <span className="card3d-spark-label">{revenueLabel}</span>
-                  <CardSpark values={revenues} />
-                </span>
-              )}
             </span>
             <span className="card3d-foot">
               {event.results_date && <span>Results {formatDay(event.results_date)}</span>}

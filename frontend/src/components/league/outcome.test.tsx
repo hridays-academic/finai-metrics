@@ -24,7 +24,7 @@ vi.mock("./ForecastForm", () => ({ default: () => <form aria-label="forecast for
 import * as api from "../../lib/api";
 import ForecastPage, { KeyStats, ScoredPanel } from "./ForecastPage";
 import { RecentResults } from "./LeagueHome";
-import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, formatOutcome, outcomeSummary, yahooLeagueNote } from "./outcome";
+import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, formatOutcome, outcomeSummary } from "./outcome";
 import ResultsPage from "./ResultsPage";
 
 const mocked = vi.mocked(api);
@@ -73,16 +73,6 @@ describe("formatting", () => {
     expect(outcomeSummary(METRICS, "autos")).toContain("units sold growth +10.0%");
     expect(outcomeSummary(METRICS, "it")).toContain("constant-currency growth +10.0%");
   });
-
-  it("explains Yahoo vs league only for the same quarter and different numbers", () => {
-    expect(yahooLeagueNote(16.6, "2026-09-30", SUMMARY, METRICS)).toBe(
-      "Yahoo Finance puts the operating margin at 16.6%; the league's figure is 18.2%. " +
-        "The league uses its own definition, worked out from the company's filing."
-    );
-    expect(yahooLeagueNote(16.6, "2026-06-30", SUMMARY, METRICS)).toBeNull(); // Yahoo is a different quarter
-    expect(yahooLeagueNote(18.24, "2026-09-30", SUMMARY, METRICS)).toBeNull(); // same once rounded
-    expect(yahooLeagueNote(16.6, "2026-09-30", SUMMARY, null)).toBeNull(); // not scored
-  });
 });
 
 describe("results page without a score", () => {
@@ -117,13 +107,16 @@ describe("results page without a score", () => {
 });
 
 describe("company page after scoring", () => {
-  it("says 'Results are in' and adds the Yahoo note", () => {
+  it("says 'Results are in' and shows only the league's margin (T2)", () => {
     const history = { provider_rows: [{ period_end_date: "2026-09-30", revenue: 3897, net_income: 550, operating_margin_pct: 16.6 }],
+      actuals: [{ period_end_date: "2026-09-30", metric_key: "operating_margin", value: 18.2 }],
       provider_source: "Yahoo Finance (via yfinance)", provider_as_of: "2026-11-06" } as never;
     render(<KeyStats event={DETAIL} history={history} historyError={null} outcome={OUTCOME} />);
     expect(screen.getByText("Results are in")).toBeTruthy();
     expect(screen.queryByText("Results expected")).toBeNull();
-    expect(screen.getByText(/Yahoo Finance puts the operating margin at 16.6%/)).toBeTruthy();
+    expect(screen.getByText("18.2%")).toBeTruthy();
+    expect(screen.queryByText("16.6%")).toBeNull();
+    expect(screen.queryByText(/Yahoo Finance puts/)).toBeNull();
   });
 
   it("still says 'Results expected' before scoring, with no note", () => {

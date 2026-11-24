@@ -2,7 +2,7 @@ import type { Theme } from "../../hooks/useTheme";
 import type { ActualRow, EventDetail, ResearchHistory } from "../../lib/types";
 import PriceChart from "../PriceChart";
 import QuarterSparkline from "./QuarterSparkline";
-import { crorePlain, formatCrore, previousQuarterEnds, quarterLabel } from "../../lib/leagueFormat";
+import { crorePlain, formatCrore, leagueSeries, previousQuarterEnds, quarterLabel, signedPct } from "../../lib/leagueFormat";
 import FinePrint from "../FinePrint";
 
 interface ResearchPanelProps {
@@ -16,9 +16,6 @@ interface ResearchPanelProps {
 
 const NA = <span className="cell-na">N/A</span>;
 
-function pct(value: number | null | undefined) {
-  return value === null || value === undefined ? NA : `${value.toFixed(1)}%`;
-}
 
 function ActualCell({ actual }: { actual: ActualRow | undefined }) {
   if (!actual) return NA;
@@ -64,7 +61,6 @@ export function QuartersTable({
     const row = byEnd.get(end);
     return (
       (row?.revenue ?? null) !== null ||
-      (row?.operating_margin_pct ?? null) !== null ||
       ["revenue_growth_yoy", "operating_margin", ...(kpiLabel ? ["sector_kpi"] : [])].some((k) => actual(end, k))
     );
   };
@@ -80,15 +76,26 @@ export function QuartersTable({
         <>
           <div className="quarters-layout">
             <div className="quarters-trends">
+              {/* Practice: the league's growth, not the revenue index (T25). */}
+              {practice ? (
+                <QuarterSparkline
+                  label="Revenue growth YoY†"
+                  values={leagueSeries(history.actuals, "revenue_growth_yoy", oldestFirst)}
+                  quarterLabels={shortLabels}
+                  format={signedPct}
+                />
+              ) : (
+                <QuarterSparkline
+                  label={revenueLabel}
+                  values={oldestFirst.map((end) => byEnd.get(end)?.revenue ?? null)}
+                  quarterLabels={shortLabels}
+                  format={crorePlain}
+                />
+              )}
+              {/* T2: the league's margin only; Yahoo's (a different definition) is not shown. */}
               <QuarterSparkline
-                label={revenueLabel}
-                values={oldestFirst.map((end) => byEnd.get(end)?.revenue ?? null)}
-                quarterLabels={shortLabels}
-                format={practice ? (v) => v.toFixed(0) : crorePlain}
-              />
-              <QuarterSparkline
-                label="Op. margin*"
-                values={oldestFirst.map((end) => byEnd.get(end)?.operating_margin_pct ?? null)}
+                label="Op. margin†"
+                values={leagueSeries(history.actuals, "operating_margin", oldestFirst)}
                 quarterLabels={shortLabels}
                 format={(v) => `${v.toFixed(1)}%`}
               />
@@ -99,7 +106,6 @@ export function QuartersTable({
                   <tr>
                     <th>Quarter</th>
                     <th>{revenueLabel}</th>
-                    <th>Op. margin*</th>
                     <th>Revenue growth YoY†</th>
                     <th>Op. margin†</th>
                     {kpiLabel && <th>{kpiLabel}†</th>}
@@ -112,7 +118,6 @@ export function QuartersTable({
                       <tr key={end}>
                         <td>{quarterName(end)}</td>
                         <td>{revenueCell(row?.revenue ?? null)}</td>
-                        <td>{pct(row?.operating_margin_pct)}</td>
                         <td>
                           <ActualCell actual={actual(end, "revenue_growth_yoy")} />
                         </td>

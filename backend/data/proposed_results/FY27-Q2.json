@@ -209,7 +209,8 @@
           "page": "PDF p5 (statement)",
           "working": "(76,004 - 75,929 + 1,709 + 133) / 76,004 = 1,917 / 76,004 = 2.52%; company: operating EBITDA 2.5%",
           "flag": null,
-          "note": null
+          "note": "Company: gross margin 34.8% vs 48.1%, 'abnormal inflation in raw materials and packaging cost' (presentation PDF p7)",
+          "student_note": "Raw material and packaging costs rose unusually fast this quarter, Jyothy says, so its margin fell from 16.1% to 2.5%."
         },
         {
           "metric_key": "sector_kpi",

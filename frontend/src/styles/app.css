@@ -7586,3 +7586,17 @@ a.news-card-headline:hover {
     border: 0;
   }
 }
+
+/* ==========================================================================
+   Master plan phase 1 (trust fixes, 2026-11-24). Rules that fix what looked
+   wrong or broken; see vault "Master plan progress".
+   ========================================================================== */
+
+/* T1: a note beside an unusual number (Home's recent results). */
+.recent-row-note {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}

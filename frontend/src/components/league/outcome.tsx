@@ -88,27 +88,6 @@ export function OutcomeList({ metrics }: { metrics: OutcomeMetric[] }) {
   );
 }
 
-// "Yahoo Finance puts the operating margin at 16.6%; the league's figure is
-// 18.2%. ..." Only when Yahoo's latest quarter IS the event's quarter (else
-// the two describe different quarters) and the two differ once rounded.
-export function yahooLeagueNote(
-  yahooMargin: number | null | undefined,
-  yahooQuarterEnd: string | undefined,
-  event: Pick<EventSummary, "period_end_date">,
-  metrics: OutcomeMetric[] | null
-): string | null {
-  const league = metrics?.find((m) => m.metric_key === "operating_margin")?.actual;
-  if (yahooMargin === null || yahooMargin === undefined || league === null || league === undefined) return null;
-  if (!yahooQuarterEnd || yahooQuarterEnd.slice(0, 10) !== event.period_end_date.slice(0, 10)) return null;
-  const y = yahooMargin.toFixed(1);
-  const l = league.toFixed(1);
-  if (y === l) return null;
-  return (
-    `Yahoo Finance puts the operating margin at ${y}%; the league's figure is ${l}%. ` +
-    "The league uses its own definition, worked out from the company's filing."
-  );
-}
-
 export function resultsDateLine(event: EventSummary): string {
   return `${event.season_label} results, announced ${formatDay(event.results_date, true)}.`;
 }

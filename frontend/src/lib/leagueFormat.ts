@@ -58,3 +58,25 @@ export function quarterLabel(iso: string): string {
 export function crorePlain(value: number): string {
   return formatCrore(value) as string;
 }
+
+// T2 (master plan phase 1): one operating margin everywhere, on the league's
+// definition. A league series over some quarter ends, from the admin-entered
+// actuals only (never Yahoo's figures); null where the league has none.
+export function leagueSeries(
+  actuals: { period_end_date: string; metric_key: string; value: number }[] | undefined,
+  key: string,
+  ends: string[]
+): (number | null)[] {
+  return ends.map((end) => actuals?.find((a) => a.period_end_date === end && a.metric_key === key)?.value ?? null);
+}
+
+// The newest league figure for a metric, with its quarter end.
+export function latestLeague(
+  actuals: { period_end_date: string; metric_key: string; value: number }[] | undefined,
+  key: string
+): { value: number; end: string } | null {
+  const rows = (actuals ?? []).filter((a) => a.metric_key === key).sort((a, b) => b.period_end_date.localeCompare(a.period_end_date));
+  return rows.length ? { value: rows[0].value, end: rows[0].period_end_date } : null;
+}
+
+export const signedPct = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}%`;
