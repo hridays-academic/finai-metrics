@@ -30,6 +30,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 import psycopg
+from pydantic import ValidationError
 
 from app.league_config import market_config
 from app.league_models import (
@@ -301,10 +302,19 @@ def attempt(conn: psycopg.Connection, user: Optional[dict], code: str, body: Pra
     row = _load(conn, code)
     metrics = row["metric_definitions"]["metrics"]
     cfg = market_config(row["market_code"])
-    _validate_forecast(cfg, metrics, ForecastIn(
-        values=[ForecastValueIn(metric_key=r.metric_key, low=r.low, high=r.high) for r in body.ranges],
-        reason_tags=[], note=None,
-    ))
+    # An empty or oversized list fails ForecastIn's own length check, which
+    # would surface as a 500; answer it like every other validation error.
+    if not body.ranges:
+        labels = ", ".join(m["label"] for m in metrics)
+        raise LeagueError(422, "missing_metric", f"Please give a range for every metric: {labels}.")
+    try:
+        forecast = ForecastIn(
+            values=[ForecastValueIn(metric_key=r.metric_key, low=r.low, high=r.high) for r in body.ranges],
+            reason_tags=[], note=None,
+        )
+    except ValidationError as exc:
+        raise LeagueError(422, "invalid_ranges", "Please give one low and high for each number.") from exc
+    _validate_forecast(cfg, metrics, forecast)
     ranges = {r.metric_key: r for r in body.ranges}
     actual = _complete(conn, row)
     lazy = {r["metric_key"]: r["lazy_value"] for r in conn.execute(

@@ -267,6 +267,12 @@ def test_attempts_are_validated_and_unknown_codes_404(conn, client, scored):
     short = client.post(f"/api/practice/cases/{scored['code']}/attempt",
                         json={"ranges": _ranges()[:2], "mystery": True})
     assert short.json()["detail"]["code"] == "missing_metric"
+    empty = client.post(f"/api/practice/cases/{scored['code']}/attempt", json={"ranges": [], "mystery": True})
+    assert empty.status_code == 422 and empty.json()["detail"]["code"] == "missing_metric"
+    assert "Sales volume growth" in empty.json()["detail"]["message"]
+    too_many = client.post(f"/api/practice/cases/{scored['code']}/attempt",
+                           json={"ranges": _ranges() * 2, "mystery": True})
+    assert too_many.status_code == 422 and too_many.json()["detail"]["code"] == "invalid_ranges"
     assert client.get("/api/practice/cases/zzzzzz").json()["detail"]["code"] == "practice_not_found"
     open_code = practice.code_for(scored["event"] + 1)
     assert client.get(f"/api/practice/cases/{open_code}").status_code == 404
