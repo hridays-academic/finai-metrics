@@ -530,27 +530,55 @@ approval; no deploy without it.
   prompts. The app behind is `inert`, focus starts on "Show me", Escape skips.
 - **Home**: the "How to play" band is gone (CSS too); a slim guide strip
   (`GuideStrip`, `#guide-entry`) sits under the headline.
-- **Guide** `#/learn` (`components/guide/`): six cards 16px apart (+ opens
-  each, the header is the button). The step in focus is the card crossing a
-  line 40% down the screen; at the top the line starts at step 1 and moves
-  down with the scroll, so step 1 leads on arrival. A card you open or drag
-  in leads until scrolling moves the focus. A gold cord's knot follows it.
-  `GuideObject` is a separate, scripted ball (Hriday's exception to "the
-  ball is Home-only": same `BallSkin`, never loose, no `ballStore`) that
-  draws exactly what the focused card shows (`objectView`), live while its
-  range is dragged (steps 3-5's ranges live in `GuidePage`); no score in it.
-  Phones: a 96px sticky strip, step numbers shown. Reduced motion: the
-  object and cord change in place. Step 2's sector numbers are read from the league
-  config (approved definitions, never rewritten). `lib/scoring.ts` mirrors
-  `scoring.py` and its sentences for the live examples only; its test holds
-  Python's output.
-- Guide object states (Hriday's phase A fixes): step 1 four quarter markers
-  (newest, or the tapped one, glows as "Results day"); step 2 three chips
-  (sector chip lit once a sector is picked); a miss rests the ball on the
-  track clear of the range with a red bracket and "−20 per point". On
-  phones the spotlight box holds only the buttons. No nav tab lit on
-  `#/learn`. Step 2 shows the approved plain sector lines
-  (`GuidePieces.SECTOR_LINES`), falling back to the league definition.
+- **Guide v2** `#/learn` (2026-11-19, rebuilding; the v1 accordion guide,
+  pinned object and gold cord were deleted at Hriday's request). Ten
+  full-screen pages (`GuidePage.tsx`) that stack like kigo.studio's services
+  pages (motion only; reference GIFs in 03_logs/screenshots/2026-11-19-guide-v2):
+  every page is sticky in ONE container with a one-screen spacer after it;
+  the next page rises with the scroll tilted -7deg (pivot 50% 90%, eased
+  (1-p)^1.5, measured from kigo) and the one beneath shrinks to 0.96 and
+  darkens to 35% (`guideMotion.ts`, pure, tested). One rAF scroll listener on
+  `.app-shell-content`; transform/opacity only; reduced motion = plain pages.
+  The slider (2026-11-19 redraw, "smooth and precise"): `GuideSvg.tsx` +
+  `GuideRail.tsx` draw track, gold capsule, knobs, segment pills, bars and
+  the margin split as ONE inline SVG in CSS px (track 12/8px, capsule 16/12,
+  knobs 22/20, vector steel ball 40/28, desktop/phone); transparent 44px hit
+  areas are the keyboard sliders. Equal results stack like a dot plot
+  (`restingPlaces`). Phone layout v2 (`.g2-ph`, all ten pages;
+  `.g2-flip` mirrors even pages): big first fact, two small facts stacked
+  right (number and line on one line), word up to 104px and never under
+  64 (a long two-word title goes on two lines), indented text behind a rule,
+  readout indented further, slider at the bottom bleeding off the screen.
+  When a phone page doesn't fit, `fitOne` (always from scratch) hides the
+  prompt (`is-tight-a`), then moves the made-up note under the scale
+  (`is-tight-b`), then shrinks the word. Phones have no "3 / 10" pill: a 2px
+  hairline at each page's share, plus "Page n of 10" for screen readers.
+  Phone scale: at most 4 labels, 48px apart, 12px from the screen edge
+  (`thinTicks`); pill names sit in a grid row under the pills. Sums never
+  break inside (`keepSums`). Measure overflow with offsets against the
+  bottom padding: Chrome's scrollHeight ignores a flex child running into it. Layout per page:
+  facts, the big word fitted to the full content width (capitals at most
+  260px, shrunk to the page's free height, refitted when a readout grows),
+  text left with the object's readout right, the slab along the bottom.
+  Plain graphite + grain, light mode via `--g2-*` variables. All ten pages
+  built (`guideObjects.tsx`; quiz answers and score sums from
+  `lib/scoring.ts`, tested). Wording approved 2026-11-19 (vault:
+  `Areas/Guide v2 wording (for approval)`).
+- **Guide v3** (2026-11-19, all ten pages built; not deployed). Replaces
+  v2's look (the v2 bullet above is history for the look; the stack motion
+  is unchanged). Hriday: the guide must look like Home. Every page reuses
+  Home's parts: page colour + `HeroWaves`, `.hero-title` (gold last word) as
+  the title, facts in `.strip-panel` (shared with Home's guide strip), Home's
+  body text, site buttons (no arrow chips), Home's slider object via shared
+  classes `.slab`, `.slab-range`, `.slab-shadow` + `.ball-skin` (HeroObject
+  uses the same classes; change the material once). Bars and the picked
+  segment are steel capsules (`.is-steel`, tones), never gold. Knobs show
+  only on hover, focus or drag; touch uses the capsule ends. Sizes in
+  `GuideSvg.tsx` (TALL/DESKTOP/PHONE). `GuideCompanyCard.tsx` = a small Home
+  tile beside real numbers (pages 2, 3, 6, 7). Page 10 shows three
+  PracticeTiles (`scrub={false}`, no badge) and is not sticky (`.is-last`).
+  Spare height is shared between gaps (rule: no blank band over a quarter of
+  the page). Wording approved 2026-11-19 (vault note, "v3 restyle").
 - **Practice** (phase B, `routes/practice.py`, `services/practice.py`,
   `components/practice/`, schema v17): scored, complete, non-demo league
   events; address `#/practice/<code>` (6-char code from the event id).

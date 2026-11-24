@@ -411,9 +411,9 @@ export default function HeroObject() {
   return (
     <div className="hero-object" aria-hidden="true">
       <div className="hero-object-scene" ref={sceneRef}>
-        <span className="hero-object-track" ref={trackRef} />
-        <span className="hero-object-range" ref={rangeRef} />
-        <span className="hero-object-ball-shadow" ref={shadowRef} />
+        <span className="hero-object-track slab" ref={trackRef} />
+        <span className="hero-object-range slab-range" ref={rangeRef} />
+        <span className="hero-object-ball-shadow slab-shadow" ref={shadowRef} />
         <span className="hero-object-ball ball-skin" ref={ballRef}>
           <BallSkin />
         </span>

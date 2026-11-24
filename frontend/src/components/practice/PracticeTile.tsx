@@ -10,10 +10,21 @@ import { n } from "../league/ResultsPage";
 // company", one line about it, and your first-try score once you have one.
 // `badge`: the "Practice" badge, on Home only (2026-11-18: not needed on the
 // Practice page itself).
-export default function PracticeTile({ card, index = 0, badge = false }: { card: PracticeCard; index?: number; badge?: boolean }) {
+// `scrub`: Home's scroll rise (usePageMotion); off inside the guide's stacked pages.
+export default function PracticeTile({
+  card,
+  index = 0,
+  badge = false,
+  scrub = true,
+}: {
+  card: PracticeCard;
+  index?: number;
+  badge?: boolean;
+  scrub?: boolean;
+}) {
   const level = card.difficulty;
   return (
-    <li data-scrub="tile" data-i={index}>
+    <li data-scrub={scrub ? "tile" : undefined} data-i={scrub ? index : undefined}>
       <a className={`sector-tile practice-tile ${colourClass(level)} ${level ? "has-edge" : ""}`} href={`#/practice/${card.code}`}>
         <span className="tile-material" aria-hidden="true">
           <Guilloche />

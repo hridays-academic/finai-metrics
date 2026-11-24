@@ -331,7 +331,7 @@ export default function App() {
 
           {route?.name === "learn" && (
             <div className="view-wrapper">
-              <GuidePage />
+              <GuidePage onOpenResearch={() => handleChangeView("search")} />
             </div>
           )}
           {showPractice && route?.name === "practice" && route.code ? (

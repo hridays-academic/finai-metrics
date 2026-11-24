@@ -953,6 +953,11 @@ textarea.input {
   left: 0;
   right: 0;
   height: var(--track-h);
+}
+
+/* The slider's materials, shared by Home's hero object and the guide's
+   slider (GuideRail.tsx): .slab, .slab-range, .slab-shadow. */
+.slab {
   border-radius: 999px;
   background: linear-gradient(180deg, #000000 0%, #05070a 50%, #11141a 100%);
   box-shadow:
@@ -969,6 +974,11 @@ textarea.input {
   left: 30%;
   width: 34%;
   height: var(--cap-h);
+  cursor: grab;
+  touch-action: none;
+}
+
+.slab-range {
   border-radius: 999px;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 18%, rgba(0, 0, 0, 0) 82%, rgba(60, 30, 0, 0.18) 100%),
@@ -979,11 +989,9 @@ textarea.input {
     inset 0 -1px 0 rgba(255, 228, 160, 0.4),
     3px 9px 12px -5px rgba(0, 0, 0, 0.6),
     1px 2px 3px rgba(0, 0, 0, 0.42);
-  cursor: grab;
-  touch-action: none;
 }
 
-.hero-object-range::before {
+.slab-range::before {
   content: "";
   position: absolute;
   top: 14%;
@@ -1000,6 +1008,9 @@ textarea.input {
   left: calc(var(--ball-x) - var(--ball) * 0.4 + 6px);
   width: calc(var(--ball) * 0.8);
   height: 14px;
+}
+
+.slab-shadow {
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0));
   pointer-events: none;
@@ -5152,7 +5163,7 @@ a.news-card-headline:hover {
 }
 
 /* The slider's socket: a channel in a pale surface. */
-[data-mode="light"] .hero-object-track {
+[data-mode="light"] .slab {
   background: linear-gradient(180deg, #b9bec6 0%, #cfd3d9 50%, #e1e4e8 100%);
   box-shadow:
     inset 0 5px 8px rgba(15, 23, 42, 0.35),
@@ -6041,11 +6052,15 @@ a.news-card-headline:hover {
   gap: var(--space-4);
   margin-top: var(--space-6);
   padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+  max-width: 640px;
+}
+
+/* The strip's raised panel, shared with the guide's facts (GuidePage.tsx). */
+.strip-panel {
   border: 1px solid var(--edge-side);
   border-top-color: var(--edge-lit);
   border-radius: var(--radius-panel);
   background: var(--raised-fill);
-  max-width: 640px;
 }
 
 .guide-strip-text {
@@ -6151,900 +6166,6 @@ a.news-card-headline:hover {
 @keyframes spotlight-in {
   from {
     opacity: 0;
-  }
-}
-
-/* The guide page. */
-.guide-title {
-  margin: 0;
-}
-
-.guide-lede {
-  max-width: 60ch;
-  margin-top: var(--space-3);
-  color: var(--text-2);
-}
-
-.guide-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  gap: var(--space-8);
-}
-
-/* The left column runs the full height of the steps, so the object can stay
-   pinned inside it the whole way down. */
-.guide-object-col {
-  align-self: stretch;
-}
-
-/* A panel whose top lines up with step 1's. */
-.guide-object-pin {
-  position: sticky;
-  top: calc(var(--topbar-height) + var(--space-6));
-  padding: var(--space-5) var(--space-6);
-  border-radius: var(--radius-panel);
-}
-
-.guide-steps-col {
-  position: relative;
-  padding-left: var(--space-7);
-  /* Room for the last card to reach the focus line, 40% down the screen. */
-  padding-bottom: calc(60vh - 64px);
-}
-
-.guide-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* The cord hangs from the top of the column; its knot sits beside the step
-   in focus and glides (transform and height only) to the next one. */
-.guide-cord {
-  position: absolute;
-  top: 0;
-  left: 8px;
-  width: 12px;
-  height: 0;
-  pointer-events: none;
-}
-
-.guide-cord-line {
-  position: absolute;
-  top: 0;
-  left: 5px;
-  width: 2px;
-  height: var(--cord-y);
-  border-radius: 1px;
-  background: linear-gradient(180deg, rgba(242, 193, 78, 0), var(--gold) 60px);
-}
-
-.guide-knot {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.25);
-  transform: translateY(calc(var(--cord-y) - 6px));
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .guide-cord-line {
-    transition: height 700ms cubic-bezier(0.45, 0, 0.25, 1);
-  }
-
-  .guide-knot {
-    transition: transform 700ms cubic-bezier(0.45, 0, 0.25, 1);
-  }
-}
-
-.guide-card {
-  transition: border-color 300ms var(--ease);
-}
-
-.guide-card.is-focus {
-  border-color: rgba(242, 193, 78, 0.45);
-}
-
-.guide-card-heading {
-  margin: 0;
-  font-size: inherit;
-}
-
-.guide-card-head {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-4);
-  width: 100%;
-  min-height: 64px;
-  padding: var(--space-4) var(--space-5);
-  border: 0;
-  border-radius: var(--radius-panel);
-  background: none;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.guide-card-icon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-control);
-  background: var(--raised-fill);
-  color: var(--gold);
-}
-
-.guide-card-num {
-  color: var(--text-2);
-  font-family: var(--font-head);
-  font-size: 22px;
-  font-weight: 800;
-}
-
-.guide-card-title {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-/* + turns into x when open. */
-.guide-card-plus {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--raised-fill);
-}
-
-.guide-card-plus::before,
-.guide-card-plus::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 12px;
-  height: 2px;
-  margin: -1px 0 0 -6px;
-  border-radius: 1px;
-  background: currentColor;
-  transition: transform 250ms var(--ease);
-}
-
-.guide-card-plus::after {
-  transform: rotate(90deg);
-}
-
-.guide-card.is-open .guide-card-plus::before {
-  transform: rotate(45deg);
-}
-
-.guide-card.is-open .guide-card-plus::after {
-  transform: rotate(135deg);
-}
-
-.guide-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: 0 var(--space-5) var(--space-5) calc(var(--space-5) + 40px + var(--space-4));
-  color: var(--text-2);
-  line-height: 1.55;
-}
-
-.guide-card-body strong {
-  color: var(--text);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .guide-card-detail:not([hidden]) {
-    animation: guide-open 350ms var(--ease);
-  }
-}
-
-@keyframes guide-open {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
-.guide-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding-left: var(--space-5);
-}
-
-.guide-try {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-control);
-  background: var(--raised-fill);
-}
-
-.guide-try-prompt {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.guide-try-result {
-  min-height: 1.5em;
-}
-
-.guide-try-score {
-  color: var(--text-2);
-}
-
-.guide-try-points {
-  color: var(--gold);
-  font-family: var(--font-head);
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.guide-try .segmented {
-  max-width: 100%;
-  overflow-x: auto;
-}
-
-.guide-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.guide-try-actions {
-  flex-direction: row;
-  flex-wrap: wrap;
-  background: none;
-  padding: 0;
-}
-
-/* The two-handled range. Native range inputs sit on the bar so keyboard
-   and screen readers work; only their thumbs take the pointer. */
-.guide-slider-bar {
-  position: relative;
-  height: 64px;
-  margin: 0 11px;
-}
-
-.guide-slider-track,
-.guide-slider-fill {
-  position: absolute;
-  top: 40px;
-  height: 12px;
-  border-radius: 6px;
-}
-
-.guide-slider-track {
-  left: 0;
-  right: 0;
-  background: var(--recessed-fill);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
-}
-
-.guide-slider-fill {
-  background: var(--gold);
-}
-
-.guide-dot {
-  position: absolute;
-  top: 41px;
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  border-radius: 50%;
-  background: var(--text-2);
-  box-shadow: 0 0 0 2px var(--recessed-fill);
-}
-
-.guide-dot.is-caught {
-  background: var(--on-gold);
-  box-shadow: 0 0 0 2px var(--gold);
-}
-
-.guide-slider-ball {
-  position: absolute;
-  top: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.guide-slider-ball .ball-skin {
-  width: 26px;
-  height: 26px;
-  box-shadow: 2px 5px 8px -3px rgba(0, 0, 0, 0.55);
-}
-
-.guide-slider-ball-label {
-  position: absolute;
-  top: -2px;
-  left: calc(100% + 4px);
-  color: var(--text);
-  font-size: var(--text-xs);
-  font-weight: 600;
-}
-
-.guide-slider-lazy {
-  position: absolute;
-  top: 30px;
-  width: 2px;
-  height: 32px;
-  margin-left: -1px;
-  background: var(--text-2);
-  pointer-events: none;
-}
-
-.guide-slider-lazy span {
-  position: absolute;
-  top: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: var(--text-2);
-  font-size: var(--text-xs);
-}
-
-.guide-slider-bar input[type="range"] {
-  position: absolute;
-  left: -11px;
-  top: 30px;
-  width: calc(100% + 22px);
-  height: 32px;
-  margin: 0;
-  background: none;
-  pointer-events: none;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.guide-slider-bar input[type="range"]::-webkit-slider-runnable-track {
-  background: none;
-}
-
-.guide-slider-bar input[type="range"]::-moz-range-track {
-  background: none;
-}
-
-.guide-slider-bar input[type="range"]::-webkit-slider-thumb {
-  width: 22px;
-  height: 22px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--offwhite);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 4px var(--gold);
-  cursor: grab;
-  pointer-events: auto;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.guide-slider-bar input[type="range"]::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--offwhite);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 4px var(--gold);
-  cursor: grab;
-  pointer-events: auto;
-}
-
-.guide-slider-bar input[type="range"]:focus-visible {
-  outline: none;
-}
-
-.guide-slider-bar input[type="range"]:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--text);
-  outline-offset: 2px;
-}
-
-.guide-slider-bar input[type="range"]:focus-visible::-moz-range-thumb {
-  outline: 2px solid var(--text);
-  outline-offset: 2px;
-}
-
-.guide-slider-scale {
-  display: flex;
-  justify-content: space-between;
-  color: var(--text-2);
-  font-size: var(--text-xs);
-}
-
-.guide-slider-value {
-  color: var(--text);
-  font-weight: 600;
-}
-
-/* The pinned object: a recessed track, the gold range and the ball, in one
-   of six states (GuideObject.tsx). Same materials as Home's hero. */
-.guide-object {
-  --ball: 72px;
-  --cap-h: 34px;
-  --track-h: 22px;
-  position: relative;
-  height: 168px;
-}
-
-.guide-scene {
-  position: absolute;
-  inset: 0;
-}
-
-.guide-scene > span {
-  position: absolute;
-}
-
-.guide-track {
-  top: calc(50% - var(--track-h) / 2);
-  left: 0;
-  right: 0;
-  height: var(--track-h);
-  border-radius: 999px;
-  background: linear-gradient(180deg, #000000 0%, #05070a 50%, #11141a 100%);
-  box-shadow:
-    inset 0 5px 8px rgba(0, 0, 0, 0.95),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
-    0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-[data-mode="light"] .guide-track {
-  background: linear-gradient(180deg, #b9bec6 0%, #cfd3d9 50%, #e1e4e8 100%);
-  box-shadow:
-    inset 0 5px 8px rgba(15, 23, 42, 0.35),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.9),
-    0 1px 0 #ffffff;
-}
-
-.guide-range {
-  top: calc(50% - var(--cap-h) / 2);
-  height: var(--cap-h);
-  border-radius: 999px;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 18%, rgba(0, 0, 0, 0) 82%, rgba(60, 30, 0, 0.18) 100%),
-    linear-gradient(180deg, #fbe7b0 0%, #f8d373 14%, #f2c14e 34%, #dba53b 60%, #a8741a 86%, #bf8a2c 100%);
-  box-shadow:
-    inset 0 2px 1px rgba(255, 255, 255, 0.6),
-    inset 0 -4px 6px rgba(90, 50, 0, 0.42),
-    3px 9px 12px -5px rgba(0, 0, 0, 0.6);
-  opacity: 0;
-  transform: scaleX(0.2);
-}
-
-.guide-range.is-on {
-  opacity: 1;
-  transform: none;
-}
-
-/* The ball rests on the range, or on the track when it lands outside. */
-.guide-ball {
-  width: var(--ball);
-  height: var(--ball);
-  margin-left: calc(var(--ball) / -2);
-  top: calc(50% - var(--cap-h) / 2 - var(--ball) + 3px);
-  opacity: 0;
-  transform: translateY(-220px);
-}
-
-.guide-ball.on-track {
-  top: calc(50% - var(--track-h) / 2 - var(--ball) + 6px);
-}
-
-.guide-ball.is-on {
-  opacity: 1;
-  transform: none;
-}
-
-.guide-ball-skin {
-  width: 100%;
-  height: 100%;
-}
-
-.guide-ball .ball-texture {
-  transform: rotate(var(--spin));
-}
-
-.guide-lazy {
-  top: calc(50% - 46px);
-  width: 2px;
-  height: 92px;
-  margin-left: -1px;
-  background: repeating-linear-gradient(180deg, var(--text-2) 0 6px, transparent 6px 10px);
-  opacity: 0;
-}
-
-.guide-lazy.is-on {
-  opacity: 1;
-}
-
-/* Left of its mark, so the ball (always to the right in the guide) never
-   covers it. */
-.guide-lazy-label {
-  position: absolute;
-  top: -2px;
-  right: calc(100% + 6px);
-  color: var(--text-2);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-}
-
-.guide-ticks {
-  top: calc(50% + 34px);
-  left: 0;
-  right: 0;
-  opacity: 0;
-}
-
-.guide-ticks.is-on {
-  opacity: 1;
-}
-
-.guide-tick {
-  position: absolute;
-  transform: translateX(-50%);
-  color: var(--text-2);
-  font-size: var(--text-xs);
-}
-
-/* Step 1: four quarters along the track, one glowing as results day. */
-.guide-quarters {
-  top: 50%;
-  left: 0;
-  right: 0;
-  opacity: 0;
-}
-
-.guide-quarters.is-on {
-  opacity: 1;
-}
-
-.guide-quarter {
-  position: absolute;
-  top: -7px;
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
-  border-radius: 50%;
-  background: var(--text-2);
-  box-shadow: 0 0 0 3px #05070a;
-}
-
-[data-mode="light"] .guide-quarter {
-  box-shadow: 0 0 0 3px #cfd3d9;
-}
-
-.guide-quarter.is-lit {
-  background: var(--gold);
-  box-shadow:
-    0 0 0 3px rgba(242, 193, 78, 0.3),
-    0 0 18px 4px rgba(242, 193, 78, 0.55);
-}
-
-.guide-quarter-label,
-.guide-quarter-day {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-}
-
-.guide-quarter-label {
-  top: calc(100% + 12px);
-  color: var(--text-2);
-}
-
-.guide-quarter.is-lit .guide-quarter-label {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.guide-quarter-day {
-  bottom: calc(100% + 12px);
-  color: var(--gold);
-  font-weight: 600;
-}
-
-/* Step 2: the three numbers you forecast, as chips above the track. */
-.guide-chips-row {
-  top: calc(50% - 64px);
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  gap: var(--space-2);
-  opacity: 0;
-}
-
-.guide-chips-row.is-on {
-  opacity: 1;
-}
-
-.guide-object-chip {
-  padding: 6px 12px;
-  border: 1px solid var(--edge-side);
-  border-radius: var(--radius-pill);
-  background: var(--raised-fill);
-  color: var(--text-2);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.guide-object-chip.is-lit {
-  border-color: var(--gold);
-  background: var(--gold);
-  color: var(--on-gold);
-}
-
-.guide-object-chip .chip-short {
-  display: none;
-}
-
-/* A miss: a thin bracket from the ball to the range's edge, below the
-   track, with what each point of it costs. */
-.guide-gap {
-  top: calc(50% + 15px);
-  height: 8px;
-  border: 1.5px solid var(--negative);
-  border-top: 0;
-  opacity: 0;
-}
-
-.guide-gap.is-on {
-  opacity: 1;
-}
-
-.guide-gap-label {
-  position: absolute;
-  top: -3px;
-  color: var(--negative);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.guide-gap.is-below .guide-gap-label {
-  right: calc(100% + 6px);
-}
-
-.guide-gap.is-above .guide-gap-label {
-  left: calc(100% + 6px);
-}
-
-.guide-object.has-gap .guide-ticks {
-  opacity: 0.35;
-}
-
-/* Step 3's made-up results, on the range. */
-.guide-object-dot {
-  top: calc(50% - 5px);
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  border-radius: 50%;
-  background: var(--text-2);
-  box-shadow: 0 0 0 2px #05070a;
-}
-
-.guide-object-dot.is-caught {
-  background: #fff8e6;
-  box-shadow: 0 0 0 2px #a8741a;
-}
-
-[data-mode="light"] .guide-object-dot:not(.is-caught) {
-  box-shadow: 0 0 0 2px #cfd3d9;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  /* Short left/width easing so a dragged range follows the finger. */
-  .guide-range {
-    transition:
-      opacity 500ms var(--ease),
-      transform 700ms cubic-bezier(0.34, 1.4, 0.64, 1),
-      left 180ms var(--ease),
-      width 180ms var(--ease);
-  }
-
-  .guide-ball {
-    transition:
-      left 600ms cubic-bezier(0.45, 0, 0.25, 1),
-      top 300ms cubic-bezier(0.5, 0, 0.75, 0),
-      opacity 200ms linear,
-      transform 750ms cubic-bezier(0.34, 1.3, 0.64, 1);
-  }
-
-  .guide-ball .ball-texture {
-    transition: transform 1100ms cubic-bezier(0.45, 0, 0.25, 1);
-  }
-
-  .guide-lazy,
-  .guide-ticks,
-  .guide-object-dot,
-  .guide-quarters,
-  .guide-chips-row,
-  .guide-gap {
-    transition: opacity 500ms var(--ease), background-color 180ms var(--ease);
-  }
-
-  .guide-quarter,
-  .guide-object-chip {
-    transition:
-      background-color 300ms var(--ease),
-      box-shadow 300ms var(--ease),
-      border-color 300ms var(--ease),
-      color 300ms var(--ease);
-  }
-}
-
-/* Phones and narrow windows: the object small at the top, cards below. */
-@media (max-width: 900px) {
-  .guide-lede {
-    margin-top: var(--space-2);
-  }
-
-  .guide-layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-  }
-
-  .guide-object-col {
-    position: sticky;
-    top: var(--topbar-height);
-    z-index: 2;
-    margin: 0 calc(-1 * var(--space-4));
-    padding: var(--space-2) var(--space-4);
-    background: var(--page);
-  }
-
-  /* About 96px tall in all: a plain strip, not a panel. */
-  .guide-object-pin.glass {
-    position: static;
-    padding: 0 var(--space-2);
-    border: 0;
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
-  .guide-object {
-    --ball: 26px;
-    --cap-h: 14px;
-    --track-h: 9px;
-    height: 80px;
-  }
-
-  .guide-object-dot {
-    top: calc(50% - 3px);
-    width: 6px;
-    height: 6px;
-    margin-left: -3px;
-  }
-
-  .guide-lazy {
-    top: calc(50% - 20px);
-    height: 40px;
-  }
-
-  .guide-lazy-label {
-    right: calc(100% + 4px);
-  }
-
-  .guide-lazy-label,
-  .guide-tick {
-    font-size: 10px;
-  }
-
-  .guide-ticks {
-    top: calc(50% + 11px);
-  }
-
-  .guide-object.has-gap .guide-ticks {
-    opacity: 0;
-  }
-
-  .guide-gap {
-    top: calc(50% + 7px);
-    height: 6px;
-  }
-
-  .guide-gap-label,
-  .guide-quarter-label,
-  .guide-quarter-day {
-    font-size: 10px;
-  }
-
-  .guide-quarter {
-    top: -5px;
-    width: 10px;
-    height: 10px;
-    margin-left: -5px;
-  }
-
-  .guide-quarter-label {
-    top: calc(100% + 6px);
-  }
-
-  .guide-quarter-day {
-    bottom: calc(100% + 6px);
-  }
-
-  .guide-chips-row {
-    top: calc(50% - 36px);
-    gap: 6px;
-  }
-
-  .guide-object-chip {
-    padding: 3px 9px;
-    font-size: 10px;
-  }
-
-  .guide-object-chip .chip-long {
-    display: none;
-  }
-
-  .guide-object-chip .chip-short {
-    display: inline;
-  }
-
-  .guide-ball {
-    transform: translateY(-80px);
-  }
-
-  .guide-steps-col {
-    padding-left: var(--space-6);
-  }
-
-  .guide-steps {
-    gap: 12px;
-  }
-
-  .guide-cord {
-    left: 2px;
-  }
-
-  .guide-card-head {
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .guide-card-num {
-    font-size: 18px;
-  }
-
-  .guide-card-icon {
-    width: 32px;
-    height: 32px;
-  }
-
-  .guide-card-plus {
-    width: 28px;
-    height: 28px;
-  }
-
-  .guide-card-title {
-    font-size: var(--text-base, 15px);
-  }
-
-  .guide-card-body {
-    padding: 0 var(--space-4) var(--space-4);
   }
 }
 
@@ -7254,4 +6375,824 @@ a.news-card-headline:hover {
 
 .practice-wait .section-text {
   margin-top: var(--space-2);
+}
+
+/* ==========================================================================
+   The guide (#/learn, v3 2026-11-19, Hriday: "the same product as Home").
+   Ten full-screen pages that stack as you scroll (GuidePage.tsx, motion in
+   guideMotion.ts). Every page reuses Home's own parts: the page background
+   with Home's hero wave lines (HeroWaves), Home's headline (.hero-title,
+   gold last word), the facts in the guide strip's panel (.strip-panel),
+   Home's body text, Home's slider materials (.slab, .slab-range,
+   .ball-skin, .slab-shadow), Home's tiles (small company cards, practice
+   tiles) and the site's buttons. Gold is only the student's range (and the
+   title's last word, as on Home).
+   ========================================================================== */
+.guide2-page {
+  /* Full bleed: undo .app-main's padding. */
+  margin: calc(-1 * var(--space-6)) calc(50% - 50vw) 0;
+  --g2-edge-shadow: rgba(0, 0, 0, 0.55);
+  --g2-counter-bg: rgba(10, 12, 16, 0.72);
+}
+
+[data-mode="light"] .guide2-page {
+  --g2-edge-shadow: rgba(15, 23, 42, 0.22);
+  --g2-counter-bg: rgba(255, 255, 255, 0.88);
+}
+
+.g2-stack {
+  --g2-h: calc(100dvh - var(--topbar-height));
+  position: relative;
+}
+
+.g2-page {
+  position: sticky;
+  top: var(--topbar-height);
+  height: var(--g2-h);
+}
+
+/* The last page scrolls on like a normal page, so it can be taller than the
+   screen (page 10's practice tiles). */
+.g2-page.is-last {
+  position: relative;
+  top: auto;
+  height: auto;
+  min-height: var(--g2-h);
+}
+
+.g2-dwell {
+  height: var(--g2-h);
+}
+
+.g2-sheet {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  transform-origin: 50% 90%;
+  background: var(--page);
+  /* So the edge of the incoming page reads over the one underneath. */
+  box-shadow: 0 -18px 40px -6px var(--g2-edge-shadow);
+}
+
+.is-last .g2-sheet {
+  min-height: var(--g2-h);
+}
+
+/* Home's hero lines across the page (Home's own mask fades the edges). Still
+   here: ten drifting copies would cost frames while the pages move. */
+.g2-sheet .hero-waves {
+  top: 0;
+  bottom: 0;
+}
+
+.g2-sheet .hero-waves svg {
+  animation: none;
+}
+
+.g2-dim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Title and facts (+ company card) / text and readout / the slider. Spare
+   height is shared between the three gaps, so no blank band is ever more than
+   a quarter of the page (Hriday's rule). */
+.g2-inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  grid-template-areas:
+    "top top"
+    "text side"
+    "bottom bottom";
+  align-content: space-between;
+  gap: 0 var(--space-10);
+  height: 100%;
+  padding: var(--space-8) max(var(--space-6), calc((100% - var(--max)) / 2)) var(--space-10);
+  color: var(--text);
+}
+
+.is-last .g2-inner {
+  height: auto;
+  min-height: var(--g2-h);
+}
+
+.g2-top {
+  grid-area: top;
+}
+
+.g2-title {
+  margin: 0;
+}
+
+.g2-facts-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-5);
+  margin-top: var(--space-6);
+}
+
+/* The facts in the guide strip's panel (same border, fill, radius, padding). */
+.g2-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-8);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  list-style: none;
+}
+
+.g2-facts li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Numbers as Home's tile figures; lines as the strip's grey line. */
+.g2-fact-num {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.g2-fact-line {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+
+/* A small version of the company's Home tile, beside its numbers. */
+.g2-company.sector-tile {
+  flex: none;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 260px;
+  min-height: 0;
+  padding: var(--space-4) var(--space-5);
+  pointer-events: none;
+}
+
+.g2-company.sector-tile.has-edge {
+  padding-left: calc(30px + var(--space-4));
+}
+
+.g2-company .tile-name {
+  font-size: 30px;
+}
+
+.g2-company-phone {
+  display: none !important;
+}
+
+/* Home's body text. */
+.g2-text {
+  grid-area: text;
+  align-self: start;
+  max-width: var(--measure);
+  margin-top: var(--space-6);
+  color: var(--text-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+}
+
+.g2-text p {
+  margin: 0;
+}
+
+.g2-side {
+  grid-area: side;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.g2-bottom {
+  grid-area: bottom;
+  margin-top: var(--space-6);
+}
+
+.g2-prompt,
+.g2-answer,
+.g2-lead,
+.g2-note,
+.g2-big {
+  margin: 0;
+}
+
+.g2-prompt,
+.g2-note {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+
+.g2-answer {
+  color: var(--text-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+}
+
+/* Readouts in the system face, like Home's figures (Barlow is for titles). */
+.g2-big,
+.g2-answer-big,
+.g2-lead {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+.g2-answer-big {
+  min-height: 1.35em;
+}
+
+.g2-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-6);
+}
+
+.g2-count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.g2-stat {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+}
+
+.g2-stat strong {
+  margin-right: 2px;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.g2-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* The answer you chose: the secondary button with a ring. */
+.g2-option.is-picked {
+  box-shadow: inset 0 0 0 2px var(--text);
+}
+
+.g2-link {
+  margin: -10px 0;
+  padding: 10px 0;
+  font-size: inherit;
+}
+
+/* Page 10: the buttons beside the text; the practice tiles under them. */
+.g2-actions {
+  gap: var(--space-3);
+}
+
+.g2-practice {
+  align-self: start;
+}
+
+.g2-practice .practice-grid {
+  margin-top: 0;
+}
+
+.g2-note-under {
+  display: none;
+}
+
+.g2-nowrap,
+.g2-one-line {
+  white-space: nowrap;
+}
+
+/* No line ends with a single word. */
+.g2-text p,
+.g2-prompt,
+.g2-answer,
+.g2-lead,
+.g2-note,
+.g2-fact-line,
+.g2-big,
+.g2-stat,
+.g2-title {
+  text-wrap: pretty;
+}
+
+/* Phones: progress as a 2px hairline along the page's top. */
+.g2-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: none;
+  width: calc(var(--share, 0) * 100%);
+  height: 2px;
+  background: var(--text-2);
+}
+
+/* The counter, bottom right; pages keep 64px free below their content. */
+.g2-counter {
+  position: fixed;
+  right: 24px;
+  bottom: 18px;
+  z-index: 30;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--g2-counter-bg);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.guide2-foot {
+  padding: var(--space-8) max(var(--space-6), calc((100% - var(--max)) / 2)) 0;
+}
+
+/* ---------- The slider (GuideRail.tsx) and bars (pages 2, 3) ----------
+   Home's materials, placed in CSS px; 44px transparent hit areas on top. */
+.g2-rail-wrap {
+  width: 100%;
+  padding-top: calc(var(--ball) * var(--headroom, 1) + 16px);
+}
+
+.g2-rail,
+.g2-bar-draw,
+.g2-split {
+  position: relative;
+}
+
+.g2-slab,
+.g2-capsule {
+  position: absolute;
+}
+
+.g2-capsule {
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Steel capsules (page 1's picked quarter, the bars): the ball's material.
+   Tones for the cost split and last year's bar. */
+.slab-range.is-steel {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 18%, rgba(0, 0, 0, 0) 82%, rgba(0, 0, 0, 0.16) 100%),
+    linear-gradient(180deg, #f1f3f6 0%, #dde1e6 16%, #c3c9d1 36%, #9aa2ad 62%, #6b737e 86%, #858d98 100%);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -4px 6px rgba(20, 26, 36, 0.35),
+    inset 0 -1px 0 rgba(230, 236, 245, 0.4),
+    3px 9px 12px -5px rgba(0, 0, 0, 0.6),
+    1px 2px 3px rgba(0, 0, 0, 0.42);
+}
+
+.slab-range.is-steel.tone-2 {
+  filter: brightness(0.8);
+}
+
+.slab-range.is-steel.tone-3 {
+  filter: brightness(0.62);
+}
+
+.slab-range.is-steel.tone-4 {
+  filter: brightness(0.45);
+}
+
+.g2-range-body {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  height: 44px;
+  margin-top: -22px;
+  border-radius: 22px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.g2-knob-hit {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.g2-range-body:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.g2-knob-hit:focus-visible {
+  outline: none;
+}
+
+.g2-knob-hit:focus-visible::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--focus);
+  transform: translate(-50%, -50%);
+}
+
+/* Knobs: a small off-white grip, shown on a mouse only while you hover,
+   drag or use the keyboard. Touch: the ends are the handles, with no knob. */
+.g2-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  background: var(--offwhite);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 1px 3px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: opacity 150ms var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .g2-rail:hover .g2-knob,
+  .g2-bar-draw:hover .g2-knob,
+  .g2-split:hover .g2-knob,
+  .is-dragging .g2-knob {
+    opacity: 1;
+  }
+}
+
+.g2-rail:has(:focus-visible) .g2-knob,
+.g2-bar-draw:has(:focus-visible) .g2-knob,
+.g2-split:has(:focus-visible) .g2-knob {
+  opacity: 1;
+}
+
+.is-dragging .g2-range-body,
+.is-dragging .g2-knob-hit {
+  cursor: grabbing;
+}
+
+/* A ball rests on the slab (higher on the range, or on another ball). */
+.g2-ball {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  transform: translateY(calc(-1 * var(--lift, 0px)));
+}
+
+.g2-ball:not(.is-down) {
+  opacity: 0;
+  transform: translateY(-240px);
+}
+
+.g2-ball-skin {
+  position: relative;
+  z-index: 1;
+}
+
+.g2-ball-shadow {
+  position: absolute;
+  z-index: 0;
+}
+
+.g2-ball-label {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .g2-ball {
+    transition:
+      transform 620ms cubic-bezier(0.34, 1.3, 0.64, 1),
+      opacity 160ms linear;
+  }
+}
+
+/* A miss: a thin red bracket under the slab, with its cost. */
+.g2-gap {
+  position: absolute;
+  top: calc(100% + 4px);
+  height: 8px;
+  border: 1.5px solid var(--negative);
+  border-top: 0;
+}
+
+.g2-gap-label {
+  position: absolute;
+  top: -4px;
+  color: var(--negative);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.g2-gap.is-below .g2-gap-label {
+  right: calc(100% + 8px);
+}
+
+.g2-gap.is-above .g2-gap-label {
+  left: calc(100% + 8px);
+}
+
+/* The lazy guess: a short post with a sofa on top. */
+.g2-lazy {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 0;
+  color: var(--text-2);
+}
+
+.g2-lazy-sofa {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+
+.g2-lazy-post {
+  width: 4px;
+  height: 28px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.g2-scale {
+  position: relative;
+  height: 22px;
+  margin-top: var(--space-4);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.g2-scale span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* The end labels sit inside the slab's ends. */
+.g2-scale span.is-start {
+  transform: none;
+}
+
+.g2-scale span.is-end {
+  transform: translateX(-100%);
+}
+
+/* Pill names: one equal column per segment, centred under it. */
+.g2-pill-names {
+  display: grid;
+  gap: 6px;
+  margin-top: var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.3;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.g2-segment {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  height: 44px;
+  margin-top: -22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  cursor: pointer;
+}
+
+.g2-segment:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .g2-segment:not(.is-picked):hover {
+    background: var(--raised-fill);
+  }
+}
+
+/* Page 2: last year's and this year's revenue. */
+.g2-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.g2-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.g2-bar-label,
+.g2-made-up {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.g2-bar-label strong {
+  color: var(--text);
+}
+
+/* Page 3: the ₹100 split, with a legend. */
+.g2-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.g2-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.g2-legend strong {
+  color: var(--text);
+}
+
+.g2-swatch {
+  position: relative;
+  display: inline-block;
+  width: 24px;
+  height: 12px;
+}
+
+/* Reduced motion: no tilt, no scale; the pages simply scroll. */
+.g2-stack.is-still .g2-page {
+  position: relative;
+  top: auto;
+}
+
+.g2-stack.is-still .g2-dwell {
+  display: none;
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 640px) {
+  .guide2-page {
+    margin-top: calc(-1 * var(--space-4));
+  }
+
+  .g2-stack {
+    --g2-h: calc(100dvh - var(--topbar-height) - var(--tabbar-height) - env(safe-area-inset-bottom));
+  }
+
+  .g2-inner,
+  .is-last .g2-inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0;
+    padding: var(--space-6) var(--space-4) var(--space-4);
+  }
+
+  /* The company's card at the right of the text, which flows round it. */
+  .g2-company-phone {
+    display: flex !important;
+    float: right;
+    margin: 4px 0 var(--space-2) var(--space-3);
+  }
+
+  .g2-company-desk {
+    display: none !important;
+  }
+
+  .g2-company.sector-tile {
+    width: 148px;
+    padding: var(--space-3);
+  }
+
+  .g2-company.sector-tile.has-edge {
+    padding-left: calc(24px + var(--space-3));
+  }
+
+  .g2-company .edge-label {
+    width: 24px;
+  }
+
+  .g2-company .tile-sector {
+    font-size: var(--text-sm);
+    line-height: 1.25;
+  }
+
+  .g2-company .tile-name {
+    font-size: 22px;
+  }
+
+  .g2-facts-row {
+    margin-top: var(--space-5);
+  }
+
+  /* Each fact on one row, numbers in one column. */
+  .g2-facts {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .g2-facts li {
+    display: contents;
+  }
+
+  .g2-fact-num {
+    font-size: var(--text-lg);
+  }
+
+  .g2-text,
+  .g2-side {
+    margin-top: var(--space-5);
+  }
+
+  .g2-side {
+    gap: var(--space-2);
+  }
+
+  .g2-bottom {
+    align-self: stretch;
+    margin-top: var(--space-5);
+  }
+
+  .g2-practice {
+    margin-top: var(--space-6);
+  }
+
+  .g2-scale {
+    height: 20px;
+    margin-top: var(--space-2);
+  }
+
+  .g2-pill-names {
+    margin-top: var(--space-2);
+  }
+
+  .g2-one-line {
+    white-space: normal;
+  }
+
+  /* Short of room: hide the prompt (the button says it), then move the
+     made-up note to one line under the scale. */
+  .is-tight-a .g2-prompt,
+  .is-tight-b .g2-note-side {
+    display: none;
+  }
+
+  .is-tight-b .g2-note-under {
+    display: block;
+    margin: var(--space-1) 0 0;
+  }
+
+  /* The counter becomes the hairline. */
+  .g2-counter {
+    display: none;
+  }
+
+  .g2-progress {
+    display: block;
+  }
 }

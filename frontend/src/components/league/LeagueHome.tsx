@@ -498,10 +498,10 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
 // The first-visit spotlight circles it (SpotlightIntro.tsx, id below).
 export function GuideStrip() {
   return (
-    <div className="guide-strip" id="guide-entry">
+    <div className="guide-strip strip-panel" id="guide-entry">
       <span className="guide-strip-text">
         <span className="guide-strip-title">New to forecasting?</span>
-        <span className="guide-strip-line">Six short steps: what results are, how ranges work and how you score.</span>
+        <span className="guide-strip-line">Ten short pages: what results are, how to forecast them and how you score.</span>
       </span>
       <a className="btn btn-secondary btn-compact guide-strip-button" href="#/learn">
         Start the guide
