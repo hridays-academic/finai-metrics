@@ -7632,3 +7632,8 @@ a.news-card-headline:hover {
 .outcome-rupee {
   margin-top: var(--space-4);
 }
+
+/* S5: while a page's code downloads, keep the page's height so nothing jumps. */
+.page-loading {
+  min-height: 70vh;
+}

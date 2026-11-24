@@ -1,32 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import Header from "./components/Header";
 import SettingsPanel from "./components/SettingsPanel";
 import AuthPanel from "./components/AuthPanel";
 import Sidebar, { type View } from "./components/Sidebar";
 import CompanySearch from "./components/CompanySearch";
-import MetricsDashboard from "./components/MetricsDashboard";
-import ReturnCalculator from "./components/ReturnCalculator";
-import StockMarketSimulator from "./components/StockMarketSimulator";
-import PaperTrading from "./components/PaperTrading";
 import ResetPasswordPanel from "./components/ResetPasswordPanel";
-import AdminPage from "./components/AdminPage";
 import SiteFooter from "./components/SiteFooter";
 import FreeBall from "./components/FreeBall";
 import PageScrollbar from "./components/PageScrollbar";
 import { ballStore } from "./lib/ballStore";
-import LegalPage from "./components/LegalPage";
-import GuidePage from "./components/guide/GuidePage";
-import PracticePage from "./components/practice/PracticePage";
-import PracticeCasePage from "./components/practice/PracticeCasePage";
 import SpotlightIntro from "./components/SpotlightIntro";
 import { guideFlagStored, guideSeenHere, markGuideSeenHere, spotlightDecision, startedOnHome } from "./lib/guideSeen";
 import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
-import ForecastPage from "./components/league/ForecastPage";
-import ResultsPage from "./components/league/ResultsPage";
-import WorkspacePage from "./components/workspace/WorkspacePage";
 import { clearWorkspaceMemory } from "./lib/workspaceMemory";
-import ResearchLanding from "./components/news/ResearchLanding";
 import { clearRoute, leaveRoute, navigate, useHashRoute } from "./lib/router";
 import NotFound from "./components/NotFound";
 import { clearForecastDrafts } from "./lib/forecastDrafts";
@@ -37,6 +24,21 @@ import { SHOW_EXTRA_TOOLS } from "./lib/features";
 import { fetchCompany, fetchMe, markGuideSeen, recordVisit, ApiError } from "./lib/api";
 import { getAuthToken } from "./lib/auth";
 import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
+
+// S5/S7 (master plan): each page downloads when first opened; admin only for admins.
+const MetricsDashboard = lazy(() => import("./components/MetricsDashboard"));
+const ReturnCalculator = lazy(() => import("./components/ReturnCalculator"));
+const StockMarketSimulator = lazy(() => import("./components/StockMarketSimulator"));
+const PaperTrading = lazy(() => import("./components/PaperTrading"));
+const AdminPage = lazy(() => import("./components/AdminPage"));
+const LegalPage = lazy(() => import("./components/LegalPage"));
+const GuidePage = lazy(() => import("./components/guide/GuidePage"));
+const PracticePage = lazy(() => import("./components/practice/PracticePage"));
+const PracticeCasePage = lazy(() => import("./components/practice/PracticeCasePage"));
+const ForecastPage = lazy(() => import("./components/league/ForecastPage"));
+const ResultsPage = lazy(() => import("./components/league/ResultsPage"));
+const WorkspacePage = lazy(() => import("./components/workspace/WorkspacePage"));
+const ResearchLanding = lazy(() => import("./components/news/ResearchLanding"));
 
 // A company, results or research workspace page opened from Home.
 type HomePage = { name: "event" | "results" | "workspace"; id: number } | null;
@@ -303,6 +305,7 @@ export default function App() {
             `visible` (this view being the active one) for the same reason --
             see PaperTrading.tsx/useLiveQuotes.ts. */}
         <main className="app-main">
+          <Suspense fallback={<div className="page page-loading" aria-busy="true" />}>
           {/* S3/S8 (master plan): only the page on screen is mounted, so hidden
               pages make no requests and run no effects. Places survive through
               useScrollMemory and lib/forecastDrafts; Research's company lives here. */}
@@ -390,6 +393,7 @@ export default function App() {
                 visible
               />
           )}
+          </Suspense>
         </main>
         {/* The loose ball, once dragged out of Home's scene: Home only (FreeBall.tsx). */}
         {showHome && <FreeBall onHome={() => handleChangeView("home")} />}
