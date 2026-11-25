@@ -7774,3 +7774,42 @@ a.news-card-headline:hover {
     font-size: var(--text-sm);
   }
 }
+
+/* V15 (master plan): light-mode panels separate clearly from the page. */
+[data-mode="light"] .glass.panel,
+[data-mode="light"] .strip-panel,
+[data-mode="light"] .group,
+[data-mode="light"] .settings-panel,
+[data-mode="light"] .error-state {
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.1),
+    0 6px 18px -8px rgba(15, 23, 42, 0.18);
+}
+
+/* V4 (master plan): sections separated by space and type, not boxes. Boxes
+   stay for what you fill in or what floats; the results table and Home's
+   "Just reported" list sit open on the page. */
+.results-page section.glass.panel[aria-labelledby="outcome-title"],
+.home-columns > section.glass.panel {
+  padding-left: 0;
+  padding-right: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.results-page section.glass.panel[aria-labelledby="outcome-title"]::before,
+.results-page section.glass.panel[aria-labelledby="outcome-title"]::after,
+.home-columns > section.glass.panel::before,
+.home-columns > section.glass.panel::after {
+  display: none;
+}
+
+.home-columns > section.glass.panel .recent-row,
+.home-columns > section.glass.panel .recent-item > .recent-lines,
+.home-columns > section.glass.panel .recent-more {
+  padding-left: 0;
+  padding-right: 0;
+}
