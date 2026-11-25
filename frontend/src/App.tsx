@@ -19,7 +19,6 @@ import NotFound from "./components/NotFound";
 import { setPageTitle, titleForRoute } from "./lib/pageMeta";
 import { clearForecastDrafts } from "./lib/forecastDrafts";
 import { useTheme } from "./hooks/useTheme";
-import { usePageMotion } from "./hooks/usePageMotion";
 import { markFreshNavigation, scrollPageToTop, useScrollMemory } from "./hooks/useScrollMemory";
 import { SHOW_EXTRA_TOOLS } from "./lib/features";
 import { fetchCompany, fetchMe, markGuideSeen, recordVisit, ApiError } from "./lib/api";
@@ -54,7 +53,7 @@ let visitRecorded = false;
 
 export default function App() {
   const { theme, mode, setMode } = useTheme();
-  usePageMotion();
+  // S10/M1/M2 (master plan): no scroll rise-in or tilt; content is visible on arrival.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   // Sign-in is purely for activity tracking, not a gate on using the app --
