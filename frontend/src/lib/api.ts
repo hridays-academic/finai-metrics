@@ -302,6 +302,9 @@ export async function fetchActivity(): Promise<ActivityResponse> {
 export type VisitPage =
   | "home"
   | "play"
+  | "daily"
+  | "me"
+  | "boards"
   | "search"
   | "trading"
   | "reset_password"
@@ -506,3 +509,76 @@ export interface PlayReveal {
 export const fetchPlayCards = (mystery: boolean) => leagueRequest<PlayCard[]>("GET", `/play/cards?mystery=${mystery ? "true" : "false"}`);
 export const revealPlayCard = (id: string, low: number, high: number) =>
   leagueRequest<PlayReveal>("POST", `/play/cards/${encodeURIComponent(id)}/reveal`, { low, high });
+
+// Phase 6: whole rounds are re-scored and saved on the server; the daily
+// challenge; progress; boards (services/play.py, progress.py, boards.py).
+export interface RoundResult {
+  score: number;
+  hits: number;
+  cards: number;
+  saved: boolean;
+  not_saved_reason: string | null;
+  xp_gained: number;
+  xp: number | null;
+  level: number | null;
+  best: number | null;
+  new_badges: string[];
+}
+export const submitRound = (body: {
+  kind: "quick" | "daily";
+  answers: { card_id: string; low: number; high: number }[];
+  gold_index?: number | null;
+}) => leagueRequest<RoundResult>("POST", "/play/rounds", body);
+export interface DailyChallenge {
+  day: string;
+  cards: PlayCard[];
+  played: boolean;
+  my_score: number | null;
+  average: number | null;
+}
+export const fetchDaily = (mystery: boolean) =>
+  leagueRequest<DailyChallenge>("GET", `/play/daily?mystery=${mystery ? "true" : "false"}`);
+
+export interface Progress {
+  saving: boolean;
+  not_saved_reason: string | null;
+  xp: number;
+  level: number;
+  level_start: number;
+  next_level: number;
+  xp_today_capped: number;
+  daily_cap: number;
+  days_played_this_term: number;
+  ranges: number;
+  ranges_inside: number;
+  weeks: { week_start: string; cards: number; hits: number }[];
+  badges: { key: string; name: string; description: string; earned_at: string | null }[];
+  bests: { quick_round: number | null; daily_challenge: number | null; league: number | null; practice: number | null };
+  unlocks: { level: number; key: string; name: string; unlocked: boolean }[];
+  forecasts: { event_id: number; company: string; season_label: string; status: string; score: number | null; results_date: string }[];
+}
+export const fetchProgress = () => leagueRequest<Progress>("GET", "/me/progress");
+export const setLeaderboardHidden = (hidden: boolean) => leagueRequest<void>("PUT", "/me/leaderboard", { hidden });
+
+export type BoardKind = "week" | "season" | "improved";
+export interface BoardRow {
+  rank: number;
+  handle: string;
+  value: number;
+  count: number;
+  you: boolean;
+}
+export interface Board {
+  board: BoardKind;
+  title: string;
+  season_label: string | null;
+  minimum: number;
+  rows: BoardRow[];
+  you: BoardRow | null;
+  your_status: string | null;
+}
+export const fetchBoard = (kind: BoardKind) => leagueRequest<Board>("GET", `/boards/${kind}`);
+export const adminHandlesForReview = () =>
+  leagueRequest<{ user_id: number; handle: string; handle_status: string }[]>("GET", "/admin/handles");
+export const adminSetHandleStatus = (userId: number, status: "ok" | "review" | "blocked") =>
+  leagueRequest<void>("PUT", `/admin/users/${userId}/handle-status`, { status });

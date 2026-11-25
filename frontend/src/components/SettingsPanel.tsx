@@ -1,12 +1,15 @@
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSheet } from "../hooks/useSheet";
 import type { ThemeMode } from "../hooks/useTheme";
-import { deleteAccount, ApiError } from "../lib/api";
+import { deleteAccount, ApiError, fetchProgress, setLeaderboardHidden } from "../lib/api";
 import { clearAuthToken } from "../lib/auth";
 import type { UserPublic } from "../lib/types";
 import { getStartingBalance, setStartingBalance } from "../lib/portfolio";
 import { SHOW_EXTRA_TOOLS } from "../lib/features";
-import { getMotion, getSound, getVibration, type MotionPref, setMotion, setSound, setVibration } from "../lib/prefs";
+import {
+  BALLS, type BallFinish, getBall, getMotion, getSlab, getSound, getVibration, type MotionPref, setBall, setMotion, setSlab,
+  setSound, setVibration, SLABS, type SlabColour,
+} from "../lib/prefs";
 import CoinAmount from "./CoinAmount";
 
 interface SettingsPanelProps {
@@ -54,6 +57,17 @@ export default function SettingsPanel({
   const [sound, setSoundState] = useState(getSound);
   const [vibration, setVibrationState] = useState(getVibration);
   const [motion, setMotionState] = useState<MotionPref>(getMotion);
+  // Phase 6: leaderboards and the cosmetics your level has unlocked.
+  const [ball, setBallState] = useState<BallFinish>(getBall);
+  const [slab, setSlabState] = useState<SlabColour>(getSlab);
+  const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
+  const [hidden, setHidden] = useState(Boolean(user?.leaderboard_opt_out));
+  useEffect(() => {
+    if (!user) return;
+    fetchProgress()
+      .then((p) => setUnlocked(new Set(p.unlocks.filter((u) => u.unlocked).map((u) => u.key))))
+      .catch(() => setUnlocked(new Set()));
+  }, [user]);
   const sheetRef = useRef<HTMLDivElement>(null);
   useSheet(sheetRef, onClose);
   const [editingBalance, setEditingBalance] = useState(false);
@@ -134,7 +148,45 @@ export default function SettingsPanel({
               setMotionState(v);
             }}
           />
+          {user && (
+            <>
+              <Choice
+                label="Ball"
+                value={ball}
+                options={BALLS.filter((b) => !b.unlock || unlocked.has(b.unlock))}
+                onPick={(v) => {
+                  setBall(v);
+                  setBallState(v);
+                }}
+              />
+              <Choice
+                label="Slab"
+                value={slab}
+                options={SLABS.filter((x) => !x.unlock || unlocked.has(x.unlock))}
+                onPick={(v) => {
+                  setSlab(v);
+                  setSlabState(v);
+                }}
+              />
+              <p className="settings-row-sub">More balls and slabs unlock as you level up.</p>
+            </>
+          )}
         </section>
+
+        {user && (
+          <section className="settings-section">
+            <h3 className="settings-section-title">Leaderboards</h3>
+            <Choice
+              label="On leaderboards"
+              value={hidden ? "hide" : "show"}
+              options={[{ value: "show", label: "Show my handle" }, { value: "hide", label: "Hide me from leaderboards" }]}
+              onPick={(v) => {
+                setHidden(v === "hide");
+                setLeaderboardHidden(v === "hide").catch(() => setHidden(v !== "hide"));
+              }}
+            />
+          </section>
+        )}
 
         {SHOW_EXTRA_TOOLS && (
           <>

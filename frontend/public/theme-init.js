@@ -25,6 +25,11 @@
   // K5: "Motion: Reduced" from Settings, before the first paint.
   try {
     if (localStorage.getItem("stackly-motion") === "reduced") document.documentElement.setAttribute("data-motion", "reduced");
+    // Phase 6: the ball and slab chosen in Settings (unlocked by level).
+    var ball = localStorage.getItem("stackly-ball");
+    if (ball) document.documentElement.setAttribute("data-ball", ball);
+    var slab = localStorage.getItem("stackly-slab");
+    if (slab) document.documentElement.setAttribute("data-slab", slab);
   } catch (e) {}
 })();
 

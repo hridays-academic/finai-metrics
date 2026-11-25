@@ -40,6 +40,8 @@ const ResultsPage = lazy(() => import("./components/league/ResultsPage"));
 const WorkspacePage = lazy(() => import("./components/workspace/WorkspacePage"));
 const ResearchLanding = lazy(() => import("./components/news/ResearchLanding"));
 const QuickRound = lazy(() => import("./components/play/QuickRound"));
+const MePage = lazy(() => import("./components/me/MePage"));
+const BoardsPage = lazy(() => import("./components/me/BoardsPage"));
 
 // A company, results or research workspace page opened from Home.
 type HomePage = { name: "event" | "results" | "workspace"; id: number } | null;
@@ -86,12 +88,14 @@ export default function App() {
   // A company page belongs to Home in the nav; admin, legal pages and the
   // guide to nothing.
   // Quick rounds (#/play) are practice, so they light the Practice tab.
-  const showPractice = route?.name === "practice" || route?.name === "play" || (route === null && view === "practice");
+  const showPractice =
+    route?.name === "practice" || route?.name === "play" || route?.name === "daily" || (route === null && view === "practice");
+  const meActive = route?.name === "me" || route?.name === "boards";
   // T17 (master plan): Research has its own address, #/research.
   const showResearch = route?.name === "research" || (route === null && view === "search");
   // T22: exactly one tab lit; none on the guide, legal, admin or not-found pages.
   const navView: View | null =
-    route?.name === "admin" || isLegalRoute || route?.name === "learn" || route?.name === "notfound"
+    route?.name === "admin" || isLegalRoute || route?.name === "learn" || route?.name === "notfound" || meActive
       ? null
       : showPractice
         ? "practice"
@@ -294,6 +298,7 @@ export default function App() {
               user={user}
               adminActive={route?.name === "admin"}
               onOpenAdmin={handleOpenAdmin}
+              meActive={meActive}
             />
           }
         />
@@ -349,7 +354,10 @@ export default function App() {
           )}
 
           {route?.name === "notfound" && <NotFound />}
-          {route?.name === "play" && <QuickRound />}
+          {route?.name === "play" && <QuickRound user={user} />}
+          {route?.name === "daily" && <QuickRound key="daily" mode="daily" user={user} />}
+          {route?.name === "me" && <MePage user={user} onOpenAuth={() => setAuthOpen(true)} />}
+          {route?.name === "boards" && <BoardsPage user={user} />}
           {route?.name === "learn" && (
             <div className="view-wrapper">
               <GuidePage onOpenResearch={() => handleChangeView("search")} />

@@ -75,6 +75,9 @@ export default function PracticePage({ user }: { user: UserPublic | null }) {
           <button type="button" className="btn btn-primary" onClick={goSurprise} disabled={!cards?.length}>
             Random company
           </button>
+          <a className="btn btn-secondary" href="#/daily">
+            Daily challenge
+          </a>
         </div>
       </header>
       {error && <ErrorState message={error} />}

@@ -52,7 +52,10 @@ describe("Admin button in the main navigation", () => {
     expect(screen.queryByRole("button", { name: "Admin" })).toBeNull();
     expect(container.textContent).not.toMatch(/admin/i);
     expect(screen.queryAllByRole("button")).toEqual([]);
-    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "Practice", "Research"]);
+    // Phase 6: a signed-in student also gets "Me".
+    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(
+      who ? ["Home", "Practice", "Research", "Me"] : ["Home", "Practice", "Research"]
+    );
   });
 });
 

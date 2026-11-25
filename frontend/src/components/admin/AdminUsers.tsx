@@ -1,3 +1,4 @@
+import AdminHandles from "./AdminHandles";
 import { FormEvent, Fragment, useEffect, useState } from "react";
 import { adminFindUsers, adminSetConsent, ApiError, type ConsentDetails } from "../../lib/api";
 import { formatDay } from "../../lib/leagueFormat";
@@ -68,6 +69,7 @@ export default function AdminUsers() {
 
   return (
     <div>
+      <AdminHandles />
       <p className="section-text">
         Students under 18 can't submit forecasts until a parent or guardian has consented, by signed form or by
         email from the parent. Record it here with the parent's name and the date. Pending students are listed first.

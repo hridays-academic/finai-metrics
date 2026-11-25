@@ -15,6 +15,9 @@ export type Route =
   | { name: "terms" }
   | { name: "research" }
   | { name: "play" }
+  | { name: "daily" }
+  | { name: "me" }
+  | { name: "boards" }
   // T16: an address that isn't a page gets "page not found", never Home.
   | { name: "notfound" }
   | null;
@@ -26,6 +29,9 @@ export function parseHash(hash: string): Route {
   if (path === "") return null;
   if (path === "/research") return { name: "research" };
   if (path === "/play") return { name: "play" };
+  if (path === "/daily") return { name: "daily" };
+  if (path === "/me") return { name: "me" };
+  if (path === "/boards") return { name: "boards" };
   if (path === "/league") return { name: "league" };
   if (path === "/admin") return { name: "admin" };
   if (path === "/learn") return { name: "learn" };

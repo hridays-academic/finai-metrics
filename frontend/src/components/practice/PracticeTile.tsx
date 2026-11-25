@@ -24,7 +24,12 @@ export default function PracticeTile({
   const level = card.difficulty;
   return (
     <li data-scrub={scrub ? "tile" : undefined} data-i={scrub ? index : undefined}>
-      <a className={`sector-tile practice-tile ${colourClass(level)} ${level ? "has-edge" : ""}`} href={`#/practice/${card.code}`}>
+      {/* Phase 6: Hard quarters unlock at Level 2. A locked tile isn't a link. DRAFT wording. */}
+      <a
+        className={`sector-tile practice-tile ${colourClass(level)} ${level ? "has-edge" : ""} ${card.locked ? "is-locked" : ""}`}
+        href={card.locked ? undefined : `#/practice/${card.code}`}
+        aria-disabled={card.locked || undefined}
+      >
         <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
         {/* H7 (master plan): in Mystery mode the sector is the headline, so
             three mystery tiles read differently at a glance. */}
@@ -51,10 +56,14 @@ export default function PracticeTile({
           <span className="practice-tile-score">
             {card.first_score !== null ? `First try: ${n(card.first_score)} points` : ""}
           </span>
-          <span className="btn btn-dark btn-arrow">
-            Forecast
-            <span className="btn-arrow-icon" aria-hidden="true" />
-          </span>
+          {card.locked ? (
+            <span className="practice-tile-lock">Unlocks at Level 2</span>
+          ) : (
+            <span className="btn btn-dark btn-arrow">
+              Forecast
+              <span className="btn-arrow-icon" aria-hidden="true" />
+            </span>
+          )}
         </span>
       </a>
     </li>

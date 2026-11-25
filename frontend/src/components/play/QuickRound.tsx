@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ApiError, fetchPlayCards, type PlayCard, type PlayReveal, revealPlayCard } from "../../lib/api";
+import { ApiError, fetchDaily, fetchPlayCards, type PlayCard, type PlayReveal, revealPlayCard, type RoundResult, submitRound } from "../../lib/api";
+import type { UserPublic } from "../../lib/types";
 import { mysteryOn } from "../../lib/practice";
 import { buildRound, cardPoints, endLine, GOLD_BONUS, type Round } from "../../lib/quickRound";
 import { explainMetric } from "../../lib/glossary";
@@ -24,8 +25,8 @@ import ShareScore from "./ShareScore";
 const PLAYED_KEY = "stackly_played_quick";
 const BEST_KEY = "stackly_best_quick";
 
-// The daily challenge arrives in phase 6; until then the end screen doesn't mention it.
-export const DAILY_CHALLENGE = false;
+// The daily challenge (phase 6): the same ten cards for everyone today.
+export const DAILY_CHALLENGE = true;
 
 const HINTS = [
   "Last year's figure is marked on the bar. Start there, then ask what has changed since.",
@@ -102,7 +103,16 @@ interface Answer {
   multiplier: number;
 }
 
-export default function QuickRound() {
+// Why a finished round wasn't saved (phase 6). DRAFT wording.
+const NOT_SAVED: Record<string, string> = {
+  signed_out: "Sign in to keep this score.",
+  consent_pending: "Nothing is saved until a parent or guardian agrees.",
+  profile_required: "Choose a handle and your age group to keep your scores.",
+  terms_required: "Agree to the Terms to keep your scores.",
+  already_played: "You've already played today's challenge, so this one isn't saved.",
+};
+
+export default function QuickRound({ mode = "quick", user = null }: { mode?: "quick" | "daily"; user?: UserPublic | null }) {
   const [round, setRound] = useState<Round | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
@@ -114,23 +124,41 @@ export default function QuickRound() {
   const startedAt = useRef(Date.now());
   const [best, setBest] = useState<number | null>(() => readNumber(BEST_KEY));
   const [picked, setPicked] = useState<number | null>(null);
+  const [saved, setSaved] = useState<RoundResult | null>(null);
+  const [dailyDone, setDailyDone] = useState<{ score: number | null; average: number | null } | null>(null);
+  const daily = mode === "daily";
+
+  function begin(r: Round) {
+    setRound(r);
+    setIndex(0);
+    setRange(null);
+    setAnswers([]);
+    setStreak(0);
+    setFinished(false);
+    setPicked(null);
+    setSaved(null);
+    startedAt.current = Date.now();
+    recordUsage("round_started", daily ? "daily" : "play");
+  }
 
   function start() {
     setError(null);
     setRound(null);
+    if (daily) {
+      fetchDaily(mysteryOn())
+        .then((d) => {
+          if (d.cards.length === 0) return setError("There's no daily challenge yet.");
+          setDailyDone(d.played ? { score: d.my_score, average: d.average } : null);
+          begin({ cards: d.cards, goldIndex: -1, first: false });
+        })
+        .catch((e) => setError(e instanceof ApiError ? e.message : "We couldn't load today's challenge."));
+      return;
+    }
     fetchPlayCards(mysteryOn())
       .then((bank) => {
         if (bank.length === 0) return setError("There are no quick-round cards yet.");
         const first = readNumber(PLAYED_KEY) === null;
-        setRound(buildRound(bank, Date.now(), first));
-        setIndex(0);
-        setRange(null);
-        setAnswers([]);
-        setStreak(0);
-        setFinished(false);
-        setPicked(null);
-        startedAt.current = Date.now();
-        recordUsage("round_started", "play");
+        begin(buildRound(bank, Date.now(), first));
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "We couldn't load the cards."));
   }
@@ -175,7 +203,18 @@ export default function QuickRound() {
   useEffect(() => {
     if (!done || !round) return;
     write(PLAYED_KEY, "1");
-    recordUsage("round_submitted", "play");
+    recordUsage("round_submitted", daily ? "daily" : "play");
+    // The server re-scores the round and saves it for students who may save.
+    submitRound({
+      kind: daily ? "daily" : "quick",
+      answers: answers.map((a) => ({ card_id: a.card.id, low: a.range[0], high: a.range[1] })),
+      gold_index: round.goldIndex > 0 ? round.goldIndex : null,
+    })
+      .then((r) => {
+        setSaved(r);
+        if (r.saved && r.best !== null && !daily) setBest(Math.round(r.best));
+      })
+      .catch(() => setSaved(null));
     if (!round.first && (best === null || total > best)) {
       write(BEST_KEY, String(Math.round(total)));
       setBest(Math.round(total));
@@ -199,8 +238,15 @@ export default function QuickRound() {
       <header className="page-hero">
         <HeroWaves />
         <h1 className="hero-title">
-          Quick <span className="hero-title-gold">round</span>
+          {daily ? "Daily" : "Quick"} <span className="hero-title-gold">{daily ? "challenge" : "round"}</span>
         </h1>
+        {daily && round && !done && (
+          <p className="hero-lede">
+            {dailyDone
+              ? `You've played today's challenge${dailyDone.score !== null ? ` (${n(Math.round(dailyDone.score))} points)` : ""}. You can play it again; it won't be saved.`
+              : "The same 10 cards for everyone today. It counts once."}
+          </p>
+        )}
       </header>
 
       {error && <ErrorState message={error} onRetry={start} />}
@@ -296,11 +342,32 @@ export default function QuickRound() {
             </div>
           </dl>
           <EndDots answers={answers} picked={picked} onPick={setPicked} />
+          {saved?.saved && (
+            <p className="quick-saved" role="status">
+              {saved.xp_gained > 0 ? `+${saved.xp_gained} XP. ` : ""}Level {saved.level}.
+              {saved.new_badges.map((b) => ` New badge: ${b}.`).join("")}
+            </p>
+          )}
+          {saved && !saved.saved && saved.not_saved_reason && NOT_SAVED[saved.not_saved_reason] && (
+            <p className="section-text">{NOT_SAVED[saved.not_saved_reason]}</p>
+          )}
+          {daily && dailyDone?.average != null && <p className="section-text">Today's average: {n(dailyDone.average)} points.</p>}
           {round.first && <p className="section-text">That was your first round: three Easy cards. Next rounds have 10 cards from every sector.</p>}
           <div className="quick-end-actions">
-            <button type="button" className="btn btn-primary" onClick={start}>
-              One more round
-            </button>
+            {daily ? (
+              <a className="btn btn-primary" href="#/play">
+                Play a quick round
+              </a>
+            ) : (
+              <button type="button" className="btn btn-primary" onClick={start}>
+                One more round
+              </button>
+            )}
+            {user && (
+              <a className="btn btn-secondary" href="#/me">
+                See your progress
+              </a>
+            )}
             <ShareScore points={Math.round(total)} hits={hits} total={round.cards.length} />
           </div>
           <p className="section-text">

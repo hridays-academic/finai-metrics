@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ErrorState from "../ErrorState";
-import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMyResult, fetchMySeason, fetchPracticeCases, fetchResearchHistory, fetchRecentResults } from "../../lib/api";
+import { ApiError, fetchLeagueConfig, fetchProgress, type Progress, fetchLeagueEvents, fetchMyResult, fetchMySeason, fetchPracticeCases, fetchResearchHistory, fetchRecentResults } from "../../lib/api";
 import { daysUntil, formatCrore, formatDay } from "../../lib/leagueFormat";
 import type { EventSummary, LeagueConfig, MetricResult, PracticeCard, ResearchHistory, Season, UserPublic, RecentResult } from "../../lib/types";
 import PracticeTile from "../practice/PracticeTile";
@@ -428,6 +428,8 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
             Learn how it works (10 short pages)
           </a>
         </div>
+        {/* H16/E6 (phase 6): a signed-in student's progress and next forecast. DRAFT wording. */}
+        {user && <HomeProgress next={open.find((e) => !e.submitted) ?? null} />}
         </div>
         <div className="hero-toy">
           <HeroObject />
@@ -529,6 +531,27 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
 
 
       <SiteFooter />
+    </div>
+  );
+}
+
+function HomeProgress({ next }: { next: { id: number; company: { name: string }; lock_at: string } | null }) {
+  const [p, setP] = useState<Progress | null>(null);
+  useEffect(() => {
+    fetchProgress().then(setP).catch(() => setP(null));
+  }, []);
+  return (
+    <div className="home-progress">
+      {p && (
+        <a className="home-progress-level" href="#/me">
+          Level {p.level} · Played {p.days_played_this_term} {p.days_played_this_term === 1 ? "day" : "days"} this term
+        </a>
+      )}
+      {next ? (
+        <a href={`#/event/${next.id}`}>Your next forecast: {next.company.name}</a>
+      ) : (
+        <a href="#/daily">Play today's daily challenge</a>
+      )}
     </div>
   );
 }

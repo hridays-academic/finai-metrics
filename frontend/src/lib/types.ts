@@ -208,6 +208,9 @@ export interface UserPublic {
   needs_terms: boolean;
   // The first-visit guide's spotlight was opened or skipped on this account.
   guide_seen?: boolean;
+  // Phase 6: "Hide me from leaderboards"; a handle under review or blocked is hidden from boards.
+  leaderboard_opt_out?: boolean;
+  handle_status?: "ok" | "review" | "blocked";
 }
 
 export interface AuthResponse {
@@ -733,6 +736,7 @@ export interface PracticeCard {
   description: string | null;
   first_score: number | null;
   attempts: number;
+  locked?: boolean; // phase 6: Hard quarters unlock at Level 2
 }
 
 export interface PracticeCase {

@@ -8487,3 +8487,157 @@ a.news-card-headline:hover {
     display: flex;
   }
 }
+
+/* Phase 6 cosmetics, unlocked by level and chosen in Settings. */
+[data-ball="silver"] .ball-skin {
+  filter: grayscale(1) brightness(1.08);
+}
+
+[data-ball="copper"] .ball-skin {
+  filter: sepia(0.9) saturate(1.6) hue-rotate(-18deg) brightness(0.92);
+}
+
+[data-ball="glass"] .ball-skin {
+  opacity: 0.78;
+  filter: saturate(0.4) brightness(1.15);
+}
+
+[data-slab="blue"] .slab {
+  background: linear-gradient(180deg, #06101f 0%, #0d1e36 50%, #1a3355 100%);
+}
+
+[data-slab="green"] .slab {
+  background: linear-gradient(180deg, #04140e 0%, #0b2a1f 50%, #174634 100%);
+}
+
+/* Phase 6: Me and Leaderboards. */
+.me-xp {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--gold);
+}
+
+.me-notice {
+  margin: 0 0 var(--space-4);
+}
+
+.me-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.me-week {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.me-week-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.me-week-bar > span:first-child {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--gold);
+}
+
+/* The 80% aim. */
+.me-week-aim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 80%;
+  width: 2px;
+  background: var(--text-primary);
+}
+
+.me-badges,
+.me-unlocks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.me-badge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-inner);
+  color: var(--text-2);
+}
+
+.me-badge.is-earned {
+  border-color: var(--gold);
+  color: var(--text-primary);
+}
+
+.me-badge-state,
+.me-forecast-meta {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.me-unlocks li {
+  color: var(--text-2);
+}
+
+.me-unlocks li.is-unlocked {
+  color: var(--text-primary);
+}
+
+.me-group-title {
+  font-size: var(--text-md);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.me-forecast-group li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.quick-saved {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.board-table tr.is-you th,
+.board-table tr.is-you td {
+  color: var(--gold);
+}
+
+.practice-tile.is-locked {
+  opacity: 0.6;
+}
+
+/* Phase 6: a signed-in student's level and next forecast, under Home's buttons. */
+.home-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.home-progress-level {
+  color: var(--gold);
+}
+
+.practice-tile-lock {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}

@@ -104,7 +104,9 @@ export function asHistory(c: PracticeCase): ResearchHistory {
 export const indexText = (v: number) => v.toFixed(0);
 
 // Picks a random case, never `except` when there's another to choose.
-export function surprise<T extends { code: string }>(cases: T[], except?: string): T | undefined {
-  const pool = cases.length > 1 ? cases.filter((c) => c.code !== except) : cases;
+export function surprise<T extends { code: string; locked?: boolean }>(cases: T[], except?: string): T | undefined {
+  // Never a quarter that's still locked (phase 6).
+  const open = cases.filter((c) => !c.locked);
+  const pool = open.length > 1 ? open.filter((c) => c.code !== except) : open;
   return pool[Math.floor(Math.random() * pool.length)];
 }

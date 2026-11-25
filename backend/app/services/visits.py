@@ -27,6 +27,10 @@ PAGES = frozenset({
     "learn",
     # quick rounds (master plan phase 5)
     "play",
+    # daily challenge, profile and boards (phase 6)
+    "daily",
+    "me",
+    "boards",
 })
 
 

@@ -13,6 +13,8 @@ interface SidebarProps {
   user?: UserPublic | null;
   adminActive?: boolean;
   onOpenAdmin?: () => void;
+  // Phase 6 (E6): "Me" (#/me) for signed-in students.
+  meActive?: boolean;
   // I1 (master plan): Home, Practice and Research are real links, so Back and
   // Forward move between them and they open in a new tab. Home's href is
   // wherever Home was last (its list, or a company page opened from it).
@@ -26,7 +28,7 @@ const DEFAULT_HREFS: Partial<Record<View, string>> = { home: "#/", practice: "#/
 // Practice (past quarters, 2026-11-18) and Research (company search); the Return Calculator, Market Simulator and
 // Paper Trading only appear when SHOW_EXTRA_TOOLS is on. Icons match
 // Header.tsx's gear icon: 1.6-1.8 stroke width, currentColor, no fill.
-export default function Sidebar({ view, onChange, user, adminActive = false, onOpenAdmin, hrefs = {} }: SidebarProps) {
+export default function Sidebar({ view, onChange, user, adminActive = false, onOpenAdmin, meActive = false, hrefs = {} }: SidebarProps) {
   // A plain click follows the link (a history entry); the tab you're already
   // on goes back to its start instead. Modified clicks open a new tab as usual.
   const link = (key: View) => ({
@@ -69,6 +71,17 @@ export default function Sidebar({ view, onChange, user, adminActive = false, onO
         </svg>
         <span className="nav-tab-label">Research</span>
       </a>
+
+      {user && (
+        <a className={`nav-tab ${meActive ? "active" : ""}`} href="#/me" aria-current={meActive ? "page" : undefined}>
+          {/* A person in a circle: your level, badges and forecasts. */}
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="9" r="3.6" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M5.5 19.5c1.2-3.2 3.7-4.8 6.5-4.8s5.3 1.6 6.5 4.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <span className="nav-tab-label">Me</span>
+        </a>
+      )}
 
       {SHOW_EXTRA_TOOLS && (
         <>

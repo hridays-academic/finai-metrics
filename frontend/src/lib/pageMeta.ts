@@ -20,6 +20,12 @@ export function titleForRoute(route: Route): string | null | undefined {
       return "Research";
     case "play":
       return "Quick round";
+    case "daily":
+      return "Daily challenge";
+    case "me":
+      return "Me";
+    case "boards":
+      return "Leaderboards";
     case "notfound":
       return "Page not found";
     case "privacy":

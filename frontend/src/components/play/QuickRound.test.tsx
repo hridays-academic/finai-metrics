@@ -5,7 +5,7 @@ import type { PlayCard } from "../../lib/api";
 
 vi.mock("../../lib/api", () => {
   class ApiError extends Error {}
-  return { ApiError, fetchPlayCards: vi.fn(), revealPlayCard: vi.fn() };
+  return { ApiError, fetchPlayCards: vi.fn(), revealPlayCard: vi.fn(), submitRound: vi.fn(), fetchDaily: vi.fn() };
 });
 vi.mock("../../lib/reports", () => ({ recordUsage: vi.fn() }));
 vi.mock("../SiteFooter", () => ({ default: () => <footer>Site footer</footer> }));
@@ -34,6 +34,10 @@ beforeEach(() => {
     actual: 11, hit: id.endsWith("0"), points: 50, beat_lazy: true, missed_by: id.endsWith("0") ? 0 : 1.5,
     lazy: 10, note: null, name: "Demo Cement", quarter: "Q3 FY26",
   }));
+  mocked.submitRound.mockResolvedValue({
+    score: 120, hits: 1, cards: 3, saved: false, not_saved_reason: "signed_out", xp_gained: 0, xp: null, level: null,
+    best: null, new_badges: [],
+  });
 });
 afterEach(() => {
   cleanup();
@@ -74,7 +78,31 @@ describe("QuickRound (Stop 2 fixes)", () => {
     expect(missed.getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText("Your range")).toBeTruthy();
     expect(screen.getByText("11% (missed by 1.5)")).toBeTruthy();
-    expect(screen.getByText("That's a good place to stop.")).toBeTruthy();
-    expect(screen.queryByText(/daily challenge/)).toBeNull();
+    expect(screen.getByText("That's a good place to stop. The daily challenge resets at midnight.")).toBeTruthy();
+    // The server re-scores the round; signed out, nothing is saved.
+    expect(mocked.submitRound).toHaveBeenCalledWith(expect.objectContaining({ kind: "quick" }));
+    expect(mocked.submitRound.mock.calls[0][0].answers).toHaveLength(3);
+    expect(await screen.findByText("Sign in to keep this score.")).toBeTruthy();
+  });
+});
+
+
+describe("Daily challenge", () => {
+  it("plays today's cards and shows what was saved", async () => {
+    store.set("stackly_played_quick", "1");
+    mocked.fetchDaily.mockResolvedValue({
+      day: "2026-11-25", played: false, my_score: null, average: null,
+      cards: [card(0, "Revenue growth (YoY)"), card(1, "Operating margin"), card(2, "Sales volume growth (YoY)")],
+    });
+    mocked.submitRound.mockResolvedValue({
+      score: 150, hits: 1, cards: 3, saved: true, not_saved_reason: null, xp_gained: 3, xp: 43, level: 2,
+      best: 150, new_badges: ["First daily challenge"],
+    });
+    render(<QuickRound mode="daily" />);
+    expect(await screen.findByText("The same 10 cards for everyone today. It counts once.")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Revenue growth"); // today's order, not shuffled
+    await play();
+    expect(mocked.submitRound.mock.calls[0][0]).toMatchObject({ kind: "daily", gold_index: null });
+    expect(await screen.findByText("+3 XP. Level 2. New badge: First daily challenge.")).toBeTruthy();
   });
 });
