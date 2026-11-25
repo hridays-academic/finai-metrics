@@ -96,6 +96,13 @@ const PRIVACY: Section[] = [
     ],
   },
   {
+    // Master plan phase 6, approved by Hriday 2026-11-24 (decisions item 8, "levels" not "points").
+    heading: "Your progress",
+    body: [
+      "If you're signed in, we save your quick rounds, daily challenges, level and badges so you can see your progress. Leaderboards show your handle only, never your name or school, and you can hide yourself in Settings. Students waiting for parental consent are never on a leaderboard and nothing they play is saved.",
+    ],
+  },
+  {
     heading: "No ads, tracking or selling",
     body: [
       "We don't show ads, we don't use analytics or tracking tools, and we never sell, rent or trade your data. We share it only with the services listed above that run the site, or when the law requires us to.",
@@ -161,7 +168,11 @@ const TERMS: Section[] = [
   },
   {
     heading: "3. No money and no prizes",
-    body: ["You can't deposit, win or withdraw money. Points and scores have no cash value."],
+    body: [
+      "You can't deposit, win or withdraw money. Scores have no cash value.",
+      // Master plan phase 6, approved by Hriday 2026-11-24 (decisions item 8, levels only).
+      "Levels and badges have no money value, can't be bought, sold or swapped, and may be corrected if a result is corrected.",
+    ],
   },
   {
     heading: "4. Data may be delayed, incomplete or wrong",

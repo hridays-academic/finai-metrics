@@ -476,6 +476,7 @@ class PracticeCardOut(BaseModel):
     description: Optional[str] = None
     first_score: Optional[float] = None  # signed in, after a saved first try
     attempts: int = 0
+    locked: bool = False  # phase 6: Hard quarters unlock at Level 2
 
 
 class PracticeQuarterOut(BaseModel):
@@ -555,6 +556,7 @@ class PracticeAttemptOut(BaseModel):
     not_saved_reason: Optional[str]
     is_replay: bool
     first_score: Optional[float]  # the saved first try's score, on a replay
+    xp_gained: int = 0  # phase 6: XP from a first attempt (capped per day)
 
 
 class PracticeMineOut(BaseModel):

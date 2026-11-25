@@ -99,6 +99,9 @@ def score_event(conn: psycopg.Connection, actor: dict, event_id: int) -> int:
                  (event_id,))
     audit.write(conn, actor["id"], "rescore" if event["status"] == "scored" else "score", "forecast_event", event_id,
                 {"forecasts_scored": forecasts, "actuals": actual, "lazy": lazy})
+    # Phase 6: XP and badges follow the scores (a re-score replaces awards).
+    from app.services import progress
+    progress.award_league_event(conn, event_id)
     return forecasts
 
 

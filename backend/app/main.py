@@ -73,6 +73,7 @@ from app.routes.deps import optional_user as _current_user, require_user
 from app.cache_headers import cache_control
 from app.routes import reports as reports_routes
 from app.routes import play as play_routes
+from app.routes import progress as progress_routes
 from app.services import reports as reports_service
 
 logging.basicConfig(level=logging.INFO)
@@ -119,6 +120,7 @@ app.include_router(news_routes.router)
 app.include_router(cron_routes.router)
 app.include_router(workspace_routes.router)
 app.include_router(reports_routes.router)
+app.include_router(progress_routes.router)
 
 
 @app.exception_handler(LeagueError)

@@ -416,4 +416,86 @@ LEAGUE_SCHEMA_STATEMENTS = [
         BEFORE INSERT OR UPDATE ON research_workspaces
         FOR EACH ROW EXECUTE FUNCTION workspace_reject_late_worksheet()
     """,
+    # ---------- Progress, daily challenge and boards (schema v20, phase 6) ----------
+    # Vault: Areas/Phase 6 plan. XP is never spent or lost; one award per
+    # (user, source, ref), so a corrected result replaces an award instead of
+    # adding a second. Every student row here is deleted with the account.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_out BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS handle_status TEXT NOT NULL DEFAULT 'ok'",
+    """
+    DO $$ BEGIN
+        ALTER TABLE users ADD CONSTRAINT users_handle_status_check CHECK (handle_status IN ('ok', 'review', 'blocked'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS xp_awards (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source TEXT NOT NULL CHECK (source IN ('league', 'practice', 'card')),
+        ref TEXT NOT NULL,
+        xp INTEGER NOT NULL CHECK (xp >= 0),
+        day DATE NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, source, ref)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_xp_awards_user_day ON xp_awards(user_id, day)",
+    """
+    CREATE TABLE IF NOT EXISTS user_badges (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        badge_key TEXT NOT NULL,
+        earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, badge_key)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS daily_challenges (
+        day DATE PRIMARY KEY,
+        card_ids JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS daily_attempts (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day DATE NOT NULL,
+        score DOUBLE PRECISION NOT NULL,
+        hits INTEGER NOT NULL,
+        cards INTEGER NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, day)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS quick_round_attempts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        cards INTEGER NOT NULL,
+        hits INTEGER NOT NULL,
+        score DOUBLE PRECISION NOT NULL,
+        finished_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_quick_round_attempts_user ON quick_round_attempts(user_id)",
+    # First attempt per card only (quick rounds and the daily challenge):
+    # what "first attempts only", calibration and the weekly board read.
+    """
+    CREATE TABLE IF NOT EXISTS card_answers (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        card_id TEXT NOT NULL,
+        event_id INTEGER NOT NULL REFERENCES forecast_events(id),
+        metric_key TEXT NOT NULL,
+        low DOUBLE PRECISION NOT NULL,
+        high DOUBLE PRECISION NOT NULL,
+        hit BOOLEAN NOT NULL,
+        points DOUBLE PRECISION NOT NULL,
+        beat_lazy BOOLEAN,
+        mode TEXT NOT NULL CHECK (mode IN ('quick', 'daily')),
+        answered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, card_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_card_answers_answered ON card_answers(answered_at)",
 ]

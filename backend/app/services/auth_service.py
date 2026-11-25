@@ -254,7 +254,8 @@ def log_out(token: str) -> None:
 
 
 _USER_COLUMNS = """u.id, u.email, u.name, u.created_at, u.password_hash, u.handle, u.age_band,
-    u.guardian_consent_status, u.school_name, u.terms_accepted_at, u.terms_version, u.guide_seen_at"""
+    u.guardian_consent_status, u.school_name, u.terms_accepted_at, u.terms_version, u.guide_seen_at,
+    u.leaderboard_opt_out, u.handle_status"""
 
 
 def _user_dict(row: dict) -> dict:
@@ -272,6 +273,8 @@ def _user_dict(row: dict) -> dict:
         "terms_accepted_at": row["terms_accepted_at"].isoformat() if row["terms_accepted_at"] else None,
         "needs_terms": row["terms_version"] != TERMS_VERSION,
         "guide_seen": row["guide_seen_at"] is not None,
+        "leaderboard_opt_out": row["leaderboard_opt_out"],
+        "handle_status": row["handle_status"],
     }
 
 
@@ -332,8 +335,8 @@ def delete_account(user_id: int) -> None:
     person any more. Free-text forecast notes are cleared (they could name
     someone); the league lock trigger allows that one change after a lock.
     Sessions, activity, reset links, league memberships, practice
-    attempts and research workspaces (notes, ticks, worksheet) are deleted
-    outright. All in one transaction.
+    attempts, research workspaces (notes, ticks, worksheet), card answers,
+    rounds, daily challenges, XP and badges are deleted outright. All in one transaction.
 
     The audit entry holds only the internal id and a forecast count."""
     with get_conn() as conn:
@@ -343,7 +346,7 @@ def delete_account(user_id: int) -> None:
         conn.execute("UPDATE forecasts SET note = NULL WHERE user_id = %s AND note IS NOT NULL", (user_id,))
         for table in (
             "sessions", "activity_log", "password_reset_tokens", "league_members", "practice_attempts",
-            "research_workspaces",
+            "research_workspaces", "card_answers", "xp_awards", "user_badges", "daily_attempts", "quick_round_attempts",
         ):
             conn.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
         conn.execute(

@@ -192,6 +192,9 @@ def update_profile(conn: psycopg.Connection, user: dict, data: ProfileIn) -> Non
     consent requirement by changing its own answer."""
     if user.get("age_band") and user["age_band"] != data.age_band:
         raise LeagueError(409, "age_band_locked", "Your age group is already set. Ask your teacher or an admin to change it.")
+    from app.services import boards
+    if not boards.handle_allowed(data.handle):
+        raise LeagueError(422, "handle_not_allowed", "That handle isn't allowed. Please choose another.")
     taken = conn.execute(
         "SELECT 1 FROM users WHERE lower(handle) = lower(%s) AND id <> %s", (data.handle, user["id"])
     ).fetchone()
@@ -203,8 +206,10 @@ def update_profile(conn: psycopg.Connection, user: dict, data: ProfileIn) -> Non
     elif consent != "granted":
         consent = "pending"
     conn.execute(
-        "UPDATE users SET handle = %s, age_band = %s, school_name = %s, guardian_consent_status = %s WHERE id = %s",
-        (data.handle, data.age_band, (data.school_name or "").strip() or None, consent, user["id"]),
+        """UPDATE users SET handle = %s, age_band = %s, school_name = %s, guardian_consent_status = %s,
+               handle_status = CASE WHEN lower(handle) IS DISTINCT FROM lower(%s) THEN 'ok' ELSE handle_status END
+           WHERE id = %s""",
+        (data.handle, data.age_band, (data.school_name or "").strip() or None, consent, data.handle, user["id"]),
     )
     audit.write(conn, user["id"], "update", "user_profile", user["id"],
                 {"handle": data.handle, "age_band": data.age_band, "guardian_consent_status": consent})

@@ -1,0 +1,41 @@
+# Handles containing any of these (after lower-casing, turning look-alike
+# digits and symbols into letters, and removing everything that isn't a
+# letter) are refused. English and romanised Hindi. Hriday: add words one per
+# line; the admin can also put any handle under review or block it.
+# Short words that sit inside ordinary names (shit in Kshitij, sex in Essex,
+# rape in grape, nazi in Nazir) are left out; admins review those by hand.
+fuck
+bitch
+bastard
+cunt
+pussy
+slut
+whore
+nigger
+nigga
+faggot
+retard
+porn
+hitler
+suicide
+chutiya
+chutia
+madarchod
+behenchod
+bhenchod
+bhosdi
+bhosda
+gandu
+gaandu
+randi
+harami
+haraami
+lauda
+lavda
+kutta
+kamina
+kameena
+saala
+chod
+jhaatu
+tatti

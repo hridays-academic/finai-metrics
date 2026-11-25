@@ -412,6 +412,10 @@ class UserPublic(BaseModel):
     needs_terms: bool = False
     # The first-visit guide's spotlight was opened or skipped on this account.
     guide_seen: bool = False
+    # Phase 6: "Hide me from leaderboards" (Settings), and whether an admin
+    # has put the handle under review or blocked it (boards hide it).
+    leaderboard_opt_out: bool = False
+    handle_status: str = "ok"
 
 
 class AuthResponse(BaseModel):

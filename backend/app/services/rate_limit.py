@@ -66,6 +66,7 @@ AUTH_LIMITS: dict[str, list[tuple[int, int]]] = {
     "account_delete": [(3600, 10)],        # per IP
     "client_error": [(60, 20), (3600, 200)],  # per IP (S13 error reports)
     "feedback": [(3600, 10)],              # per IP (Y3 "Something wrong? Tell us")
+    "play_round": [(60, 10), (3600, 120)],  # per IP (phase 6 rounds and daily challenges)
 }
 
 # (2026-11) Stored keys are a keyed hash (HMAC-SHA256) of the IP or email,

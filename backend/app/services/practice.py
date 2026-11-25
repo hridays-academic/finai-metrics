@@ -223,15 +223,24 @@ def _indexed(values: list[Optional[float]]) -> list[Optional[float]]:
     return [None if v is None or base is None else v / base * 100 for v in values]
 
 
+def _hard_ok(conn: psycopg.Connection, user_id: Optional[int]) -> bool:
+    """Hard quarters unlock at Level 2 (phase 6; services/progress.py)."""
+    from app.services import progress
+    return bool(user_id) and progress.level_for(progress.total_xp(conn, user_id)) >= progress.HARD_LEVEL
+
+
 def list_cases(conn: psycopg.Connection, user_id: Optional[int], mystery: bool) -> list[PracticeCardOut]:
     mine = {m.code: m for m in my_practice(conn, user_id)} if user_id else {}
+    hard_ok = _hard_ok(conn, user_id)
     out = []
     for row in _practice_rows(conn):
         code = code_for(row["id"])
         # Cached quarters only: listing must never wait on Yahoo.
         cut = _cut_quarters(_cached_quarters(conn, row["provider_symbol"]), row)
+        level = difficulty(cut)
         card = PracticeCardOut(
-            code=code, sector=row["sector"], sector_name=_sector_name(row), difficulty=difficulty(cut),
+            code=code, sector=row["sector"], sector_name=_sector_name(row), difficulty=level,
+            locked=level == "hard" and not hard_ok,
             mystery_line=_mystery_line(row) if mystery else None,
             first_score=mine[code].first_score if code in mine else None,
             attempts=mine[code].attempts if code in mine else 0,
@@ -321,6 +330,9 @@ def _not_saved_reason(user: Optional[dict]) -> Optional[str]:
 
 def attempt(conn: psycopg.Connection, user: Optional[dict], code: str, body: PracticeAttemptIn) -> PracticeAttemptOut:
     row = _load(conn, code)
+    if difficulty(_cut_quarters(_cached_quarters(conn, row["provider_symbol"]), row)) == "hard" \
+            and not _hard_ok(conn, user["id"] if user else None):
+        raise LeagueError(403, "level_locked", "Hard companies unlock at Level 2.")
     metrics = row["metric_definitions"]["metrics"]
     cfg = market_config(row["market_code"])
     # An empty or oversized list fails ForecastIn's own length check, which
@@ -362,7 +374,7 @@ def attempt(conn: psycopg.Connection, user: Optional[dict], code: str, body: Pra
         scoring.MetricScore(m.metric_key, m.interval_score, m.points, m.hit, m.beat_lazy, 0.0) for m in out])
 
     reason = _not_saved_reason(user)
-    is_replay, first_score = False, None
+    is_replay, first_score, xp_gained = False, None, 0
     if reason is None and user is not None:
         values = (user["id"], row["id"], json.dumps({k: [v.low, v.high] for k, v in ranges.items()}),
                   json.dumps({m.metric_key: m.points for m in out}), total, body.mystery)
@@ -383,6 +395,10 @@ def attempt(conn: psycopg.Connection, user: Optional[dict], code: str, body: Pra
                 "SELECT total_points FROM practice_attempts WHERE user_id = %s AND event_id = %s AND NOT is_replay",
                 (user["id"], row["id"]),
             ).fetchone()["total_points"]
+        else:
+            from app.services import progress
+            xp_gained = progress.award_capped(conn, user["id"], "practice", f"practice:{row['id']}",
+                                              progress.practice_xp(total))
 
     sources = {r["metric_key"]: r["source_url"] for r in conn.execute(
         """SELECT a.metric_key, a.definition_key, a.source_url FROM actuals a JOIN fiscal_periods p ON p.id = a.period_id
@@ -394,6 +410,7 @@ def attempt(conn: psycopg.Connection, user: Optional[dict], code: str, body: Pra
         reveal=PracticeRevealOut(name=row["company_name"], ticker=row["ticker"], season_label=row["season_label"],
                                  results_date=row["results_date"], sources=sources),
         saved=reason is None, not_saved_reason=reason, is_replay=is_replay, first_score=first_score,
+        xp_gained=xp_gained,
     )
 
 
