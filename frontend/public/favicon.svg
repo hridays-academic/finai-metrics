@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Stand-in until the logo is chosen (Hriday, 2026-11-24): a plain gold range capsule on the slab, no ball. -->
+  <rect width="64" height="64" rx="14" fill="#0B0D12"/>
+  <rect x="6" y="28" width="52" height="10" rx="5" fill="#2A303C"/>
+  <rect x="14" y="23" width="36" height="20" rx="10" fill="#F2C14E"/>
+</svg>

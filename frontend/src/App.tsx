@@ -16,6 +16,7 @@ import LeagueHome from "./components/league/LeagueHome";
 import { clearWorkspaceMemory } from "./lib/workspaceMemory";
 import { clearRoute, leaveRoute, navigate, useHashRoute } from "./lib/router";
 import NotFound from "./components/NotFound";
+import { setPageTitle, titleForRoute } from "./lib/pageMeta";
 import { clearForecastDrafts } from "./lib/forecastDrafts";
 import { useTheme } from "./hooks/useTheme";
 import { usePageMotion } from "./hooks/usePageMotion";
@@ -98,6 +99,11 @@ export default function App() {
           : route !== null
             ? "home"
             : view;
+  // B5: the browser title follows the page.
+  useEffect(() => {
+    const t = titleForRoute(route);
+    if (t !== undefined) setPageTitle(route === null && view === "search" ? "Research" : t);
+  }, [route, view]);
   // Back/Forward between tabs: the view follows the address.
   useEffect(() => {
     if (route?.name === "research") setView("search");

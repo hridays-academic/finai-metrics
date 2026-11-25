@@ -5,6 +5,7 @@ import type { EventDetail, EventOutcome, EventResult, EventSummary, MetricResult
 import { colourClass, type Difficulty, DIFFICULTY_LABEL } from "../../lib/difficulty";
 import { useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
 import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, OutcomeList, resultsDateLine, rupeeNote } from "./outcome";
+import { setPageTitle } from "../../lib/pageMeta";
 import SiteFooter from "../SiteFooter";
 import { formatIst } from "./LockCountdown";
 import { Grain, Guilloche } from "./CardArt";
@@ -164,6 +165,11 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
   const [notice, setNotice] = useState<string | null>(null);
   // How it turned out, for a visitor without a forecast or not signed in.
   const [outcome, setOutcome] = useState<EventOutcome | null>(null);
+  // B5: "Mphasis results · Stackly" once the company is known.
+  const titleName = result?.event.company.name ?? outcome?.event.company.name;
+  useEffect(() => {
+    if (titleName) setPageTitle(`${titleName} results`);
+  }, [titleName]);
   const [signedOutNotScored, setSignedOutNotScored] = useState(false);
 
   useEffect(() => {

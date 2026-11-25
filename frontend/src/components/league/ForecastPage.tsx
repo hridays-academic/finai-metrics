@@ -16,6 +16,7 @@ import CompanyStory from "./CompanyStory";
 import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import SiteFooter from "../SiteFooter";
 import { LEAGUE_FOOTNOTE, OutcomeList } from "./outcome";
+import { setPageTitle } from "../../lib/pageMeta";
 import FinePrint from "../FinePrint";
 
 function quarterName(iso: string): string {
@@ -95,6 +96,10 @@ interface ForecastPageProps {
 
 export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, theme, onOpenInResearch, visible }: ForecastPageProps) {
   const [event, setEvent] = useState<EventDetail | null>(null);
+  // B5: "Mphasis · Stackly" once the company has loaded.
+  useEffect(() => {
+    if (event) setPageTitle(event.company.name);
+  }, [event]);
   const [config, setConfig] = useState<LeagueConfig | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
