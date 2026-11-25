@@ -286,6 +286,7 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
   const [histories, setHistories] = useState<Record<number, HistoryState>>({});
   const [season, setSeason] = useState<Season | null>(null);
   const [recent, setRecent] = useState<RecentResult[]>([]);
+  const [recentLoaded, setRecentLoaded] = useState(false);
   const [recentMine, setRecentMine] = useState<Record<number, MetricResult[]>>({});
   const [showAllRecent, setShowAllRecent] = useState(false);
 
@@ -307,7 +308,8 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         r.forEach((x) => primeDifficulty(x.event.company.id, x.provider_rows));
         if (!cancelled) setRecent(r);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => !cancelled && setRecentLoaded(true));
     Promise.all([fetchLeagueEvents("upcoming"), fetchLeagueEvents("scored")])
       .then(([u, s]) => {
         if (cancelled) return;
@@ -418,7 +420,7 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
       </header>
 
       {error && <div className="form-error">{error}</div>}
-      {upcoming === null && !error && <p className="empty-note">Loading companies...</p>}
+      {upcoming === null && !error && <SkeletonTiles label="Loading companies" />}
 
       {upcoming !== null && open.length === 0 && <PracticeWhileYouWait />}
 
@@ -474,6 +476,7 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         </section>
       )}
 
+      {!recentLoaded && <div className="glass panel skeleton-panel" aria-busy="true" aria-label="Loading recent results" />}
       {(recent.length > 0 || side) && (
         <div className={`home-columns ${side && recent.length > 0 ? "" : "single"}`}>
           {recent.length > 0 && (
@@ -533,6 +536,23 @@ export function GuideStrip() {
 // Three practice companies in Mystery mode (2026-11-18, wording approved):
 // right under the hero between seasons, below the open companies otherwise.
 // Hidden if there are none or they can't load.
+// S9 (master plan): placeholders shaped like what's coming, holding its
+// space so the page doesn't jump when the data arrives.
+function SkeletonTiles({ count = 3, label }: { count?: number; label: string }) {
+  return (
+    <section className="section" aria-busy="true" aria-label={label}>
+      <div className="skeleton skeleton-title" />
+      <ul className="company-grid practice-grid">
+        {Array.from({ length: count }, (_, i) => (
+          <li key={i}>
+            <div className="skeleton skeleton-tile" />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function PracticeWhileYouWait() {
   const [cards, setCards] = useState<PracticeCard[] | null>(null);
   useEffect(() => {
@@ -550,7 +570,8 @@ function PracticeWhileYouWait() {
       cancelled = true;
     };
   }, []);
-  if (!cards || cards.length === 0) return null;
+  if (cards === null) return <SkeletonTiles label="Loading practice companies" />;
+  if (cards.length === 0) return null;
   return (
     <section className="section practice-wait" aria-labelledby="practice-wait-title">
       <div className="section-head" data-scrub="title">
