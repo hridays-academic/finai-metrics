@@ -25,6 +25,8 @@ PAGES = frozenset({
     "workspace",
     # first-visit guide (2026-11-18)
     "learn",
+    # quick rounds (master plan phase 5)
+    "play",
 })
 
 

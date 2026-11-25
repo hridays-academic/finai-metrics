@@ -72,6 +72,7 @@ from app.league_models import PracticePricesOut
 from app.routes.deps import optional_user as _current_user, require_user
 from app.cache_headers import cache_control
 from app.routes import reports as reports_routes
+from app.routes import play as play_routes
 from app.services import reports as reports_service
 
 logging.basicConfig(level=logging.INFO)
@@ -592,6 +593,7 @@ def _yfinance_price_symbol(symbol: str) -> str:
 # other keyless data endpoints. The share price lives here, next to the price
 # cache it reads; practice.cut_prices cuts it to the moment forecasts closed.
 app.include_router(practice_routes.router, dependencies=[Depends(_rate_limited)])
+app.include_router(play_routes.router, dependencies=[Depends(_rate_limited)])
 
 
 @app.get("/api/practice/cases/{code}/prices", response_model=PracticePricesOut)

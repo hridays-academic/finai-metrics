@@ -26,6 +26,7 @@ RULES: tuple[tuple[re.Pattern, int, int], ...] = (
     (re.compile(r"^/api/world-events$"), 900, 86400),
     (re.compile(r"^/api/macro$"), 3600, 86400),
     (re.compile(r"^/api/price-history/[^/]+$"), 21600, 86400),
+    (re.compile(r"^/api/play/cards$"), 3600, 86400),
 )
 
 PRIVATE = "private, no-store"
