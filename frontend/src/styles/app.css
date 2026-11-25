@@ -7653,3 +7653,59 @@ a.news-card-headline:hover {
   margin-right: auto;
   margin-left: var(--space-2);
 }
+
+/* N1, N4, N5 (master plan): news reads calmly. The top story's headline is
+   sentence case in the text face; cards are untinted; the grid is even. */
+.news-card-top {
+  background: var(--raised-fill);
+  color: var(--text);
+}
+
+.news-card-top .news-card-headline {
+  font-family: var(--font-sans);
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.news-card[class*="theme-"],
+.video-card[class*="theme-"] {
+  box-shadow: var(--raised-shadow);
+}
+
+.news-card[class*="theme-"]:not(.news-card-top) {
+  background: var(--raised-fill);
+}
+
+.news-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--tile-gap, var(--space-3));
+}
+
+.news-grid > * {
+  flex: initial !important;
+  width: auto !important;
+  max-width: none !important;
+  grid-column: auto !important;
+}
+
+/* V8 (master plan): condensed capitals only for page titles, company names
+   and the big score. Sheet headings, labels and counts are sentence case in
+   the text face. */
+.settings-panel-header h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.card3d-sector,
+.callout-label,
+.workspace-step-count {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+}

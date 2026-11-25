@@ -92,7 +92,9 @@ export default function NewsCards({ items, topStory = true }: { items: NewsItem[
 
   return (
     <div className="news-cards">
-      {themes.length > 1 && (
+      {/* N3 (master plan): one chip row only (the sector row above); the theme
+          filter is off. */}
+      {false && themes.length > 1 && (
         <div className="theme-filter" role="group" aria-label="Filter by theme">
           <button type="button" className={`chip ${theme === null ? "active" : ""}`} aria-pressed={theme === null} onClick={() => setTheme(null)}>
             All
