@@ -87,6 +87,18 @@ _RANGE_TO_YF_PARAMS: dict[str, tuple[str, str]] = {
 # a ticker. Not exhaustive by design -- an explicit "TICKER.NS" / "TICKER.BO"
 # always works as a fallback, see resolve_symbol().
 _NAME_TO_SYMBOL: dict[str, str] = {
+    # RW11 (master plan phase 7): the league's pilot companies by plain name.
+    "dabur": "DABUR.NS",
+    "dabur india": "DABUR.NS",
+    "marico": "MARICO.NS",
+    "escorts": "ESCORTS.NS",
+    "escorts kubota": "ESCORTS.NS",
+    "jyothy": "JYOTHYLAB.NS",
+    "jyothy labs": "JYOTHYLAB.NS",
+    "jyothy laboratories": "JYOTHYLAB.NS",
+    "mphasis": "MPHASIS.NS",
+    "sagar": "SAGCEM.NS",
+    "sagar cements": "SAGCEM.NS",
     "reliance": "RELIANCE.NS",
     "reliance industries": "RELIANCE.NS",
     "tcs": "TCS.NS",

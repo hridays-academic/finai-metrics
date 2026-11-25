@@ -31,7 +31,7 @@ export function timeAgo(iso: string, now = Date.now()): string {
   return days <= 6 ? `${days}d ago` : formatDay(iso, true);
 }
 
-function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
+function NewsCard({ item, top = false, affects = [] }: { item: NewsItem; top?: boolean; affects?: string[] }) {
   const why = useWhyItMatters<HTMLButtonElement>({
     title: `Why it matters${item.sector_label ? ` (${item.sector_label})` : ""}`,
     chain: item.chain,
@@ -71,6 +71,8 @@ function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
             </span>
           ))}
         </div>
+        {/* N6 (phase 7, approved 2.40): the league companies this headline's sector touches. */}
+        {affects.length > 0 && <p className="news-affects">Affects: {affects.join(", ")}</p>}
       </div>
       {why.overlay}
     </article>
@@ -80,7 +82,11 @@ function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
 export const CARD_MIN = 280;
 
 // A top story, then a grid; theme chips filter what's shown.
-export default function NewsCards({ items, topStory = true }: { items: NewsItem[]; topStory?: boolean }) {
+export default function NewsCards({ items, topStory = true, affects }: {
+  items: NewsItem[];
+  topStory?: boolean;
+  affects?: (item: NewsItem) => string[];
+}) {
   const [theme, setTheme] = useState<string | null>(null);
   const themes = useMemo(() => {
     const seen = new Map<string, string>();
@@ -113,10 +119,10 @@ export default function NewsCards({ items, topStory = true }: { items: NewsItem[
           ))}
         </div>
       )}
-      {first && topStory && <NewsCard item={first} top />}
+      {first && topStory && <NewsCard item={first} top affects={affects?.(first)} />}
       <TileGrid className="news-grid" minTile={CARD_MIN} pairOnPhones={false}>
         {(topStory ? rest : shown).map((n) => (
-          <NewsCard key={n.url} item={n} />
+          <NewsCard key={n.url} item={n} affects={affects?.(n)} />
         ))}
       </TileGrid>
     </div>

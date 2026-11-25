@@ -336,7 +336,7 @@ export default function App() {
                 backTo={researchFrom}
                 onBack={() => setResearchFrom(null)}
               />
-              {company ? <MetricsDashboard data={company} theme={theme} /> : <ResearchLanding />}
+              {company ? <MetricsDashboard data={company} theme={theme} /> : <ResearchLanding onPick={handleSearch} />}
               <SiteFooter />
             </div>
           )}

@@ -17,6 +17,7 @@ RULES: tuple[tuple[re.Pattern, int, int], ...] = (
     (re.compile(r"^/api/league/events/\d+$"), 300, 86400),
     (re.compile(r"^/api/league/events/\d+/outcome$"), 300, 86400),
     (re.compile(r"^/api/league/config$"), 3600, 86400),
+    (re.compile(r"^/api/league/companies$"), 3600, 86400),
     (re.compile(r"^/api/league/companies/\d+/history$"), 3600, 86400),
     (re.compile(r"^/api/practice/cases$"), 3600, 86400),
     (re.compile(r"^/api/practice/cases/[0-9a-z]{6}$"), 3600, 86400),

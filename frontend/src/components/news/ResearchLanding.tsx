@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ErrorState from "../ErrorState";
-import { ApiError, fetchMacro, fetchNews, fetchWorldEvents } from "../../lib/api";
+import { ApiError, fetchMacro, fetchNews, fetchResearchCompanies, fetchWorldEvents, type ResearchCompany } from "../../lib/api";
+import LearnBasics from "./LearnBasics";
 import type { MacroSeries, NewsItem, NewsView, WorldEvent } from "../../lib/types";
 import NewsSourceNote from "./NewsSourceNote";
 import NewsCards from "./NewsCards";
@@ -18,7 +19,17 @@ const VIEWS: { key: NewsView; label: string }[] = [
 
 // The Research page before a company is loaded: world events, themed news
 // with our "why it may matter" line, and macro charts on the 30-day lag.
-export default function ResearchLanding() {
+// N7 (phase 7): headlines from today (India time), then the rest of the week.
+export function splitByDay(items: NewsItem[], now = new Date()): { today: NewsItem[]; week: NewsItem[] } {
+  const day = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const today = day(now);
+  return {
+    today: items.filter((i) => day(new Date(i.published_at)) === today),
+    week: items.filter((i) => day(new Date(i.published_at)) !== today),
+  };
+}
+
+export default function ResearchLanding({ onPick }: { onPick?: (symbol: string) => void } = {}) {
   const [view, setView] = useState<NewsView>("all");
   const [items, setItems] = useState<NewsItem[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -26,10 +37,12 @@ export default function ResearchLanding() {
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [macro, setMacro] = useState<MacroSeries[]>([]);
+  const [companies, setCompanies] = useState<ResearchCompany[]>([]);
 
   useEffect(() => {
     fetchWorldEvents().then(setEvents).catch(() => {});
     fetchMacro().then(setMacro).catch(() => {});
+    fetchResearchCompanies().then(setCompanies).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -59,8 +72,32 @@ export default function ResearchLanding() {
       .catch(() => setHasMore(false));
   }
 
+  // N6: "Affects: Maruti Suzuki" for headlines in a league company's sector.
+  const affects = (item: NewsItem) =>
+    companies.filter((c) => (item.sectors ?? []).includes(c.sector_name)).map((c) => c.name);
+  const groups = items ? splitByDay(items) : null;
+
   return (
     <div className="research-landing">
+      {/* RW1 (phase 7, approved 2.40): the league's companies first. */}
+      {companies.length > 0 && (
+        <section className="glass panel research-companies" aria-labelledby="research-companies-title">
+          <h2 className="panel-title" id="research-companies-title">
+            League and practice companies
+          </h2>
+          <ul className="research-company-grid">
+            {companies.map((c) => (
+              <li key={c.symbol}>
+                <button type="button" className="research-company" onClick={() => onPick?.(c.symbol)}>
+                  <strong>{c.name}</strong>
+                  <span>{c.sector_name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <WorldEvents events={events} />
 
       <section className="glass panel news-panel" aria-labelledby="news-title">
@@ -86,7 +123,18 @@ export default function ResearchLanding() {
         {items && items.length === 0 && (
           <p className="empty-note">No recent headlines on these topics yet. They're checked every hour.</p>
         )}
-        {items && items.length > 0 && <NewsCards items={items} />}
+        {groups && groups.today.length > 0 && (
+          <>
+            <h3 className="news-group-title">Today</h3>
+            <NewsCards items={groups.today} affects={affects} />
+          </>
+        )}
+        {groups && groups.week.length > 0 && (
+          <>
+            <h3 className="news-group-title">This week</h3>
+            <NewsCards items={groups.week} topStory={groups.today.length === 0} affects={affects} />
+          </>
+        )}
         {hasMore && (
           <button type="button" className="btn btn-secondary" onClick={showMore}>
             Show more
@@ -95,6 +143,8 @@ export default function ResearchLanding() {
         <NewsSourceNote updatedAt={updatedAt} />
       </section>
 
+
+      <LearnBasics />
 
       <MacroCharts series={macro} />
     </div>

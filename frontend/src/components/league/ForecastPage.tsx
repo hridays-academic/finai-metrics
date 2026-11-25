@@ -11,6 +11,7 @@ import ForecastForm from "./ForecastForm";
 import LockCountdown, { formatIst } from "./LockCountdown";
 import ProfileModal from "./ProfileModal";
 import ResearchPanel from "./ResearchPanel";
+import SectorCheatSheet from "../SectorCheatSheet";
 import SectorExplainer from "./SectorExplainer";
 import CompanyStory from "./CompanyStory";
 import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
@@ -286,6 +287,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
           onJumpToForm={() => document.getElementById("forecast")?.scrollIntoView({ behavior: "smooth", block: "start" })}
         />
         {explainer && <SectorExplainer explainer={explainer} compact />}
+        <SectorCheatSheet sector={event.company.sector} sectorName={explainer?.display_name ?? event.company.sector} />
       </details>
 
       <div className="page-main">
@@ -301,6 +303,10 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
             historyError={historyError}
             onOpenInResearch={(symbol) => onOpenInResearch(symbol, { eventId: event.id, name: event.company.name })}
           />
+          {/* RW9 (phase 7, approved 2.40): the 10-step workspace from the research rail. */}
+          <a className="btn btn-secondary research-go-deeper" href={`#/workspace/${event.id}`}>
+            Go deeper (research workspace)
+          </a>
         </section>
       </div>
 

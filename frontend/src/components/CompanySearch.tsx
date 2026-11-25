@@ -46,7 +46,7 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
         <input
           className="input search-input"
           type="search"
-          placeholder="Company name or ticker, e.g. Reliance, TCS or RELIANCE.NS"
+          placeholder="Company name or ticker, e.g. Maruti, Dabur or TCS"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Company name or ticker"
@@ -64,7 +64,7 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
       {error && <div className="form-error">{error}</div>}
       <p className="footnote">
         {/* RW6/W5 (master plan): the liability line lives in the Terms and the footer, not here. */}
-        For the most reliable match, use the exact ticker, such as RELIANCE.NS or TATASTEEL.BO.
+        Plain names work for the league's companies. For others, the exact ticker is the surest match, such as RELIANCE or TATASTEEL.BO.
       </p>
     </section>
   );

@@ -1,5 +1,6 @@
 from typing import Optional
 
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Query
 
 from app.league_models import (
@@ -88,3 +89,32 @@ def update_me(body: ProfileIn, user: dict = Depends(require_user)) -> UserPublic
         league_service.update_profile(conn, user, body)
     fresh = auth_service.get_user_by_id(user["id"])
     return UserPublic(**fresh)
+
+
+class ResearchCompanyOut(BaseModel):
+    id: int
+    name: str
+    ticker: str
+    symbol: str
+    sector: str
+    sector_name: str
+
+
+@router.get("/companies", response_model=list[ResearchCompanyOut])
+def research_companies() -> list[ResearchCompanyOut]:
+    """RW1 (phase 7): the league and practice companies, for Research's tiles."""
+    from app.league_config import market_config
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT DISTINCT c.id, c.name, c.ticker, c.provider_symbol, c.sector, c.market_code
+               FROM companies c JOIN fiscal_periods p ON p.company_id = c.id
+               JOIN forecast_events e ON e.period_id = p.id
+               WHERE NOT c.is_demo AND c.provider_symbol IS NOT NULL AND e.status <> 'draft'
+               ORDER BY c.name"""
+        ).fetchall()
+    out = []
+    for r in rows:
+        ex = market_config(r["market_code"]).sector_explainers.get(r["sector"])
+        out.append(ResearchCompanyOut(id=r["id"], name=r["name"], ticker=r["ticker"], symbol=r["provider_symbol"], sector=r["sector"],
+                                      sector_name=ex.display_name if ex else r["sector"]))
+    return out

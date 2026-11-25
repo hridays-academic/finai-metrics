@@ -8,6 +8,7 @@ import { formatDay, lastQuarterValues, lastYearValues, metricFacts, slabDomain }
 import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import type { LeagueConfig, PracticeAttempt, PracticeCase, PracticePrices } from "../../lib/types";
 import CompanyStory from "../league/CompanyStory";
+import SectorCheatSheet from "../SectorCheatSheet";
 import SectorExplainer from "../league/SectorExplainer";
 import { QuartersTable } from "../league/ResearchPanel";
 import { MetricCard, n } from "../league/ResultsPage";
@@ -159,6 +160,7 @@ export default function PracticeCasePage({ code, onOpenAuth }: Props) {
           }}
         />
         {explainer && <SectorExplainer explainer={explainer} compact />}
+        <SectorCheatSheet sector={practice.sector} sectorName={practice.sector_name} latest={false} />
       </details>
       <div className="page-main">
         <section className="glass panel" aria-labelledby="research-title">

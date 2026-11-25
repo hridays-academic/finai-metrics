@@ -582,3 +582,14 @@ export const adminHandlesForReview = () =>
   leagueRequest<{ user_id: number; handle: string; handle_status: string }[]>("GET", "/admin/handles");
 export const adminSetHandleStatus = (userId: number, status: "ok" | "review" | "blocked") =>
   leagueRequest<void>("PUT", `/admin/users/${userId}/handle-status`, { status });
+
+// RW1 (phase 7): league and practice companies for Research's tiles.
+export interface ResearchCompany {
+  id: number;
+  name: string;
+  ticker: string;
+  symbol: string;
+  sector: string;
+  sector_name: string;
+}
+export const fetchResearchCompanies = () => leagueRequest<ResearchCompany[]>("GET", "/league/companies");

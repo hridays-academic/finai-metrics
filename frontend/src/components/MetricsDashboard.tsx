@@ -9,6 +9,7 @@ import CompanyProfilePanel from "./CompanyProfilePanel";
 import PeersPanel, { usePeers } from "./PeersPanel";
 import AnalysisPanel from "./AnalysisPanel";
 import ResearchCard from "./ResearchCard";
+import LeagueFigures from "./LeagueFigures";
 import ResearchSectionNav, { type ResearchSection } from "./ResearchSectionNav";
 import { useOnceVisible } from "../hooks/useOnceVisible";
 import { useLeagueSector } from "../lib/leagueSector";
@@ -155,7 +156,7 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
     ...(peerSymbols.length > 0 ? [{ id: "research-peers", label: "Peers" }] : []),
     ...(data.analysis ? [{ id: "research-analysis", label: "Analysis" }] : []),
     { id: "research-news", label: "News" },
-    { id: "research-ratios", label: "Ratios" },
+    { id: "research-ratios", label: "More ratios" },
   ];
 
   return (
@@ -203,6 +204,9 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
 
       <ResearchSectionNav sections={sections} />
 
+      {/* RW3: the league's own numbers first, for league and practice companies. */}
+      <LeagueFigures symbol={info.resolved_symbol} />
+
       {data.profile && (
         <div id="research-profile" className="research-anchor">
           <CompanyProfilePanel profile={data.profile} name={info.company_name} />
@@ -231,15 +235,16 @@ export default function MetricsDashboard({ data, theme }: MetricsDashboardProps)
         <CompanyNewsPanel symbol={info.resolved_symbol} name={info.company_name} />
       </div>
 
-      <section id="research-ratios" className="research-anchor research-ratios" aria-labelledby="ratios-title">
-        <h2 className="section-title" id="ratios-title">
-          Ratios
-        </h2>
-        <div className="ratio-groups">
-          {metric_groups.map((group) => (
-            <RatioGroup key={group.key} group={group} period={period} fetched={fetched} priceAsOf={data.price_as_of} />
-          ))}
-        </div>
+      {/* RW3 (approved 2.40): the 47 ratios wait behind "More ratios". */}
+      <section id="research-ratios" className="research-anchor research-ratios" aria-label="More ratios">
+        <details className="more-ratios">
+          <summary className="section-title">More ratios</summary>
+          <div className="ratio-groups">
+            {metric_groups.map((group) => (
+              <RatioGroup key={group.key} group={group} period={period} fetched={fetched} priceAsOf={data.price_as_of} />
+            ))}
+          </div>
+        </details>
       </section>
     </div>
   );

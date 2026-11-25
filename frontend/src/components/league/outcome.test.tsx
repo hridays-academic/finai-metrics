@@ -12,7 +12,7 @@ vi.mock("../../lib/api", () => {
   return {
     ApiError,
     fetchMyResult: vi.fn(), fetchOutcome: vi.fn(), fetchLeagueEvent: vi.fn(), fetchLeagueConfig: vi.fn(),
-    fetchMyForecast: vi.fn(), fetchResearchHistory: vi.fn(),
+    fetchMyForecast: vi.fn(), fetchResearchHistory: vi.fn(), fetchMacro: vi.fn(() => Promise.resolve([])),
     // The story's share price chapter; never resolves (no chart under test).
     fetchPriceHistory: vi.fn(() => new Promise(() => {})),
   };

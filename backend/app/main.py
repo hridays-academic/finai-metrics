@@ -322,6 +322,24 @@ def _fetch_company_yfinance_cached(query: str) -> _Fundamentals:
 
     from_cache = symbol is not None
     if symbol is None:
+        # RW11: a league or practice company's plain name ("Dabur") or ticker
+        # finds it without ".NS", before any provider lookup.
+        with get_conn() as conn:
+            row = conn.execute(
+                """SELECT provider_symbol FROM companies
+                   WHERE NOT is_demo AND provider_symbol IS NOT NULL
+                     AND (lower(ticker) = lower(%(q)s) OR lower(name) = lower(%(q)s)
+                          OR (length(%(q)s) >= 4 AND lower(name) LIKE lower(%(q)s) || '%%'))
+                   ORDER BY id LIMIT 1""",
+                {"q": query.strip()},
+            ).fetchone()
+        if row:
+            symbol = row["provider_symbol"]
+            exchange = "BSE" if symbol.endswith(".BO") else "NSE"
+            with get_conn() as conn:
+                fundamentals_cache.put_resolution(query, symbol, exchange, conn=conn)
+                cached = fundamentals_cache.get_fundamentals(symbol, conn=conn)
+    if symbol is None:
         symbol, exchange = provider.resolve_symbol(query)
         with get_conn() as conn:
             fundamentals_cache.put_resolution(

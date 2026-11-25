@@ -8641,3 +8641,163 @@ a.news-card-headline:hover {
   font-size: var(--text-sm);
   color: var(--text-2);
 }
+
+/* Phase 7: Research landing. */
+.research-company-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.research-company {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-inner);
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.research-company span,
+.news-affects {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.news-affects {
+  margin: var(--space-2) 0 0;
+}
+
+.news-group-title {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-md);
+}
+
+.learn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-2) var(--space-5, 24px);
+}
+
+.learn-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.learn-links {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.learn-videos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.learn-video {
+  margin: 0;
+}
+
+.learn-video iframe,
+.learn-video-start {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: var(--radius-inner);
+}
+
+.learn-video-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--border-subtle);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.learn-video-play {
+  width: 0;
+  height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-left: 14px solid currentColor;
+}
+
+.learn-video figcaption {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.more-ratios > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.more-ratios[open] > summary {
+  margin-bottom: var(--space-3);
+}
+
+/* RW4: sector cheat sheets. */
+.cheat-sheet {
+  margin-top: var(--space-4);
+}
+
+.cheat-sheet-title {
+  font-size: var(--text-md);
+  margin: 0 0 var(--space-3);
+}
+
+.cheat-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.cheat-sheet-grid h4 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.cheat-sheet-grid ul {
+  margin: 0;
+  padding-left: 1.1em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.cheat-latest {
+  display: block;
+  color: var(--text-2);
+}
+
+.research-go-deeper {
+  margin-top: var(--space-4);
+}
