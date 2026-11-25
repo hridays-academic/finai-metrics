@@ -205,7 +205,7 @@ function RecentRow({ result: { event: e, metrics }, mine, index }: { result: Rec
       {shown.length > 0 && <span className="recent-lines" aria-hidden="true">{line(shown[0])}</span>}
       {shown.length > 1 && (
         <details className="recent-more">
-          <summary>{shown.slice(1).map((m) => metricShortName(m, e.company.sector)).join(" and ")}</summary>
+          <summary>{shown.slice(1).map((m) => metricShortName(m, e.company.sector).toLowerCase()).join(" and ")}</summary>
           <span className="recent-lines" aria-hidden="true">{shown.slice(1).map(line)}</span>
         </details>
       )}

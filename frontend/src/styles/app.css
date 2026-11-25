@@ -7537,6 +7537,17 @@ a.news-card-headline:hover {
     border-bottom: 1px solid var(--hairline);
   }
 
+  .outcome-table th,
+  .outcome-table td {
+    padding: 2px 0;
+    border: 0;
+    text-align: left;
+  }
+
+  .outcome-table th[scope="row"] {
+    padding-bottom: var(--space-1);
+  }
+
   .outcome-table td:nth-of-type(2)::before {
     content: "Last year: ";
     color: var(--text-2);
@@ -7619,4 +7630,10 @@ a.news-card-headline:hover {
     min-height: 0 !important;
     padding: var(--space-5);
   }
+}
+
+/* The difficulty word sits right after the company's name. */
+.recent-row-head .recent-row-difficulty {
+  margin-right: auto;
+  margin-left: var(--space-2);
 }
