@@ -23,12 +23,31 @@ second sustained, or you risk temporary IP throttling). None of that is
 handled by retry logic here on purpose -- a failed/missing field should
 surface to the user as "unavailable," not be silently retried or guessed.
 """
+from __future__ import annotations
+
+import importlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from concurrent.futures import ThreadPoolExecutor
-import pandas as pd
-import yfinance as yf
+
+
+class _Lazy:
+    """S1 (master plan): yfinance and pandas take ~1 s to import, so they load
+    on the first data request instead of at every cold start."""
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+        self._mod = None
+
+    def __getattr__(self, attr: str):
+        if self._mod is None:
+            self._mod = importlib.import_module(self._name)
+        return getattr(self._mod, attr)
+
+
+pd = _Lazy("pandas")
+yf = _Lazy("yfinance")
 
 from app.models import (
     AnalystConsensus,

@@ -374,7 +374,7 @@ def test_thumbnails_are_stored_served_and_deleted_with_the_video(conn, client, m
     res = client.get("/api/videos/vidAAAAAAA1/thumbnail")
     assert res.status_code == 200 and res.content == JPEG
     assert res.headers["content-type"] == "image/jpeg"
-    assert "max-age=21600" in res.headers["cache-control"]
+    assert "max-age=86400" in res.headers["cache-control"]
     assert client.get("/api/videos/vidBBBBBBB2/thumbnail").status_code == 404
 
     conn.execute("DELETE FROM news_videos WHERE video_id = 'vidAAAAAAA1'")  # as the 30-day cleanup does
