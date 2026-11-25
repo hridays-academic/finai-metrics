@@ -866,7 +866,7 @@ textarea.input {
 .rl-tick-text {
   fill: var(--text-2);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .rl-label {
@@ -887,7 +887,7 @@ textarea.input {
 }
 
 .range-line-compact .rl-tick-text {
-  font-size: 10px;
+  font-size: 13px;
 }
 
 /* ---------- Sector colours ---------- */
@@ -2414,7 +2414,7 @@ textarea.input {
     border-radius: 0;
     background: none;
     box-shadow: none;
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .nav-tab.active {
@@ -2499,7 +2499,7 @@ textarea.input {
   .card3d-sector,
   .card3d-foot,
   .card3d-number-label {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .card3d-name {
@@ -2511,7 +2511,7 @@ textarea.input {
   }
 
   .card3d-spark {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .card3d-spark-line {
@@ -2876,7 +2876,7 @@ textarea.input {
 }
 
 .card3d-small .card3d-spark {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .card3d-small .card3d-spark-line {
@@ -3418,7 +3418,7 @@ textarea.input {
   display: inline-grid;
   place-items: center;
   color: #0b0d12;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -4631,24 +4631,24 @@ a.news-card-headline:hover {
    ===================================================================== */
 
 .difficulty-easy {
-  --sector: var(--sector-fmcg);
-  --sector-light: var(--sector-fmcg-light);
-  --sector-dark: var(--sector-fmcg-dark);
-  --on-sector: var(--on-sector-fmcg);
+  --sector: var(--difficulty-easy);
+  --sector-light: var(--difficulty-easy-light);
+  --sector-dark: var(--difficulty-easy-dark);
+  --on-sector: #ffffff;
 }
 
 .difficulty-medium {
-  --sector: var(--sector-autos);
-  --sector-light: var(--sector-autos-light);
-  --sector-dark: var(--sector-autos-dark);
-  --on-sector: var(--on-sector-autos);
+  --sector: var(--difficulty-medium);
+  --sector-light: var(--difficulty-medium-light);
+  --sector-dark: var(--difficulty-medium-dark);
+  --on-sector: #ffffff;
 }
 
 .difficulty-hard {
-  --sector: var(--sector-it);
-  --sector-light: var(--sector-it-light);
-  --sector-dark: var(--sector-it-dark);
-  --on-sector: var(--on-sector-it);
+  --sector: var(--difficulty-hard);
+  --sector-light: var(--difficulty-hard-light);
+  --sector-dark: var(--difficulty-hard-dark);
+  --on-sector: #ffffff;
 }
 
 /* A company's pages (company page, workspace, Research company) take on its
@@ -5180,7 +5180,7 @@ a.news-card-headline:hover {
 
   .chapter-price .footnote {
     margin-top: var(--space-1);
-    font-size: 11px;
+    font-size: 13px;
   }
 }
 
@@ -5321,7 +5321,7 @@ a.news-card-headline:hover {
   background: rgba(0, 0, 0, 0.26);
   color: var(--on-sector);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -5353,7 +5353,7 @@ a.news-card-headline:hover {
 
 .card3d-small .card3d-content > .edge-label {
   width: 28px;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .results-hero:has(> .edge-label) {
@@ -5832,7 +5832,7 @@ a.news-card-headline:hover {
   border: 1px solid currentColor;
   border-radius: var(--radius-small);
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: 13px;
   font-style: italic;
   font-weight: 700;
 }

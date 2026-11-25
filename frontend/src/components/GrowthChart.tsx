@@ -35,7 +35,7 @@ export default function GrowthChart({ points, theme }: GrowthChartProps) {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: cssVar("--text-secondary"),
         fontFamily: cssVar("--font-sans"),
-        fontSize: 11,
+        fontSize: 13,
       },
       // Rupee/lakh/crore formatting on the price axis and crosshair label --
       // without this, lightweight-charts shows raw numbers ("1250000.00"),

@@ -15,6 +15,16 @@
    Contrast checked by script 2026-11-15 on the page and on glass; sector
    colours rechecked 2026-11-16 (see the Sectors block). */
 
+/* Text face (Hriday, 2026-11-24: option A). Atkinson Hyperlegible Next, OFL
+   (public/fonts/OFL-AtkinsonHyperlegibleNext.txt), one variable file, subset
+   to Latin. Built for readability: 0/O, 1/l/I and 6/8 are hard to confuse. */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("/fonts/atkinson-hyperlegible-next.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: "Barlow Condensed";
   src: url("/fonts/barlow-condensed-extrabold.woff2") format("woff2");
@@ -45,10 +55,11 @@
   color-scheme: dark;
 
   --page: #0b0d12;
-  --text: #f7f8fa;
-  --text-2: #a7b0c0;
+  /* Off-white and a lighter secondary grey (approved 2026-11-24). */
+  --text: #efede6;
+  --text-2: #b3bbc8;
   --hairline: rgba(255, 255, 255, 0.1);
-  --link: #8fb4ff; /* 7.9:1 on glass */
+  --link: #b9c7ff; /* our own periwinkle (approved 2026-11-24) */
   --focus: #f7f8fa;
 
   /* Glass */
@@ -92,6 +103,19 @@
   --sector-fmcg-light: #0a8452;
   --sector-fmcg-dark: #04532f;
   --on-sector-fmcg: #ffffff;
+  /* Difficulty colours (approved 2026-11-24): deeper, less saturated, and
+     Medium lighter / Hard darker so they differ in lightness too, for
+     red-blind and green-blind students. Words always sit beside them. */
+  --difficulty-easy: #17694e;
+  --difficulty-easy-light: #1f7d5e;
+  --difficulty-easy-dark: #0f4a37;
+  --difficulty-medium: #2d6bb8;
+  --difficulty-medium-light: #3b7ccb;
+  --difficulty-medium-dark: #1e4e8a;
+  --difficulty-hard: #4b2e7a;
+  --difficulty-hard-light: #5d3c93;
+  --difficulty-hard-dark: #331f55;
+
   --sector-it: #6a3fd8;
   --sector-it-light: #7c54e8;
   --sector-it-dark: #46239c;
@@ -164,12 +188,12 @@
   --radius-small: 8px;
 
   /* Type */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-head: "Barlow Condensed", "Arial Narrow", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   /* Type sizes (2026-11-18, Hriday: "text smaller everywhere"): about 10%
      below the v3 sizes. */
-  --text-xs: 12px;
+  --text-xs: 13px; /* the smallest text anywhere (master plan V10) */
   --text-sm: 14px;
   --text-md: 15px;
   --text-lg: 18px;
@@ -345,7 +369,9 @@
   --button-shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 3px 0 #000000, 0 14px 28px rgba(15, 23, 42, 0.3);
   --button-shadow-pressed: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 1px 0 #000000, 0 2px 6px rgba(15, 23, 42, 0.2);
 
-  --gold: #8a6100;
+  /* Light-mode gold that stays gold, not olive (approved 2026-11-24). */
+  --gold: #a86a00;
+  --gold-capsule: #d9930d;
   --on-gold: #ffffff;
   --positive: #0f7a3e;
   --negative: #c62828;
