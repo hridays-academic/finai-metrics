@@ -10,10 +10,10 @@ export type ThemeMode = "dark" | "light";
 // CSS variables for their lightweight-charts canvas.
 export type Theme = ThemeMode;
 
-const MODE_KEY = "finai-metrics-mode";
+const MODE_KEY = "stackly-mode"; // was "finai-metrics-mode"; public/theme-init.js moves it
 // Left over from earlier designs; deleted so nobody keeps a theme that no
 // longer exists (Aurora/Graphite palettes, 2026-11-15; the old single key).
-const OLD_KEYS = ["finai-metrics-palette", "finai-metrics-theme"];
+const OLD_KEYS = ["finai-metrics-palette", "finai-metrics-theme", "finai-metrics-mode"];
 
 function readStored(): ThemeMode | null {
   try {

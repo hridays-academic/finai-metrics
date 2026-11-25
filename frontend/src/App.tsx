@@ -158,6 +158,8 @@ export default function App() {
     // integration is gone; delete any key a previous version left behind.
     try {
       localStorage.removeItem("finai_tapetide_key");
+      // Z2: Paper Trading's tutorial flag is dead (the feature is hidden).
+      localStorage.removeItem("finai_paper_trading_tutorial_seen");
     } catch {
       // storage unavailable (e.g. private mode) -- nothing to clean up
     }

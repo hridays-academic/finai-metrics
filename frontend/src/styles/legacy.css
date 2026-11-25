@@ -403,11 +403,6 @@ button {
   color: var(--text-primary);
 }
 
-.price-chart-hint {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
-
 /* ---------- Analyst consensus ---------- */
 
 .analyst-card {
@@ -3614,14 +3609,6 @@ button {
   .review-input {
     width: 100%;
   }
-}
-
-/* ---------- How a scored company turned out (2026-11-12) ---------- */
-
-/* The like-for-like note: an inset callout, text in text tokens. */
-
-.yahoo-league-note {
-  margin-top: var(--space-1);
 }
 
 /* ---------- Research workspace (2026-11-13) ---------- */

@@ -915,7 +915,6 @@ textarea.input {
   line-height: 0.92;
 }
 
-
 .hero-note {
   margin-top: var(--space-4);
   color: var(--text-2);
@@ -1231,19 +1230,6 @@ textarea.input {
   }
 }
 
-/* The scroll motion on every page: transforms and opacity written per
-   frame by usePageMotion for every top-level glass panel and every
-   [data-scrub] element (Home's tiles, titles, the "How it works" band and
-   steps). Without it everything sits in place. */
-/* No will-change here: the tiles hold text and scale up to 1, so the
-   browser should re-raster them at full size rather than keep a smaller
-   bitmap. */
-.motion-on [data-scrub="tile"],
-.motion-on [data-scrub="panel"],
-.motion-on .glass.panel {
-  transform-origin: 50% 100%;
-}
-
 .company-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1549,11 +1535,6 @@ textarea.input {
 .story-company {
   font-size: var(--text-lg);
   font-weight: 700;
-}
-
-.story-ticker {
-  color: var(--text-2);
-  font-weight: 500;
 }
 
 .story-chapters {
@@ -4726,17 +4707,6 @@ a.news-card-headline:hover {
   margin-top: 0;
 }
 
-.page-title .page-title-sub {
-  display: block;
-  margin-top: var(--space-2);
-  color: var(--text-2);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
 .page-meta {
   color: var(--text-2);
   line-height: 1.45;
@@ -4832,13 +4802,6 @@ a.news-card-headline:hover {
   color: var(--text-2);
   font-size: var(--text-sm);
   line-height: 1.5;
-}
-
-.panel-footnote {
-  margin-top: var(--space-4);
-  color: var(--text-2);
-  font-size: var(--text-xs);
-  line-height: 1.45;
 }
 
 /* The range bar */
@@ -5397,7 +5360,6 @@ a.news-card-headline:hover {
   padding-left: calc(30px + var(--space-7));
 }
 
-
 /* Light mode: the scrollbar's socket, semi-transparent on the pale page. */
 [data-mode="light"] .page-scrollbar {
   background: rgba(15, 23, 42, 0.12);
@@ -5581,16 +5543,6 @@ a.news-card-headline:hover {
   font-weight: 800;
   line-height: 0.92;
   text-transform: uppercase;
-}
-
-.results-hero-ticker {
-  display: block;
-  margin-top: var(--space-2);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: none;
 }
 
 .results-hero-meta {
@@ -5831,7 +5783,6 @@ a.news-card-headline:hover {
 .sector-tile > :not(.tile-material, .edge-label) {
   position: relative;
 }
-
 
 [data-mode="light"] .home .hero-object::before {
   background: none;
@@ -6447,44 +6398,6 @@ a.news-card-headline:hover {
   pointer-events: none;
 }
 
-/* Title and facts (+ company card) / text and readout / the slider. Spare
-   height is shared between the three gaps, so no blank band is ever more than
-   a quarter of the page (Hriday's rule). */
-.g2-inner {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  grid-template-areas:
-    "top top"
-    "text side"
-    "bottom bottom";
-  align-content: space-between;
-  gap: 0 var(--space-10);
-  height: 100%;
-  padding: var(--space-8) max(var(--space-6), calc((100% - var(--max)) / 2)) var(--space-10);
-  color: var(--text);
-}
-
-.is-last .g2-inner {
-  height: auto;
-  min-height: var(--g2-h);
-}
-
-.g2-top {
-  grid-area: top;
-}
-
-.g2-title {
-  margin: 0;
-}
-
-.g2-facts-row {
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-5);
-  margin-top: var(--space-6);
-}
-
 /* The facts in the guide strip's panel (same border, fill, radius, padding). */
 .g2-facts {
   display: flex;
@@ -6535,10 +6448,6 @@ a.news-card-headline:hover {
 
 .g2-company .tile-name {
   font-size: 30px;
-}
-
-.g2-company-phone {
-  display: none !important;
 }
 
 /* Home's body text. */
@@ -6672,7 +6581,6 @@ a.news-card-headline:hover {
   white-space: nowrap;
 }
 
-/* No line ends with a single word. */
 .g2-text p,
 .g2-prompt,
 .g2-answer,
@@ -6680,8 +6588,7 @@ a.news-card-headline:hover {
 .g2-note,
 .g2-fact-line,
 .g2-big,
-.g2-stat,
-.g2-title {
+.g2-stat {
   text-wrap: pretty;
 }
 
@@ -7096,22 +7003,6 @@ a.news-card-headline:hover {
     --g2-h: calc(100dvh - var(--topbar-height) - var(--tabbar-height) - env(safe-area-inset-bottom));
   }
 
-  .g2-inner,
-  .is-last .g2-inner {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 0;
-    padding: var(--space-6) var(--space-4) var(--space-4);
-  }
-
-  /* The company's card at the right of the text, which flows round it. */
-  .g2-company-phone {
-    display: flex !important;
-    float: right;
-    margin: 4px 0 var(--space-2) var(--space-3);
-  }
-
   .g2-company-desk {
     display: none !important;
   }
@@ -7136,10 +7027,6 @@ a.news-card-headline:hover {
 
   .g2-company .tile-name {
     font-size: 22px;
-  }
-
-  .g2-facts-row {
-    margin-top: var(--space-5);
   }
 
   /* Each fact on one row, numbers in one column. */

@@ -5,7 +5,13 @@
 (function () {
   var mode = null;
   try {
-    var v = localStorage.getItem("finai-metrics-mode");
+    // Z2 (master plan): keys are "stackly-*" now; an old value moves over once.
+    var old = localStorage.getItem("finai-metrics-mode");
+    if (old !== null) {
+      if (localStorage.getItem("stackly-mode") === null) localStorage.setItem("stackly-mode", old);
+      localStorage.removeItem("finai-metrics-mode");
+    }
+    var v = localStorage.getItem("stackly-mode");
     if (v === "light" || v === "dark") mode = v;
   } catch (e) {}
   if (!mode) {
