@@ -1,0 +1,4 @@
+
+# Playwright output (Z5 visual baselines live in e2e/visual.pw.ts-snapshots)
+test-results/
+playwright-report/
