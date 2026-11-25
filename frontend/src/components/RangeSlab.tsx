@@ -1,5 +1,6 @@
 import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from "react";
 import { ALPHA, K, n, widthCost } from "../lib/scoring";
+import { BallSkin } from "./FreeBall";
 
 // The range control (master plan phase 4, F1-F7, F11, A5): Home's slab with
 // the gold range, used by the league form and practice. Wording approved
@@ -26,6 +27,8 @@ interface RangeSlabProps {
   lastQuarter?: number | null;
   disabled?: boolean;
   step?: number;
+  // Quick rounds: the actual result, shown as Home's ball dropping onto the slab.
+  result?: number | null;
 }
 
 const NARROW = 1; // points of width
@@ -34,10 +37,10 @@ const HIT = 22; // px either side of an end that grabs it
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
-export default function RangeSlab({ label, unit, domain, value, onChange, lastYear = null, lastQuarter = null, disabled = false, step = 0.1 }: RangeSlabProps) {
+export default function RangeSlab({ label, unit, domain, value, onChange, lastYear = null, lastQuarter = null, disabled = false, step = 0.1, result = null }: RangeSlabProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ mode: "draw" | "low" | "high" | "body"; anchor: number; start: Pair | null; startX: number } | null>(null);
-  const [lo, hi] = widen(domain, value, lastYear, lastQuarter);
+  const [lo, hi] = widen(domain, value, lastYear, lastQuarter, result);
   const span = hi - lo || 1;
   const frac = (v: number) => Math.min(1, Math.max(0, (v - lo) / span));
   const pct = (v: number) => `${frac(v) * 100}%`;
@@ -158,6 +161,13 @@ export default function RangeSlab({ label, unit, domain, value, onChange, lastYe
                 />
               ))}
             </>
+          )}
+          {result !== null && (
+            <span className="range-slab-ball" style={{ left: pct(result) }} aria-hidden="true">
+              <span className="ball-skin">
+                <BallSkin />
+              </span>
+            </span>
           )}
           {!value && (
             // Keyboard users start from here: arrows set a range at last year.

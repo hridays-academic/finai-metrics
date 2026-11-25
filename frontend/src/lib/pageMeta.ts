@@ -18,6 +18,8 @@ export function titleForRoute(route: Route): string | null | undefined {
       return "How to play";
     case "research":
       return "Research";
+    case "play":
+      return "Quick round";
     case "notfound":
       return "Page not found";
     case "privacy":

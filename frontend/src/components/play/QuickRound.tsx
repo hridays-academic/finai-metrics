@@ -1,0 +1,301 @@
+import { useEffect, useRef, useState } from "react";
+import { ApiError, fetchPlayCards, type PlayCard, type PlayReveal, revealPlayCard } from "../../lib/api";
+import { mysteryOn } from "../../lib/practice";
+import { buildRound, cardPoints, endLine, GOLD_BONUS, type Round } from "../../lib/quickRound";
+import { explainMetric } from "../../lib/glossary";
+import { slabDomain } from "../../lib/leagueFormat";
+import { n } from "../../lib/scoring";
+import { getSound, getVibration } from "../../lib/prefs";
+import { prefersReducedMotion } from "../../hooks/useOnceVisible";
+import { colourClass } from "../../lib/difficulty";
+import { recordUsage } from "../../lib/reports";
+import RangeSlab, { type Pair } from "../RangeSlab";
+import ErrorState from "../ErrorState";
+import SiteFooter from "../SiteFooter";
+import { HeroWaves } from "../league/CardArt";
+import ShareScore from "./ShareScore";
+
+// Quick rounds, #/play (master plan phase 5: E1, E9-E12, E15). One card is
+// one number: set a range, submit, see the ball land. Engagement rules D: a
+// natural end, no countdowns, combos and a gold card that reward skill, sound
+// off by default. Nothing is saved yet (phase 6). DRAFT wording throughout
+// (vault: "Decisions for Hriday (master plan)", phase 5).
+
+const PLAYED_KEY = "stackly_played_quick";
+const BEST_KEY = "stackly_best_quick";
+
+const HINTS = [
+  "Start from last year's figure, marked on the bar. Most numbers don't jump far in a year.",
+  "Aim to be right 8 times out of 10. If a result just outside your range would surprise you, it's wide enough.",
+  "Narrow ranges score more, but only when the result lands inside.",
+];
+
+function readNumber(key: string): number | null {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? null : Number(v);
+  } catch {
+    return null;
+  }
+}
+
+function write(key: string, v: string): void {
+  try {
+    localStorage.setItem(key, v);
+  } catch {
+    // storage blocked: nothing remembered
+  }
+}
+
+function feedback(hit: boolean): void {
+  if (getVibration()) navigator.vibrate?.(hit ? 18 : [10, 40, 10]);
+  if (!getSound()) return;
+  try {
+    const ctx = new AudioContext();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.frequency.value = hit ? 660 : 220;
+    g.gain.setValueAtTime(0.06, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+    o.connect(g).connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + 0.2);
+  } catch {
+    // no audio
+  }
+}
+
+// The real number counts up from last year (or zero); instant under reduced motion.
+function useCountUp(target: number | null, from: number): number | null {
+  const [v, setV] = useState<number | null>(null);
+  useEffect(() => {
+    if (target === null) return setV(null);
+    if (prefersReducedMotion()) return setV(target);
+    let frame = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / 700);
+      const e = 1 - (1 - t) ** 3;
+      setV(from + (target - from) * e);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, from]);
+  return v;
+}
+
+interface Answer {
+  card: PlayCard;
+  range: Pair;
+  reveal: PlayReveal;
+  points: number;
+  multiplier: number;
+}
+
+export default function QuickRound() {
+  const [round, setRound] = useState<Round | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [index, setIndex] = useState(0);
+  const [range, setRange] = useState<Pair | null>(null);
+  const [answers, setAnswers] = useState<Answer[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const startedAt = useRef(Date.now());
+  const [best, setBest] = useState<number | null>(() => readNumber(BEST_KEY));
+
+  function start() {
+    setError(null);
+    setRound(null);
+    fetchPlayCards(mysteryOn())
+      .then((bank) => {
+        if (bank.length === 0) return setError("There are no quick-round cards yet.");
+        const first = readNumber(PLAYED_KEY) === null;
+        setRound(buildRound(bank, Date.now(), first));
+        setIndex(0);
+        setRange(null);
+        setAnswers([]);
+        setStreak(0);
+        setFinished(false);
+        startedAt.current = Date.now();
+        recordUsage("round_started", "play");
+      })
+      .catch((e) => setError(e instanceof ApiError ? e.message : "We couldn't load the cards."));
+  }
+
+  useEffect(start, []);
+
+  const card = round?.cards[index] ?? null;
+  const answered = card ? answers.find((a) => a.card.id === card.id) ?? null : null;
+  const done = round !== null && finished;
+  const shown = useCountUp(answered ? answered.reveal.actual : null, card?.last_year ?? 0);
+
+  async function submit() {
+    if (!card || !range || busy || answered) return;
+    setBusy(true);
+    try {
+      const reveal = await revealPlayCard(card.id, range[0], range[1]);
+      const gold = round!.goldIndex === index;
+      const p = cardPoints(reveal.points, reveal.hit, streak, gold);
+      setStreak(p.streak);
+      setAnswers((a) => [...a, { card, range, reveal, points: p.points, multiplier: p.multiplier }]);
+      feedback(reveal.hit);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "We couldn't score that card.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function next() {
+    if (!round) return;
+    if (index < round.cards.length - 1) {
+      setIndex(index + 1);
+      setRange(null);
+    } else if (answered) {
+      setFinished(true);
+    }
+  }
+
+  // The end of a round: remember a personal best and that this visitor has played.
+  const total = answers.reduce((s, a) => s + a.points, 0);
+  const hits = answers.filter((a) => a.reveal.hit).length;
+  useEffect(() => {
+    if (!done || !round) return;
+    write(PLAYED_KEY, "1");
+    recordUsage("round_submitted", "play");
+    if (!round.first && (best === null || total > best)) {
+      write(BEST_KEY, String(Math.round(total)));
+      setBest(Math.round(total));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
+
+  // Enter submits, then moves on.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || (e.target as HTMLElement)?.tagName === "INPUT") return;
+      if (answered) next();
+      else submit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  return (
+    <div className="page quick-round">
+      <header className="page-hero">
+        <HeroWaves />
+        <h1 className="hero-title">
+          Quick <span className="hero-title-gold">round</span>
+        </h1>
+      </header>
+
+      {error && <ErrorState message={error} onRetry={start} />}
+      {!round && !error && <div className="skeleton skeleton-panel" aria-busy="true" aria-label="Loading cards" />}
+
+      {round && !done && card && (
+        <section className={`glass panel quick-card ${colourClass(card.difficulty)} ${round.goldIndex === index ? "is-gold" : ""}`} aria-labelledby="quick-card-title">
+          <div className="quick-card-top">
+            <span className="quick-card-count">
+              Card {index + 1} of {round.cards.length}
+            </span>
+            {streak >= 2 && <span className="quick-combo">Combo: {streak} in a row</span>}
+          </div>
+          {round.goldIndex === index && <p className="quick-gold-note">Gold card: +{GOLD_BONUS} points if the result lands inside your range.</p>}
+          {round.first && <p className="quick-hint">{HINTS[index] ?? HINTS[0]}</p>}
+          <p className="quick-card-company">
+            <span className="quick-card-swatch" aria-hidden="true" />
+            {card.name ?? "Mystery company"}, {card.sector_name}
+            {card.quarter ? `, ${card.quarter}` : ", a past quarter"}
+          </p>
+          {card.mystery_line && <p className="quick-card-line">{card.mystery_line}</p>}
+          <h2 className="quick-card-title" id="quick-card-title">
+            {card.label}
+          </h2>
+          {explainMetric(card.metric_key, card.label) && <p className="round-glossary">{explainMetric(card.metric_key, card.label)}</p>}
+
+          <RangeSlab
+            label={card.label}
+            unit={card.unit}
+            domain={slabDomain(card.metric_key, card.last_year)}
+            value={answered ? answered.range : range}
+            onChange={setRange}
+            lastYear={card.last_year}
+            lastQuarter={card.last_quarter}
+            disabled={answered !== null}
+            result={answered ? answered.reveal.actual : null}
+          />
+
+          {!answered ? (
+            <button type="button" className="btn btn-primary btn-block" disabled={!range || busy} aria-busy={busy} onClick={submit}>
+              Submit
+            </button>
+          ) : (
+            <div className="quick-reveal" aria-live="polite">
+              <p className="quick-reveal-number">
+                {n(shown ?? answered.reveal.actual)}
+                {card.unit}
+              </p>
+              <p className={`quick-reveal-verdict ${answered.reveal.hit ? "is-hit" : "is-miss"}`}>
+                {answered.reveal.hit ? "Inside" : `Missed by ${n(answered.reveal.missed_by)}`}
+                {" · "}
+                {n(answered.points)} points
+                {answered.multiplier > 1 && ` (combo ×${answered.multiplier})`}
+              </p>
+              <p className="quick-reveal-lazy">
+                {answered.reveal.beat_lazy === true
+                  ? "Beat the lazy guess"
+                  : answered.reveal.beat_lazy === false
+                    ? "Lazy guess was closer"
+                    : "No lazy guess for this number"}
+              </p>
+              {answered.reveal.note && <p className="quick-reveal-note">{answered.reveal.note}</p>}
+              <p className="quick-reveal-who">
+                It was {answered.reveal.name}, {answered.reveal.quarter}.
+              </p>
+              <button type="button" className="btn btn-primary btn-block" onClick={next}>
+                {index < round.cards.length - 1 ? "Next card" : "See how you did"}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {round && done && (
+        <section className="glass panel quick-end" aria-labelledby="quick-end-title">
+          <h2 className="quick-end-title" id="quick-end-title">
+            {endLine(hits, round.cards.length)}
+          </h2>
+          <dl className="hero-stats">
+            <div>
+              <dt>Points</dt>
+              <dd>{n(Math.round(total))}</dd>
+            </div>
+            {!round.first && (
+              <div>
+                <dt>Your best</dt>
+                <dd>{best === null ? n(Math.round(total)) : n(best)}</dd>
+              </div>
+            )}
+            <div>
+              <dt>Time</dt>
+              <dd>{Math.max(1, Math.round((Date.now() - startedAt.current) / 60000))} min</dd>
+            </div>
+          </dl>
+          {round.first && <p className="section-text">That was your first round: three Easy cards. Next rounds have 10 cards from every sector.</p>}
+          <div className="quick-end-actions">
+            <button type="button" className="btn btn-primary" onClick={start}>
+              One more round
+            </button>
+            <ShareScore points={Math.round(total)} hits={hits} total={round.cards.length} />
+          </div>
+          <p className="section-text">That's a good place to stop. The daily challenge resets at midnight.</p>
+        </section>
+      )}
+
+      <SiteFooter />
+    </div>
+  );
+}

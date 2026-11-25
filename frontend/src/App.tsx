@@ -39,6 +39,7 @@ const ForecastPage = lazy(() => import("./components/league/ForecastPage"));
 const ResultsPage = lazy(() => import("./components/league/ResultsPage"));
 const WorkspacePage = lazy(() => import("./components/workspace/WorkspacePage"));
 const ResearchLanding = lazy(() => import("./components/news/ResearchLanding"));
+const QuickRound = lazy(() => import("./components/play/QuickRound"));
 
 // A company, results or research workspace page opened from Home.
 type HomePage = { name: "event" | "results" | "workspace"; id: number } | null;
@@ -84,7 +85,8 @@ export default function App() {
   const isLegalRoute = route?.name === "privacy" || route?.name === "terms";
   // A company page belongs to Home in the nav; admin, legal pages and the
   // guide to nothing.
-  const showPractice = route?.name === "practice" || (route === null && view === "practice");
+  // Quick rounds (#/play) are practice, so they light the Practice tab.
+  const showPractice = route?.name === "practice" || route?.name === "play" || (route === null && view === "practice");
   // T17 (master plan): Research has its own address, #/research.
   const showResearch = route?.name === "research" || (route === null && view === "search");
   // T22: exactly one tab lit; none on the guide, legal, admin or not-found pages.
@@ -347,6 +349,7 @@ export default function App() {
           )}
 
           {route?.name === "notfound" && <NotFound />}
+          {route?.name === "play" && <QuickRound />}
           {route?.name === "learn" && (
             <div className="view-wrapper">
               <GuidePage onOpenResearch={() => handleChangeView("search")} />
@@ -357,7 +360,8 @@ export default function App() {
               <PracticeCasePage key={route.code} code={route.code} onOpenAuth={() => setAuthOpen(true)} />
             </div>
           ) : (
-            showPractice && (
+            showPractice &&
+            route?.name !== "play" && (
               <div className="view-wrapper">
                 <PracticePage user={user} />
               </div>

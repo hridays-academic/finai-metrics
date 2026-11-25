@@ -300,6 +300,7 @@ export async function fetchActivity(): Promise<ActivityResponse> {
 // about the visitor. See backend/app/services/visits.py.
 export type VisitPage =
   | "home"
+  | "play"
   | "search"
   | "trading"
   | "reset_password"
@@ -462,3 +463,35 @@ export const adminFeedback = () => leagueRequest<FeedbackItem[]>("GET", "/admin/
 
 export const fetchPeer = (symbol: string) => leagueRequest<PeerSummary>("GET", `/peer/${encodeURIComponent(symbol)}`);
 export const fetchVideos = (view: NewsView) => leagueRequest<Video[]>("GET", `/videos?view=${view}`);
+
+// Quick rounds (master plan phase 5).
+export interface PlayCard {
+  id: string;
+  sector: string;
+  sector_name: string;
+  difficulty: "easy" | "medium" | "hard" | null;
+  name: string | null;
+  mystery_line: string | null;
+  quarter: string | null;
+  metric_key: string;
+  label: string;
+  unit: string;
+  last_year: number | null;
+  last_quarter: number | null;
+  min_value: number;
+  max_value: number;
+}
+export interface PlayReveal {
+  actual: number;
+  hit: boolean;
+  points: number;
+  beat_lazy: boolean | null;
+  missed_by: number;
+  lazy: number | null;
+  note: string | null;
+  name: string;
+  quarter: string;
+}
+export const fetchPlayCards = (mystery: boolean) => leagueRequest<PlayCard[]>("GET", `/play/cards?mystery=${mystery ? "true" : "false"}`);
+export const revealPlayCard = (id: string, low: number, high: number) =>
+  leagueRequest<PlayReveal>("POST", `/play/cards/${encodeURIComponent(id)}/reveal`, { low, high });
