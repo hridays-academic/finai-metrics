@@ -71,6 +71,8 @@ from app.services import practice as practice_service
 from app.league_models import PracticePricesOut
 from app.routes.deps import optional_user as _current_user, require_user
 from app.cache_headers import cache_control
+from app.routes import reports as reports_routes
+from app.services import reports as reports_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("finai")
@@ -89,7 +91,14 @@ app.add_middleware(
 @app.middleware("http")
 async def _cache_headers(request, call_next):
     """S2: public GETs cache at Vercel's edge; anything personal never does."""
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:  # S13: an unhandled server error is reported like a browser one
+        try:
+            reports_service.record_error(f"{type(exc).__name__}: {exc}", request.url.path, "server", source="server")
+        except Exception:  # noqa: BLE001 -- reporting must never hide the real error
+            logger.warning("Couldn't record a server error", exc_info=True)
+        raise
     if "cache-control" not in response.headers:
         value = cache_control(request.method, request.url.path, response.status_code,
                               {k.lower(): v for k, v in request.headers.items()})
@@ -108,6 +117,7 @@ app.include_router(league_routes.router)
 app.include_router(news_routes.router)
 app.include_router(cron_routes.router)
 app.include_router(workspace_routes.router)
+app.include_router(reports_routes.router)
 
 
 @app.exception_handler(LeagueError)

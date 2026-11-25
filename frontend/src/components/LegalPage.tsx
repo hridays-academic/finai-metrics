@@ -5,7 +5,7 @@ import SiteFooter from "./SiteFooter";
 // either page changes materially, bump auth_service.TERMS_VERSION so every
 // account is asked to agree again. Never add a claim of legal compliance.
 
-export const LEGAL_UPDATED = "18 November 2026";
+export const LEGAL_UPDATED = "25 November 2026";
 
 type Block = string | { list: string[] };
 interface Section {
@@ -84,6 +84,15 @@ const PRIVACY: Section[] = [
           "Your forecasts after you delete your account: kept without your name or anything that links them to you, so scores and group results stay correct. Any notes you wrote are deleted.",
         ],
       },
+    ],
+  },
+  {
+    // Master plan phase 2, approved by Hriday 2026-11-24 (decisions item 8).
+    heading: "What we count",
+    body: [
+      "We count how many times pages are opened and how many rounds are played each day, as totals. These counts have no name, account, IP address or cookie attached.",
+      "If the site shows an error, we record the error message, the page and the version of the site, nothing about you.",
+      "If you use 'Something wrong? Tell us', we keep your message, and your email only if you give it, for up to 12 months, to fix the problem and reply.",
     ],
   },
   {

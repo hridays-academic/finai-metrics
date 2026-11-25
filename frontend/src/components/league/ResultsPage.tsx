@@ -6,6 +6,7 @@ import { colourClass, type Difficulty, DIFFICULTY_LABEL } from "../../lib/diffic
 import { useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
 import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, OutcomeList, resultsDateLine, rupeeNote } from "./outcome";
 import { setPageTitle } from "../../lib/pageMeta";
+import { recordUsage } from "../../lib/reports";
 import SiteFooter from "../SiteFooter";
 import { formatIst } from "./LockCountdown";
 import { Grain, Guilloche } from "./CardArt";
@@ -170,6 +171,7 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
   useEffect(() => {
     if (titleName) setPageTitle(`${titleName} results`);
   }, [titleName]);
+  useEffect(() => recordUsage("results_viewed", "results"), []);
   const [signedOutNotScored, setSignedOutNotScored] = useState(false);
 
   useEffect(() => {

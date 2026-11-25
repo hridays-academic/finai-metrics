@@ -4,6 +4,7 @@ import SiteFooter from "../SiteFooter";
 import { HeroWaves } from "../league/CardArt";
 import { coverAt, currentPage, riseProgress, tiltAt } from "./guideMotion";
 import { fetchPracticeCases } from "../../lib/api";
+import { recordUsage } from "../../lib/reports";
 import GuideCompanyCard, { type GuideCompany } from "./GuideCompanyCard";
 import { firstSentence, type GuideLayout, GuideLayoutContext } from "./guideLayout";
 import {
@@ -268,6 +269,9 @@ export default function GuidePage({ onOpenResearch }: { onOpenResearch?: () => v
   useEffect(() => {
     if (current > 0) setResumeAt(null);
     saveGuidePage(current);
+    // Phase 2 counts (totals only): the guide was opened, and reached its last page.
+    recordUsage(current >= PAGE_COUNT - 1 ? "guide_finished" : "guide_started", "learn");
+    if (current >= PAGE_COUNT - 1) recordUsage("guide_started", "learn");
   }, [current]);
 
   // Each page's resting scroll position: its top at the top of the visible area.

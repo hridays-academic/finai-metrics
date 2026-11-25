@@ -12,6 +12,7 @@ import { QuartersTable } from "../league/ResearchPanel";
 import { MetricCard, n } from "../league/ResultsPage";
 import { hostOf, LEAGUE_FOOTNOTE } from "../league/outcome";
 import RangeLine from "../RangeLine";
+import { recordUsage } from "../../lib/reports";
 import FinePrint from "../FinePrint";
 import SiteFooter from "../SiteFooter";
 
@@ -175,6 +176,7 @@ function PracticeForm({
   lastYear?: Record<string, number | null>;
 }) {
   const [tried, setTried] = useState(false);
+  useEffect(() => recordUsage("round_started", "practice"), []);
   const [ranges, setRanges] = useState<Ranges>(() =>
     Object.fromEntries(practice.metrics.map((m) => [m.key, { low: "", high: "" }]))
   );
@@ -200,6 +202,7 @@ function PracticeForm({
     setError(null);
     try {
       onScored(await submitPracticeAttempt(practice.code, values, practice.mystery));
+      recordUsage("round_submitted", "practice");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't score this. Please try again.");
     } finally {

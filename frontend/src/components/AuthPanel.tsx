@@ -4,6 +4,7 @@ import { setAuthToken, clearAuthToken } from "../lib/auth";
 import type { ActivityEntry, UserPublic } from "../lib/types";
 import GoogleSignInButton from "./GoogleSignInButton";
 import { useSheet } from "../hooks/useSheet";
+import { recordUsage } from "../lib/reports";
 
 // T18: reset emails only work once the Gmail settings exist in Vercel.
 const RESET_EMAIL_ON = import.meta.env.VITE_RESET_EMAIL === "true";
@@ -73,6 +74,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
     setError(null);
     try {
       const res = mode === "signup" ? await signUp(email, name, password, agreed) : await logIn(email, password);
+      if (mode === "signup") recordUsage("signup_done", "signin");
       setAuthToken(res.token);
       onAuthChange(res.user);
     } catch (err) {

@@ -203,6 +203,38 @@ _SCHEMA_STATEMENTS = [
         PRIMARY KEY (day, page)
     )
     """,
+    # Master plan phase 2 (2026-11-25, approved by Hriday, analytics option a):
+    # aggregate step counts per day, no visitor id, no IP (services/reports.py).
+    """
+    CREATE TABLE IF NOT EXISTS usage_counts (
+        day DATE NOT NULL,
+        event TEXT NOT NULL,
+        page TEXT NOT NULL DEFAULT '',
+        count INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, event, page)
+    )
+    """,
+    # S13: browser and server errors: message, page, build. No IP, no user.
+    """
+    CREATE TABLE IF NOT EXISTS client_errors (
+        id BIGSERIAL PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        source TEXT NOT NULL DEFAULT 'browser',
+        page TEXT NOT NULL DEFAULT '',
+        build TEXT NOT NULL DEFAULT '',
+        message TEXT NOT NULL
+    )
+    """,
+    # Y3: "Something wrong? Tell us". The email only if given; kept 12 months.
+    """
+    CREATE TABLE IF NOT EXISTS feedback (
+        id BIGSERIAL PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        page TEXT NOT NULL DEFAULT '',
+        message TEXT NOT NULL,
+        email TEXT
+    )
+    """,
     # Added 2026-09 -- the Results League research panel's recent quarters
     # from yfinance (see research_history.py), shared across users like the
     # other caches. 7-day TTL: quarterly figures change once a quarter.
@@ -349,6 +381,10 @@ def purge_expired_personal_data(conn: psycopg.Connection) -> None:
         "DELETE FROM activity_log WHERE created_at::timestamptz < NOW() - %s::interval",
         (ACTIVITY_RETENTION,),
     )
+    # Phase 2 (Privacy Policy "What we count"): feedback for 12 months; only
+    # the newest 1,000 error reports.
+    conn.execute("DELETE FROM feedback WHERE created_at < NOW() - interval '12 months'")
+    conn.execute("DELETE FROM client_errors WHERE id <= (SELECT max(id) - 1000 FROM client_errors)")
 
 
 def _dsn() -> str:
@@ -364,7 +400,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001

@@ -7637,3 +7637,10 @@ a.news-card-headline:hover {
 .page-loading {
   min-height: 70vh;
 }
+
+/* Y3: the feedback sheet's form. */
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

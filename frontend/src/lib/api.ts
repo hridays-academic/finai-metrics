@@ -440,5 +440,25 @@ export interface JobRun {
 }
 export const adminJobs = () => leagueRequest<JobRun[]>("GET", "/admin/jobs");
 
+// Phase 2: weekly numbers, error reports and feedback (admin only).
+export interface WeekNumbers {
+  week: string;
+  visits: number;
+  guide_started: number;
+  guide_completion_pct: number | null;
+  rounds_submitted: number;
+  rounds_per_visit: number | null;
+  results_viewed: number;
+  signups: number;
+  returning_students: number;
+  forecasts_submitted: number;
+  students_improved: number;
+}
+export interface ErrorReport { created_at: string; source: string; page: string; build: string; message: string }
+export interface FeedbackItem { created_at: string; page: string; message: string; email: string | null }
+export const adminNumbers = () => leagueRequest<WeekNumbers[]>("GET", "/admin/numbers");
+export const adminErrors = () => leagueRequest<ErrorReport[]>("GET", "/admin/errors");
+export const adminFeedback = () => leagueRequest<FeedbackItem[]>("GET", "/admin/feedback");
+
 export const fetchPeer = (symbol: string) => leagueRequest<PeerSummary>("GET", `/peer/${encodeURIComponent(symbol)}`);
 export const fetchVideos = (view: NewsView) => leagueRequest<Video[]>("GET", `/videos?view=${view}`);
