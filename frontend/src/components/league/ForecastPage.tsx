@@ -6,8 +6,7 @@ import {
 import { takeFormJump } from "../../lib/forecastDrafts";
 import type { Theme } from "../../hooks/useTheme";
 import type { EventDetail, EventOutcome, Forecast, LeagueConfig, ResearchHistory, UserPublic } from "../../lib/types";
-import { formatCrore, formatDay, lastQuarterValues, lastYearValues, latestLeague } from "../../lib/leagueFormat";
-import { usePinIfFits } from "../../hooks/usePinIfFits";
+import { formatCrore, formatDay, lastQuarterValues, lastYearValues, latestLeague, metricFacts, quarterLabel } from "../../lib/leagueFormat";
 import ForecastForm from "./ForecastForm";
 import LockCountdown, { formatIst } from "./LockCountdown";
 import ProfileModal from "./ProfileModal";
@@ -110,10 +109,6 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<EventOutcome | null>(null);
   const [stepsDone, setStepsDone] = useState<number | null>(null);
-  // Condition A (2026-11-15): the form beside the page is pinned only while
-  // it fits on screen, so its Save button can always be reached.
-  const asideRef = useRef<HTMLElement>(null);
-  const pinned = usePinIfFits(asideRef, event !== null && config !== null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -219,17 +214,14 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   }
 
   return (
-    <div className={`page page-with-aside company-page company-colour ${colourClass(difficultyOf(fromProviderRows(history?.provider_rows)))}`}>
-      <CompanyStory
-        event={event}
-        explainer={explainer}
-        history={history}
-        sectorName={explainer?.display_name ?? event.company.sector}
-        hasForecast={forecast !== null}
-        onJumpToForm={() => document.getElementById("forecast")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-      />
+    <div className={`page company-page round-page company-colour ${colourClass(difficultyOf(fromProviderRows(history?.provider_rows)))}`}>
 
+      {/* C1 (master plan): the round comes first; the story is optional below. */}
       <header className="glass panel company-facts">
+        <a className="back-link" href="#/league" data-keep-scroll>
+          ← Companies
+        </a>
+        <h1 className="hero-title round-title">{event.company.name}</h1>
         <p className="meta">
           <span>{event.season_label} results</span>
           <span>
@@ -250,25 +242,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
         </div>
       </header>
 
-      <div className="page-main">
-
-        {explainer && <SectorExplainer explainer={explainer} />}
-
-        <section className="glass panel" aria-labelledby="research-title">
-          <h2 className="panel-title" id="research-title">
-            Research
-          </h2>
-          <ResearchPanel
-            event={event}
-            theme={theme}
-            history={history}
-            historyError={historyError}
-            onOpenInResearch={(symbol) => onOpenInResearch(symbol, { eventId: event.id, name: event.company.name })}
-          />
-        </section>
-      </div>
-
-      <aside className={`page-aside ${pinned ? "is-pinned" : ""}`} ref={asideRef}>
+      <div className="round-main">
         {event.status === "scored" ? (
           <ScoredPanel event={event} outcome={outcome} />
         ) : (
@@ -287,6 +261,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
               event={event}
               lastYear={lastYearValues(history?.actuals, event.period_end_date, event.metrics.map((m) => m.key))}
               lastQuarter={lastQuarterValues(history?.actuals, event.period_end_date, event.metrics.map((m) => m.key))}
+              facts={metricFacts(history?.actuals, event.period_end_date, event.metrics.map((m) => m.key), quarterLabel)}
               config={config}
               user={user}
               forecast={forecast}
@@ -297,7 +272,38 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
             />
           </section>
         )}
-      </aside>
+      </div>
+
+      <details className="about-company glass panel">
+        <summary className="panel-title">About this company</summary>
+      <CompanyStory
+            flat
+          event={event}
+          explainer={explainer}
+          history={history}
+          sectorName={explainer?.display_name ?? event.company.sector}
+          hasForecast={forecast !== null}
+          onJumpToForm={() => document.getElementById("forecast")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        />
+        {explainer && <SectorExplainer explainer={explainer} compact />}
+      </details>
+
+      <div className="page-main">
+
+        <section className="glass panel" aria-labelledby="research-title">
+          <h2 className="panel-title" id="research-title">
+            Research
+          </h2>
+          <ResearchPanel
+            event={event}
+            theme={theme}
+            history={history}
+            historyError={historyError}
+            onOpenInResearch={(symbol) => onOpenInResearch(symbol, { eventId: event.id, name: event.company.name })}
+          />
+        </section>
+      </div>
+
 
       <SiteFooter />
 

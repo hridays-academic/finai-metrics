@@ -108,7 +108,8 @@ export function QuartersTable({
                     <th>Quarter</th>
                     <th>
                       {revenueLabel}
-                      <span className="col-note">Yahoo Finance figure</span>
+                      {/* P7: the index explained once, where it's shown. */}
+                      <span className="col-note">{practice ? "Yahoo Finance figure; the oldest quarter here = 100" : "Yahoo Finance figure"}</span>
                     </th>
                     <th>
                       Revenue growth (YoY)

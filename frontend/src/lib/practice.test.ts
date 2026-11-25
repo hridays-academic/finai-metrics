@@ -28,13 +28,15 @@ describe("practice helpers", () => {
     const ends = previousQuarterEnds(anchor, 8);
     expect(ends[0]).toBe("0100-06-30");
     expect(ends[3]).toBe("0099-09-30");
+    // P8 (approved 2.28): letters back from the forecast quarter; A is the newest.
     expect(ends.map((e) => mysteryQuarterLabel(e, anchor)).slice(0, 4)).toEqual([
-      "Apr to Jun, this year",
-      "Jan to Mar, this year",
-      "Oct to Dec, last year",
-      "Jul to Sep, last year",
+      "Quarter A",
+      "Quarter B",
+      "Quarter C",
+      "Quarter D",
     ]);
-    expect(mysteryQuarterLabel("0098-12-31", anchor)).toBe("Oct to Dec, 2 years before");
+    expect(mysteryQuarterLabel(anchor, anchor)).toBe("This quarter");
+    expect(mysteryQuarterLabel("0098-12-31", anchor)).toBe("Quarter G");
   });
 
   it("a mystery case becomes an event with no name, ticker or dates", () => {

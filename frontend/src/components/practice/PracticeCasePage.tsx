@@ -3,8 +3,8 @@ import ErrorState from "../ErrorState";
 import {
   ApiError, fetchLeagueConfig, fetchPracticeCase, fetchPracticeCases, fetchPracticePrices, submitPracticeAttempt,
 } from "../../lib/api";
-import { asEvent, asHistory, mysteryOn, practiceQuarterLabel, surprise } from "../../lib/practice";
-import { formatDay, lastQuarterValues, lastYearValues, slabDomain } from "../../lib/leagueFormat";
+import { asEvent, asHistory, MYSTERY_NAME, MYSTERY_QUARTERS_NOTE, mysteryOn, practiceQuarterLabel, surprise } from "../../lib/practice";
+import { formatDay, lastQuarterValues, lastYearValues, metricFacts, slabDomain } from "../../lib/leagueFormat";
 import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import type { LeagueConfig, PracticeAttempt, PracticeCase, PracticePrices } from "../../lib/types";
 import CompanyStory from "../league/CompanyStory";
@@ -13,6 +13,7 @@ import { QuartersTable } from "../league/ResearchPanel";
 import { MetricCard, n } from "../league/ResultsPage";
 import { hostOf, LEAGUE_FOOTNOTE } from "../league/outcome";
 import RangeSlab from "../RangeSlab";
+import MetricSteps, { type MetricFacts } from "../league/MetricSteps";
 import { recordUsage } from "../../lib/reports";
 import FinePrint from "../FinePrint";
 import SiteFooter from "../SiteFooter";
@@ -93,50 +94,24 @@ export default function PracticeCasePage({ code, onOpenAuth }: Props) {
   }
 
   return (
-    <div className={`page page-with-aside company-page practice-case company-colour ${colourClass(difficultyOf(fromProviderRows(history.provider_rows)))}`}>
-      <section className="glass panel practice-banner" aria-label="Practice">
-        <span className="practice-badge">Practice</span>
-        <p>
-          A past quarter. Everything here is as it was before the results came out.
-          <span className="practice-banner-sub">Practice scores don't count in the league.</span>
+    <div className={`page company-page practice-case round-page company-colour ${colourClass(difficultyOf(fromProviderRows(history.provider_rows)))}`}>
+      {/* P10 (master plan): the practice note is one small line, not a panel. */}
+      <p className="practice-note-line">
+        A past quarter. Everything here is as it was before the results came out. Practice scores don't count in the league.
+      </p>
+      <RoundNav code={practice.code} mystery={practice.mystery} />
+      <header className="glass panel company-facts">
+        <a className="back-link" href="#/practice" data-keep-scroll>
+          ← Practice
+        </a>
+        <h1 className="hero-title round-title">{practice.name ?? MYSTERY_NAME}</h1>
+        <p className="meta">
+          <span>{practice.sector_name}</span>
         </p>
-      </section>
+        {practice.description && <p className="section-text">{practice.description}</p>}
+      </header>
 
-      <CompanyStory
-        event={event}
-        explainer={explainer}
-        history={history}
-        sectorName={practice.sector_name}
-        hasForecast={false}
-        onJumpToForm={toForm}
-        practice={{
-          backHref: "#/practice",
-          backLabel: "← Practice",
-          quarterName,
-          prices,
-          hideDates: practice.mystery,
-        }}
-      />
-
-      <div className="page-main">
-        {explainer && <SectorExplainer explainer={explainer} />}
-        <section className="glass panel" aria-labelledby="research-title">
-          <h2 className="panel-title" id="research-title">
-            Research
-          </h2>
-          <div className="league-research">
-            {practice.research_notes && (
-              <aside className="research-tip" aria-label="Tip from Stackly">
-                <div className="research-tip-label">Tip</div>
-                <p>{practice.research_notes}</p>
-              </aside>
-            )}
-            <QuartersTable event={event} history={history} historyError={null} practice={{ quarterName }} />
-          </div>
-        </section>
-      </div>
-
-      <aside className="page-aside">
+      <div className="round-main">
         {result ? (
           <PracticeResult
             ref={resultRef}
@@ -158,10 +133,51 @@ export default function PracticeCasePage({ code, onOpenAuth }: Props) {
               onScored={showResult}
               lastYear={lastYearValues(history.actuals, event.period_end_date, practice.metrics.map((m) => m.key))}
               lastQuarter={lastQuarterValues(history.actuals, event.period_end_date, practice.metrics.map((m) => m.key))}
+              facts={metricFacts(history.actuals, event.period_end_date, practice.metrics.map((m) => m.key), quarterName)}
             />
           </section>
         )}
-      </aside>
+      </div>
+      {/* C1/C6 (master plan): the story is optional, under "About this company";
+          the explainer below it keeps only what the story doesn't say. */}
+      <details className="about-company glass panel">
+        <summary className="panel-title">About this company</summary>
+        <CompanyStory
+          flat
+          event={event}
+          explainer={explainer}
+          history={history}
+          sectorName={practice.sector_name}
+          hasForecast={false}
+          onJumpToForm={toForm}
+          practice={{
+            backHref: "#/practice",
+            backLabel: "← Practice",
+            quarterName,
+            prices,
+            hideDates: practice.mystery,
+          }}
+        />
+        {explainer && <SectorExplainer explainer={explainer} compact />}
+      </details>
+      <div className="page-main">
+        <section className="glass panel" aria-labelledby="research-title">
+          <h2 className="panel-title" id="research-title">
+            Research
+          </h2>
+          <div className="league-research">
+            {practice.research_notes && (
+              <aside className="research-tip" aria-label="Tip from Stackly">
+                <div className="research-tip-label">Tip</div>
+                <p>{practice.research_notes}</p>
+              </aside>
+            )}
+            {practice.mystery && <p className="section-text">{MYSTERY_QUARTERS_NOTE}</p>}
+            <QuartersTable event={event} history={history} historyError={null} practice={{ quarterName }} />
+          </div>
+        </section>
+      </div>
+
 
       <SiteFooter />
     </div>
@@ -173,11 +189,13 @@ function PracticeForm({
   onScored,
   lastYear,
   lastQuarter,
+  facts,
 }: {
   practice: PracticeCase;
   onScored: (r: PracticeAttempt) => void;
   lastYear?: Record<string, number | null>;
   lastQuarter?: Record<string, number | null>;
+  facts?: Record<string, MetricFacts | undefined>;
 }) {
   const [tried, setTried] = useState(false);
   useEffect(() => recordUsage("round_started", "practice"), []);
@@ -220,7 +238,14 @@ function PracticeForm({
         Pick a low and a high you're pretty sure the result lands between. Too tight and you might miss. Too wide and
         you lose points for playing it safe.
       </p>
-      {practice.metrics.map((m) => {
+      <MetricSteps metrics={practice.metrics} ranges={Object.fromEntries(
+          practice.metrics.map((m) => {
+            const r = ranges[m.key];
+            const ok = r.low !== "" && r.high !== "" && Number(r.low) <= Number(r.high);
+            return [m.key, ok ? ([Number(r.low), Number(r.high)] as [number, number]) : null];
+          })
+        )} facts={facts}>
+        {(m) => {
         const r = ranges[m.key];
         const width = r.low !== "" && r.high !== "" ? Number(r.high) - Number(r.low) : null;
         const valid = width !== null && width >= 0 && Number.isFinite(width);
@@ -258,7 +283,8 @@ function PracticeForm({
             </details>
           </fieldset>
         );
-      })}
+      }}
+      </MetricSteps>
       {error && <div className="form-error">{error}</div>}
       <button type="submit" className="btn btn-primary btn-block" disabled={saving} aria-busy={saving}>
         Submit and see my score
@@ -268,7 +294,8 @@ function PracticeForm({
 }
 
 const NOT_SAVED: Record<string, string> = {
-  signed_out: "Sign in to keep your practice scores. This one isn't saved.",
+  // P9 (approved 2.29).
+  signed_out: "Sign in to keep this score.",
   consent_pending: "Your practice scores will be saved once your parent's consent is recorded.",
   // Draft, for approval (vault note, phase B wording).
   profile_required: "Choose a handle and your age group to keep your practice scores. This one isn't saved.",
@@ -356,3 +383,39 @@ const PracticeResult = forwardRef<HTMLElement, ResultProps>(function PracticeRes
     </section>
   );
 });
+
+// I4 (master plan; approved 2.27): where you are in Practice, with Previous
+// and Next. The order is the Practice page's list.
+function RoundNav({ code, mystery }: { code: string; mystery: boolean }) {
+  const [codes, setCodes] = useState<string[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchPracticeCases(mystery)
+      .then((all) => !cancelled && setCodes(all.map((c) => c.code)))
+      .catch(() => !cancelled && setCodes(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [mystery]);
+  const i = codes ? codes.indexOf(code) : -1;
+  if (!codes || i < 0) return null;
+  return (
+    <nav className="round-nav" aria-label="Practice rounds">
+      <span className="round-nav-count">
+        Round {i + 1} of {codes.length}
+      </span>
+      <span className="round-nav-links">
+        {i > 0 && (
+          <a className="btn btn-secondary btn-compact" href={`#/practice/${codes[i - 1]}`}>
+            Previous
+          </a>
+        )}
+        {i < codes.length - 1 && (
+          <a className="btn btn-secondary btn-compact" href={`#/practice/${codes[i + 1]}`}>
+            Next
+          </a>
+        )}
+      </span>
+    </nav>
+  );
+}

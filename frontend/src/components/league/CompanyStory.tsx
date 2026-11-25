@@ -43,6 +43,9 @@ interface CompanyStoryProps {
   hasForecast: boolean;
   onJumpToForm: () => void;
   practice?: StoryPractice;
+  // C1 (master plan): inside "About this company" the story is a plain list;
+  // chapters never hold the scroll.
+  flat?: boolean;
 }
 
 // [rotateX, rotateY, rotateZ, scale] at the middle of each chapter. Chapter 2
@@ -144,8 +147,9 @@ export default function CompanyStory({
   hasForecast,
   onJumpToForm,
   practice,
+  flat = false,
 }: CompanyStoryProps) {
-  const [pinned] = useState(canPin);
+  const [pinned] = useState(() => !flat && canPin());
   const [chapter, setChapter] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
@@ -393,11 +397,7 @@ export default function CompanyStory({
             <span className="hl-under">{explainer.key_insight}</span>
           </blockquote>
         )}
-        <ul className="checklist">
-          {withoutInsight(explainer.checklist, explainer.key_insight).map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        <TickList items={withoutInsight(explainer.checklist, explainer.key_insight)} />
       </>
     ) : null,
     <>
@@ -545,9 +545,12 @@ export default function CompanyStory({
       <a className="back-link" href={practice?.backHref ?? "#/league"} data-keep-scroll>
         {practice?.backLabel ?? "← Companies"}
       </a>
-      <h1 className="story-company">
-        {event.company.name}
-      </h1>
+      {/* A2: inside "About this company" the page already has its h1. */}
+      {flat ? (
+        <h2 className="story-company">{event.company.name}</h2>
+      ) : (
+        <h1 className="story-company">{event.company.name}</h1>
+      )}
     </div>
   );
 
@@ -684,5 +687,34 @@ function PriceLine({ points, asOf, drawn, indexed = false, hideDates = false }: 
           : "Weekly closes, each at least 30 days old."}
       </p>
     </figure>
+  );
+}
+
+// C7 (master plan): the checklist starts unticked and the student ticks it
+// (in memory only; nothing is saved).
+export function TickList({ items }: { items: string[] }) {
+  const [done, setDone] = useState<Set<number>>(() => new Set());
+  return (
+    <ul className="checklist tick-list">
+      {items.map((item, i) => (
+        <li key={item}>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={done.has(i)}
+              onChange={() =>
+                setDone((d) => {
+                  const next = new Set(d);
+                  if (next.has(i)) next.delete(i);
+                  else next.add(i);
+                  return next;
+                })
+              }
+            />
+            <span>{item}</span>
+          </label>
+        </li>
+      ))}
+    </ul>
   );
 }

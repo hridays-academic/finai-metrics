@@ -133,3 +133,19 @@ export function lastQuarterValues(
 export function slabDomain(key: string, lastYear: number | null | undefined): [number, number] {
   return scaleAround(key, lastYear) ?? (key === "operating_margin" ? [5, 30] : [-10, 20]);
 }
+
+// The round screen's facts for each number: its league figures over the last
+// 8 quarters (oldest first), last year and last quarter. League figures only.
+export function metricFacts(
+  actuals: { period_end_date: string; metric_key: string; value: number }[] | undefined,
+  periodEnd: string,
+  keys: string[],
+  labelFor: (end: string) => string
+): Record<string, { values: (number | null)[]; labels: string[]; lastYear: number | null; lastQuarter: number | null }> {
+  const ends = [...previousQuarterEnds(periodEnd, 8)].reverse();
+  const ly = lastYearValues(actuals, periodEnd, keys);
+  const lq = lastQuarterValues(actuals, periodEnd, keys);
+  return Object.fromEntries(
+    keys.map((k) => [k, { values: leagueSeries(actuals, k, ends), labels: ends.map(labelFor), lastYear: ly[k], lastQuarter: lq[k] }])
+  );
+}

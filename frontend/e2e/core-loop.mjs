@@ -31,7 +31,9 @@ try {
   throw e;
 }
 const count = (await fields.count()) * 2;
+const tabs = page.getByRole("tab");
 for (let i = 0; i < count; i++) {
+  if (i % 2 === 0) await tabs.nth(Math.floor(i / 2)).click(); // one number at a time
   const field = fields.nth(Math.floor(i / 2));
   const side = i % 2 === 0 ? "Low" : "High";
   await field.getByRole("button", { name: new RegExp(`^${side}:`) }).click();

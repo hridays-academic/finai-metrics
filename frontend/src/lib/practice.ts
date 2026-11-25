@@ -22,20 +22,18 @@ export function setMystery(on: boolean): void {
   }
 }
 
-const MONTHS: Record<string, string> = {
-  "03-31": "Jan to Mar",
-  "06-30": "Apr to Jun",
-  "09-30": "Jul to Sep",
-  "12-31": "Oct to Dec",
-};
-
 // Quarter names on Mystery mode's relative calendar, where the quarter being
 // forecast sits in year 100: "Apr to Jun, this year", "Jul to Sep, last year".
+// P8 (master plan; approved 2.28): Mystery mode letters the quarters back
+// from the one being forecast: Quarter A is the newest before it.
 export function mysteryQuarterLabel(end: string, anchor: string): string {
-  const years = Number(anchor.slice(0, 4)) - Number(end.slice(0, 4));
-  const when = years === 0 ? "this year" : years === 1 ? "last year" : `${years} years before`;
-  return `${MONTHS[end.slice(5)] ?? end}, ${when}`;
+  const months = (Number(anchor.slice(0, 4)) - Number(end.slice(0, 4))) * 12 + (Number(anchor.slice(5, 7)) - Number(end.slice(5, 7)));
+  const back = Math.round(months / 3);
+  if (back <= 0) return "This quarter";
+  return `Quarter ${String.fromCharCode(64 + Math.min(back, 26))}`;
 }
+
+export const MYSTERY_QUARTERS_NOTE = "Letters hide the dates so they don't give the company away. Quarter A is the newest.";
 
 export function practiceQuarterLabel(c: PracticeCase): (end: string) => string {
   return c.mystery ? (end) => mysteryQuarterLabel(end, c.period_end_date) : quarterLabel;

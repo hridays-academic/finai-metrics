@@ -35,15 +35,18 @@ export function Equation({ explainer }: { explainer: Explainer }) {
   );
 }
 
-export default function SectorExplainer({ explainer }: { explainer: Explainer }) {
+// `compact` (C6, master plan): under "About this company", after the story,
+// only the parts the story doesn't already say (no lead, equation, key
+// insight or checklist).
+export default function SectorExplainer({ explainer, compact = false }: { explainer: Explainer; compact?: boolean }) {
   return (
     <section className="glass panel league-explainer" aria-labelledby="explainer-title">
       <h2 className="panel-title" id="explainer-title">
         How {inSentence(explainer.display_name)} companies make money
       </h2>
-      <p className="explainer-lead">{explainer.lead}</p>
+      {!compact && <p className="explainer-lead">{explainer.lead}</p>}
 
-      <Equation explainer={explainer} />
+      {!compact && <Equation explainer={explainer} />}
 
       <ul className="grouped-list explainer-blocks">
         <li className="explainer-block">
@@ -60,7 +63,7 @@ export default function SectorExplainer({ explainer }: { explainer: Explainer })
         </li>
       </ul>
 
-      {explainer.key_insight && (
+      {!compact && explainer.key_insight && (
         <figure className="key-insight">
           <figcaption className="key-insight-label">Key insight</figcaption>
           <blockquote>
@@ -69,6 +72,7 @@ export default function SectorExplainer({ explainer }: { explainer: Explainer })
         </figure>
       )}
 
+      {!compact && (
       <div className="explainer-check">
         <h3>What to check before forecasting</h3>
         <ul className="checklist">
@@ -77,6 +81,7 @@ export default function SectorExplainer({ explainer }: { explainer: Explainer })
           ))}
         </ul>
       </div>
+      )}
     </section>
   );
 }

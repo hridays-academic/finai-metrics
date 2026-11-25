@@ -5,6 +5,8 @@ import type { PracticeAttempt, PracticeCase } from "../../lib/types";
 
 // Types a range into one metric's range control (its Low and High numbers).
 function typeRange(label: string, low: string, high: string) {
+  // One number at a time: open its tab first.
+  fireEvent.click(screen.getByRole("tab", { name: new RegExp(label) }));
   const field = screen.getByRole("group", { name: new RegExp(label) });
   for (const [side, v] of [["Low", low], ["High", high]] as const) {
     fireEvent.click(within(field).getByRole("button", { name: new RegExp(`^${side}:`) }));
@@ -77,7 +79,7 @@ describe("a practice company page", () => {
     const text = container.textContent ?? "";
     expect(text).toContain("Mystery company");
     expect(text).toContain("A past quarter. Everything here is as it was before the results came out.");
-    expect(text).toContain("Apr to Jun, this year");
+    expect(text).toContain("Quarter A");
     expect(text).toContain("Revenue index");
     for (const hidden of ["Open in Research", "research workspace", "Results expected", "Results are in", "Maruti", "2026"]) {
       expect(text).not.toContain(hidden);
@@ -87,7 +89,7 @@ describe("a practice company page", () => {
     // One "Sources and notes", and only quarters with something in them.
     expect(screen.getAllByText("Sources and notes")).toHaveLength(1);
     expect([...container.querySelectorAll(".league-history-table tbody tr")].map((r) => r.firstElementChild?.textContent))
-      .toEqual(["Apr to Jun, this year", "Jan to Mar, this year", "Jul to Sep, last year"]);
+      .toEqual(["Quarter A", "Quarter B", "Quarter D"]);
   });
 
   it("scores on submit and then reveals the company, with the sign-in note", async () => {
@@ -102,7 +104,7 @@ describe("a practice company page", () => {
       { metric_key: "revenue_growth_yoy", low: 10, high: 14 },
       { metric_key: "operating_margin", low: 10, high: 12 }], true]);
     await screen.findByText("It was Maruti Suzuki: Q2 FY27 results, out on 31 Oct 2026.");
-    expect(screen.getByText("Sign in to keep your practice scores. This one isn't saved.")).toBeTruthy();
+    expect(screen.getByText("Sign in to keep this score.")).toBeTruthy();
     expect(screen.getByText("Revenue growth sentence.")).toBeTruthy();
     expect(screen.getByText("Beat the lazy guess").className).toContain("dot-positive");
     expect(screen.getByText("Lazy guess was closer").className).not.toContain("dot-positive");
