@@ -6,7 +6,7 @@ the original analyzer API.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Optional
+from typing import Literal, Optional
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -564,3 +564,58 @@ class PracticeMineOut(BaseModel):
 
 
 ResearchHistoryOut.model_rebuild()
+
+
+# ---------- Older quarters (Review results, batch approval) ----------
+
+class OlderMetricOut(BaseModel):
+    metric_key: str
+    definition_key: str
+    label: str
+    unit: str
+    value: float  # proposed
+    saved: Optional[float]  # what Stackly holds now under the same definition, if anything
+    source_url: str
+    page: str
+    working: str
+    flag: Optional[str]
+    note: Optional[str]
+
+
+class OlderQuarterOut(BaseModel):
+    fiscal_year_label: str
+    fiscal_quarter: int
+    use: Literal["practice", "last_year"]
+    results_date: Optional[date]
+    file: str
+    status: Literal["new", "saved", "differs"]
+    archive_event: bool  # a practice quarter that already has its archive event
+    metrics: list[OlderMetricOut]
+
+
+class OlderCompanyOut(BaseModel):
+    ticker: str
+    company: str
+    in_stackly: bool  # the company exists (it's added with its first league event)
+    quarters: list[OlderQuarterOut]
+
+
+class OlderValueIn(BaseModel):
+    metric_key: str
+    definition_key: str
+    value: float
+
+
+class OlderQuarterIn(BaseModel):
+    fiscal_year_label: str = Field(min_length=3, max_length=8)
+    fiscal_quarter: int = Field(ge=1, le=4)
+    metrics: list[OlderValueIn] = Field(min_length=1, max_length=5)
+
+
+class OlderApproveIn(BaseModel):
+    quarters: list[OlderQuarterIn] = Field(min_length=1, max_length=16)
+
+
+class OlderApproveOut(BaseModel):
+    quarters_saved: int
+    archive_events_created: int

@@ -309,6 +309,7 @@ def admin_board(conn: psycopg.Connection) -> list[AdminBoardRow]:
                e.lock_at <= now() AS lock_passed,
                (SELECT count(*) FROM forecasts f WHERE f.event_id = e.id) AS forecasts
         FROM forecast_events e JOIN fiscal_periods p ON p.id = e.period_id JOIN companies c ON c.id = p.company_id
+        WHERE e.kind = 'league'
         ORDER BY e.results_date, c.name
         """
     ).fetchall()

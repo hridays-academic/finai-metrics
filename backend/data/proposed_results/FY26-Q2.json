@@ -1,0 +1,262 @@
+{
+ "fiscal_year_label": "FY26",
+ "fiscal_quarter": 2,
+ "use": "last_year",
+ "prepared_on": "2026-11-25",
+ "prepared_by": "Claude; the pilot research verified 23 Oct 2026 and already saved",
+ "approval_doc": "Areas/Older quarters (for approval).md",
+ "events": [
+  {
+   "ticker": "MARUTI",
+   "company": "Maruti Suzuki",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 13.1,
+     "source_url": "https://nsearchives.nseindia.com/corporate/MARUTIASHISH_31102025141548_Stxintimation_FinancialReults_30Sep2025.pdf",
+     "page": "PDF p6 (consolidated statement, scanned)",
+     "working": "423,442 / 374,492 - 1 = 13.07% (INR million)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 12.0,
+     "source_url": "https://nsearchives.nseindia.com/corporate/MARUTIASHISH_31102025141548_Stxintimation_FinancialReults_30Sep2025.pdf",
+     "page": "PDF p6 (consolidated statement, scanned)",
+     "working": "(423,442 - 390,184 + 572 + 17,030) / 423,442 = 50,860 / 423,442 = 12.01%",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.autos.unit_volume_growth_yoy.v2",
+     "value": 1.7,
+     "source_url": "https://nsearchives.nseindia.com/corporate/MARUTIASHISH_01102025161308_PR_Sales_Sep_2025.pdf",
+     "page": "p1 of the Jul, Aug and Sep 2025 sales releases",
+     "working": "550,874 / 541,550 - 1 = 1.72% (units, Total Sales incl. OEM)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    }
+   ]
+  },
+  {
+   "ticker": "SAGCEM",
+   "company": "Sagar Cements",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 26.7,
+     "source_url": "https://nsearchives.nseindia.com/corporate/SAGCEM_23102025190857_Signed_SCLUFR30092025.pdf",
+     "page": "PDF p2 (consolidated statement)",
+     "working": "60,186 / 47,512 - 1 = 26.68% (INR lakh)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 8.5,
+     "source_url": "https://nsearchives.nseindia.com/corporate/SAGCEM_23102025190857_Signed_SCLUFR30092025.pdf",
+     "page": "PDF p2 (consolidated statement)",
+     "working": "(60,186 - 65,271 + 4,648 + 5,570) / 60,186 = 5,133 / 60,186 = 8.53%; company's operating EBITDA 5,133 agrees",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.cement.volume_growth_yoy.v1",
+     "value": 17.2,
+     "source_url": "https://nsearchives.nseindia.com/corporate/SAGCEM_23102025195753_SCLPressRelease30092025.pdf",
+     "page": "PDF p7 (consolidated, Sales Volume (MT))",
+     "working": "1,360,268 / 1,160,873 - 1 = 17.18% (tonnes)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    }
+   ]
+  },
+  {
+   "ticker": "MARICO",
+   "company": "Marico",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 30.7,
+     "source_url": "https://nsearchives.nseindia.com/corporate/marico_14112025124904_Outcome.pdf",
+     "page": "PDF p6 (consolidated statement)",
+     "working": "3,482 / 2,664 - 1 = 30.71% (INR crore)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 16.1,
+     "source_url": "https://nsearchives.nseindia.com/corporate/marico_14112025124904_Outcome.pdf",
+     "page": "PDF p6 (consolidated statement)",
+     "working": "(3,482 - 2,981 + 12 + 47) / 3,482 = 560 / 3,482 = 16.08%",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.fmcg.underlying_volume_growth.v1",
+     "value": 7.0,
+     "source_url": "https://nsearchives.nseindia.com/corporate/marico_14112025125306_SEintimationInfoUpdate.pdf",
+     "page": "PDF p7 (slide 6)",
+     "working": "As stated: \"India 7% Volume Growth\"",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    }
+   ]
+  },
+  {
+   "ticker": "ESCORTS",
+   "company": "Escorts Kubota",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 22.6,
+     "source_url": "https://nsearchives.nseindia.com/corporate/ESCORTS2_04112025135638_EKL_2025_11_04_Outcome_of_BM.pdf",
+     "page": "PDF p9 (consolidated statement, continuing operations)",
+     "working": "2,791.56 / 2,277.25 - 1 = 22.58% (INR crore)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 12.9,
+     "source_url": "https://nsearchives.nseindia.com/corporate/ESCORTS2_04112025135638_EKL_2025_11_04_Outcome_of_BM.pdf",
+     "page": "PDF p9 (consolidated statement)",
+     "working": "(2,791.56 - 2,498.56 + 4.56 + 62.15) / 2,791.56 = 359.71 / 2,791.56 = 12.89%",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.autos.unit_volume_growth_yoy.v2",
+     "value": 27.9,
+     "source_url": "https://nsearchives.nseindia.com/corporate/ESCORTS2_04112025143225_EKL_2025-11-04-Earning_Presentation_signed.pdf",
+     "page": "monthly releases Jul-Sep 2025; presentation pp6, 20, 24 agree",
+     "working": "(33,877 + 1,146) / (25,995 + 1,394) - 1 = 27.87% (tractors + construction equipment, units)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    }
+   ]
+  },
+  {
+   "ticker": "DABUR",
+   "company": "Dabur India",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 5.4,
+     "source_url": "https://nsearchives.nseindia.com/corporate/DABURIN_30102025161247_Results.pdf",
+     "page": "PDF p6 (consolidated statement, scanned)",
+     "working": "3,191.32 / 3,028.59 - 1 = 5.37% (INR crore)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 18.4,
+     "source_url": "https://nsearchives.nseindia.com/corporate/DABURIN_30102025161247_Results.pdf",
+     "page": "PDF p6 (consolidated statement, scanned)",
+     "working": "(3,191.32 - 2,758.33 + 39.68 + 115.40) / 3,191.32 = 588.07 / 3,191.32 = 18.43%",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.fmcg.underlying_volume_growth.v1",
+     "value": 2.0,
+     "source_url": "https://nsearchives.nseindia.com/corporate/DABURIN_30102025163547_Investorcomm.pdf",
+     "page": "PDF p8 (slide 7)",
+     "working": "As stated: \"2% India Volume Growth\" (India FMCG, excludes Badshah)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    }
+   ]
+  },
+  {
+   "ticker": "JYOTHYLAB",
+   "company": "Jyothy Labs",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 0.4,
+     "source_url": "https://nsearchives.nseindia.com/corporate/JYOTHYLAB_12112025122328_JLL_SE_IntimationOCR.pdf",
+     "page": "PDF p4 (statement; standalone covers the whole company)",
+     "working": "73,606 / 73,307 - 1 = 0.41% (INR lakh)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 16.1,
+     "source_url": "https://nsearchives.nseindia.com/corporate/JYOTHYLAB_12112025122328_JLL_SE_IntimationOCR.pdf",
+     "page": "PDF p4 (statement)",
+     "working": "(73,606 - 63,435 + 136 + 1,520) / 73,606 = 11,827 / 73,606 = 16.07%",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.fmcg.underlying_volume_growth.v1",
+     "value": 2.8,
+     "source_url": "https://nsearchives.nseindia.com/corporate/JYOTHYLAB_12112025125141_SE_Intimation_Presentation.pdf",
+     "page": "PDF p7 (Q2FY26 snapshot)",
+     "working": "As stated: \"volumes grew by 2.8%\"",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    }
+   ]
+  },
+  {
+   "ticker": "MPHASIS",
+   "company": "Mphasis",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 10.3,
+     "source_url": "https://nsearchives.nseindia.com/corporate/MPHASIS_31102025000042_Outcome_of_BM_Final-s.pdf",
+     "page": "PDF p2 (consolidated statement)",
+     "working": "39,019.11 / 35,361.46 - 1 = 10.34% (INR million)",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 18.5,
+     "source_url": "https://nsearchives.nseindia.com/corporate/MPHASIS_31102025000042_Outcome_of_BM_Final-s.pdf",
+     "page": "PDF p2 (consolidated statement)",
+     "working": "(39,019.11 - 33,498.06 + 437.71 + 1,277.03) / 39,019.11 = 7,235.79 / 39,019.11 = 18.54%",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.it.cc_revenue_growth_yoy.v1",
+     "value": 6.0,
+     "source_url": "https://nsearchives.nseindia.com/corporate/MPHASIS_31102025000042_Outcome_of_BM_Final-s.pdf",
+     "page": "PDF p16 (press release)",
+     "working": "As stated: \"Gross Revenue ... grew ... 6.0% YoY in Constant Currency\"",
+     "flag": null,
+     "note": "Already saved in Stackly as last year's figure for Q2 FY27 (vault 'Pilot Companies', verified 23 Oct 2026)"
+    }
+   ]
+  }
+ ]
+}

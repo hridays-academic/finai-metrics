@@ -11,14 +11,23 @@ Matched to events by (ticker, fiscal year label, fiscal quarter) rather than
 event id, because the file is prepared without access to production ids. A
 proposal is only offered when its metrics and definition keys match the
 event's own exactly; anything else is ignored with a warning in the log.
+
+A file's `use` says what it is for:
+- "event" (the default): results for a league event, approved on its row.
+- "practice": an older quarter, approved a company at a time in Review
+  results (older_results.py); approval saves the numbers and an archive
+  event, so the quarter can appear in Practice and quick rounds.
+- "last_year": an older quarter saved only as last year's figure (the lazy
+  guess) for a practice quarter; no event.
 """
 import json
 import logging
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +58,7 @@ class ProposedMetric(BaseModel):
 class ProposedEvent(BaseModel):
     ticker: str
     company: str
+    results_date: Optional[date] = None  # required for "practice" files
     metrics: list[ProposedMetric] = Field(min_length=1)
 
 
@@ -58,7 +68,14 @@ class ProposalFile(BaseModel):
     prepared_on: str
     prepared_by: str
     approval_doc: Optional[str] = None
+    use: Literal["event", "practice", "last_year"] = "event"
     events: list[ProposedEvent]
+
+    @model_validator(mode="after")
+    def _practice_dates(self) -> "ProposalFile":
+        if self.use == "practice" and any(e.results_date is None for e in self.events):
+            raise ValueError("every event in a practice file needs a results_date")
+        return self
 
 
 class Proposal(BaseModel):
@@ -66,6 +83,9 @@ class Proposal(BaseModel):
 
     file: str
     prepared_on: str
+    use: str = "event"
+    fiscal_year_label: str = ""
+    fiscal_quarter: int = 0
     event: ProposedEvent
 
 
@@ -87,7 +107,9 @@ def load_dir(directory: Path) -> dict[tuple[str, str, int], Proposal]:
             if key in out:
                 log.error("Duplicate result proposal for %s in %s; keeping the first", key, path.name)
                 continue
-            out[key] = Proposal(file=path.name, prepared_on=parsed.prepared_on, event=event)
+            out[key] = Proposal(file=path.name, prepared_on=parsed.prepared_on, use=parsed.use,
+                                fiscal_year_label=parsed.fiscal_year_label.upper(),
+                                fiscal_quarter=parsed.fiscal_quarter, event=event)
     return out
 
 
@@ -102,7 +124,7 @@ def find(ticker: str, fiscal_year_label: str, fiscal_quarter: int, metric_defini
     metrics under the event's own definitions."""
     proposals = all_proposals() if proposals is None else proposals
     proposal = proposals.get((ticker.upper(), fiscal_year_label.upper(), fiscal_quarter))
-    if proposal is None:
+    if proposal is None or proposal.use != "event":
         return None
     wanted = {(m["key"], m["definition_key"]) for m in metric_definitions}
     offered = {(m.metric_key, m.definition_key) for m in proposal.event.metrics}

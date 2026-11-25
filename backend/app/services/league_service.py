@@ -97,8 +97,10 @@ _EFFECTIVE_STATUS = """
     END
 """
 
-_EVENT_SELECT = f"""
-    SELECT e.id, e.season_label, e.results_date, e.lock_at, e.metric_definitions, e.research_notes,
+# Every event, league and archive. League pages use _EVENT_SELECT, which
+# leaves out archive events (older quarters kept for Practice only).
+_ANY_EVENT_SELECT = f"""
+    SELECT e.id, e.kind, e.season_label, e.results_date, e.lock_at, e.metric_definitions, e.research_notes,
            {_EFFECTIVE_STATUS} AS effective_status,
            p.id AS period_id, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date,
            c.id AS company_id, c.market_code, c.exchange, c.ticker, c.name AS company_name, c.sector,
@@ -111,6 +113,7 @@ _EVENT_SELECT = f"""
     JOIN companies c ON c.id = p.company_id
     WHERE (NOT c.is_demo OR %(show_demo)s)
 """
+_EVENT_SELECT = _ANY_EVENT_SELECT + " AND e.kind = 'league'"
 
 
 def _summary(row: dict) -> EventSummary:

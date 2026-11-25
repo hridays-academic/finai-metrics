@@ -258,6 +258,16 @@ LEAGUE_SCHEMA_STATEMENTS = [
     "ALTER TABLE forecast_events ADD COLUMN IF NOT EXISTS scored_at TIMESTAMPTZ",
     "ALTER TABLE scores ADD COLUMN IF NOT EXISTS actual_value DOUBLE PRECISION",
     "ALTER TABLE scores ADD COLUMN IF NOT EXISTS lazy_value DOUBLE PRECISION",
+    # Archive events (schema v19): older quarters approved in a batch for
+    # Practice and quick rounds only. Scored on creation with no forecasts,
+    # never listed by the league, the results pages or "Just reported".
+    "ALTER TABLE forecast_events ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'league'",
+    """
+    DO $$ BEGIN
+        ALTER TABLE forecast_events ADD CONSTRAINT forecast_events_kind_check CHECK (kind IN ('league', 'archive'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
+    """,
     # ---------- Users: public league identity ----------
     # All nullable, so existing accounts keep working and are asked for a
     # handle on their first league action. Handles are unique

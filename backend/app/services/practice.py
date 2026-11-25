@@ -3,8 +3,14 @@ Practice (2026-11-18, plan approved by Hriday; vault: Areas/First-visit guide
 and Practice). Students forecast a past quarter whose results are already
 scored, and get their score straight away.
 
-- **Which quarters:** scored league events of non-demo companies whose every
-  metric has a saved result under the event's own definition. Answers are
+- **Which quarters (the answer-leak rule, Hriday at Stop 2, 25 Nov 2026):**
+  archive events (older quarters approved in a batch) whose every metric has
+  a saved result under the event's own definition, leaving out any quarter a
+  league page shows: a scored league event's own quarter (its results page
+  and Home's "Just reported") and its year-ago quarter (shown there as last
+  year's figure). Until any archive quarter exists, scored league events are
+  used as before. Practice, Mystery, quick rounds and the daily challenge all
+  draw from this one pool (`_practice_rows`). Answers are
   always the approved league results and the lazy guesses as scored
   (`baselines`); Yahoo figures are never answers.
 - **The "as of" cut, on the server:** the browser never receives anything
@@ -42,7 +48,7 @@ from app.models import PricePoint
 from app.services import league_admin, scoring
 from app.services.league_scoring import _actuals, _matching, _student_notes
 from app.services.league_service import (
-    _EVENT_SELECT, LeagueError, _show_demo, _validate_forecast, forecast_eligibility,
+    _ANY_EVENT_SELECT, LeagueError, _show_demo, _validate_forecast, forecast_eligibility,
 )
 from app.services.price_lag import PRICE_LAG_DAYS
 from app.services.research_history import PROVIDER_DEFINITION, PROVIDER_SOURCE
@@ -93,23 +99,38 @@ def _complete(conn: psycopg.Connection, row: dict) -> dict[str, float]:
     return {} if any(v is None for v in actual.values()) else actual  # type: ignore[return-value]
 
 
+def shown_quarters(conn: psycopg.Connection) -> set[tuple[int, str, int]]:
+    """(company id, FY label, quarter) for every quarter a league page shows:
+    each scored league event's own quarter and its year-ago quarter."""
+    out: set[tuple[int, str, int]] = set()
+    for r in conn.execute(
+        """SELECT p.company_id, p.fiscal_year_label, p.fiscal_quarter
+           FROM forecast_events e JOIN fiscal_periods p ON p.id = e.period_id
+           WHERE e.kind = 'league' AND e.status = 'scored'"""
+    ).fetchall():
+        out.add((r["company_id"], r["fiscal_year_label"], r["fiscal_quarter"]))
+        out.add((r["company_id"], league_admin.year_ago_label(r["fiscal_year_label"]), r["fiscal_quarter"]))
+    return out
+
+
 def _practice_rows(conn: psycopg.Connection) -> list[dict]:
-    rows = conn.execute(
-        _EVENT_SELECT + " AND e.status = 'scored' ORDER BY e.results_date DESC, c.name",
+    rows = [r for r in conn.execute(
+        _ANY_EVENT_SELECT + " AND e.status = 'scored' ORDER BY e.results_date DESC, c.name",
         {"user_id": 0, "show_demo": _show_demo()},
-    ).fetchall()
-    return [r for r in rows if _complete(conn, r)]
+    ).fetchall() if _complete(conn, r)]
+    archive = [r for r in rows if r["kind"] == "archive"]
+    if not archive:
+        return [r for r in rows if r["kind"] == "league"]
+    shown = shown_quarters(conn)
+    return [r for r in archive if (r["company_id"], r["fiscal_year_label"], r["fiscal_quarter"]) not in shown]
 
 
 def _load(conn: psycopg.Connection, code: str) -> dict:
     event_id = event_for(code)
     if event_id is None:
         raise _not_found()
-    row = conn.execute(
-        _EVENT_SELECT + " AND e.id = %(event_id)s AND e.status = 'scored'",
-        {"user_id": 0, "show_demo": _show_demo(), "event_id": event_id},
-    ).fetchone()
-    if row is None or not _complete(conn, row):
+    row = next((r for r in _practice_rows(conn) if r["id"] == event_id), None)
+    if row is None:
         raise _not_found()
     return row
 

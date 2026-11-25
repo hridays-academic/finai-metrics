@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { UserPublic } from "../lib/types";
 import AdminCompanies from "./admin/AdminCompanies";
 import AdminMore from "./admin/AdminMore";
+import AdminOlderResults from "./admin/AdminOlderResults";
 import AdminUsers from "./admin/AdminUsers";
 import AdminWorldEvents from "./admin/AdminWorldEvents";
 import SiteFooter from "./SiteFooter";
@@ -16,6 +17,7 @@ interface AdminPageProps {
 // students. Visits and the audit log sit under More.
 const TABS = [
   { key: "companies", label: "Companies", Component: AdminCompanies },
+  { key: "older", label: "Older results", Component: AdminOlderResults },
   { key: "students", label: "Students", Component: AdminUsers },
   { key: "world", label: "World events", Component: AdminWorldEvents },
   { key: "more", label: "More", Component: AdminMore },

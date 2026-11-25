@@ -1,0 +1,262 @@
+{
+ "fiscal_year_label": "FY26",
+ "fiscal_quarter": 1,
+ "use": "last_year",
+ "prepared_on": "2026-11-25",
+ "prepared_by": "Claude; not yet reviewed",
+ "approval_doc": "Areas/Older quarters (for approval).md",
+ "events": [
+  {
+   "ticker": "MARUTI",
+   "company": "Maruti Suzuki",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 7.9,
+     "source_url": "https://www.marutisuzuki.com/content/dam/arena-eds/corporate/pdf/company-reports/2025-2026/Unaudited_financial_results_for_the_quarter_ended_June_30_2025.pdf",
+     "page": "PDF p1 (consolidated statement, scanned)",
+     "working": "386,052 / 357,794 - 1 = 7.90% (INR million, total revenue from operations)",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 12.0,
+     "source_url": "https://www.marutisuzuki.com/content/dam/arena-eds/corporate/pdf/company-reports/2025-2026/Unaudited_financial_results_for_the_quarter_ended_June_30_2025.pdf",
+     "page": "PDF p1 (consolidated statement, scanned)",
+     "working": "(386,052 - 355,854 + 468 + 15,560) / 386,052 = 46,226 / 386,052 = 11.97%",
+     "flag": null,
+     "note": "End-of-life-vehicle cost still not booked, same as last year"
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.autos.unit_volume_growth_yoy.v2",
+     "value": 1.1,
+     "source_url": "https://www.marutisuzuki.com/content/dam/arena-eds/corporate/pdf/company-reports/2025-2026/Investor_Presentation_Q1FY26.pdf",
+     "page": "PDF p5 (quarter table, 'Sales Volume')",
+     "working": "527,861 / 521,868 - 1 = 1.15% (units, Sales Volume incl. sales to other OEM)",
+     "flag": null,
+     "note": "Investor presentation 'Sales Volume' line; it equals the monthly releases' Total Sales (checked for Q1 FY26: 527,861)"
+    }
+   ]
+  },
+  {
+   "ticker": "SAGCEM",
+   "company": "Sagar Cements",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 19.6,
+     "source_url": "https://sagarcements.in/wp-content/uploads/2025/07/Sclpressrelease30062025StockExchange.pdf",
+     "page": "PDF p5 (consolidated table)",
+     "working": "67,066 / 56,060 - 1 = 19.63% (INR lakh)",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 18.1,
+     "source_url": "https://sagarcements.in/wp-content/uploads/2026/07/Sclufr30062026.pdf",
+     "page": "PDF p8, Jun 2025 column (consolidated statement, scanned)",
+     "working": "(67,066 - 65,095 + 4,709 + 5,465) / 67,066 = 12,145 / 67,066 = 18.11%; company's operating EBITDA 12,145 agrees",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.cement.volume_growth_yoy.v1",
+     "value": 11.3,
+     "source_url": "https://sagarcements.in/wp-content/uploads/2025/07/Sclpressrelease30062025StockExchange.pdf",
+     "page": "PDF p5 (consolidated, Sales Volume (MT))",
+     "working": "1,427,639 / 1,283,170 - 1 = 11.26% (tonnes)",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "ticker": "MARICO",
+   "company": "Marico",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 23.3,
+     "source_url": "https://marico.com/investorspdf/Statutory_Advertisement_Q1FY26.pdf",
+     "page": "PDF p1 (consolidated statement, scanned)",
+     "working": "3,259 / 2,643 - 1 = 23.31% (INR crore)",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 20.1,
+     "source_url": "https://marico.com/investorspdf/Statutory_Advertisement_Q1FY26.pdf",
+     "page": "PDF p1 (consolidated statement, scanned)",
+     "working": "(3,259 - 2,659 + 10 + 45) / 3,259 = 655 / 3,259 = 20.10%; company's operating EBITDA 655 agrees",
+     "flag": "As originally reported. Restated in the Q1 FY27 filing to revenue 3,221 cr, margin 20.3% (655 / 3,221); same choice as last year's Q2 figure, which was left on the old basis",
+     "note": null
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.fmcg.underlying_volume_growth.v1",
+     "value": 9.0,
+     "source_url": "https://marico.com/investorspdf/Information_Update_Q1FY26.pdf",
+     "page": "PDF p1 (executive summary table)",
+     "working": "As stated: \"underlying volume growth of 9% in the India business\"",
+     "flag": null,
+     "note": "Headline India volume growth, as last year"
+    }
+   ]
+  },
+  {
+   "ticker": "ESCORTS",
+   "company": "Escorts Kubota",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": -2.9,
+     "source_url": "https://static.escortskubota.com/new/pdf/2025/august/Q1_FY26_Results.pdf",
+     "page": "PDF p6 (consolidated statement)",
+     "working": "2,500.05 / 2,573.73 - 1 = -2.86% (INR crore, continuing operations)",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 12.9,
+     "source_url": "https://static.escortskubota.com/new/pdf/2025/august/Q1_FY26_Results.pdf",
+     "page": "PDF p6 (consolidated statement)",
+     "working": "(2,500.05 - 2,242.22 + 3.99 + 59.58) / 2,500.05 = 321.40 / 2,500.05 = 12.86%; company's operating EBITDA 321.40 agrees",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.autos.unit_volume_growth_yoy.v2",
+     "value": -0.4,
+     "source_url": "https://static.escortskubota.com/new/pdf/2025/august/Q1FY26_Earning_PPT_Final.pdf",
+     "page": "PDF p6 (30,581; 1,055); p15 (Q1 FY25 tractors 29,409 domestic + 961 export); p18 (Q1 FY25 CE 1,382)",
+     "working": "(30,581 + 1,055) / (30,370 + 1,382) - 1 = -0.37% (tractors + construction equipment, units)",
+     "flag": "CHECK: Q1 FY25 units read from chart labels; each matches the deck's YoY % (tractors 0.7%, CE -23.7%)",
+     "note": "Tractors + construction equipment, the same two totals as last year"
+    }
+   ]
+  },
+  {
+   "ticker": "DABUR",
+   "company": "Dabur India",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 1.7,
+     "source_url": "https://www.dabur.com/Investors/Financial%20Information/Results/2025-26/Q1/Results.pdf",
+     "page": "PDF p5 (consolidated statement, scanned)",
+     "working": "3,404.58 / 3,349.11 - 1 = 1.66% (INR crore)",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 19.6,
+     "source_url": "https://www.dabur.com/Investors/Financial%20Information/Results/2026-27/Q1/Results.pdf",
+     "page": "PDF p5, Jun 2025 column (consolidated statement, scanned)",
+     "working": "(3,404.58 - 2,885.53 + 34.63 + 114.14) / 3,404.58 = 667.82 / 3,404.58 = 19.62%",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.fmcg.underlying_volume_growth.v1",
+     "value": -1.0,
+     "source_url": "https://www.dabur.com/Investors/Financial%20Information/Results/2025-26/Q1/Conference%20Call%20Transcript.pdf",
+     "page": "PDF p10 (earnings call transcript, 31 Jul 2025)",
+     "working": "As stated: \"volume is low single digit, around minus 1% and price increase was 3%\"; later \"volume on a reported basis is 1% degrowth\"",
+     "flag": "CHECK: from the call transcript, a rounded figure; no press release or presentation for this quarter on dabur.com",
+     "note": "Volume growth as Dabur states it"
+    }
+   ]
+  },
+  {
+   "ticker": "JYOTHYLAB",
+   "company": "Jyothy Labs",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 1.4,
+     "source_url": "https://www.jyothylabs.com/wp-content/uploads/2025/08/Quarterly-Results-June-2025.pdf",
+     "page": "PDF p4 (statement)",
+     "working": "75,121 / 74,118 - 1 = 1.35% (INR lakh, standalone)",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 16.5,
+     "source_url": "https://www.jyothylabs.com/wp-content/uploads/2025/08/Quarterly-Results-June-2025.pdf",
+     "page": "PDF p4 (statement)",
+     "working": "(75,121 - 64,312 + 134 + 1,472) / 75,121 = 12,415 / 75,121 = 16.53%; company's operating EBITDA 12,420 agrees",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.fmcg.underlying_volume_growth.v1",
+     "value": 3.6,
+     "source_url": "https://www.jyothylabs.com/wp-content/uploads/2025/08/Jyothy-Investor-Q1-2025-26.pdf",
+     "page": "PDF p7 (Q1FY26 snapshot)",
+     "working": "As stated: \"volumes grew by 3.6%\"",
+     "flag": null,
+     "note": null
+    }
+   ]
+  },
+  {
+   "ticker": "MPHASIS",
+   "company": "Mphasis",
+   "metrics": [
+    {
+     "metric_key": "revenue_growth_yoy",
+     "definition_key": "in.revenue_growth_yoy.v1",
+     "value": 9.1,
+     "source_url": "https://www.mphasis.com/content/dam/mphasis-com/global/en/investors/governance/outcome-of-board-meeting-jul2025.pdf",
+     "page": "PDF p2 (consolidated statement)",
+     "working": "37,324.89 / 34,224.62 - 1 = 9.06% (INR million)",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "operating_margin",
+     "definition_key": "in.operating_margin.v1",
+     "value": 18.8,
+     "source_url": "https://www.mphasis.com/content/dam/mphasis-com/global/en/investors/governance/outcome-of-board-meeting-jul2025.pdf",
+     "page": "PDF p2 (consolidated statement)",
+     "working": "(37,324.89 - 32,033.66 + 418.23 + 1,319.22) / 37,324.89 = 7,028.68 / 37,324.89 = 18.83%",
+     "flag": null,
+     "note": null
+    },
+    {
+     "metric_key": "sector_kpi",
+     "definition_key": "in.it.cc_revenue_growth_yoy.v1",
+     "value": 6.5,
+     "source_url": "https://www.mphasis.com/content/dam/mphasis-com/global/en/investors/governance/outcome-of-board-meeting-jul2025.pdf",
+     "page": "PDF p14 (press release)",
+     "working": "\"Gross Revenue grew 0.4% QoQ and 9.2% YoY in Q1 FY26 on a reported basis and grew 1.0% QoQ and 6.5% YoY in Constant Currency\"",
+     "flag": null,
+     "note": "Gross (total) revenue in constant currency, as last year"
+    }
+   ]
+  }
+ ]
+}

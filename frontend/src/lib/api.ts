@@ -12,6 +12,7 @@ import type {
   WorldEvent,
   WorldEventIn,
   AdminBoardRow,
+  OlderCompany,
   ResultProposal,
   AdminUser,
   AuditEntry,
@@ -408,6 +409,16 @@ export const adminPutResults = (eventId: number, items: ActualInput[], fromPropo
   leagueRequest<void>("PUT", `/admin/events/${eventId}/results${fromProposal ? "?from_proposal=true" : ""}`, items);
 export const adminGetProposal = (eventId: number) =>
   leagueRequest<ResultProposal>("GET", `/admin/events/${eventId}/proposal`);
+export const adminListOlderResults = () => leagueRequest<OlderCompany[]>("GET", "/admin/older-results");
+export type OlderApproveInput = {
+  quarters: { fiscal_year_label: string; fiscal_quarter: number; metrics: { metric_key: string; definition_key: string; value: number }[] }[];
+};
+export const adminApproveOlderResults = (ticker: string, body: OlderApproveInput) =>
+  leagueRequest<{ quarters_saved: number; archive_events_created: number }>(
+    "POST",
+    `/admin/older-results/${encodeURIComponent(ticker)}/approve`,
+    body
+  );
 export const adminFindUsers = (q: string) => leagueRequest<AdminUser[]>("GET", `/admin/users?q=${encodeURIComponent(q)}`);
 export interface ConsentDetails {
   parent_name: string;

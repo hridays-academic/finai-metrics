@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 from pydantic import BaseModel
 
 from app.league_models import (
@@ -12,13 +12,16 @@ from app.league_models import (
     BaselineIn,
     ConsentIn,
     EventPatch,
+    OlderApproveIn,
+    OlderApproveOut,
+    OlderCompanyOut,
     PeriodIn,
     QuickEventIn,
     ResultProposalOut,
     ScoreRunOut,
 )
 from app.routes.deps import require_admin
-from app.services import audit, league_admin, league_scoring, visits
+from app.services import audit, league_admin, league_scoring, older_results, visits
 from app.services.db import get_conn
 
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
@@ -77,6 +80,19 @@ def put_results(event_id: int, body: list[ActualIn], from_proposal: bool = Query
 def get_proposal(event_id: int) -> ResultProposalOut:
     with get_conn() as conn:
         return league_admin.get_proposal(conn, event_id)
+
+
+@router.get("/older-results", response_model=list[OlderCompanyOut])
+def list_older_results() -> list[OlderCompanyOut]:
+    with get_conn() as conn:
+        return older_results.list_companies(conn)
+
+
+@router.post("/older-results/{ticker}/approve", response_model=OlderApproveOut)
+def approve_older_results(body: OlderApproveIn, ticker: str = Path(pattern=r"^[A-Za-z0-9&-]{1,20}$"),
+                          admin: dict = Depends(require_admin)) -> OlderApproveOut:
+    with get_conn() as conn:
+        return older_results.approve(conn, admin, ticker, body)
 
 
 @router.post("/events/quick", response_model=IdOut)

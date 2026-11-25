@@ -438,6 +438,39 @@ export interface ResultProposal {
   metrics: ProposalMetric[];
 }
 
+// Older quarters for Practice, approved a company at a time (admin).
+export interface OlderMetric {
+  metric_key: string;
+  definition_key: string;
+  label: string;
+  unit: string;
+  value: number;
+  saved: number | null;
+  source_url: string;
+  page: string;
+  working: string;
+  flag: string | null;
+  note: string | null;
+}
+
+export interface OlderQuarter {
+  fiscal_year_label: string;
+  fiscal_quarter: number;
+  use: "practice" | "last_year";
+  results_date: string | null;
+  file: string;
+  status: "new" | "saved" | "differs";
+  archive_event: boolean;
+  metrics: OlderMetric[];
+}
+
+export interface OlderCompany {
+  ticker: string;
+  company: string;
+  in_stackly: boolean;
+  quarters: OlderQuarter[];
+}
+
 export interface AdminUser {
   id: number;
   email: string;
