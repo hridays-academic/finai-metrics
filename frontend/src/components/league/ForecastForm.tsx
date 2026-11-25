@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { ApiError, saveForecast } from "../../lib/api";
 import { clearForecastDraft, getForecastDraft, setForecastDraft, type Range } from "../../lib/forecastDrafts";
-import { formatDay, scaleAround } from "../../lib/leagueFormat";
+import { formatDay, slabDomain } from "../../lib/leagueFormat";
 import type { EventDetail, Forecast, LeagueConfig, UserPublic } from "../../lib/types";
-import RangeLine from "../RangeLine";
+import RangeSlab from "../RangeSlab";
 
 interface ForecastFormProps {
   event: EventDetail;
@@ -16,6 +16,7 @@ interface ForecastFormProps {
   onLocked: () => void;
   // Last year's league figure per metric: the scale centres on it (T10).
   lastYear?: Record<string, number | null>;
+  lastQuarter?: Record<string, number | null>;
 }
 
 // The saved forecast's values, with any unsaved draft from earlier in this tab on top.
@@ -29,7 +30,7 @@ function initialRanges(event: EventDetail, forecast: Forecast | null, draft?: Re
 }
 
 export default function ForecastForm(props: ForecastFormProps) {
-  const { event, config, user, forecast, onSaved, onNeedProfile, onOpenAuth, onLocked, lastYear } = props;
+  const { event, config, user, forecast, onSaved, onNeedProfile, onOpenAuth, onLocked, lastYear, lastQuarter } = props;
   const [tried, setTried] = useState(false);
   const readOnly = event.status !== "open" || forecast?.locked === true;
   const needsConsent = user?.age_band === "under_18" && user.guardian_consent_status !== "granted";
@@ -120,49 +121,20 @@ export default function ForecastForm(props: ForecastFormProps) {
         return (
           <fieldset className="field" key={m.key}>
             <legend className="field-label">{m.label}</legend>
-            <div className="league-range-inputs">
-              <div className="input-wrap">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.1"
-                  min={m.min_value}
-                  max={m.max_value}
-                  className="input"
-                  placeholder="Low"
-                  aria-label={`${m.label} low`}
-                  value={r.low}
-                  disabled={readOnly}
-                  onChange={(e) => setRange(m.key, "low", e.target.value)}
-                />
-                <span className="input-suffix">{m.unit}</span>
-              </div>
-              <span className="league-range-to">to</span>
-              <div className="input-wrap">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.1"
-                  min={m.min_value}
-                  max={m.max_value}
-                  className="input"
-                  placeholder="High"
-                  aria-label={`${m.label} high`}
-                  value={r.high}
-                  disabled={readOnly}
-                  onChange={(e) => setRange(m.key, "high", e.target.value)}
-                />
-                <span className="input-suffix">{m.unit}</span>
-              </div>
-            </div>
-            {/* Redrawn as you type, once both ends make a range. */}
-            <RangeLine
-              low={valid ? Number(r.low) : null}
-              high={valid ? Number(r.high) : null}
-              minSpan={valid ? 20 : 2}
-              domain={valid ? undefined : scaleAround(m.key, lastYear?.[m.key])}
+            {/* F1-F7 (master plan phase 4): the one range control. */}
+            <RangeSlab
+              label={m.label}
+              unit={m.unit}
+              domain={slabDomain(m.key, lastYear?.[m.key])}
+              value={valid ? [Number(r.low), Number(r.high)] : null}
+              onChange={([a, b]) => {
+                setRange(m.key, "low", a.toFixed(1));
+                setRange(m.key, "high", b.toFixed(1));
+              }}
+              lastYear={lastYear?.[m.key] ?? null}
+              lastQuarter={lastQuarter?.[m.key] ?? null}
+              disabled={readOnly}
             />
-            {/* T11: "Enter both numbers." only after an attempt to submit. */}
             <p className={`field-hint ${(width !== null && width < 0) || (width === null && tried) ? "field-hint-error" : ""}`}>
               {width === null
                 ? tried
@@ -170,7 +142,7 @@ export default function ForecastForm(props: ForecastFormProps) {
                   : ""
                 : width < 0
                   ? "Low is above high. Swap them."
-                  : `Range width: ${width.toFixed(1)} points.`}
+                  : ""}
             </p>
             <details className="league-definition">
               <summary>How this is measured</summary>

@@ -7813,3 +7813,166 @@ a.news-card-headline:hover {
   padding-left: 0;
   padding-right: 0;
 }
+
+/* ==========================================================================
+   RangeSlab (master plan phase 4): the one range control. Home's slab and
+   gold range; marks for last year and last quarter; numbers you can type.
+   ========================================================================== */
+.range-slab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.range-slab-numbers {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.range-slab-to {
+  color: var(--text-2);
+}
+
+.range-slab-number {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+  font: inherit;
+  cursor: text;
+}
+
+.range-slab-number-side {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.range-slab-number-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.range-slab-number.is-editing .input {
+  width: 90px;
+  min-height: 40px;
+  font-size: var(--text-lg);
+}
+
+.range-slab-track-wrap {
+  padding-top: 34px; /* room for the mark labels */
+}
+
+.range-slab-track {
+  position: relative;
+  height: 44px; /* the whole bar is a 44px tap target */
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.range-slab.is-disabled .range-slab-track {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.range-slab-slab {
+  position: absolute;
+  top: 13px;
+  left: 0;
+  right: 0;
+  height: 18px;
+}
+
+.range-slab-range {
+  position: absolute;
+  top: 8px;
+  height: 28px;
+  min-width: 24px;
+  pointer-events: none;
+}
+
+.range-slab-knob,
+.range-slab-empty {
+  position: absolute;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  border-radius: 50%;
+  cursor: ew-resize;
+}
+
+.range-slab-empty {
+  left: 50%;
+  width: 100%;
+  margin-left: -50%;
+  border-radius: var(--radius-control);
+  cursor: crosshair;
+}
+
+.range-slab-knob:focus-visible,
+.range-slab-empty:focus-visible {
+  outline: 3px solid var(--focus, var(--link));
+  outline-offset: -6px;
+}
+
+.range-slab-mark {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text-2);
+  pointer-events: none;
+}
+
+.range-slab-mark.is-quarter {
+  background: color-mix(in srgb, var(--text-2) 60%, transparent);
+}
+
+.range-slab-mark-label {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  translate: -50% 0;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.range-slab-mark.is-quarter .range-slab-mark-label {
+  bottom: calc(100% + 22px);
+}
+
+.range-slab-scale {
+  position: relative;
+  height: 20px;
+  margin-top: var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.range-slab-scale > span {
+  position: absolute;
+  translate: -50% 0;
+}
+
+.range-slab-line {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.range-slab-nudge {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--caution) 14%, transparent);
+  font-size: var(--text-sm);
+}

@@ -1,7 +1,18 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PracticeAttempt, PracticeCase } from "../../lib/types";
+
+// Types a range into one metric's range control (its Low and High numbers).
+function typeRange(label: string, low: string, high: string) {
+  const field = screen.getByRole("group", { name: new RegExp(label) });
+  for (const [side, v] of [["Low", low], ["High", high]] as const) {
+    fireEvent.click(within(field).getByRole("button", { name: new RegExp(`^${side}:`) }));
+    const input = within(field).getByLabelText(`${side} (type a number)`);
+    fireEvent.change(input, { target: { value: v } });
+    fireEvent.keyDown(input, { key: "Enter" });
+  }
+}
 
 const METRICS = [
   { key: "revenue_growth_yoy", definition_key: "d1", label: "Revenue growth", unit: "%", definition: "x", min_value: -100, max_value: 200 },
@@ -83,8 +94,7 @@ describe("a practice company page", () => {
     render(<PracticeCasePage code="k3x9a0" onOpenAuth={() => {}} />);
     await screen.findByText("Your forecast");
     for (const [label, low, high] of [["Revenue growth", "10", "14"], ["Operating margin", "10", "12"]]) {
-      fireEvent.change(screen.getByLabelText(`${label} low`), { target: { value: low } });
-      fireEvent.change(screen.getByLabelText(`${label} high`), { target: { value: high } });
+      typeRange(label, low, high);
     }
     fireEvent.click(screen.getByRole("button", { name: "Submit and see my score" }));
     await waitFor(() => expect(submit).toHaveBeenCalled());
@@ -104,8 +114,7 @@ describe("a practice company page", () => {
     render(<PracticeCasePage code="k3x9a0" onOpenAuth={() => {}} />);
     await screen.findByText("Your forecast");
     for (const label of ["Revenue growth", "Operating margin"]) {
-      fireEvent.change(screen.getByLabelText(`${label} low`), { target: { value: "1" } });
-      fireEvent.change(screen.getByLabelText(`${label} high`), { target: { value: "2" } });
+      typeRange(label, "1", "2");
     }
     fireEvent.click(screen.getByRole("button", { name: "Submit and see my score" }));
     await screen.findByText("Replay", { selector: ".practice-badge" });

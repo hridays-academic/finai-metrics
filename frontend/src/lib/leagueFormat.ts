@@ -115,3 +115,21 @@ export function withoutInsight(checklist: string[], insight: string | null | und
     .map((item) => (item.trim().startsWith(lead) ? item.trim().slice(lead.length).trim() : item))
     .filter((item) => item.length > 0);
 }
+
+// Last quarter's league figure for each metric (the quarter before this one),
+// or null: marked on the range control where the league has it.
+export function lastQuarterValues(
+  actuals: { period_end_date: string; metric_key: string; value: number }[] | undefined,
+  periodEnd: string,
+  keys: string[]
+): Record<string, number | null> {
+  const end = previousQuarterEnds(periodEnd, 1)[0];
+  return Object.fromEntries(
+    keys.map((k) => [k, actuals?.find((a) => a.period_end_date === end && a.metric_key === k)?.value ?? null])
+  );
+}
+
+// The range control's scale: last year +-8/10, or a plain default without it.
+export function slabDomain(key: string, lastYear: number | null | undefined): [number, number] {
+  return scaleAround(key, lastYear) ?? (key === "operating_margin" ? [5, 30] : [-10, 20]);
+}

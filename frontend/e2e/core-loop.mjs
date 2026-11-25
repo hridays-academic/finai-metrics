@@ -21,16 +21,24 @@ await page.addInitScript(() => {
   } catch {}
 });
 await page.goto(`${site}/#/practice/${code}`, { waitUntil: "networkidle" });
-const inputs = page.locator("form.league-form input[type=number]");
+// Each metric's range control: its Low and High numbers can be typed.
+const fields = page.locator("form.league-form fieldset:has(.range-slab)");
 try {
-  await inputs.first().waitFor({ timeout: 20000 });
+  await fields.first().waitFor({ timeout: 20000 });
 } catch (e) {
   const text = (await page.evaluate(() => document.body.innerText)).slice(0, 600);
   console.error(JSON.stringify({ failed, errors, text }));
   throw e;
 }
-const count = await inputs.count();
-for (let i = 0; i < count; i++) await inputs.nth(i).fill(ranges[i]);
+const count = (await fields.count()) * 2;
+for (let i = 0; i < count; i++) {
+  const field = fields.nth(Math.floor(i / 2));
+  const side = i % 2 === 0 ? "Low" : "High";
+  await field.getByRole("button", { name: new RegExp(`^${side}:`) }).click();
+  const input = field.getByLabel(`${side} (type a number)`);
+  await input.fill(ranges[i]);
+  await input.press("Enter");
+}
 await page.getByRole("button", { name: "Submit and see my score" }).click();
 const score = page.locator(".results-score-value");
 await score.waitFor({ timeout: 20000 });

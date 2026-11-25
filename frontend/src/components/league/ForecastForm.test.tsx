@@ -30,7 +30,7 @@ describe("forecast form started from the worksheet", () => {
     setForecastDraft(3, { ranges: { revenue_growth_yoy: { low: "11.2", high: "13.2" } }, fromWorksheet: true });
     renderForm();
     expect(screen.getByText("Started from your worksheet. Change anything before you save.")).toBeTruthy();
-    expect((screen.getAllByRole("spinbutton")[0] as HTMLInputElement).value).toBe("11.2");
+    expect(screen.getByRole("button", { name: /^Low: 11\.2%/ })).toBeTruthy();
   });
 
   it("says nothing about the worksheet for an ordinary draft", () => {

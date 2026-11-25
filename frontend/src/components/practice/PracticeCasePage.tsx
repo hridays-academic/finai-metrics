@@ -4,7 +4,7 @@ import {
   ApiError, fetchLeagueConfig, fetchPracticeCase, fetchPracticeCases, fetchPracticePrices, submitPracticeAttempt,
 } from "../../lib/api";
 import { asEvent, asHistory, mysteryOn, practiceQuarterLabel, surprise } from "../../lib/practice";
-import { formatDay, lastYearValues, scaleAround } from "../../lib/leagueFormat";
+import { formatDay, lastQuarterValues, lastYearValues, slabDomain } from "../../lib/leagueFormat";
 import { colourClass, difficultyOf, fromProviderRows } from "../../lib/difficulty";
 import type { LeagueConfig, PracticeAttempt, PracticeCase, PracticePrices } from "../../lib/types";
 import CompanyStory from "../league/CompanyStory";
@@ -12,7 +12,7 @@ import SectorExplainer from "../league/SectorExplainer";
 import { QuartersTable } from "../league/ResearchPanel";
 import { MetricCard, n } from "../league/ResultsPage";
 import { hostOf, LEAGUE_FOOTNOTE } from "../league/outcome";
-import RangeLine from "../RangeLine";
+import RangeSlab from "../RangeSlab";
 import { recordUsage } from "../../lib/reports";
 import FinePrint from "../FinePrint";
 import SiteFooter from "../SiteFooter";
@@ -157,6 +157,7 @@ export default function PracticeCasePage({ code, onOpenAuth }: Props) {
               practice={practice}
               onScored={showResult}
               lastYear={lastYearValues(history.actuals, event.period_end_date, practice.metrics.map((m) => m.key))}
+              lastQuarter={lastQuarterValues(history.actuals, event.period_end_date, practice.metrics.map((m) => m.key))}
             />
           </section>
         )}
@@ -171,10 +172,12 @@ function PracticeForm({
   practice,
   onScored,
   lastYear,
+  lastQuarter,
 }: {
   practice: PracticeCase;
   onScored: (r: PracticeAttempt) => void;
   lastYear?: Record<string, number | null>;
+  lastQuarter?: Record<string, number | null>;
 }) {
   const [tried, setTried] = useState(false);
   useEffect(() => recordUsage("round_started", "practice"), []);
@@ -226,35 +229,20 @@ function PracticeForm({
         return (
           <fieldset className="field" key={m.key}>
             <legend className="field-label">{m.label}</legend>
-            <div className="league-range-inputs">
-              {(["low", "high"] as const).map((side, i) => (
-                <div key={side} style={{ display: "contents" }}>
-                  {i === 1 && <span className="league-range-to">to</span>}
-                  <div className="input-wrap">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.1"
-                      min={m.min_value}
-                      max={m.max_value}
-                      className="input"
-                      placeholder={side === "low" ? "Low" : "High"}
-                      aria-label={`${m.label} ${side}`}
-                      value={r[side]}
-                      onChange={(e) => set(side, e.target.value)}
-                    />
-                    <span className="input-suffix">{m.unit}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <RangeLine
-              low={valid ? Number(r.low) : null}
-              high={valid ? Number(r.high) : null}
-              minSpan={valid ? 20 : 2}
-              domain={valid ? undefined : scaleAround(m.key, lastYear?.[m.key])}
+            {/* F1-F7 (master plan phase 4): the one range control. */}
+            <RangeSlab
+              label={m.label}
+              unit={m.unit}
+              domain={slabDomain(m.key, lastYear?.[m.key])}
+              value={valid ? [Number(r.low), Number(r.high)] : null}
+              onChange={([a, b]) => {
+                set("low", a.toFixed(1));
+                set("high", b.toFixed(1));
+              }}
+              lastYear={lastYear?.[m.key] ?? null}
+              lastQuarter={lastQuarter?.[m.key] ?? null}
+              
             />
-            {/* T11: "Enter both numbers." only after an attempt to submit. */}
             <p className={`field-hint ${(width !== null && width < 0) || (width === null && tried) ? "field-hint-error" : ""}`}>
               {width === null
                 ? tried
@@ -262,7 +250,7 @@ function PracticeForm({
                   : ""
                 : width < 0
                   ? "Low is above high. Swap them."
-                  : `Range width: ${width.toFixed(1)} points.`}
+                  : ""}
             </p>
             <details className="league-definition">
               <summary>How this is measured</summary>
