@@ -46,7 +46,7 @@ from app.league_models import (
 )
 from app.models import PricePoint
 from app.services import league_admin, scoring
-from app.services.league_scoring import _actuals, _matching, _student_notes
+from app.services.league_scoring import _actuals, _matching, _student_notes, lazy_values
 from app.services.league_service import (
     _ANY_EVENT_SELECT, LeagueError, _show_demo, _validate_forecast, forecast_eligibility,
 )
@@ -338,8 +338,13 @@ def attempt(conn: psycopg.Connection, user: Optional[dict], code: str, body: Pra
     _validate_forecast(cfg, metrics, forecast)
     ranges = {r.metric_key: r for r in body.ranges}
     actual = _complete(conn, row)
-    lazy = {r["metric_key"]: r["lazy_value"] for r in conn.execute(
-        "SELECT metric_key, lazy_value FROM baselines WHERE event_id = %s", (row["id"],)).fetchall()}
+    if row["kind"] == "archive":
+        # Archive quarters are never scored as an event, so they have no
+        # baselines: the lazy guess is last year's saved figure, as on a card.
+        lazy = lazy_values(conn, row)
+    else:
+        lazy = {r["metric_key"]: r["lazy_value"] for r in conn.execute(
+            "SELECT metric_key, lazy_value FROM baselines WHERE event_id = %s", (row["id"],)).fetchall()}
     notes = _student_notes(row, actual)
 
     out = []

@@ -198,3 +198,15 @@ def test_archive_events_stay_off_league_pages(rows, client, scored, older):
         assert client.get(f"/api/league/events/{event_id}/outcome").status_code == 404
     board = client.get("/api/admin/events", headers=scored["admin"]).json()
     assert [r["id"] for r in board] == [scored["event"]]
+
+
+def test_practice_on_an_archive_quarter_uses_last_years_figure(rows, client, scored, older):
+    _approve_and_score(client, scored, older)
+    code = client.get("/api/practice/cases").json()[0]["code"]
+    res = client.post(f"/api/practice/cases/{code}/attempt", json={"mystery": True, "ranges": [
+        {"metric_key": "revenue_growth_yoy", "low": 3.0, "high": 6.0},
+        {"metric_key": "operating_margin", "low": 6.0, "high": 7.0},
+        {"metric_key": "sector_kpi", "low": 7.0, "high": 8.0}]})
+    assert res.status_code == 200, res.text
+    lazy = {m["metric_key"]: m["lazy"] for m in res.json()["metrics"]}
+    assert lazy == {"revenue_growth_yoy": -15.8, "operating_margin": 6.7, "sector_kpi": -2.2}
