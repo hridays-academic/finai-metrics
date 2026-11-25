@@ -1,0 +1,25 @@
+# S14 (master plan): checks the live site's health every 15 minutes. A run
+# fails only when two checks a minute apart both fail; GitHub then emails the
+# repo owner (Settings > Notifications > Actions: email, failed workflows only).
+name: Health check
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check /api/health twice
+        run: |
+          check() {
+            body=$(curl -fsS --max-time 30 https://stackslymetrics.com/api/health) || return 1
+            echo "$body"
+            echo "$body" | grep -q '"database":"production"'
+          }
+          if check; then exit 0; fi
+          echo "First check failed; trying again in 60 s"
+          sleep 60
+          check
