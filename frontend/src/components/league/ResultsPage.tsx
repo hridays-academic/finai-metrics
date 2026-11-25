@@ -9,7 +9,6 @@ import { setPageTitle } from "../../lib/pageMeta";
 import { recordUsage } from "../../lib/reports";
 import SiteFooter from "../SiteFooter";
 import { formatIst } from "./LockCountdown";
-import { Grain, Guilloche } from "./CardArt";
 import DifficultyEdge from "../DifficultyEdge";
 import FinePrint from "../FinePrint";
 
@@ -335,10 +334,6 @@ function OutcomePage({
 function ResultsHero({ event, level, meta }: { event: EventSummary; level: Difficulty | null; meta: string | null }) {
   return (
     <header className="results-hero">
-      <div className="news-card-material" aria-hidden="true">
-        <Guilloche />
-        <Grain />
-      </div>
       <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
       <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
       <div className="results-hero-chips">

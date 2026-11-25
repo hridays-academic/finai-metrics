@@ -12,7 +12,7 @@ import { primeDifficulty, useCompanyDifficulty } from "../../hooks/useCompanyDif
 import DifficultyEdge from "../DifficultyEdge";
 import HeroObject from "./HeroObject";
 import FinePrint from "../FinePrint";
-import { Grain, Guilloche, HeroWaves } from "./CardArt";
+import { HeroWaves } from "./CardArt";
 
 interface LeagueHomeProps {
   user: UserPublic | null;
@@ -80,10 +80,6 @@ function PickerRow({ event, sectorName, history, index = 0 }: PickerRowProps & {
   return (
     <li data-scrub="tile" data-i={index}>
       <a className={`sector-tile ${colour} ${level ? "has-edge" : ""}`} href={`#/event/${event.id}`}>
-        <span className="tile-material" aria-hidden="true">
-          <Guilloche />
-          <Grain />
-        </span>
         <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
         <span className="tile-sector">{sectorName}</span>
         <h3 className="tile-name">{event.company.name}</h3>
@@ -585,7 +581,7 @@ function PracticeWhileYouWait() {
       <p className="section-text">Try a past quarter. You'll see your score straight away.</p>
       <ul className="company-grid practice-grid">
         {cards.map((c, i) => (
-          <PracticeTile key={c.code} card={c} index={i} badge />
+          <PracticeTile key={c.code} card={c} index={i} />
         ))}
       </ul>
     </section>

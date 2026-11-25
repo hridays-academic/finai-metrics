@@ -4,7 +4,6 @@ import { formatDay } from "../../lib/leagueFormat";
 import ThemeIcon from "./ThemeIcon";
 import TileGrid from "../TileGrid";
 import { useWhyItMatters, WhySummary } from "./WhyItMatters";
-import { Grain, Guilloche } from "../league/CardArt";
 
 const ICONS = new Set([
   "economictimes.indiatimes.com.ico", "livemint.com.png", "thehindubusinessline.com.png", "financialexpress.com.png",
@@ -44,10 +43,6 @@ function NewsCard({ item, top = false }: { item: NewsItem; top?: boolean }) {
         <>
           {/* The company cards' material (engraving, grain) in a deep shade of
               the story's theme colour. */}
-          <div className="news-card-material" aria-hidden="true">
-            <Guilloche />
-            <Grain />
-          </div>
           <div className="news-card-art" aria-hidden="true">
             <ThemeIcon theme={item.theme} size={64} />
           </div>

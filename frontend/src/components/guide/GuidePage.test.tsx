@@ -66,7 +66,8 @@ describe("the guide", () => {
       expect(sections[i].querySelectorAll(".g2-company")).toHaveLength(1);
       expect(sections[i].querySelector(".g3-stage > .g3-company")).not.toBeNull();
     }
-    expect(sections[1].querySelector(".g2-company .card3d-guilloche")).not.toBeNull();
+    // V7 (master plan): no engraving on tiles.
+    expect(sections[1].querySelector(".g2-company .card3d-guilloche")).toBeNull();
   });
 
   it("page 10 offers the practice and league actions in the v3 wording", () => {

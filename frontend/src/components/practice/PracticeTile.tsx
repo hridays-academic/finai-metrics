@@ -1,7 +1,6 @@
 import type { PracticeCard } from "../../lib/types";
 import { colourClass, DIFFICULTY_LABEL } from "../../lib/difficulty";
 import { MYSTERY_NAME } from "../../lib/practice";
-import { Grain, Guilloche } from "../league/CardArt";
 import DifficultyEdge from "../DifficultyEdge";
 import { n } from "../league/ResultsPage";
 
@@ -26,10 +25,6 @@ export default function PracticeTile({
   return (
     <li data-scrub={scrub ? "tile" : undefined} data-i={scrub ? index : undefined}>
       <a className={`sector-tile practice-tile ${colourClass(level)} ${level ? "has-edge" : ""}`} href={`#/practice/${card.code}`}>
-        <span className="tile-material" aria-hidden="true">
-          <Guilloche />
-          <Grain />
-        </span>
         <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
         <span className="tile-sector">
           {card.sector_name}

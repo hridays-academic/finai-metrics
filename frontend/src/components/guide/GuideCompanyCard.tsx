@@ -3,7 +3,6 @@ import { fetchRecentResults } from "../../lib/api";
 import { colourClass, DIFFICULTY_LABEL } from "../../lib/difficulty";
 import { useCompanyDifficulty } from "../../hooks/useCompanyDifficulty";
 import DifficultyEdge from "../DifficultyEdge";
-import { Grain, Guilloche } from "../league/CardArt";
 
 // A small version of a company's Home tile (2026-11-19, guide v3): the card
 // material (engraving and grain) in the company's difficulty colour, with its
@@ -45,10 +44,6 @@ export default function GuideCompanyCard({ company, className = "" }: { company:
   const level = useCompanyDifficulty(id);
   return (
     <div className={`sector-tile g2-company ${colourClass(level)} ${level ? "has-edge" : ""} ${className}`} aria-hidden="true">
-      <span className="tile-material">
-        <Guilloche />
-        <Grain />
-      </span>
       <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
       <span className="tile-sector">{c.sector}</span>
       <span className="tile-name">{c.name}</span>
