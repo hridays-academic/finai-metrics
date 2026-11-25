@@ -369,13 +369,13 @@ export default function CompanyStory({
       <div className="chapter-trends">
         {/* T2/T25: the league's own numbers, never Yahoo's margin or a revenue index. */}
         <QuarterSparkline
-          label="Revenue growth YoY†"
+          label="Revenue growth (YoY)"
           values={leagueSeries(history.actuals, "revenue_growth_yoy", quarters)}
           quarterLabels={quarterLabels}
           format={signedPct}
         />
         <QuarterSparkline
-          label="Op. margin†"
+          label="Operating margin"
           values={leagueSeries(history.actuals, "operating_margin", quarters)}
           quarterLabels={quarterLabels}
           format={(v) => `${v.toFixed(1)}%`}
@@ -662,7 +662,7 @@ function PriceLine({ points, asOf, drawn, indexed = false, hideDates = false }: 
   return (
     <figure className={`sparkline chapter-price ${drawn ? "is-drawn" : "draw-pending"}`}>
       <figcaption className="sparkline-head">
-        <span className="sparkline-label">{indexed ? "Share price index*" : "Share price*"}</span>
+        <span className="sparkline-label">{indexed ? "Share price index" : "Share price"}</span>
         <span className="sparkline-value">
           {rupees(last.close)} <span className="sparkline-when">{day(asOf ?? last.date)}</span>
         </span>
@@ -689,8 +689,8 @@ function PriceLine({ points, asOf, drawn, indexed = false, hideDates = false }: 
       )}
       <p className="footnote">
         {indexed
-          ? "*Weekly closes in the year before the results, as an index: the first week = 100."
-          : "*Weekly closes, each at least 30 days old."}
+          ? "Weekly closes in the year before the results, as an index: the first week = 100."
+          : "Weekly closes, each at least 30 days old."}
       </p>
     </figure>
   );

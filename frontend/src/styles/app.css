@@ -7493,3 +7493,12 @@ a.news-card-headline:hover {
   margin: 0;
   flex: 1 1 240px;
 }
+
+/* W4: a column's plain note instead of * or †. */
+.col-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}

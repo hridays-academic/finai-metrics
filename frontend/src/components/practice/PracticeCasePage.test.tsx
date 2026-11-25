@@ -67,7 +67,7 @@ describe("a practice company page", () => {
     expect(text).toContain("Mystery company");
     expect(text).toContain("A past quarter. Everything here is as it was before the results came out.");
     expect(text).toContain("Apr to Jun, this year");
-    expect(text).toContain("Revenue index*");
+    expect(text).toContain("Revenue index");
     for (const hidden of ["Open in Research", "research workspace", "Results expected", "Results are in", "Maruti", "2026"]) {
       expect(text).not.toContain(hidden);
     }

@@ -41,19 +41,19 @@ export function KeyStats({ event, history, historyError }: {
     <div className="key-stats">
       <dl className="hero-stats">
         <div>
-          <dt>Revenue*</dt>
+          <dt>Revenue</dt>
           <dd>{show(formatCrore(latest?.revenue))}</dd>
-          <dd className="hero-stat-sub">{when}</dd>
+          <dd className="hero-stat-sub">{when}, Yahoo Finance</dd>
         </div>
         <div>
-          <dt>Profit*</dt>
+          <dt>Profit</dt>
           <dd>{show(formatCrore(latest?.net_income))}</dd>
-          <dd className="hero-stat-sub">{when}</dd>
+          <dd className="hero-stat-sub">{when}, Yahoo Finance</dd>
         </div>
         <div>
-          <dt>Op. margin†</dt>
+          <dt>Operating margin</dt>
           <dd>{show(margin ? `${margin.value.toFixed(1)}%` : null)}</dd>
-          <dd className="hero-stat-sub">{margin ? `Quarter to ${quarterName(margin.end)}` : when}</dd>
+          <dd className="hero-stat-sub">{margin ? `Quarter to ${quarterName(margin.end)}, league figure` : when}</dd>
         </div>
       </dl>
       <ul className="grouped-list hero-dates">
@@ -76,7 +76,7 @@ export function KeyStats({ event, history, historyError }: {
       </ul>
       {history && (
         <FinePrint>
-          * {history.provider_source}. Latest quarter available
+          Revenue and profit: {history.provider_source}. Latest quarter available
           {history.provider_as_of ? `, fetched ${formatDay(history.provider_as_of, true)}` : ""}. Definitions are in Research below.
         </FinePrint>
       )}

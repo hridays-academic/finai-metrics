@@ -404,11 +404,12 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         </h1>
         {!user && (
           <p className="hero-note">
-            Look around for free.{" "}
+            {/* W2 (approved 2026-11-24, decisions 2.15). */}
+            Free to play.{" "}
             <button type="button" className="link-button" onClick={onOpenAuth}>
               Sign in
             </button>{" "}
-            to make your forecasts.
+            to save your forecasts.
           </p>
         )}
         <GuideStrip />

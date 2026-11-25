@@ -48,7 +48,8 @@ export function QuartersTable({
   practice?: PracticeTableOptions;
 }) {
   const quarterName = practice?.quarterName ?? quarterLabel;
-  const revenueLabel = practice ? "Revenue index*" : "Revenue*";
+  // W4 (master plan): plain column notes instead of * and † (approved 2.18).
+  const revenueLabel = practice ? "Revenue index" : "Revenue";
   const revenueCell = (v: number | null) => (v === null ? NA : practice ? v.toFixed(0) : formatCrore(v));
   const quarters = previousQuarterEnds(event.period_end_date, 8);
   const byEnd = new Map(history?.provider_rows.map((r) => [r.period_end_date, r]));
@@ -79,7 +80,7 @@ export function QuartersTable({
               {/* Practice: the league's growth, not the revenue index (T25). */}
               {practice ? (
                 <QuarterSparkline
-                  label="Revenue growth YoY†"
+                  label="Revenue growth (YoY)"
                   values={leagueSeries(history.actuals, "revenue_growth_yoy", oldestFirst)}
                   quarterLabels={shortLabels}
                   format={signedPct}
@@ -94,7 +95,7 @@ export function QuartersTable({
               )}
               {/* T2: the league's margin only; Yahoo's (a different definition) is not shown. */}
               <QuarterSparkline
-                label="Op. margin†"
+                label="Operating margin"
                 values={leagueSeries(history.actuals, "operating_margin", oldestFirst)}
                 quarterLabels={shortLabels}
                 format={(v) => `${v.toFixed(1)}%`}
@@ -105,10 +106,24 @@ export function QuartersTable({
                 <thead>
                   <tr>
                     <th>Quarter</th>
-                    <th>{revenueLabel}</th>
-                    <th>Revenue growth YoY†</th>
-                    <th>Op. margin†</th>
-                    {kpiLabel && <th>{kpiLabel}†</th>}
+                    <th>
+                      {revenueLabel}
+                      <span className="col-note">Yahoo Finance figure</span>
+                    </th>
+                    <th>
+                      Revenue growth (YoY)
+                      <span className="col-note">League figure, from the company's filing</span>
+                    </th>
+                    <th>
+                      Operating margin
+                      <span className="col-note">League figure, from the company's filing</span>
+                    </th>
+                    {kpiLabel && (
+                      <th>
+                        {kpiLabel}
+                        <span className="col-note">League figure, from the company's filing</span>
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -140,18 +155,18 @@ export function QuartersTable({
             // One "Sources and notes" in practice, holding both notes.
             <FinePrint>
               <span className="fine-print-line">
-                * {history.provider_source}. {history.provider_definition} Revenue is shown as an index: the oldest
+                Yahoo Finance figures: {history.provider_source}. {history.provider_definition} Revenue is shown as an index: the oldest
                 quarter here = 100.
               </span>
               <span className="fine-print-line">
-                † From the company's filings under this league's definitions
+                League figures: from the company's filings under this league's definitions
                 {history.actuals.some((x) => x.source_url) ? " (links open the source)" : ""}. These are the same
                 definitions your forecast is scored on.
               </span>
             </FinePrint>
           ) : (
             <FinePrint>
-              * {history.provider_source}.{" "}
+              Yahoo Finance figures: {history.provider_source}.{" "}
               {history.provider_as_of
                 ? `Fetched ${new Date(history.provider_as_of).toLocaleDateString("en-IN")}. `
                 : "Not available for this company. "}
@@ -160,7 +175,7 @@ export function QuartersTable({
           )}
           {!practice && (
             <FinePrint>
-              † From the company's filings under this league's definitions (links open the source). These are the same
+              League figures: from the company's filings under this league's definitions (links open the source). These are the same
               definitions your forecast is scored on.
             </FinePrint>
           )}
