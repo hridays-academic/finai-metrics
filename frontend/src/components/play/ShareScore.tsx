@@ -1,6 +1,6 @@
 // R9/U4 (master plan): a share image for a score, made in the browser. No
 // names, no school: the score, how many ranges caught the result, and the
-// site. Phones use the share sheet; elsewhere the image downloads. DRAFT wording.
+// site. Phones use the share sheet; elsewhere the image downloads. Wording approved at Stop 2.
 export default function ShareScore({ points, hits, total, title = "Quick round" }: { points: number; hits: number; total: number; title?: string }) {
   async function share() {
     const blob = await drawCard(title, points, hits, total);

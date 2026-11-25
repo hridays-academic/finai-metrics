@@ -8334,6 +8334,67 @@ a.news-card-headline:hover {
   gap: var(--space-3);
 }
 
+/* End of a round (Stop 2): one dot per card; gold = inside (yours), grey = missed.
+   The button is 44px for touch; the dot inside it is 18px. */
+.quick-dots {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  max-width: calc(10 * 44px + 9 * 2px);
+}
+
+/* One row of ten even on a 320px phone: each target is 44px tall and as wide
+   as the row allows (at most 44px). */
+.quick-dot {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.quick-dot::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-2);
+  opacity: 0.45;
+}
+
+.quick-dot.is-hit::before {
+  background: var(--gold);
+  opacity: 1;
+}
+
+.quick-dot[aria-pressed="true"]::before {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 3px;
+}
+
+.quick-dot-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
+}
+
+.quick-dot-detail dt {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.quick-dot-detail dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 /* New Home (master plan phase 5): the line, the main action, the toy. */
 .hero-lede {
   max-width: 52ch;
@@ -8360,16 +8421,6 @@ a.news-card-headline:hover {
   width: 100%;
 }
 
-.hero-toy-caption {
-  text-align: center;
-}
-
-.hero-toy-caption {
-  margin: 0;
-  color: var(--text-2);
-  font-size: var(--text-sm);
-}
-
 @media (max-width: 640px) {
   .hero-actions-main .btn {
     flex: 1 1 100%;
@@ -8383,6 +8434,56 @@ a.news-card-headline:hover {
 /* P3: practice filters. */
 .practice-filters {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.practice-filter-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+}
+
+.practice-filter-selects {
+  display: none;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.filter-select {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+}
+
+.filter-select > span {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.filter-select select {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  min-height: 42px;
+}
+
+/* Below this the chips no longer fit one row. */
+@media (max-width: 900px) {
+  .practice-filter-chips {
+    display: none;
+  }
+
+  .practice-filter-selects {
+    display: flex;
+  }
 }

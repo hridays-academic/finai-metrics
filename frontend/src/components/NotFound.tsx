@@ -1,6 +1,6 @@
 import SiteFooter from "./SiteFooter";
 
-// T16 (master plan): any address that isn't a page. DRAFT wording (vault:
+// T16 (master plan): any address that isn't a page. Wording approved at Stop 2 (vault:
 // "Decisions for Hriday (master plan)").
 export default function NotFound() {
   return (

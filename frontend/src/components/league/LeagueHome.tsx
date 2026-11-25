@@ -430,8 +430,7 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         </div>
         </div>
         <div className="hero-toy">
-          <HeroObject onStart={() => (window.location.hash = "#/play")} />
-          <p className="hero-toy-caption">Drag the gold range to start a quick round.</p>
+          <HeroObject />
         </div>
       </header>
 
@@ -466,15 +465,14 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
       {cards.length > 0 && <PracticeWhileYouWait />}
 
       {/* H1/W6/H13 (master plan): between seasons, what's next, never
-          "No companies are open right now". DRAFT wording; the opening
-          date (SEASON_OPENS) is Hriday's to set. */}
+          "No companies are open right now". Wording approved at Stop 2. */}
       {upcoming !== null && open.length === 0 && (
         <section className="section season-card" aria-labelledby="waiting-title">
           <h2 className="section-title" id="waiting-title">
             What's next
           </h2>
           <p className="section-text">
-            {SEASON_OPENS ? `The January season opens around ${SEASON_OPENS}. Practise now.` : "The January season opens soon. Practise now."}
+            The January season opens in early January. Practise now.
           </p>
           {waiting.length > 0 && (
             <ul className="group season-calendar">
@@ -537,8 +535,6 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
 
 // The short way into the guide (replaced the "How to play" band, 2026-11-18).
 // The first-visit spotlight circles it (SpotlightIntro.tsx, id below).
-// The January season's opening date, once Hriday sets it (e.g. "5 January").
-const SEASON_OPENS: string | null = null;
 
 // H13/E14 (master plan): one opt-in reminder, as a calendar file for the
 // results day. Nothing is stored or sent.

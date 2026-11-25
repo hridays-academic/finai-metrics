@@ -24,7 +24,7 @@ vi.mock("./ForecastForm", () => ({ default: () => <form aria-label="forecast for
 import * as api from "../../lib/api";
 import ForecastPage, { KeyStats, ScoredPanel } from "./ForecastPage";
 import { RecentResults } from "./LeagueHome";
-import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, formatOutcome, outcomeSummary, rupeeNote } from "./outcome";
+import { LEAGUE_FOOTNOTE, NO_FORECAST_LINE, formatOutcome, lazyBenchmark, outcomeSummary, rupeeNote } from "./outcome";
 import ResultsPage from "./ResultsPage";
 
 const mocked = vi.mocked(api);
@@ -100,8 +100,8 @@ describe("results page without a score", () => {
     expect(screen.getAllByRole("link", { name: "marico.com" })[0].getAttribute("href")).toBe(SRC);
     expect(screen.getByText(LEAGUE_FOOTNOTE)).toBeTruthy();
     expect(screen.getByText(/0 did here/)).toBeTruthy();
-    // No personal points; only R4's "would have scored" lines mention points.
-    expect(screen.queryAllByText(/points/).every((el) => /would have scored/.test(el.textContent ?? ""))).toBe(true);
+    // No personal points; only the lazy-guess benchmark lines mention points.
+    expect(screen.queryAllByText(/points/).every((el) => /^Last year.s figure ±2 points/.test(el.textContent ?? ""))).toBe(true);
     expect(screen.queryByText("Your score")).toBeNull();
   });
 
@@ -178,5 +178,15 @@ describe("Home recent results", () => {
     expect(screen.getAllByText("Revenue growth +13.0%, margin 18.2%, volume growth +10.0%")).toHaveLength(2);
     expect(screen.getByRole("link", { name: /Marico.*See results/ }).getAttribute("href")).toBe("#/results/3");
     expect(screen.getByRole("link", { name: /Dabur India.*Your score 62.7/ })).toBeTruthy();
+  });
+});
+
+describe("lazyBenchmark (Stop 2, item 3)", () => {
+  it("scores last year's figure ±2 points, and says when it missed", () => {
+    expect(lazyBenchmark(11.0, 10.3, "%", "operating_margin")).toMatch(
+      /^Last year's figure ±2 points \(8\.3% to 12\.3%\) would have scored [\d.]+ points\.$/
+    );
+    expect(lazyBenchmark(20.0, 10.3, "%", "operating_margin")).toMatch(/would have missed, for [\d.]+ points\.$/);
+    expect(lazyBenchmark(11.0, null, "%", "operating_margin")).toBeNull();
   });
 });

@@ -84,6 +84,10 @@
 
   /* Meaning */
   --gold: #f2c14e;
+  /* Logo A (Hriday at Stop 2): the ball off-centre in the gold range on the slab. */
+  --logo-slab: #2a303c;
+  --logo-ball: #efede6;
+  --logo-ring: transparent;
   --on-gold: #0b0d12;
   --positive: #3ddc84;
   --negative: #ff6b6b;
@@ -378,6 +382,9 @@
 
   /* Light-mode gold that stays gold, not olive (approved 2026-11-24). */
   --gold: #a86a00;
+  --logo-slab: #bfbaad;
+  --logo-ball: #ffffff;
+  --logo-ring: #14161b; /* light mode: the ball stays white, with a thin dark ring */
   --gold-capsule: #d9930d;
   --on-gold: #ffffff;
   --positive: #0f7a3e;

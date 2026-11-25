@@ -66,7 +66,7 @@ export function cardPoints(base: number, hit: boolean, streakBefore: number, gol
   return { points: base * multiplier + (gold && hit ? GOLD_BONUS : 0), streak, multiplier };
 }
 
-// "7 of 10: your ranges caught 70%. Aim for 8." (draft wording)
+// "7 of 10: your ranges caught 70%. Aim for 8." (approved at Stop 2)
 export function endLine(hits: number, total: number): string {
   const pct = total ? Math.round((hits / total) * 100) : 0;
   const aim = Math.round(total * 0.8);

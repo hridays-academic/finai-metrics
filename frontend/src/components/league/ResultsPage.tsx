@@ -323,7 +323,7 @@ function OutcomePage({
         <FinePrint>{LEAGUE_FOOTNOTE}</FinePrint>
       </section>
 
-      {/* R5 (master plan, DRAFT wording): what to do next. */}
+      {/* R5 (master plan, wording approved at Stop 2): what to do next. */}
       <section className="section results-next" aria-labelledby="results-next-title">
         <h2 className="section-title" id="results-next-title">
           Keep practising

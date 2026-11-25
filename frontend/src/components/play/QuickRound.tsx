@@ -18,17 +18,26 @@ import ShareScore from "./ShareScore";
 // Quick rounds, #/play (master plan phase 5: E1, E9-E12, E15). One card is
 // one number: set a range, submit, see the ball land. Engagement rules D: a
 // natural end, no countdowns, combos and a gold card that reward skill, sound
-// off by default. Nothing is saved yet (phase 6). DRAFT wording throughout
+// off by default. Nothing is saved yet (phase 6). Wording approved at Stop 2
 // (vault: "Decisions for Hriday (master plan)", phase 5).
 
 const PLAYED_KEY = "stackly_played_quick";
 const BEST_KEY = "stackly_best_quick";
 
+// The daily challenge arrives in phase 6; until then the end screen doesn't mention it.
+export const DAILY_CHALLENGE = false;
+
 const HINTS = [
-  "Start from last year's figure, marked on the bar. Most numbers don't jump far in a year.",
+  "Last year's figure is marked on the bar. Start there, then ask what has changed since.",
   "Aim to be right 8 times out of 10. If a result just outside your range would surprise you, it's wide enough.",
   "Narrow ranges score more, but only when the result lands inside.",
 ];
+
+// Card titles in sentence case, without "(YoY)": the explanation line says it.
+export function cardTitle(label: string): string {
+  const t = label.replace(/\s*\(YoY\)\s*$/i, "").trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 
 function readNumber(key: string): number | null {
   try {
@@ -104,6 +113,7 @@ export default function QuickRound() {
   const [streak, setStreak] = useState(0);
   const startedAt = useRef(Date.now());
   const [best, setBest] = useState<number | null>(() => readNumber(BEST_KEY));
+  const [picked, setPicked] = useState<number | null>(null);
 
   function start() {
     setError(null);
@@ -118,6 +128,7 @@ export default function QuickRound() {
         setAnswers([]);
         setStreak(0);
         setFinished(false);
+        setPicked(null);
         startedAt.current = Date.now();
         recordUsage("round_started", "play");
       })
@@ -212,7 +223,7 @@ export default function QuickRound() {
           </p>
           {card.mystery_line && <p className="quick-card-line">{card.mystery_line}</p>}
           <h2 className="quick-card-title" id="quick-card-title">
-            {card.label}
+            {cardTitle(card.label)}
           </h2>
           {explainMetric(card.metric_key, card.label) && <p className="round-glossary">{explainMetric(card.metric_key, card.label)}</p>}
 
@@ -284,6 +295,7 @@ export default function QuickRound() {
               <dd>{Math.max(1, Math.round((Date.now() - startedAt.current) / 60000))} min</dd>
             </div>
           </dl>
+          <EndDots answers={answers} picked={picked} onPick={setPicked} />
           {round.first && <p className="section-text">That was your first round: three Easy cards. Next rounds have 10 cards from every sector.</p>}
           <div className="quick-end-actions">
             <button type="button" className="btn btn-primary" onClick={start}>
@@ -291,11 +303,65 @@ export default function QuickRound() {
             </button>
             <ShareScore points={Math.round(total)} hits={hits} total={round.cards.length} />
           </div>
-          <p className="section-text">That's a good place to stop. The daily challenge resets at midnight.</p>
+          <p className="section-text">
+            {DAILY_CHALLENGE ? "That's a good place to stop. The daily challenge resets at midnight." : "That's a good place to stop."}
+          </p>
         </section>
       )}
 
-      <SiteFooter />
+      {(done || error) && <SiteFooter />}
+    </div>
+  );
+}
+
+// The end of a round: one dot per card, gold when the result landed inside.
+// Tapping a dot shows that card's range, result and last year.
+function EndDots({ answers, picked, onPick }: { answers: Answer[]; picked: number | null; onPick: (i: number | null) => void }) {
+  const a = picked === null ? null : answers[picked];
+  const u = a?.card.unit ?? "";
+  return (
+    <div className="quick-dots-wrap">
+      <div className="quick-dots" role="group" aria-label="Your cards">
+        {answers.map((x, i) => (
+          <button
+            key={x.card.id}
+            type="button"
+            className={`quick-dot ${x.reveal.hit ? "is-hit" : "is-miss"}`}
+            aria-pressed={picked === i}
+            aria-label={`Card ${i + 1}: ${cardTitle(x.card.label)}, ${x.reveal.hit ? "inside" : "missed"}`}
+            onClick={() => onPick(picked === i ? null : i)}
+          />
+        ))}
+      </div>
+      {a && (
+        <dl className="quick-dot-detail" aria-live="polite">
+          <div>
+            <dt>{cardTitle(a.card.label)}</dt>
+            <dd>
+              {a.reveal.name}, {a.reveal.quarter}
+            </dd>
+          </div>
+          <div>
+            <dt>Your range</dt>
+            <dd>
+              {n(a.range[0])}
+              {u} to {n(a.range[1])}
+              {u}
+            </dd>
+          </div>
+          <div>
+            <dt>Result</dt>
+            <dd>
+              {n(a.reveal.actual)}
+              {u} ({a.reveal.hit ? "inside" : `missed by ${n(a.reveal.missed_by)}`})
+            </dd>
+          </div>
+          <div>
+            <dt>Last year</dt>
+            <dd>{a.card.last_year === null ? "N/A" : `${n(a.card.last_year)}${u}`}</dd>
+          </div>
+        </dl>
+      )}
     </div>
   );
 }

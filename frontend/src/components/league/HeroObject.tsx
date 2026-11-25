@@ -38,11 +38,9 @@ const DIP_K = 55;
 const DIP_C = 4.2;
 const ROLLING = 5 / 7; // a rolling sphere feels 5/7 of the range's acceleration
 
-// H4 (master plan): the toy is the round's preview: drag the gold range and
-// a quick round starts (`onStart`).
-export default function HeroObject({ onStart }: { onStart?: () => void } = {}) {
-  const startRef = useRef(onStart);
-  startRef.current = onStart;
+// The toy stays a toy (Hriday at Stop 2): dragging the gold range never
+// starts anything.
+export default function HeroObject() {
   const sceneRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLSpanElement>(null);
   const rangeRef = useRef<HTMLSpanElement>(null);
@@ -333,7 +331,6 @@ export default function HeroObject({ onStart }: { onStart?: () => void } = {}) {
       } else if (mode === "range") {
         // Glide on a little after letting go.
         rangeTarget = Math.min(W - rangeW, Math.max(0, rangeX + rangeV * 0.14));
-        if (travelled > 40 && startRef.current) window.setTimeout(() => startRef.current?.(), 450);
       }
       mode = "idle";
       scene.classList.remove("is-dragging");

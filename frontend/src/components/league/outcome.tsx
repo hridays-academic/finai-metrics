@@ -56,7 +56,7 @@ export function hostOf(url: string): string {
   }
 }
 
-// T23 (master plan, DRAFT wording): IT companies earn mostly in dollars, so
+// T23 (master plan, wording approved at Stop 2): IT companies earn mostly in dollars, so
 // when reported growth and constant-currency growth differ by more than 2
 // points, say it was the rupee and give the gap. Null otherwise.
 export function rupeeNote(metrics: { metric_key: string; actual: number | null }[], sector: string): string | null {
@@ -73,13 +73,19 @@ export function rupeeNote(metrics: { metric_key: string; actual: number | null }
     : `Revenue grew ${r} in rupees but ${c} in constant currency. Most of the ${gap.toFixed(1)}-point gap is the rupee: it was stronger against the dollar, so each dollar earned was worth fewer rupees.`;
 }
 
-// R4 (master plan, DRAFT wording): the narrowest sensible range, one point
-// wide around the result, and what it would have scored (lib/scoring).
-export function bestPossible(actual: number, lazy: number | null, unit: string): string {
-  const lo = Math.round((actual - 0.5) * 10) / 10;
-  const hi = Math.round((actual + 0.5) * 10) / 10;
+// R4 (Hriday at Stop 2): what the lazy guess, widened to last year's figure
+// ±2 points, would have scored on this number. DRAFT wording (vault:
+// "Decisions for Hriday (master plan)", Stop 2 answers).
+export const LAZY_BAND = 2;
+export function lazyBenchmark(actual: number, lazy: number | null, unit: string, metricKey: string): string | null {
+  if (lazy === null) return null;
+  const lo = Math.round((lazy - LAZY_BAND) * 10) / 10;
+  const hi = Math.round((lazy + LAZY_BAND) * 10) / 10;
   const s = scoreMetric(lo, hi, actual, lazy);
-  return `A range one point wide around the result, ${formatOutcome(lo, "operating_margin", unit)} to ${formatOutcome(hi, "operating_margin", unit)}, would have scored ${n(s.points)} points.`;
+  const range = `${formatOutcome(lo, metricKey, unit)} to ${formatOutcome(hi, metricKey, unit)}`;
+  return s.hit
+    ? `Last year's figure ±${LAZY_BAND} points (${range}) would have scored ${n(s.points)} points.`
+    : `Last year's figure ±${LAZY_BAND} points (${range}) would have missed, for ${n(s.points)} points.`;
 }
 
 // R1/R6 (master plan): one comparison table, not three identical cards.
@@ -119,8 +125,10 @@ export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]
                     />
                   )}
                   {m.note && <span className="outcome-row-note">{m.note}</span>}
-                  {/* R4: what would have scored best (DRAFT wording). */}
-                  {m.actual !== null && <span className="outcome-row-note">{bestPossible(m.actual, m.lazy, m.unit)}</span>}
+                  {/* R4: what the lazy guess ±2 points would have scored (DRAFT wording). */}
+                  {m.actual !== null && lazyBenchmark(m.actual, m.lazy, m.unit, m.metric_key) && (
+                    <span className="outcome-row-note">{lazyBenchmark(m.actual, m.lazy, m.unit, m.metric_key)}</span>
+                  )}
                 </th>
                 <td className="outcome-result">{formatOutcome(m.actual, m.metric_key, m.unit)}</td>
                 <td>{formatOutcome(m.lazy, m.metric_key, m.unit)}</td>

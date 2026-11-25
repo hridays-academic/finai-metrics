@@ -238,7 +238,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
             </label>
 
             {/* T18 (master plan): reset emails need GMAIL_ADDRESS and GMAIL_APP_PASSWORD in
-                Vercel. Until then (VITE_RESET_EMAIL unset) the link is hidden. DRAFT wording. */}
+                Vercel. Until then (VITE_RESET_EMAIL unset) the link is hidden. Wording approved at Stop 2. */}
             {mode === "signin" &&
               (RESET_EMAIL_ON ? (
                 <button type="button" className="btn btn-tertiary auth-forgot" onClick={() => setMode("forgot")}>

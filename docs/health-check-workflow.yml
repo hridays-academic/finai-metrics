@@ -1,17 +1,34 @@
 # TO INSTALL (Hriday): this file must live at .github/workflows/health.yml.
-# Claude Code's GitHub login can't create workflow files (the token lacks the
-# `workflow` scope), so add it yourself: on github.com open the repo, Add file
-# > Create new file, name it .github/workflows/health.yml, paste everything
-# below this comment block, and commit to master. Or run
-# `gh auth refresh -s workflow` once and tell Claude to move it.
+# Claude Code's GitHub login can't create workflow files (its token lacks the
+# `workflow` scope). Steps:
+#   1. On github.com, open the repository and make sure the branch picker
+#      shows master.
+#   2. Add file > Create new file. Name it exactly: .github/workflows/health.yml
+#   3. Paste everything from the line "name: Health check" to the end of this
+#      file (not this comment block).
+#   4. Commit changes > Commit directly to the master branch > Commit changes.
+#   5. Open the Actions tab > Health check > Run workflow, to check it once.
+#      A green tick means the site answered "production".
+#   6. Your avatar > Settings > Notifications > System > Actions: tick
+#      "Email" and "Only notify for failed workflows".
+# (Or run `gh auth refresh -s workflow` once and tell Claude to move it.)
 #
-# S14 (master plan): checks the live site's health every 15 minutes. A run
-# fails only when two checks a minute apart both fail; GitHub then emails the
-# repo owner (Settings > Notifications > Actions: email, failed workflows only).
+# S14 (master plan) and keep-warm (Hriday at Stop 2: no Vercel cron). The
+# checks also keep the server warm for classes:
+#   - every 10 minutes from 07:30 to 16:30 India time, Monday to Friday;
+#   - every 30 minutes at all other times.
+# India time is UTC+5:30, so 07:30-16:30 IST is 02:00-11:00 UTC; GitHub's
+# cron runs in UTC. GitHub may start a scheduled run a few minutes late.
+# A run fails only when two checks a minute apart both fail; GitHub then
+# emails the repo owner (step 6).
 name: Health check
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/10 2-10 * * 1-5"        # 07:30-16:20 IST, weekdays, every 10 min
+    - cron: "0 11 * * 1-5"             # 16:30 IST
+    - cron: "0,30 0-1,12-23 * * 1-5"   # the rest of each weekday, every 30 min
+    - cron: "30 11 * * 1-5"            # 17:00 IST
+    - cron: "0,30 * * * 0,6"           # Saturday and Sunday (UTC), every 30 min
   workflow_dispatch:
 permissions: {}
 jobs:
