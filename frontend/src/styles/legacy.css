@@ -3273,7 +3273,7 @@ button {
 }
 .tooltip.is-placed {
   visibility: visible;
-  animation: tooltip-in 160ms var(--ease-out);
+  animation: tooltip-in var(--motion-fast) var(--ease-out);
 }
 .tooltip-top {
   transform-origin: var(--arrow-x) 100%;
@@ -3481,7 +3481,7 @@ button {
   box-shadow: inset 0 1px 0 var(--lg-edge-top), var(--lg-tooltip-shadow);
   color: var(--text-primary);
   outline: none;
-  animation: sheet-up 220ms var(--ease-out);
+  animation: sheet-up var(--motion-base) var(--ease-out);
 }
 .why-sheet-handle {
   align-self: center;

@@ -1,4 +1,5 @@
 import { type FormEvent, forwardRef, useEffect, useRef, useState } from "react";
+import ErrorState from "../ErrorState";
 import {
   ApiError, fetchLeagueConfig, fetchPracticeCase, fetchPracticeCases, fetchPracticePrices, submitPracticeAttempt,
 } from "../../lib/api";
@@ -68,7 +69,7 @@ export default function PracticeCasePage({ code, onOpenAuth }: Props) {
         <a className="back-link" href="#/practice" data-keep-scroll>
           ← Practice
         </a>
-        <div className="form-error">{error}</div>
+        <ErrorState message={error} />
       </div>
     );
   }

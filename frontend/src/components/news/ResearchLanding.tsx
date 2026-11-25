@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ErrorState from "../ErrorState";
 import { ApiError, fetchMacro, fetchNews, fetchWorldEvents } from "../../lib/api";
 import type { MacroSeries, NewsItem, NewsView, WorldEvent } from "../../lib/types";
 import NewsSourceNote from "./NewsSourceNote";
@@ -80,7 +81,7 @@ export default function ResearchLanding() {
             </button>
           ))}
         </div>
-        {error && <div className="form-error">{error}</div>}
+        {error && <ErrorState message={error} />}
         {!items && !error && <p className="empty-note">Loading...</p>}
         {items && items.length === 0 && (
           <p className="empty-note">No recent headlines on these topics yet. They're checked every hour.</p>

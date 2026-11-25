@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ErrorState from "../ErrorState";
 import { ApiError, fetchPracticeCases } from "../../lib/api";
 import { mysteryOn, setMystery, surprise } from "../../lib/practice";
 import { replaceRoute } from "../../lib/router";
@@ -66,7 +67,7 @@ export default function PracticePage({ user }: { user: UserPublic | null }) {
           </button>
         </div>
       </header>
-      {error && <div className="form-error">{error}</div>}
+      {error && <ErrorState message={error} />}
       {!cards && !error && <p className="empty-note">Loading...</p>}
       {cards && (
         <ul className="company-grid practice-grid">

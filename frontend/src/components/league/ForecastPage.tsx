@@ -1,4 +1,5 @@
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import ErrorState from "../ErrorState";
 import {
   ApiError, fetchLeagueConfig, fetchLeagueEvent, fetchMyForecast, fetchOutcome, fetchResearchHistory, fetchWorkspace,
 } from "../../lib/api";
@@ -195,7 +196,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
     return (
       <div className="page">
         <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
-        <div className="form-error">{error}</div>
+        <ErrorState message={error} />
       </div>
     );
   }

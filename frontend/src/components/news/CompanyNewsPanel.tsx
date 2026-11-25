@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ErrorState from "../ErrorState";
 import { ApiError, fetchCompanyNews } from "../../lib/api";
 import type { CompanyNews, Filing } from "../../lib/types";
 import { formatDay } from "../../lib/leagueFormat";
@@ -46,7 +47,7 @@ export default function CompanyNewsPanel({ symbol, name }: { symbol: string; nam
     };
   }, [symbol]);
 
-  if (error) return <div className="form-error">{error}</div>;
+  if (error) return <ErrorState message={error} />;
   if (!data) return null;
 
   return (

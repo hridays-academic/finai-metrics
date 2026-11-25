@@ -209,8 +209,15 @@
   --focus-ring: 0 0 0 2px var(--page), 0 0 0 4px var(--focus);
 
   /* Motion: responses to an action, plus the story's scroll turn. */
-  --duration-press: 120ms;
-  --duration-open: 250ms;
+  /* M4 (master plan): one motion scale. Three durations, one easing, one
+     spring. (Exception, approved by Hriday 2026-11-18: the chapter pill's
+     900 ms slide.) */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-slow: 600ms;
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-press: var(--motion-fast);
+  --duration-open: var(--motion-base);
   --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
 
   --max: 1120px;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import ErrorState from "../ErrorState";
 import { ApiError, fetchLeagueConfig, fetchLeagueEvents, fetchMyResult, fetchMySeason, fetchPracticeCases, fetchResearchHistory, fetchRecentResults } from "../../lib/api";
 import { daysUntil, formatCrore, formatDay } from "../../lib/leagueFormat";
 import type { EventSummary, LeagueConfig, MetricResult, PracticeCard, ResearchHistory, Season, UserPublic, RecentResult } from "../../lib/types";
@@ -415,7 +416,7 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         <HeroObject />
       </header>
 
-      {error && <div className="form-error">{error}</div>}
+      {error && <ErrorState message={error} />}
       {upcoming === null && !error && <SkeletonTiles label="Loading companies" />}
 
       {upcoming !== null && open.length === 0 && <PracticeWhileYouWait />}

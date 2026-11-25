@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import ErrorState from "../ErrorState";
 import {
   ApiError, clearWorkspace, fetchCompany, fetchCompanyNews, fetchLeagueConfig, fetchLeagueEvent, fetchResearchHistory,
   fetchWorkspace, saveWorkspace,
@@ -177,7 +178,7 @@ export default function WorkspacePage({ eventId, user, onUserChange, onOpenAuth,
     return (
       <div className="page">
         <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
-        <div className="form-error">{error}</div>
+        <ErrorState message={error} />
       </div>
     );
   }
