@@ -406,6 +406,8 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
         <h1 className="hero-title">
           Forecast company <span className="hero-title-gold">results</span>
         </h1>
+        {/* H2 (approved 2.30): what the game is, in one line. */}
+        <p className="hero-lede">Forecast a real company's next results as a range. The closer and tighter your range, the more points.</p>
         {!user && (
           <p className="hero-note">
             {/* W2 (approved 2026-11-24, decisions 2.15). */}
@@ -416,9 +418,21 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
             to save your forecasts.
           </p>
         )}
-        <GuideStrip />
+        {/* H3/H5 (approved 2.30): the main action on the first screen. */}
+        <div className="hero-actions-main" id="guide-entry">
+          <a className="btn btn-primary btn-arrow" href="#/play">
+            Play a quick round
+            <span className="btn-arrow-icon" aria-hidden="true" />
+          </a>
+          <a className="btn btn-secondary" href="#/learn">
+            Learn how it works (10 short pages)
+          </a>
         </div>
-        <HeroObject />
+        </div>
+        <div className="hero-toy">
+          <HeroObject onStart={() => (window.location.hash = "#/play")} />
+          <p className="hero-toy-caption">Drag the gold range to start a quick round.</p>
+        </div>
       </header>
 
       {error && <ErrorState message={error} />}
@@ -451,30 +465,32 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
           "No companies are open right now" when none are. */}
       {cards.length > 0 && <PracticeWhileYouWait />}
 
+      {/* H1/W6/H13 (master plan): between seasons, what's next, never
+          "No companies are open right now". DRAFT wording; the opening
+          date (SEASON_OPENS) is Hriday's to set. */}
       {upcoming !== null && open.length === 0 && (
-        <section className="section" aria-labelledby="waiting-title">
+        <section className="section season-card" aria-labelledby="waiting-title">
           <h2 className="section-title" id="waiting-title">
-            No companies are open right now
+            What's next
           </h2>
           <p className="section-text">
-            Each company opens for forecasts a week or two before it reports. The next results season starts with the
-            companies that report first.
-            {waiting.length > 0 && " These forecasts have locked and are waiting for results."}
+            {SEASON_OPENS ? `The January season opens around ${SEASON_OPENS}. Practise now.` : "The January season opens soon. Practise now."}
           </p>
           {waiting.length > 0 && (
-            <ul className="company-grid">
-              {waiting.map((e, i) => (
-                <PickerRow
-                  key={e.id}
-                  index={i}
-                  event={e}
-                  sectorName={sectorName(e.company.sector)}
-                  history={histories[e.company.id]}
-                />
+            <ul className="group season-calendar">
+              {waiting.map((e) => (
+                <li key={e.id} className="list-row">
+                  <span className="list-row-main">
+                    <span className="list-row-title">{e.company.name}</span>
+                    <span className="list-row-sub">Results due {formatDay(e.results_date, true)}</span>
+                  </span>
+                  <button type="button" className="btn btn-secondary btn-compact" onClick={() => remindMe(e)}>
+                    Remind me
+                  </button>
+                </li>
               ))}
             </ul>
           )}
-          {waiting.length > 0 && <SourceNote events={waiting} histories={histories} />}
         </section>
       )}
 
@@ -521,6 +537,33 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
 
 // The short way into the guide (replaced the "How to play" band, 2026-11-18).
 // The first-visit spotlight circles it (SpotlightIntro.tsx, id below).
+// The January season's opening date, once Hriday sets it (e.g. "5 January").
+const SEASON_OPENS: string | null = null;
+
+// H13/E14 (master plan): one opt-in reminder, as a calendar file for the
+// results day. Nothing is stored or sent.
+function remindMe(e: EventSummary) {
+  const day = e.results_date.split("-").join("");
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Stackly//Results//EN",
+    "BEGIN:VEVENT",
+    `UID:stackly-${e.id}@stackslymetrics.com`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
+    `DTSTART;VALUE=DATE:${day}`,
+    `SUMMARY:${e.company.name} results (Stackly)`,
+    `URL:https://stackslymetrics.com/#/results/${e.id}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+  a.download = `stackly-${e.company.name.replace(/\W+/g, "-").toLowerCase()}-results.ics`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export function GuideStrip() {
   return (
     <div className="guide-strip strip-panel" id="guide-entry">
