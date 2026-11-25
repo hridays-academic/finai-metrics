@@ -5600,15 +5600,7 @@ a.news-card-headline:hover {
   padding-top: var(--space-3);
 }
 
-/* Home's "Recent results": each row in its company's difficulty colour. */
-.recent-row-swatch {
-  flex: none;
-  align-self: stretch;
-  width: 5px;
-  margin-right: var(--space-4);
-  border-radius: var(--radius-small);
-  background: var(--sector);
-}
+/* H11 (master plan): no coloured border stripe on result rows. */
 
 .recent-row-difficulty {
   padding: 0 8px;
@@ -7501,4 +7493,130 @@ a.news-card-headline:hover {
   color: var(--text-2);
   font-size: var(--text-xs);
   font-weight: 400;
+}
+
+/* R1/R6: how it turned out, as one table. */
+.outcome-table th[scope="row"] {
+  font-weight: 600;
+  text-align: left;
+  max-width: 320px;
+}
+
+.outcome-table .outcome-result {
+  font-weight: 700;
+  font-size: var(--text-lg);
+  white-space: nowrap;
+}
+
+.outcome-row-note {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+/* Phones: each number becomes a short stack, head first. */
+@media (max-width: 640px) {
+  .outcome-table thead {
+    display: none;
+  }
+
+  .outcome-table,
+  .outcome-table tbody,
+  .outcome-table tr,
+  .outcome-table th,
+  .outcome-table td {
+    display: block;
+    width: 100%;
+    max-width: none;
+  }
+
+  .outcome-table tr {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .outcome-table td:nth-of-type(2)::before {
+    content: "Last year: ";
+    color: var(--text-2);
+  }
+
+  .outcome-table td:nth-of-type(3):not(:last-child)::before {
+    content: "Crowd median: ";
+    color: var(--text-2);
+  }
+
+  .outcome-table td:last-child::before {
+    content: "Source: ";
+    color: var(--text-2);
+  }
+}
+
+/* H10: compact "Just reported" rows. Revenue growth's line under the row;
+   the other numbers open on request. */
+.recent-item {
+  padding-bottom: var(--space-4);
+}
+
+.recent-item > .recent-lines,
+.recent-more {
+  padding: 0 var(--space-5);
+}
+
+.recent-item > .recent-lines {
+  grid-template-columns: minmax(0, 520px);
+  margin-top: 0;
+}
+
+.recent-more > summary {
+  margin-top: var(--space-2);
+  color: var(--link);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.recent-more > summary::first-letter {
+  text-transform: uppercase;
+}
+
+.recent-more .recent-lines {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .recent-item > .recent-lines,
+  .recent-more {
+    padding: 0 var(--space-4);
+  }
+
+  .recent-more .recent-lines {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* H6 (master plan): every tile grid is even, with no orphan: tiles share
+   the row equally and wrap whole. Shorter on phones. (Replaces the 7/5
+   uneven pattern of 2026-11-18.) */
+.company-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+}
+
+.company-grid > li {
+  grid-column: auto !important;
+}
+
+.company-grid .sector-tile {
+  min-height: 220px !important;
+}
+
+@media (max-width: 640px) {
+  .company-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .company-grid .sector-tile {
+    min-height: 0 !important;
+    padding: var(--space-5);
+  }
 }

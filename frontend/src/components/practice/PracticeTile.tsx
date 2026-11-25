@@ -26,11 +26,25 @@ export default function PracticeTile({
     <li data-scrub={scrub ? "tile" : undefined} data-i={scrub ? index : undefined}>
       <a className={`sector-tile practice-tile ${colourClass(level)} ${level ? "has-edge" : ""}`} href={`#/practice/${card.code}`}>
         <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
-        <span className="tile-sector">
-          {card.sector_name}
-          {badge && <span className="practice-badge">Practice</span>}
-        </span>
-        <h3 className="tile-name">{card.name ?? MYSTERY_NAME}</h3>
+        {/* H7 (master plan): in Mystery mode the sector is the headline, so
+            three mystery tiles read differently at a glance. */}
+        {card.name ? (
+          <>
+            <span className="tile-sector">
+              {card.sector_name}
+              {badge && <span className="practice-badge">Practice</span>}
+            </span>
+            <h3 className="tile-name">{card.name}</h3>
+          </>
+        ) : (
+          <>
+            <span className="tile-sector">
+              {MYSTERY_NAME}
+              {badge && <span className="practice-badge">Practice</span>}
+            </span>
+            <h3 className="tile-name">{card.sector_name}</h3>
+          </>
+        )}
         <span className="tile-when">{card.season_label ?? ""}</span>
         <p className="practice-tile-line">{card.mystery_line ?? card.description}</p>
         <span className="tile-foot">

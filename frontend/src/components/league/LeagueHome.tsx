@@ -149,15 +149,39 @@ export function RecentResults({ results, mine = {} }: { results: RecentResult[];
 
 // One scored company, in its difficulty colour (a swatch and a label), like
 // its tile, company page and results page.
+// H10/H11 (master plan): one compact row per company. Revenue growth against
+// last year shows; the other two numbers open on request. No coloured border.
 function RecentRow({ result: { event: e, metrics }, mine, index }: { result: RecentResult; mine?: MetricResult[]; index: number }) {
   const level = useCompanyDifficulty(e.company.id);
+  const shown = metrics.filter((m) => m.actual !== null);
+  const line = (m: (typeof metrics)[number]) => {
+    const r = mine?.find((x) => x.metric_key === m.metric_key);
+    return (
+      <span className="recent-line" key={m.metric_key}>
+        <span className="recent-line-name">{metricShortName(m, e.company.sector)}</span>
+        <RangeLine
+          compact
+          low={r ? r.low : null}
+          high={r ? r.high : null}
+          // T24: the result beside last year's, both labelled.
+          marks={[
+            { key: "actual", value: m.actual as number, kind: "actual", label: `Result ${formatOutcome(m.actual, m.metric_key, m.unit)}` },
+            ...(m.lazy !== null
+              ? [{ key: "lazy", value: m.lazy, kind: "ref" as const, label: `Last year ${formatOutcome(m.lazy, m.metric_key, m.unit)}` }]
+              : []),
+          ]}
+          minSpan={10}
+        />
+      </span>
+    );
+  };
   return (
-    <li data-scrub="row" data-i={index}>
-      <a className={`list-row recent-row ${colourClass(level)}`} href={`#/results/${e.id}`}>
-        <span className="recent-row-swatch" aria-hidden="true" />
+    <li className={`recent-item ${colourClass(level)}`} data-i={index}>
+      <a className="list-row recent-row" href={`#/results/${e.id}`}>
         <span className="recent-row-main">
           <span className="recent-row-head">
             <span className="recent-row-name">{e.company.name}</span>
+            {level && <span className="recent-row-difficulty">{DIFFICULTY_LABEL[level]}</span>}
             <span className={`recent-row-status ${e.submitted && e.my_score !== null ? "own-score" : ""}`}>
               {e.submitted && e.my_score !== null ? `Your score ${e.my_score.toFixed(1)}` : "See results"}
             </span>
@@ -165,10 +189,9 @@ function RecentRow({ result: { event: e, metrics }, mine, index }: { result: Rec
           <span className="meta">
             <span>{e.season_label}</span>
             <span>results {formatDay(e.results_date)}</span>
-            {level && <span className="recent-row-difficulty">{DIFFICULTY_LABEL[level]}</span>}
           </span>
           <span className="recent-results-summary">{outcomeSummary(metrics, e.company.sector)}</span>
-          {/* T1: an approved note (an unusual quarter, a like-for-like basis) wherever the number shows. */}
+          {/* T1: an approved note (an unusual quarter, a like-for-like basis). */}
           {metrics
             .filter((m) => m.note)
             .map((m) => (
@@ -176,35 +199,16 @@ function RecentRow({ result: { event: e, metrics }, mine, index }: { result: Rec
                 {m.note}
               </span>
             ))}
-          <span className="recent-lines" aria-hidden="true">
-            {metrics
-              .filter((m) => m.actual !== null)
-              .map((m) => {
-                const r = mine?.find((x) => x.metric_key === m.metric_key);
-                return (
-                  <span className="recent-line" key={m.metric_key}>
-                    <span className="recent-line-name">{metricShortName(m, e.company.sector)}</span>
-                    <RangeLine
-                      compact
-                      low={r ? r.low : null}
-                      high={r ? r.high : null}
-                      // T24: the result beside last year's, both labelled, so the
-                      // line means something without a forecast of your own.
-                      marks={[
-                        { key: "actual", value: m.actual as number, kind: "actual", label: `Result ${formatOutcome(m.actual, m.metric_key, m.unit)}` },
-                        ...(m.lazy !== null
-                          ? [{ key: "lazy", value: m.lazy, kind: "ref" as const, label: `Last year ${formatOutcome(m.lazy, m.metric_key, m.unit)}` }]
-                          : []),
-                      ]}
-                      minSpan={10}
-                    />
-                  </span>
-                );
-              })}
-          </span>
         </span>
         <Chevron />
       </a>
+      {shown.length > 0 && <span className="recent-lines" aria-hidden="true">{line(shown[0])}</span>}
+      {shown.length > 1 && (
+        <details className="recent-more">
+          <summary>{shown.slice(1).map((m) => metricShortName(m, e.company.sector)).join(" and ")}</summary>
+          <span className="recent-lines" aria-hidden="true">{shown.slice(1).map(line)}</span>
+        </details>
+      )}
     </li>
   );
 }

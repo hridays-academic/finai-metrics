@@ -71,40 +71,49 @@ export function rupeeNote(metrics: { metric_key: string; actual: number | null }
     : `Revenue grew ${r} in rupees but ${c} in constant currency. Most of the ${gap.toFixed(1)}-point gap is the rupee: it was stronger against the dollar, so each dollar earned was worth fewer rupees.`;
 }
 
+// R1/R6 (master plan): one comparison table, not three identical cards.
+// "Last year (the lazy guess)" and "Source" are said once, as column heads.
 export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]; sector?: string }) {
   const rupee = rupeeNote(metrics, sector);
+  const crowd = metrics.some((m) => m.crowd_median !== null);
   return (
     <>
-      <ul className="group outcome-list">
-      {metrics.map((m, i) => (
-        <li key={m.metric_key} className="outcome-metric" data-scrub="row" data-i={i}>
-          <div className="outcome-head">
-            <h3 className="outcome-label">{m.label}</h3>
-            <span className="outcome-value">{formatOutcome(m.actual, m.metric_key, m.unit)}</span>
-          </div>
-          <div className="outcome-facts">
-            <span>
-              Last year (the lazy guess): <strong>{formatOutcome(m.lazy, m.metric_key, m.unit)}</strong>
-            </span>
-            {m.crowd_median !== null && (
-              <span>
-                Crowd median: <strong>{formatOutcome(m.crowd_median, m.metric_key, m.unit)}</strong>
-              </span>
-            )}
-          </div>
-          {m.note && <p className="outcome-note">{m.note}</p>}
-          {m.source_url && (
-            <p className="outcome-source">
-              Source:{" "}
-              <a href={m.source_url} target="_blank" rel="noopener noreferrer">
-                {hostOf(m.source_url)}
-              </a>
-            </p>
-          )}
-        </li>
-      ))}
-      </ul>
-      {/* Hriday 2026-11-24: one full-width line under the cards, not inside one. */}
+      <div className="table-wrap">
+        <table className="data-table outcome-table">
+          <thead>
+            <tr>
+              <th scope="col">Number</th>
+              <th scope="col">Result</th>
+              <th scope="col">Last year (the lazy guess)</th>
+              {crowd && <th scope="col">Crowd median</th>}
+              <th scope="col">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {metrics.map((m) => (
+              <tr key={m.metric_key}>
+                <th scope="row">
+                  {m.label}
+                  {m.note && <span className="outcome-row-note">{m.note}</span>}
+                </th>
+                <td className="outcome-result">{formatOutcome(m.actual, m.metric_key, m.unit)}</td>
+                <td>{formatOutcome(m.lazy, m.metric_key, m.unit)}</td>
+                {crowd && <td>{formatOutcome(m.crowd_median, m.metric_key, m.unit)}</td>}
+                <td>
+                  {m.source_url ? (
+                    <a href={m.source_url} target="_blank" rel="noopener noreferrer">
+                      {hostOf(m.source_url)}
+                    </a>
+                  ) : (
+                    "N/A"
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Hriday 2026-11-24: one full-width line under the numbers. */}
       {rupee && <p className="outcome-note outcome-rupee">{rupee}</p>}
     </>
   );

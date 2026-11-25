@@ -88,7 +88,8 @@ describe("score sums come from lib/scoring.ts", () => {
     await waitFor(() => expect(container.querySelectorAll(".g2-practice .practice-tile")).toHaveLength(3));
     // Inside the guide's stacked pages the tiles skip Home's scroll rise.
     expect(container.querySelector(".g2-practice [data-scrub]")).toBeNull();
-    expect(container.querySelector(".g2-practice .tile-name")?.textContent).toBe("Mystery company");
+    // H7: in Mystery mode the sector is the headline; "Mystery company" sits above it.
+    expect(container.querySelector(".g2-practice .tile-sector")?.textContent).toBe("Mystery company");
   });
 });
 
