@@ -44,7 +44,7 @@ def video_thumbnail(video_id: str) -> Response:
     return Response(
         content=bytes(row["image"]),
         media_type=row["content_type"],
-        headers={"Cache-Control": "public, max-age=21600, s-maxage=21600"},
+        headers={"Cache-Control": "public, max-age=86400, s-maxage=86400"},  # S11: a day at the edge
     )
 
 
