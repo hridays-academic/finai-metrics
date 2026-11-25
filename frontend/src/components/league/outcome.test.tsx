@@ -100,7 +100,8 @@ describe("results page without a score", () => {
     expect(screen.getAllByRole("link", { name: "marico.com" })[0].getAttribute("href")).toBe(SRC);
     expect(screen.getByText(LEAGUE_FOOTNOTE)).toBeTruthy();
     expect(screen.getByText(/0 did here/)).toBeTruthy();
-    expect(screen.queryByText(/points/)).toBeNull();
+    // No personal points; only R4's "would have scored" lines mention points.
+    expect(screen.queryAllByText(/points/).every((el) => /would have scored/.test(el.textContent ?? ""))).toBe(true);
     expect(screen.queryByText("Your score")).toBeNull();
   });
 

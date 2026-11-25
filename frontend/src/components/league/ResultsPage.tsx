@@ -323,6 +323,22 @@ function OutcomePage({
         <FinePrint>{LEAGUE_FOOTNOTE}</FinePrint>
       </section>
 
+      {/* R5 (master plan, DRAFT wording): what to do next. */}
+      <section className="section results-next" aria-labelledby="results-next-title">
+        <h2 className="section-title" id="results-next-title">
+          Keep practising
+        </h2>
+        <div className="hero-actions-main">
+          <a className="btn btn-primary btn-arrow" href="#/play">
+            Play a quick round
+            <span className="btn-arrow-icon" aria-hidden="true" />
+          </a>
+          <a className="btn btn-secondary" href="#/practice">
+            Practise past quarters
+          </a>
+        </div>
+      </section>
+
       <SiteFooter />
     </div>
   );

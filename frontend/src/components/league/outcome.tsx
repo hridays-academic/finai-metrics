@@ -1,4 +1,6 @@
 import { formatDay } from "../../lib/leagueFormat";
+import RangeLine from "../RangeLine";
+import { n, scoreMetric } from "../../lib/scoring";
 import type { EventSummary, OutcomeMetric } from "../../lib/types";
 
 // How a scored company turned out, for everyone (2026-11-12, wording approved
@@ -71,6 +73,15 @@ export function rupeeNote(metrics: { metric_key: string; actual: number | null }
     : `Revenue grew ${r} in rupees but ${c} in constant currency. Most of the ${gap.toFixed(1)}-point gap is the rupee: it was stronger against the dollar, so each dollar earned was worth fewer rupees.`;
 }
 
+// R4 (master plan, DRAFT wording): the narrowest sensible range, one point
+// wide around the result, and what it would have scored (lib/scoring).
+export function bestPossible(actual: number, lazy: number | null, unit: string): string {
+  const lo = Math.round((actual - 0.5) * 10) / 10;
+  const hi = Math.round((actual + 0.5) * 10) / 10;
+  const s = scoreMetric(lo, hi, actual, lazy);
+  return `A range one point wide around the result, ${formatOutcome(lo, "operating_margin", unit)} to ${formatOutcome(hi, "operating_margin", unit)}, would have scored ${n(s.points)} points.`;
+}
+
 // R1/R6 (master plan): one comparison table, not three identical cards.
 // "Last year (the lazy guess)" and "Source" are said once, as column heads.
 export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]; sector?: string }) {
@@ -94,7 +105,22 @@ export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]
               <tr key={m.metric_key}>
                 <th scope="row">
                   {m.label}
+                  {/* R2: the result against last year, on one small bar. */}
+                  {m.actual !== null && (
+                    <RangeLine
+                      compact
+                      low={null}
+                      high={null}
+                      minSpan={6}
+                      marks={[
+                        { key: "actual", value: m.actual, kind: "actual", label: `Result ${formatOutcome(m.actual, m.metric_key, m.unit)}` },
+                        ...(m.lazy !== null ? [{ key: "lazy", value: m.lazy, kind: "ref" as const, label: `Last year ${formatOutcome(m.lazy, m.metric_key, m.unit)}` }] : []),
+                      ]}
+                    />
+                  )}
                   {m.note && <span className="outcome-row-note">{m.note}</span>}
+                  {/* R4: what would have scored best (DRAFT wording). */}
+                  {m.actual !== null && <span className="outcome-row-note">{bestPossible(m.actual, m.lazy, m.unit)}</span>}
                 </th>
                 <td className="outcome-result">{formatOutcome(m.actual, m.metric_key, m.unit)}</td>
                 <td>{formatOutcome(m.lazy, m.metric_key, m.unit)}</td>
