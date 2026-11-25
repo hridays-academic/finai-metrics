@@ -7709,3 +7709,68 @@ a.news-card-headline:hover {
   letter-spacing: 0;
   text-transform: none;
 }
+
+/* P5/V12/V13 (master plan): Practice and Research open with Home's headline
+   (same size and face) over the same faint wave lines. */
+.page-hero {
+  position: relative;
+  isolation: isolate;
+  padding-top: var(--space-8);
+}
+
+.page-hero .hero-title {
+  margin: 0 0 var(--space-4);
+}
+
+.research-title.hero-title {
+  font-size: var(--head-hero);
+}
+
+/* MO3/C8 (master plan): on phones the story reads top to bottom: back link
+   and company name first (left-aligned), then the card, then the chapter. */
+@media (max-width: 640px) {
+  .story-grid {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .story-grid > .story-text {
+    display: contents;
+  }
+
+  .story-grid .story-title {
+    grid-row: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+    margin-bottom: 0;
+  }
+
+  .story-grid .story-company {
+    font-family: var(--font-head);
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .story-grid .story-stage {
+    grid-row: 2;
+    height: 200px;
+    margin-bottom: var(--space-4);
+  }
+
+  .story-grid .story-chapters {
+    grid-row: 3;
+  }
+}
+
+/* MO1 (master plan): a compact Sign in in the phone header (44px tap area
+   kept by the bar's height; the visible button is smaller). */
+@media (max-width: 640px) {
+  .app-header-actions .btn-compact {
+    min-height: 34px;
+    height: 34px;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
+  }
+}

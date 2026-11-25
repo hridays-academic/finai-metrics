@@ -39,7 +39,7 @@ export default function CompanySearch({ onSearch, loading, error, prefill, backT
           ← Back to forecast: {backTo.name}
         </a>
       )}
-      <Title className="research-title" id="research-title">
+      <Title className="research-title hero-title" id="research-title">
         Research
       </Title>
       <form className="search-form" onSubmit={handleSubmit}>

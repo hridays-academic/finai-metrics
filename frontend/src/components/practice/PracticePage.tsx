@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { HeroWaves } from "../league/CardArt";
 import ErrorState from "../ErrorState";
 import { ApiError, fetchPracticeCases } from "../../lib/api";
 import { mysteryOn, setMystery, surprise } from "../../lib/practice";
@@ -46,8 +47,11 @@ export default function PracticePage({ user }: { user: UserPublic | null }) {
 
   return (
     <div className="page practice-page">
-      <header className="practice-head">
-        <h1 className="page-title">Practice</h1>
+      {/* P5/V12 (master plan): Home's headline style and wave lines, so every
+          top-level page shares one headline system. */}
+      <header className="practice-head page-hero">
+        <HeroWaves />
+        <h1 className="hero-title">Practice</h1>
         <p className="practice-line">
           Forecast a past quarter. The results are already out, so you get your score straight away.
         </p>
@@ -68,7 +72,7 @@ export default function PracticePage({ user }: { user: UserPublic | null }) {
         </div>
       </header>
       {error && <ErrorState message={error} />}
-      {!cards && !error && <p className="empty-note">Loading...</p>}
+      {!cards && !error && <div className="skeleton skeleton-panel" aria-busy="true" aria-label="Loading practice companies" />}
       {cards && (
         <ul className="company-grid practice-grid">
           {cards.map((c, i) => (
