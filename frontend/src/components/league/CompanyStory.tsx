@@ -48,16 +48,18 @@ interface CompanyStoryProps {
 // [rotateX, rotateY, rotateZ, scale] at the middle of each chapter. Chapter 2
 // shows the back. LEAD_IN and LEAD_OUT are where the card comes from before
 // chapter 1 and goes after chapter 5, so it never stops while you scroll.
+// C3 (master plan): about half the old angles, so the card's words stay
+// readable while it turns.
 const POSES: [number, number, number, number][] = [
-  [10, -24, 0, 1],
-  [8, 166, 0, 1],
-  [-8, 22, -3, 1],
-  [14, -10, 4, 0.96],
-  [6, 28, -2, 0.98],
-  [4, 0, 0, 1.05],
+  [5, -12, 0, 1],
+  [4, 174, 0, 1],
+  [-4, 11, -1.5, 1],
+  [7, -5, 2, 0.98],
+  [3, 14, -1, 0.99],
+  [2, 0, 0, 1.04],
 ];
-const LEAD_IN: [number, number, number, number] = [18, -46, 3, 0.94];
-const LEAD_OUT: [number, number, number, number] = [-4, 14, -2, 1.1];
+const LEAD_IN: [number, number, number, number] = [9, -23, 1.5, 0.96];
+const LEAD_OUT: [number, number, number, number] = [-2, 7, -1, 1.08];
 const KEYS = [LEAD_IN, ...POSES, LEAD_OUT];
 
 // How long the shown position takes to catch up with the scroll (time constant).
@@ -558,7 +560,7 @@ export default function CompanyStory({
           {chapters.map((body, i) => (
             <li key={i} className="glass panel">
               <h2 className="chapter-head">
-                <span className="chapter-num">0{i + 1}</span> {labels[i]}
+                {labels[i]}
               </h2>
               {body}
             </li>
@@ -571,18 +573,7 @@ export default function CompanyStory({
   return (
     <section className="story" ref={sectionRef} aria-label={`${event.company.name}: introduction`}>
       <div className="story-sticky" ref={stickyRef}>
-        <div className="story-word" aria-hidden="true">
-          {labels.map((l, i) => (
-            <span
-              key={l}
-              ref={(el) => {
-                wordEls.current[i] = el;
-              }}
-            >
-              {l}
-            </span>
-          ))}
-        </div>
+        {/* C2 (master plan): no giant faded word behind the story (it was cropped mid-word). */}
 
         <button type="button" className="btn btn-secondary btn-compact story-skip" onClick={onJumpToForm}>
           {scored ? "How it turned out" : "Skip to forecast"}
@@ -603,7 +594,7 @@ export default function CompanyStory({
                   {...(i !== chapter ? { inert: "" } : {})}
                 >
                   <h2 className="chapter-head">
-                    <span className="chapter-num">0{i + 1}</span> {labels[i]}
+                    {labels[i]}
                   </h2>
                   {body}
                 </div>

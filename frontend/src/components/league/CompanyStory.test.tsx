@@ -31,9 +31,10 @@ describe("story maths", () => {
 
   it("reaches each chapter's angle at its middle, shows the back for chapter 2, and never holds still", () => {
     const mid = (i: number) => (i + 0.5) / 6;
-    expect(poseAt(mid(0))).toEqual([10, -24, 0, 1]);
-    expect(poseAt(mid(1))[1]).toBe(166); // back face
-    expect(poseAt(mid(5))).toEqual([4, 0, 0, 1.05]);
+    // C3 (master plan): about half the old angles.
+    expect(poseAt(mid(0))).toEqual([5, -12, 0, 1]);
+    expect(poseAt(mid(1))[1]).toBe(174); // back face
+    expect(poseAt(mid(5))).toEqual([2, 0, 0, 1.04]);
     for (const p of [0, 0.05, 0.1, 0.5, 0.95]) {
       expect(poseAt(p + 0.01)).not.toEqual(poseAt(p));
     }

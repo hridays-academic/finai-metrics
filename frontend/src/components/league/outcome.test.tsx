@@ -151,7 +151,8 @@ describe("company page after scoring", () => {
     mocked.fetchLeagueConfig.mockResolvedValue({ sector_explainers: [], kpi_templates: [] } as never);
     mocked.fetchResearchHistory.mockReturnValue(new Promise(() => {}));
     render(<ForecastPage eventId={3} user={null} onUserChange={vi.fn()} onOpenAuth={vi.fn()} theme="dark" onOpenInResearch={vi.fn()} visible />);
-    expect(await screen.findByRole("heading", { name: "How it turned out" })).toBeTruthy();
+    // The story's last chapter shares the panel's title now that chapters carry no "06".
+    expect((await screen.findAllByRole("heading", { name: "How it turned out" })).length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByText("+13.0%")).toBeTruthy());
     expect(screen.queryByRole("form", { name: "forecast form" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Your forecast" })).toBeNull();
