@@ -8379,3 +8379,10 @@ a.news-card-headline:hover {
     height: 150px;
   }
 }
+
+/* P3: practice filters. */
+.practice-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

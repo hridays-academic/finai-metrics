@@ -15,6 +15,9 @@ import PracticeTile from "./PracticeTile";
 export default function PracticePage({ user }: { user: UserPublic | null }) {
   const [mystery, setMysteryState] = useState(mysteryOn);
   const [cards, setCards] = useState<PracticeCard[] | null>(null);
+  // P3 (master plan): filter by sector and by difficulty.
+  const [sector, setSector] = useState<string | null>(null);
+  const [level, setLevel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,10 +77,26 @@ export default function PracticePage({ user }: { user: UserPublic | null }) {
       {error && <ErrorState message={error} />}
       {!cards && !error && <div className="skeleton skeleton-panel" aria-busy="true" aria-label="Loading practice companies" />}
       {cards && (
-        <ul className="company-grid practice-grid">
-          {cards.map((c, i) => (
-            <PracticeTile key={c.code} card={c} index={i} />
+        <div className="practice-filters" role="group" aria-label="Filter practice companies">
+          {[null, ...Array.from(new Set(cards.map((c) => c.sector_name)))].map((name) => (
+            <button key={name ?? "all"} type="button" className={`chip ${sector === name ? "active" : ""}`} aria-pressed={sector === name} onClick={() => setSector(name)}>
+              {name ?? "All sectors"}
+            </button>
           ))}
+          {[null, "easy", "medium", "hard"].map((d) => (
+            <button key={d ?? "any"} type="button" className={`chip ${level === d ? "active" : ""}`} aria-pressed={level === d} onClick={() => setLevel(d)}>
+              {d ? d[0].toUpperCase() + d.slice(1) : "Any difficulty"}
+            </button>
+          ))}
+        </div>
+      )}
+      {cards && (
+        <ul className="company-grid practice-grid">
+          {cards
+            .filter((c) => (sector === null || c.sector_name === sector) && (level === null || c.difficulty === level))
+            .map((c, i) => (
+              <PracticeTile key={c.code} card={c} index={i} />
+            ))}
         </ul>
       )}
       <SiteFooter />
