@@ -6,28 +6,54 @@ import { clearAuthToken } from "../lib/auth";
 import type { UserPublic } from "../lib/types";
 import { getStartingBalance, setStartingBalance } from "../lib/portfolio";
 import { SHOW_EXTRA_TOOLS } from "../lib/features";
+import { getMotion, getSound, getVibration, type MotionPref, setMotion, setSound, setVibration } from "../lib/prefs";
 import CoinAmount from "./CoinAmount";
 
 interface SettingsPanelProps {
   user: UserPublic | null;
   onAccountDeleted: () => void;
-  mode: ThemeMode;
-  onSetMode: (mode: ThemeMode) => void;
+  choice: ThemeMode | "device";
+  onSetChoice: (choice: ThemeMode | "device") => void;
   onClose: () => void;
 }
 
-const MODE_OPTIONS: { value: ThemeMode; label: string }[] = [
+// K5 (master plan; wording approved 2026-11-24, decisions 2.19).
+const MODE_OPTIONS: { value: ThemeMode | "device"; label: string }[] = [
+  { value: "device", label: "Match my device" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
 ];
 
+function Choice<T extends string>({ label, value, options, onPick }: {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onPick: (v: T) => void;
+}) {
+  return (
+    <div className="settings-choice">
+      <span className="field-label">{label}</span>
+      <div className="segmented" role="group" aria-label={label}>
+        {options.map((opt) => (
+          <button key={opt.value} type="button" className={value === opt.value ? "active" : ""} aria-pressed={value === opt.value} onClick={() => onPick(opt.value)}>
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPanel({
   user,
   onAccountDeleted,
-  mode,
-  onSetMode,
+  choice,
+  onSetChoice,
   onClose,
 }: SettingsPanelProps) {
+  const [sound, setSoundState] = useState(getSound);
+  const [vibration, setVibrationState] = useState(getVibration);
+  const [motion, setMotionState] = useState<MotionPref>(getMotion);
   const sheetRef = useRef<HTMLDivElement>(null);
   useSheet(sheetRef, onClose);
   const [editingBalance, setEditingBalance] = useState(false);
@@ -79,22 +105,35 @@ export default function SettingsPanel({
         </div>
 
         <section className="settings-section">
-          <h3 className="settings-section-title">Appearance</h3>
-          <span className="field-label">Mode</span>
-          <div className="segmented" role="group" aria-label="Light or dark">
-            {MODE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                className={mode === opt.value ? "active" : ""}
-                aria-pressed={mode === opt.value}
-                onClick={() => onSetMode(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <p className="settings-row-sub">Saved on this device.</p>
+          <h3 className="settings-section-title">On this device</h3>
+          <Choice label="Appearance" value={choice} options={MODE_OPTIONS} onPick={onSetChoice} />
+          <Choice
+            label="Sound"
+            value={sound ? "on" : "off"}
+            options={[{ value: "off", label: "Off" }, { value: "on", label: "On" }]}
+            onPick={(v) => {
+              setSound(v === "on");
+              setSoundState(v === "on");
+            }}
+          />
+          <Choice
+            label="Vibration"
+            value={vibration ? "on" : "off"}
+            options={[{ value: "on", label: "On" }, { value: "off", label: "Off" }]}
+            onPick={(v) => {
+              setVibration(v === "on");
+              setVibrationState(v === "on");
+            }}
+          />
+          <Choice
+            label="Motion"
+            value={motion}
+            options={[{ value: "full", label: "Full" }, { value: "reduced", label: "Reduced" }]}
+            onPick={(v) => {
+              setMotion(v);
+              setMotionState(v);
+            }}
+          />
         </section>
 
         {SHOW_EXTRA_TOOLS && (

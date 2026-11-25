@@ -116,7 +116,7 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
       <div className="settings-panel sheet" role="dialog" aria-modal="true" aria-label="Account" ref={sheetRef} tabIndex={-1}>
         <div className="settings-panel-header">
           <h2>
-            {user ? "Your account" : mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset password" : "Welcome back"}
+            {user ? "Your account" : mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset password" : "Sign in"}
           </h2>
           <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -181,6 +181,38 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
               </button>
             </div>
 
+            {/* K2/K3 (master plan): Google first and full width (reset emails
+                don't send yet, so it's the safest way in), then email below.
+                On sign-up Google creates the account at once, so the Terms box
+                comes first. Renders nothing if VITE_GOOGLE_CLIENT_ID isn't set. */}
+            {mode === "signup" && (
+              <label className="checkbox-row">
+                <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
+                <span>
+                  I agree to the{" "}
+                  <a href="#/terms" target="_blank" rel="noopener">
+                    Terms of Use
+                  </a>{" "}
+                  and{" "}
+                  <a href="#/privacy" target="_blank" rel="noopener">
+                    Privacy Policy
+                  </a>
+                </span>
+              </label>
+            )}
+            {mode === "signup" && !agreed ? (
+              isGoogleSignInConfigured() && <p className="field-hint">Tick the box above to continue with Google.</p>
+            ) : (
+              <div className="auth-google">
+                <GoogleSignInButton onCredential={handleGoogleCredential} />
+              </div>
+            )}
+            {isGoogleSignInConfigured() && (
+              <div className="auth-divider">
+                <span>or</span>
+              </div>
+            )}
+
             {mode === "signup" && (
               <label className="field">
                 <span className="field-label">Name</span>
@@ -216,21 +248,6 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
                 <p className="field-hint auth-forgot-note">Forgot your password? Sign in with Google, or ask your teacher.</p>
               ))}
 
-            {mode === "signup" && (
-              <label className="checkbox-row">
-                <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
-                <span>
-                  I agree to the{" "}
-                  <a href="#/terms" target="_blank" rel="noopener">
-                    Terms of Use
-                  </a>{" "}
-                  and{" "}
-                  <a href="#/privacy" target="_blank" rel="noopener">
-                    Privacy Policy
-                  </a>
-                </span>
-              </label>
-            )}
 
             {error && <div className="form-error">{error}</div>}
 
@@ -251,18 +268,6 @@ export default function AuthPanel({ user, onAuthChange, onClose }: AuthPanelProp
                   : "Sign in"}
             </button>
 
-            {/* Renders nothing if VITE_GOOGLE_CLIENT_ID isn't configured --
-                see GoogleSignInButton.tsx. */}
-            <div className="auth-divider">
-              <span>or</span>
-            </div>
-            {/* Google creates the account on its first click, so on the
-                sign-up tab it only appears once the box is ticked. */}
-            {mode === "signup" && !agreed ? (
-              isGoogleSignInConfigured() && <p className="field-hint">Tick the box above to continue with Google.</p>
-            ) : (
-              <GoogleSignInButton onCredential={handleGoogleCredential} />
-            )}
           </form>
         )}
       </div>

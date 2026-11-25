@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 // without IntersectionObserver, so nothing ever waits to be shown.
 export function prefersReducedMotion(): boolean {
   try {
+    // K5: the student's own "Motion: Reduced" counts like the device setting.
+    if (document.documentElement.getAttribute("data-motion") === "reduced") return true;
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   } catch {
     return true;

@@ -36,7 +36,13 @@ function deviceMode(): ThemeMode {
   return deviceQuery()?.matches ? "dark" : "light";
 }
 
-export function useTheme(): { mode: ThemeMode; theme: Theme; setMode: (m: ThemeMode) => void } {
+export function useTheme(): {
+  mode: ThemeMode;
+  theme: Theme;
+  setMode: (m: ThemeMode) => void;
+  choice: ThemeMode | "device";
+  setChoice: (c: ThemeMode | "device") => void;
+} {
   const [chosen, setChosen] = useState<ThemeMode | null>(readStored);
   const [device, setDevice] = useState<ThemeMode>(deviceMode);
   const mode = chosen ?? device;
@@ -73,5 +79,20 @@ export function useTheme(): { mode: ThemeMode; theme: Theme; setMode: (m: ThemeM
     }
   }, []);
 
-  return { mode, theme: mode, setMode };
+  // K5: "Match my device" forgets the saved choice.
+  const choice: ThemeMode | "device" = chosen ?? "device";
+  const setChoice = useCallback(
+    (c: ThemeMode | "device") => {
+      if (c !== "device") return setMode(c);
+      setChosen(null);
+      try {
+        localStorage.removeItem(MODE_KEY);
+      } catch {
+        // nothing stored
+      }
+    },
+    [setMode]
+  );
+
+  return { mode, theme: mode, setMode, choice, setChoice };
 }

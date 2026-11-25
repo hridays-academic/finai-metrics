@@ -52,7 +52,7 @@ function samePage(a: HomePage, b: HomePage): boolean {
 let visitRecorded = false;
 
 export default function App() {
-  const { theme, mode, setMode } = useTheme();
+  const { theme, choice, setChoice } = useTheme();
   // S10/M1/M2 (master plan): no scroll rise-in or tilt; content is visible on arrival.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -415,8 +415,8 @@ export default function App() {
             setUser(null);
             setSettingsOpen(false);
           }}
-          mode={mode}
-          onSetMode={setMode}
+          choice={choice}
+          onSetChoice={setChoice}
           onClose={() => setSettingsOpen(false)}
         />
       )}

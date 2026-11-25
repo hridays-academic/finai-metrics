@@ -22,6 +22,10 @@
     }
   }
   document.documentElement.setAttribute("data-mode", mode);
+  // K5: "Motion: Reduced" from Settings, before the first paint.
+  try {
+    if (localStorage.getItem("stackly-motion") === "reduced") document.documentElement.setAttribute("data-motion", "reduced");
+  } catch (e) {}
 })();
 
 // Mouse devices get PageScrollbar.tsx instead of the browser's scrollbar;
