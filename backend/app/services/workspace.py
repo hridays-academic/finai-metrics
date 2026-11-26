@@ -16,6 +16,7 @@ from psycopg.types.json import Jsonb
 from app.glossary import glossary
 from app.services.league_admin import year_ago_label
 from app.services.league_service import LeagueError, _load_event, forecast_eligibility
+from app.services.shown_quarters import quarters_shown_publicly
 from app.workspace_config import steps_for
 from app.workspace_models import BaseFigure, WorkspaceIn, WorkspaceOut, WorkspaceState
 
@@ -42,14 +43,17 @@ def _previous_quarter(fy_label: str, quarter: int) -> tuple[str, int]:
 
 
 def _figures(conn: psycopg.Connection, company_id: int, fy_label: str, quarter: int, metrics: list[dict]) -> list[BaseFigure]:
-    """League actuals for one quarter, only under the event's own definitions."""
+    """League actuals for one quarter, only under the event's own definitions.
+    An archive figure only when the quarter is shown publicly (shown_quarters)."""
     wanted = {m["key"]: m["definition_key"] for m in metrics}
     rows = conn.execute(
-        """SELECT a.metric_key, a.definition_key, a.value, a.source_url
+        """SELECT a.metric_key, a.definition_key, a.value, a.source_url, a.archive
            FROM actuals a JOIN fiscal_periods p ON p.id = a.period_id
            WHERE p.company_id = %s AND p.fiscal_year_label = %s AND p.fiscal_quarter = %s""",
         (company_id, fy_label, quarter),
     ).fetchall()
+    if any(r["archive"] for r in rows) and (fy_label, quarter) not in quarters_shown_publicly(conn, company_id):
+        rows = [r for r in rows if not r["archive"]]
     out = [
         BaseFigure(metric_key=r["metric_key"], value=r["value"], source_url=r["source_url"],
                    fiscal_year_label=fy_label, fiscal_quarter=quarter)

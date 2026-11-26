@@ -190,20 +190,27 @@ def put_actuals(conn: psycopg.Connection, actor: dict, period_id: int, items: li
                     {"new": item.model_dump(), "previous": dict(previous) if previous else None})
 
 
-def list_actuals(conn: psycopg.Connection, company_id: int, include_archive: bool = True) -> list[ActualOut]:
-    """`include_archive=False`: league pages (charts, Research) never show
-    figures saved only for Practice (Stop 3 A6)."""
+def list_actuals(conn: psycopg.Connection, company_id: int, public: bool = False) -> list[ActualOut]:
+    """`public=True`: league pages (charts, Research). They show every league
+    figure, and an archive figure only when its quarter is one a public page
+    shows (services/shown_quarters.py): in January a Q3 FY27 event needs Q3
+    FY26 as last year. Other archive quarters stay for Practice only."""
     rows = conn.execute(
         """
         SELECT a.period_id, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date, a.metric_key,
-               a.definition_key, a.value, a.source_url, a.entered_at
+               a.definition_key, a.value, a.source_url, a.entered_at, a.archive
         FROM actuals a JOIN fiscal_periods p ON p.id = a.period_id
-        WHERE p.company_id = %s AND (%s OR NOT a.archive)
+        WHERE p.company_id = %s
         ORDER BY p.period_end_date DESC, a.metric_key
         """,
-        (company_id, include_archive),
+        (company_id,),
     ).fetchall()
-    return [ActualOut(**dict(r)) for r in rows]
+    if public:
+        from app.services.shown_quarters import quarters_shown_publicly  # it imports this module
+
+        shown = quarters_shown_publicly(conn, company_id)
+        rows = [r for r in rows if not r["archive"] or (r["fiscal_year_label"], r["fiscal_quarter"]) in shown]
+    return [ActualOut(**{k: v for k, v in r.items() if k != "archive"}) for r in rows]
 
 
 def put_baselines(conn: psycopg.Connection, actor: dict, event_id: int, items: list[BaselineIn]) -> None:

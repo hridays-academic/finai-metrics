@@ -46,6 +46,7 @@ from app.league_models import (
 )
 from app.models import PricePoint
 from app.services import league_admin, scoring
+from app.services.shown_quarters import all_quarters_shown_publicly
 from app.services.league_scoring import _actuals, _matching, _student_notes, lazy_values
 from app.services.league_service import (
     _ANY_EVENT_SELECT, LeagueError, _show_demo, _validate_forecast, forecast_eligibility,
@@ -99,18 +100,8 @@ def _complete(conn: psycopg.Connection, row: dict) -> dict[str, float]:
     return {} if any(v is None for v in actual.values()) else actual  # type: ignore[return-value]
 
 
-def shown_quarters(conn: psycopg.Connection) -> set[tuple[int, str, int]]:
-    """(company id, FY label, quarter) for every quarter a league page shows:
-    each scored league event's own quarter and its year-ago quarter."""
-    out: set[tuple[int, str, int]] = set()
-    for r in conn.execute(
-        """SELECT p.company_id, p.fiscal_year_label, p.fiscal_quarter
-           FROM forecast_events e JOIN fiscal_periods p ON p.id = e.period_id
-           WHERE e.kind = 'league' AND e.status = 'scored'"""
-    ).fetchall():
-        out.add((r["company_id"], r["fiscal_year_label"], r["fiscal_quarter"]))
-        out.add((r["company_id"], league_admin.year_ago_label(r["fiscal_year_label"]), r["fiscal_quarter"]))
-    return out
+# The answer-leak rule reads the one public-quarters rule (services/shown_quarters.py).
+shown_quarters = all_quarters_shown_publicly
 
 
 def _practice_rows(conn: psycopg.Connection) -> list[dict]:
@@ -121,7 +112,7 @@ def _practice_rows(conn: psycopg.Connection) -> list[dict]:
     archive = [r for r in rows if r["kind"] == "archive"]
     if not archive:
         return [r for r in rows if r["kind"] == "league"]
-    shown = shown_quarters(conn)
+    shown = all_quarters_shown_publicly(conn)
     return [r for r in archive if (r["company_id"], r["fiscal_year_label"], r["fiscal_quarter"]) not in shown]
 
 

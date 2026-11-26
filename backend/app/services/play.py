@@ -256,7 +256,11 @@ def _daily_ids(conn: psycopg.Connection, day: date) -> list[str]:
         conn.execute("INSERT INTO daily_challenges (day, card_ids) VALUES (%s, %s) ON CONFLICT (day) DO NOTHING",
                      (day, Jsonb(ids)))
         row = conn.execute("SELECT card_ids FROM daily_challenges WHERE day = %s", (day,)).fetchone()
-    return list(row["card_ids"])
+    # A card whose quarter a public page has started to show since it was
+    # picked drops out for the rest of the day (shown_quarters.py); daily()
+    # and submit_round() both read this, so a submitted round still matches.
+    live = {c.id for c in cards(conn, mystery=True)}
+    return [i for i in row["card_ids"] if i in live]
 
 
 def daily(conn: psycopg.Connection, user: Optional[dict], mystery: bool) -> DailyOut:

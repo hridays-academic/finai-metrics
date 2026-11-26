@@ -44,7 +44,7 @@ def company_history(company_id: int) -> ResearchHistoryOut:
         company = conn.execute("SELECT provider_symbol FROM companies WHERE id = %s", (company_id,)).fetchone()
         if company is None:
             raise LeagueError(404, "company_not_found", "No such company.")
-        actuals = league_admin.list_actuals(conn, company_id, include_archive=False)
+        actuals = league_admin.list_actuals(conn, company_id, public=True)
     quarters, as_of = provider_quarters(company["provider_symbol"])
     return ResearchHistoryOut(
         provider_rows=_rows(quarters),
