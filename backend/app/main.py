@@ -61,7 +61,7 @@ from app.services.providers import provider as shared_provider
 from app.services import auth_service, fundamentals_cache, price_lag, rate_limit, result_proposals
 from app.services.auth_service import AuthError, TermsRequiredError
 from app.services import db as db_module
-from app.services.db import get_conn, init_db
+from app.services.db import get_conn
 from app.routes import (
     admin as admin_routes, cron as cron_routes, league as league_routes, news as news_routes, visits as visit_routes,
     practice as practice_routes, workspace as workspace_routes,
@@ -110,7 +110,7 @@ async def _cache_headers(request, call_next):
     return response
 
 
-init_db()
+# A8: no init_db() here; db.ensure_ready() runs it on the first database use.
 # Confirms after a deploy that backend/data shipped with the function.
 logger.info("Result proposals loaded: %d", len(result_proposals.all_proposals()))
 
@@ -183,6 +183,7 @@ _last_company_by_ticker: dict[str, CompanyFinancialsResponse] = {}
 def health() -> dict:
     # Only the database's label ("production", "dev" or "test") -- never the
     # connection string. Lets anyone confirm which database the live site uses.
+    db_module.ensure_ready()
     return {"status": "ok", "database": db_module.DATABASE_LABEL}
 
 

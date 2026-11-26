@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.config import get_settings
 from app.routes.deps import require_admin, require_user
-from app.services import boards, schools
+from app.services import boards, gmail_service, schools
 from app.services.db import get_conn
 
 router = APIRouter()
@@ -141,3 +141,10 @@ def answer(session_id: int, body: schools.AnswerIn, user: dict = Depends(require
 def step(session_id: int, body: StepIn, user: dict = Depends(require_user)) -> schools.SessionOut:
     with get_conn() as conn:
         return schools.step(conn, user, session_id, body.action)
+
+
+@router.get("/api/consent-options")
+def consent_options() -> dict:
+    """A11 (Stop 3): the paper form is the main route for the January pilot;
+    the email link shows only once email is switched on."""
+    return {"email": gmail_service.email_enabled()}

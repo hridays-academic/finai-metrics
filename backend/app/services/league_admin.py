@@ -190,16 +190,18 @@ def put_actuals(conn: psycopg.Connection, actor: dict, period_id: int, items: li
                     {"new": item.model_dump(), "previous": dict(previous) if previous else None})
 
 
-def list_actuals(conn: psycopg.Connection, company_id: int) -> list[ActualOut]:
+def list_actuals(conn: psycopg.Connection, company_id: int, include_archive: bool = True) -> list[ActualOut]:
+    """`include_archive=False`: league pages (charts, Research) never show
+    figures saved only for Practice (Stop 3 A6)."""
     rows = conn.execute(
         """
         SELECT a.period_id, p.fiscal_year_label, p.fiscal_quarter, p.period_end_date, a.metric_key,
                a.definition_key, a.value, a.source_url, a.entered_at
         FROM actuals a JOIN fiscal_periods p ON p.id = a.period_id
-        WHERE p.company_id = %s
+        WHERE p.company_id = %s AND (%s OR NOT a.archive)
         ORDER BY p.period_end_date DESC, a.metric_key
         """,
-        (company_id,),
+        (company_id, include_archive),
     ).fetchall()
     return [ActualOut(**dict(r)) for r in rows]
 

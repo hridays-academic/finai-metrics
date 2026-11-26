@@ -41,7 +41,7 @@ export default function SchoolsPage() {
         <ol className="schools-steps">
           <li>Create an account, then email stackly.user.support@gmail.com from your school address to ask for a teacher account.</li>
           <li>On your Classes page, create a class. You get a 6-character code to share with students.</li>
-          <li>Students join with the code. Under-18s need a parent's approval before anything they play is saved: by an email link, or on the printable form (you mark it received; we confirm it).</li>
+          <li>Students join with the code. Under-18s need a parent's approval before anything they play is saved. For the January pilot, print the parent approval form, collect the signed copies, and mark each one received on your class page; Stackly then records it.</li>
           <li>Your class page shows who has played, rounds played, average scores and the companies forecast. Students appear by handle only.</li>
         </ol>
         <p className="section-text">

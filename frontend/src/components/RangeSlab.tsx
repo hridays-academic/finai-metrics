@@ -222,11 +222,18 @@ export function niceTicks(lo: number, hi: number): number[] {
   return out;
 }
 
+// A5 (Stop 3): the line and its label are siblings, and the label stays
+// inside the bar near either end, so nothing sticks out of its box.
 function Mark({ at, text, kind }: { at: string; text: string; kind: "lazy" | "quarter" }) {
+  const f = parseFloat(at) / 100;
+  const shift = f < 0.2 ? "0%" : f > 0.8 ? "-100%" : "-50%";
   return (
-    <span className={`range-slab-mark is-${kind}`} style={{ left: at }}>
-      <span className="range-slab-mark-label">{text}</span>
-    </span>
+    <>
+      <span className={`range-slab-mark is-${kind}`} style={{ left: at }} />
+      <span className={`range-slab-mark-label is-${kind}`} style={{ left: at, translate: `${shift} 0` }}>
+        {text}
+      </span>
+    </>
   );
 }
 

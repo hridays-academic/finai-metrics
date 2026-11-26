@@ -135,11 +135,16 @@ def approve(conn: psycopg.Connection, actor: dict, ticker: str, body: OlderAppro
                               f"{ticker} {fy} Q{item.fiscal_quarter}: approve exactly the proposed numbers.")
         period_id = _upsert_period(conn, company["id"], fy, item.fiscal_quarter,
                                    period_end(fy, item.fiscal_quarter, company["fiscal_year_end_month"]))
+        # A6: a figure that wasn't already a league figure is marked archive.
+        league_keys = {r["metric_key"] for r in conn.execute(
+            "SELECT metric_key FROM actuals WHERE period_id = %s AND NOT archive", (period_id,)).fetchall()}
         put_actuals(conn, actor, period_id, [
             ActualIn(metric_key=m.metric_key, definition_key=m.definition_key, value=m.value,
                      source_url=offered[(m.metric_key, m.definition_key)].source_url)
             for m in item.metrics
         ])
+        conn.execute("UPDATE actuals SET archive = TRUE WHERE period_id = %s AND NOT (metric_key = ANY(%s))",
+                     (period_id, list(league_keys)))
         made = False
         if p.use == "practice" and _event_kind(conn, company["id"], fy, item.fiscal_quarter) is None:
             include_kpi = any(m.metric_key == "sector_kpi" for m in item.metrics)

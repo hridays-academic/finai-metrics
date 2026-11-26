@@ -1,9 +1,9 @@
-# Handles containing any of these (after lower-casing, turning look-alike
-# digits and symbols into letters, and removing everything that isn't a
-# letter) are refused. English and romanised Hindi. Hriday: add words one per
-# line; the admin can also put any handle under review or block it.
-# Short words that sit inside ordinary names (shit in Kshitij, sex in Essex,
-# rape in grape, nazi in Nazir) are left out; admins review those by hand.
+# Handles are split into words (at spaces, _, ., -, digits used as
+# separators and camelCase), look-alike digits become letters, and
+# decoration x's are trimmed. A handle is refused when any word, or the
+# whole handle run together, IS one of these. Whole words only, so
+# Kshitij, Shital, Essex and Scunthorpe are fine. English and romanised
+# Hindi. Hriday: add words one per line; admins can also review or block.
 fuck
 bitch
 bastard
@@ -39,3 +39,10 @@ saala
 chod
 jhaatu
 tatti
+shit
+dick
+sex
+rape
+kill
+nazi
+lund

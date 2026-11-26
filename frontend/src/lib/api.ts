@@ -664,3 +664,4 @@ export const adminSetRole = (userId: number, role: "student" | "teacher") =>
   leagueRequest<void>("PUT", `/admin/users/${userId}/role`, { role });
 export const adminPaperForms = () =>
   leagueRequest<{ user_id: number; handle: string | null; class_name: string; received_at: string }[]>("GET", "/admin/paper-forms");
+export const fetchConsentOptions = () => leagueRequest<{ email: boolean }>("GET", "/consent-options");

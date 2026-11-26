@@ -26,7 +26,7 @@ const SURFACES = ".home .sector-tile, .home .glass.panel, .home .guide-strip";
 export function BallSkin() {
   return (
     <>
-      <span className="ball-texture" />
+      <span className="ball-texture" aria-hidden="true" />
       <span className="ball-shade" />
     </>
   );

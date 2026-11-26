@@ -400,7 +400,7 @@ def _dsn() -> str:
 # Bump whenever any statement in _SCHEMA_STATEMENTS or
 # league_schema.LEAGUE_SCHEMA_STATEMENTS is added or changed -- otherwise
 # already-migrated databases skip it (see init_db).
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 # Arbitrary constant; serializes concurrent cold starts running the schema.
 _SCHEMA_LOCK_KEY = 72_561_001
@@ -587,8 +587,25 @@ def _give_back(conn: psycopg.Connection) -> None:
     _discard(conn)
 
 
+# A8 (Stop 3): importing the app opens no connection. The schema check runs
+# once per process, on the first database use (or /api/health).
+_ready = False
+_ready_lock = threading.Lock()
+
+
+def ensure_ready() -> None:
+    global _ready
+    if _ready:
+        return
+    with _ready_lock:
+        if not _ready:
+            init_db()
+            _ready = True
+
+
 @contextmanager
 def get_conn() -> Iterator[psycopg.Connection]:
+    ensure_ready()
     conn = _take()
     try:
         yield conn

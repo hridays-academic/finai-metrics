@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   ApiError, type Board, type ClassInfo, type ClassStudent, createClass, fetchClassBoard, fetchClasses, fetchClassStudents,
-  fetchCurrentSession, joinClass, markPaperForm, requestConsent, startSession,
+  fetchConsentOptions, fetchCurrentSession, joinClass, markPaperForm, requestConsent, startSession,
 } from "../../lib/api";
 import { n } from "../../lib/scoring";
 import type { UserPublic } from "../../lib/types";
@@ -19,9 +19,18 @@ const CONSENT: Record<ClassStudent["consent"], string> = {
   paper_received: "Form received, waiting for Stackly",
 };
 
+// A11 (Stop 3): for the January pilot the paper form, collected by the
+// school, is the main route; the email link shows only once email is on.
+// DRAFT wording.
 function ParentRequest() {
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [emailOn, setEmailOn] = useState(false);
+  useEffect(() => {
+    fetchConsentOptions()
+      .then((o) => setEmailOn(o.email))
+      .catch(() => setEmailOn(false));
+  }, []);
   async function send(e: FormEvent) {
     e.preventDefault();
     setMsg(null);
@@ -38,16 +47,25 @@ function ParentRequest() {
         Ask a parent to approve
       </h2>
       <p className="section-text">You're under 18, so nothing you play is saved until a parent or guardian approves.</p>
-      <form className="search-form" onSubmit={send}>
-        <input className="input" type="email" required placeholder="Your parent's email" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Your parent's email" />
-        <button type="submit" className="btn btn-primary" disabled={!email.trim()}>
-          Send
-        </button>
-      </form>
-      {msg && <p className="section-text" role="status">{msg}</p>}
       <p className="section-text">
-        Or print the <a href="#/consent-form">paper form</a> and give it to your teacher.
+        Print the <a href="#/consent-form">parent approval form</a>, ask a parent to sign it, and give it to your teacher.
       </p>
+      {emailOn && (
+        <>
+          <p className="section-text">Or we can email your parent a link:</p>
+          <form className="join-row" onSubmit={send}>
+            <input className="input" type="email" required placeholder="Your parent's email" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Your parent's email" />
+            <button type="submit" className="btn btn-primary" disabled={!email.trim()}>
+              Send
+            </button>
+          </form>
+        </>
+      )}
+      {msg && (
+        <p className="section-text" role="status">
+          {msg}
+        </p>
+      )}
     </section>
   );
 }
@@ -234,24 +252,43 @@ export default function ClassesPage({ user, id, onOpenAuth }: { user: UserPublic
             <h1 className="page-title" id="classes-title">
               Classes
             </h1>
+            {/* A3 (Stop 3): proper rows: name, code, students. DRAFT. */}
             {classes && classes.length > 0 && (
-              <ul className="group">
+              <ul className="class-rows">
                 {classes.map((c) => (
                   <li key={c.id}>
-                    <a href={`#/classes/${c.id}`}>{c.name}</a>
-                    <span className="me-forecast-meta">{c.teaching ? ` Your class, code ${c.code}` : ""}</span>
+                    <a className="class-row" href={`#/classes/${c.id}`}>
+                      <strong>{c.name}</strong>
+                      <span className="class-code">{c.code}</span>
+                      <span>
+                        {c.members} {c.members === 1 ? "student" : "students"}
+                        {c.teaching ? " · your class" : ""}
+                      </span>
+                    </a>
                   </li>
                 ))}
               </ul>
             )}
-            <form className="search-form" onSubmit={join}>
-              <label className="field">
+            <form className="join-form" onSubmit={join}>
+              <label className="field" htmlFor="class-code">
                 <span className="field-label">Join a class: enter your teacher's 6-character code.</span>
-                <input className="input class-code-input" value={code} maxLength={6} onChange={(e) => setCode(e.target.value.toUpperCase())} autoCapitalize="characters" />
               </label>
-              <button type="submit" className="btn btn-primary" disabled={code.trim().length !== 6}>
-                Join
-              </button>
+              <div className="join-row">
+                <input
+                  id="class-code"
+                  className="input class-code-input"
+                  value={code}
+                  maxLength={6}
+                  placeholder="e.g. KX7Q2M"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+                />
+                <button type="submit" className="btn btn-primary" disabled={code.length !== 6} aria-disabled={code.length !== 6}>
+                  Join
+                </button>
+              </div>
             </form>
             {user.is_teacher && (
               <form className="search-form" onSubmit={create}>

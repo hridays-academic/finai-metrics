@@ -41,6 +41,11 @@ describe("MePage", () => {
     vi.mocked(api.fetchProgress).mockResolvedValue(PROGRESS);
     render(<MePage user={USER} onOpenAuth={() => {}} />);
     expect(await screen.findByText("Played 12 days")).toBeTruthy();
+    // A2: the handle as typed, one "Level 3", and the weekly bars explained.
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Asha_07");
+    expect(screen.getByRole("heading", { level: 1 }).className).toBe("me-handle");
+    expect(screen.getAllByText("Level 3")).toHaveLength(1);
+    expect(screen.getByText("Cards that landed inside your range each week. The line marks 8 in 10, the aim.")).toBeTruthy();
     expect(screen.getByText("Caught 7 of 10 (aim: 8)")).toBeTruthy();
     expect(screen.getByText("150 XP. 90 more for Level 4.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Dabur India, Q2 FY27" }).getAttribute("href")).toBe("#/results/3");
@@ -65,5 +70,8 @@ describe("BoardsPage", () => {
     expect(await screen.findByText("Ravi_K")).toBeTruthy();
     expect(screen.getByText("You're hidden from leaderboards. You can change this in Settings.")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "This week" }).getAttribute("aria-selected")).toBe("true");
+    // A1: short column head, and a select for phones.
+    expect(screen.getByRole("columnheader", { name: "Avg per card" })).toBeTruthy();
+    expect((screen.getByLabelText("Leaderboard:") as HTMLSelectElement).value).toBe("week");
   });
 });

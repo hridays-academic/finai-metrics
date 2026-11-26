@@ -13,6 +13,7 @@ vi.mock("../../lib/api", () => {
     ApiError, fetchConsentPage: vi.fn(), answerConsent: vi.fn(), fetchClasses: vi.fn(), joinClass: vi.fn(),
     createClass: vi.fn(), requestConsent: vi.fn(), fetchClassStudents: vi.fn(), fetchClassBoard: vi.fn(),
     fetchCurrentSession: vi.fn(), markPaperForm: vi.fn(), startSession: vi.fn(),
+    fetchConsentOptions: vi.fn(() => Promise.resolve({ email: false })),
   };
 });
 vi.mock("../SiteFooter", () => ({ default: () => null }));
@@ -36,6 +37,7 @@ describe("Parent approval page", () => {
     expect(await screen.findByText(/Your child, Ravi_12, wants to use Stackly/)).toBeTruthy();
     expect(screen.getByText(/stored with Neon .* in the United States/)).toBeTruthy();
     expect(screen.queryByText(/tutor/i)).toBeNull();
+    expect(document.body.textContent).not.toMatch(/verif/i);
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     expect(await screen.findByText("Please type your name to approve.")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "S. Kumar" } });
@@ -56,6 +58,10 @@ describe("Classes", () => {
     fireEvent.click(screen.getByRole("button", { name: "Join" }));
     await waitFor(() => expect(m.joinClass).toHaveBeenCalledWith("ABC234"));
     expect(screen.getByRole("heading", { name: "Ask a parent to approve" })).toBeTruthy();
+    // A11: the paper form leads; with email off there's no email box.
+    expect(screen.getByRole("link", { name: "parent approval form" }).getAttribute("href")).toBe("#/consent-form");
+    expect(screen.queryByLabelText("Your parent's email")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/verif/i);
     expect(screen.queryByRole("button", { name: "Create class" })).toBeNull();
   });
 });

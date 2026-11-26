@@ -16,7 +16,8 @@ const TABS: { key: BoardKind; label: string }[] = [
   { key: "improved", label: "Most improved this week" },
 ];
 
-const VALUE_HEAD: Record<BoardKind, string> = { week: "Average per card", season: "Average score", improved: "Change" };
+// A1 (Stop 3): short heads that fit one line on a phone. DRAFT.
+const VALUE_HEAD: Record<BoardKind, string> = { week: "Avg per card", season: "Avg score", improved: "Change" };
 
 function statusLine(board: Board): string | null {
   switch (board.your_status) {
@@ -62,13 +63,24 @@ export default function BoardsPage({ user }: { user: UserPublic | null }) {
         <p className="hero-lede">Ranked by average score, never by how much you play. Handles only.</p>
       </header>
 
-      <div className="segmented" role="tablist" aria-label="Leaderboards">
+      {/* Wide screens: three equal tabs. Phones: one select, so nothing wraps. */}
+      <div className="segmented board-tabs" role="tablist" aria-label="Leaderboards">
         {TABS.map((t) => (
           <button key={t.key} type="button" role="tab" aria-selected={kind === t.key} className={kind === t.key ? "active" : ""} onClick={() => setKind(t.key)}>
             {t.label}
           </button>
         ))}
       </div>
+      <label className="filter-select board-select">
+        <span>Leaderboard:</span>
+        <select value={kind} onChange={(e) => setKind(e.target.value as BoardKind)}>
+          {TABS.map((t) => (
+            <option key={t.key} value={t.key}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       {error && <ErrorState message={error} onRetry={load} />}
       {!board && !error && <div className="skeleton skeleton-panel" aria-busy="true" aria-label="Loading the leaderboard" />}
@@ -89,7 +101,9 @@ export default function BoardsPage({ user }: { user: UserPublic | null }) {
                     <th scope="col">Rank</th>
                     <th scope="col">Handle</th>
                     <th scope="col">{VALUE_HEAD[kind]}</th>
-                    <th scope="col">{kind === "season" ? "Companies" : "Cards"}</th>
+                    <th scope="col" className="board-count">
+                      {kind === "season" ? "Companies" : "Cards"}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -101,7 +115,7 @@ export default function BoardsPage({ user }: { user: UserPublic | null }) {
                         {r.you && <span className="board-you"> (you)</span>}
                       </th>
                       <td>{fmt(r.value)}</td>
-                      <td>{r.count}</td>
+                      <td className="board-count">{r.count}</td>
                     </tr>
                   ))}
                 </tbody>

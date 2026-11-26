@@ -125,3 +125,10 @@ def test_classroom_mode(client, school):
     assert nxt["index"] == 1 and nxt["revealed"] is False and nxt["answered"] == 0
     end = client.post(f"/api/sessions/{sid}/step", headers=school["teacher"], json={"action": "end"}).json()
     assert end["ended"] is True
+
+
+def test_a_student_cannot_create_a_class(client, school):
+    """A3 (Stop 3): the server refuses, whatever the page shows."""
+    res = client.post("/api/classes", headers=school["student"], json={"name": "Not mine"})
+    assert res.status_code == 403 and res.json()["detail"]["code"] == "teachers_only"
+    assert [c["name"] for c in client.get("/api/classes", headers=school["student"]).json()] == ["9B"]

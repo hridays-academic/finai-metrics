@@ -42,8 +42,8 @@ export default function MePage({ user, onOpenAuth }: { user: UserPublic | null; 
     <div className="page me-page">
       <header className="page-hero">
         <HeroWaves />
-        <h1 className="hero-title">{user?.handle ?? "Me"}</h1>
-        {p && <p className="hero-lede">Level {p.level}</p>}
+        {/* A2 (Stop 3): the handle as typed, not in the all-caps display face. */}
+        <h1 className="me-handle">{user?.handle ?? "Me"}</h1>
       </header>
 
       {!user && (
@@ -89,6 +89,9 @@ export default function MePage({ user, onOpenAuth }: { user: UserPublic | null; 
                 </dd>
               </div>
             </dl>
+            {p.weeks.length > 0 && (
+              <p className="section-text me-weeks-note">Cards that landed inside your range each week. The line marks 8 in 10, the aim.</p>
+            )}
             {p.weeks.length > 0 && (
               <div className="me-weeks" aria-label="Cards inside your range, by week">
                 {p.weeks.map((w) => (

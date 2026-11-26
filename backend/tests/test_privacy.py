@@ -184,7 +184,17 @@ def test_reset_link_never_points_at_a_forged_origin(conn, client, monkeypatch):
 
 # ---------- Attempt limits and stored IPs ----------
 
+def _freeze_rate_limit_clock(monkeypatch, at: float = 1_800_000_000.0) -> None:
+    """A9 (Stop 3): the limiter's windows are fixed-length buckets on the wall
+    clock, so a real-time test could straddle a boundary and reset its own
+    count. Pin the limiter's clock to one instant, well inside a window."""
+    import types
+    from app.services import rate_limit
+    monkeypatch.setattr(rate_limit, "time", types.SimpleNamespace(time=lambda: at, monotonic=lambda: at))
+
+
 def test_login_attempts_are_limited_per_account(conn, client, monkeypatch):
+    _freeze_rate_limit_clock(monkeypatch)
     monkeypatch.setenv("AUTH_RATE_LIMITS_ENABLED", "true")
     get_settings.cache_clear()
     _signup(client, "s@example.com")
@@ -199,6 +209,7 @@ def test_login_attempts_are_limited_per_account(conn, client, monkeypatch):
 def test_reset_emails_are_limited_per_address_without_revealing_it(conn, client, monkeypatch):
     from app.services import gmail_service
 
+    _freeze_rate_limit_clock(monkeypatch)
     monkeypatch.setenv("AUTH_RATE_LIMITS_ENABLED", "true")
     get_settings.cache_clear()
     sent = []

@@ -78,11 +78,20 @@ def test_daily_pick_is_fixed_by_date_and_mixed():
     assert sectors.count("cement") == sectors.count("it") == 5
 
 
-def test_handle_filter():
-    assert not boards.handle_allowed("xXgandu99")
-    assert not boards.handle_allowed("chu7iya")
-    assert not boards.handle_allowed("Madar_Chod")
-    assert boards.handle_allowed("Kshitij_7") and boards.handle_allowed("Asha_07") and boards.handle_allowed("Nazir")
+@pytest.mark.parametrize("handle", ["Kshitij", "Shital", "Dikshit", "Shitanshu", "Essex", "Sussex", "Assam", "Scunthorpe",
+                                    "Kshitij_7", "Asha_07", "Nazir", "Grapevine", "Skillful", "Lundberg", "Dickens"])
+def test_handle_filter_allows_ordinary_names(handle):
+    assert boards.handle_allowed(handle)
+
+
+@pytest.mark.parametrize("handle", ["xXgandu99", "chu7iya", "Madar_Chod", "MadarChod", "madarchod", "Gandu_99", "sh1t",
+                                    "BigDick", "the.shit", "SEX", "s3x_god", "Rape_Lord", "nazi88", "g_a_n_d_u", "Bh0sdi"])
+def test_handle_filter_refuses_bad_handles(handle):
+    assert not boards.handle_allowed(handle)
+
+
+def test_restored_words_are_back_in_the_blocklist():
+    assert {"shit", "dick", "sex", "rape", "kill", "nazi", "lund"} <= set(boards.blocklist())
 
 
 # ---------- Rounds and saving ----------

@@ -939,7 +939,8 @@ textarea.input {
 
 .hero-object-scene {
   position: absolute;
-  inset: 0;
+  /* A5: inset so the tilted slab's corners stay inside the toy's box. */
+  inset: 0 6%;
   transform: rotate(-6deg);
 }
 
@@ -1364,7 +1365,8 @@ textarea.input {
 
 .card-more {
   margin-top: var(--space-2);
-  margin-left: calc(-1 * var(--space-4));
+  /* A5: flush left by padding, not a negative margin that leaves the box. */
+  padding-left: 0;
 }
 
 .recent-row {
@@ -2459,7 +2461,7 @@ textarea.input {
   }
 
   .section-head .btn-tertiary {
-    margin-left: calc(-1 * var(--space-4));
+    padding-left: 0;
   }
 
   /* Story on phones: the card on top, smaller; the text under it. */
@@ -7123,7 +7125,9 @@ a.news-card-headline:hover {
 }
 
 .g3-stage .is-tilted .g2-tilt {
-  transform: rotate(-6deg);
+  /* A5: a hair smaller, so the tilted slab's corners stay inside the page.
+     Held (dragging), it's flat and full size, so the pointer maths hold. */
+  transform: rotate(-6deg) scale(0.99);
   transition: transform var(--motion-base) var(--ease);
 }
 
@@ -7938,16 +7942,14 @@ a.news-card-headline:hover {
 
 .range-slab-mark-label {
   position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  translate: -50% 0;
+  bottom: calc(100% + 2px);
   color: var(--text-2);
   font-size: var(--text-xs);
   white-space: nowrap;
 }
 
-.range-slab-mark.is-quarter .range-slab-mark-label {
-  bottom: calc(100% + 22px);
+.range-slab-mark-label.is-quarter {
+  bottom: calc(100% + 18px);
 }
 
 .range-slab-scale {
@@ -8881,10 +8883,42 @@ a.news-card-headline:hover {
   outline: none;
 }
 
-/* Phase 9: the three board tabs wrap on phones instead of running off the edge. */
-.boards-page .segmented {
-  flex-wrap: wrap;
-  height: auto;
+/* A1 (Stop 3): three equal tabs on wide screens, one select on phones. */
+.board-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 640px;
+}
+
+.board-tabs button {
+  white-space: nowrap;
+}
+
+.board-select {
+  display: none;
+}
+
+.board-table {
+  width: 100%;
+}
+
+.board-table th[scope="row"],
+.board-table thead th:nth-child(2) {
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .board-tabs {
+    display: none;
+  }
+
+  .board-select {
+    display: flex;
+  }
+
+  .board-table .board-count {
+    display: none;
+  }
 }
 
 /* Phase 9: notes inside a table cell (the lazy-guess line, cheat sheets,
@@ -8908,4 +8942,187 @@ a.news-card-headline:hover {
   .research-companies {
     min-height: 405px;
   }
+}
+
+/* A2: the handle as typed. */
+.me-handle {
+  margin: 0;
+  font-size: clamp(2rem, 7vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.me-weeks-note {
+  margin: var(--space-4) 0 0;
+}
+
+/* A3: class rows and the join box. */
+.class-rows {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.class-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  min-height: 56px;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.class-row > span:last-child {
+  grid-column: 1 / -1;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.join-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.join-row {
+  display: flex;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.join-row .class-code-input {
+  flex: 1;
+  max-width: none;
+  min-width: 0;
+}
+
+.join-row .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* A4: the footer links as a tidy grid on phones. */
+@media (max-width: 640px) {
+  .site-footer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2) var(--space-4);
+    justify-items: start;
+  }
+
+  .site-footer-grid > * {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    text-align: left;
+  }
+}
+
+/* A5 (Stop 3): nothing inside the page is wider than its box on a phone. */
+.g3-copy {
+  min-width: 0;
+}
+
+.g3-title {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .round-tabs {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    overflow: visible;
+  }
+
+  .round-tab {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .round-tab-label,
+  .round-tab-range {
+    overflow-wrap: anywhere;
+  }
+
+  .league-history-table th,
+  .league-history-table td {
+    white-space: normal;
+    padding: var(--space-2) var(--space-1);
+    font-size: var(--text-sm);
+  }
+
+  .price-chart-period-row button {
+    padding-inline: var(--space-2);
+  }
+
+  .news-views,
+  .admin-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    height: auto;
+  }
+
+  .news-views button,
+  .admin-tabs button {
+    min-width: 0;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 640px) {
+  /* A5: the quarters table fits the panel on a phone. */
+  .league-history-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .league-history-table .col-note {
+    overflow-wrap: anywhere;
+  }
+
+  .price-chart-period-row > .price-chart-period-btn {
+    padding: 0 var(--space-2);
+  }
+
+  /* A5: macro values wrap instead of running past their card. */
+  .macro-line,
+  .macro-value {
+    min-width: 0;
+  }
+
+  .macro-value {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 640px) {
+  .macro-value .sparkline-value,
+  .macro-value .sparkline-when {
+    white-space: normal;
+  }
+
+  .macro-value .sparkline-when {
+    display: block;
+  }
+}
+
+/* A5: while guide pages slide past each other, the part beyond the screen
+   edge is cut off at the page box (it was never visible). */
+.guide2-page,
+.g2-stack,
+.g2-page {
+  overflow-x: clip;
+}
+
+/* A3: the placeholder reads "e.g. KX7Q2M", not in capitals. */
+.class-code-input::placeholder {
+  text-transform: none;
+  letter-spacing: normal;
 }

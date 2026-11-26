@@ -142,13 +142,34 @@ def blocklist() -> tuple[str, ...]:
     return tuple(w.strip().lower() for w in lines if w.strip() and not w.startswith("#"))
 
 
-def normalise(handle: str) -> str:
-    return re.sub(r"[^a-z]", "", handle.lower().translate(_LOOKALIKE))
+def handle_words(handle: str, lookalikes: bool = True) -> list[str]:
+    """A7 (Stop 3): the words in a handle. Split at camelCase, then at
+    anything that isn't a letter or a look-alike character. With
+    `lookalikes`, digits and symbols inside a word read as letters ("sh1t");
+    without, they're dropped ("nazi88"). Decoration x's at either end
+    ("xXname") are trimmed when checking (handle_allowed)."""
+    spaced = re.sub(r"([a-z])([A-Z])", r"\1 \2", handle)
+    words = []
+    for raw in re.split(r"[^A-Za-z0-9@$!|]+", spaced):
+        w = raw.lower()
+        if lookalikes and re.search(r"[a-z]", w):
+            w = w.translate(_LOOKALIKE)
+        w = re.sub(r"[^a-z]", "", w)
+        if w:
+            words.append(w)
+    return words
 
 
 def handle_allowed(handle: str) -> bool:
-    plain = normalise(handle)
-    return not any(word in plain for word in blocklist())
+    """Refused when a word, or the whole handle run together, is a blocked
+    word, in either reading. Whole words only: "Kshitij" is fine,
+    "Gandu_99" isn't."""
+    blocked = set(blocklist())
+    for words in (handle_words(handle, True), handle_words(handle, False)):
+        joined = "".join(words)
+        if any(w in blocked or w.strip("x") in blocked for w in words + [joined]):
+            return False
+    return True
 
 
 class HandleReviewOut(BaseModel):

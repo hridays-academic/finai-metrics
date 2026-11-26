@@ -563,4 +563,8 @@ LEAGUE_SCHEMA_STATEMENTS = [
         PRIMARY KEY (session_id, user_id, card_index)
     )
     """,
+    # ---------- Archive figures (schema v22, Stop 3 A6) ----------
+    # Figures saved only through Older results are for Practice and Mystery:
+    # league charts and Research's league figures leave them out.
+    "ALTER TABLE actuals ADD COLUMN IF NOT EXISTS archive BOOLEAN NOT NULL DEFAULT FALSE",
 ]

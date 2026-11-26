@@ -210,3 +210,21 @@ def test_practice_on_an_archive_quarter_uses_last_years_figure(rows, client, sco
     assert res.status_code == 200, res.text
     lazy = {m["metric_key"]: m["lazy"] for m in res.json()["metrics"]}
     assert lazy == {"revenue_growth_yoy": -15.8, "operating_margin": 6.7, "sector_kpi": -2.2}
+
+
+def test_archive_figures_never_reach_league_charts_or_research(rows, client, scored, older):
+    """A6 (Stop 3): approved older quarters are for Practice and Mystery only."""
+    conn = rows
+    _approve_and_score(client, scored, older)
+    hist = client.get(f"/api/league/companies/{scored['company']}/history").json()
+    shown = {(a["fiscal_year_label"], a["fiscal_quarter"]) for a in hist["actuals"]}
+    assert ("FY26", 3) not in shown and ("FY25", 3) not in shown  # archive-only quarters
+    assert ("FY27", 2) in shown and ("FY26", 2) in shown  # the league event and its last year stay
+    # FY26 Q2 was already a league figure before approval: still not archive.
+    flags = {r["fiscal_quarter"]: r["archive"] for r in conn.execute(
+        """SELECT p.fiscal_quarter, bool_and(a.archive) AS archive FROM actuals a JOIN fiscal_periods p ON p.id = a.period_id
+           WHERE p.fiscal_year_label = 'FY26' GROUP BY p.fiscal_quarter""").fetchall()}
+    assert flags[2] is False and flags[3] is True
+    # Practice still gets them.
+    code = client.get("/api/practice/cases").json()[0]["code"]
+    assert client.get(f"/api/practice/cases/{code}").status_code in (200, 502)

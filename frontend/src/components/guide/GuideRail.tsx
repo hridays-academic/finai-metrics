@@ -277,7 +277,7 @@ export default function GuideRail(props: RailProps) {
               style={{ left: i * (segW + SEGMENT_GAP), width: segW, height: tileH }}
               aria-hidden="true"
             >
-              <span className="tile-material">
+              <span className="tile-material" aria-hidden="true">
                 <Guilloche />
                 <Grain />
               </span>

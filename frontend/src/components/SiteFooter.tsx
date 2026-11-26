@@ -9,14 +9,14 @@ export default function SiteFooter() {
     <footer className="site-footer">
       <p>Educational forecasting game. Not investment advice. Company data may be delayed or incomplete.</p>
       {/* H14 (phase 9): the main places, then help and legal. DRAFT grouping. */}
-      <p className="site-footer-links">
+      <p className="site-footer-links site-footer-grid">
         <a href="#/learn">How to play</a>
         <a href="#/practice">Practice</a>
         <a href="#/daily">Daily challenge</a>
         <a href="#/boards">Leaderboards</a>
         <a href="#/research">Research</a>
       </p>
-      <p className="site-footer-links">
+      <p className="site-footer-links site-footer-grid">
         <button type="button" className="link-button" onClick={() => setOpen(true)}>
           Something wrong? Tell us
         </button>
