@@ -74,7 +74,8 @@ def latest_season(conn: psycopg.Connection) -> Optional[str]:
     return row["season_label"] if row else None
 
 
-def board(conn: psycopg.Connection, which: str, user: Optional[dict]) -> BoardOut:
+def board(conn: psycopg.Connection, which: str, user: Optional[dict], members: Optional[set[int]] = None) -> BoardOut:
+    """`members`: a class board (phase 8) keeps only the class's students."""
     season = None
     if which == "week":
         raw = [(r["id"], r["handle"], r["value"], r["n"]) for r in _week_rows(conn, _WEEK, f"{_WEEK} + interval '7 days'")]
@@ -100,6 +101,8 @@ def board(conn: psycopg.Connection, which: str, user: Optional[dict]) -> BoardOu
         minimum = SEASON_MIN_FORECASTS
     else:
         raise LeagueError(404, "no_such_board", "That board doesn't exist.")
+    if members is not None:
+        raw = [r for r in raw if r[0] in members]
     raw.sort(key=lambda r: (-r[2], r[1].lower()))
     me = user["id"] if user else None
     ranked = [BoardRow(rank=i + 1, handle=h, value=round(v, 1), count=n, you=uid == me)

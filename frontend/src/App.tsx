@@ -42,6 +42,11 @@ const ResearchLanding = lazy(() => import("./components/news/ResearchLanding"));
 const QuickRound = lazy(() => import("./components/play/QuickRound"));
 const MePage = lazy(() => import("./components/me/MePage"));
 const BoardsPage = lazy(() => import("./components/me/BoardsPage"));
+const SchoolsPage = lazy(() => import("./components/schools/SchoolsPage"));
+const ClassesPage = lazy(() => import("./components/schools/ClassesPage"));
+const LiveRound = lazy(() => import("./components/schools/LiveRound"));
+const ConsentPage = lazy(() => import("./components/schools/ConsentPage"));
+const ConsentForm = lazy(() => import("./components/schools/ConsentForm"));
 
 // A company, results or research workspace page opened from Home.
 type HomePage = { name: "event" | "results" | "workspace"; id: number } | null;
@@ -90,12 +95,13 @@ export default function App() {
   // Quick rounds (#/play) are practice, so they light the Practice tab.
   const showPractice =
     route?.name === "practice" || route?.name === "play" || route?.name === "daily" || (route === null && view === "practice");
-  const meActive = route?.name === "me" || route?.name === "boards";
+  const meActive = route?.name === "me" || route?.name === "boards" || route?.name === "classes" || route?.name === "live";
   // T17 (master plan): Research has its own address, #/research.
   const showResearch = route?.name === "research" || (route === null && view === "search");
   // T22: exactly one tab lit; none on the guide, legal, admin or not-found pages.
   const navView: View | null =
-    route?.name === "admin" || isLegalRoute || route?.name === "learn" || route?.name === "notfound" || meActive
+    route?.name === "admin" || isLegalRoute || route?.name === "learn" || route?.name === "notfound" || meActive ||
+    route?.name === "schools" || route?.name === "consent" || route?.name === "consentform"
       ? null
       : showPractice
         ? "practice"
@@ -358,6 +364,11 @@ export default function App() {
           {route?.name === "daily" && <QuickRound key="daily" mode="daily" user={user} />}
           {route?.name === "me" && <MePage user={user} onOpenAuth={() => setAuthOpen(true)} />}
           {route?.name === "boards" && <BoardsPage user={user} />}
+          {route?.name === "schools" && <SchoolsPage />}
+          {route?.name === "classes" && <ClassesPage user={user} id={route.id} onOpenAuth={() => setAuthOpen(true)} />}
+          {route?.name === "live" && <LiveRound id={route.id} />}
+          {route?.name === "consent" && <ConsentPage token={route.token} />}
+          {route?.name === "consentform" && <ConsentForm />}
           {route?.name === "learn" && (
             <div className="view-wrapper">
               <GuidePage onOpenResearch={() => handleChangeView("search")} />

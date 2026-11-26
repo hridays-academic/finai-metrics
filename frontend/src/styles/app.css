@@ -8801,3 +8801,60 @@ a.news-card-headline:hover {
 .research-go-deeper {
   margin-top: var(--space-4);
 }
+
+/* Phase 8: schools. */
+.class-code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.15em;
+  font-size: var(--text-lg);
+}
+
+.class-code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  max-width: 12ch;
+}
+
+.class-board .is-you {
+  color: var(--gold);
+}
+
+.schools-steps li + li {
+  margin-top: var(--space-2);
+}
+
+.live-round.is-projector .quick-card-title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+}
+
+.live-count,
+.live-class-range {
+  font-size: var(--text-lg);
+  margin: var(--space-2) 0;
+}
+
+.consent-fields {
+  display: grid;
+  gap: var(--space-4);
+  margin: var(--space-4) 0;
+}
+
+.consent-fields dd {
+  margin: var(--space-2) 0 0;
+  border-bottom: 1px solid var(--text-primary);
+  min-height: 28px;
+}
+
+@media print {
+  .no-print,
+  .primary-nav,
+  header.app-header {
+    display: none !important;
+  }
+
+  .consent-print .glass {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+}

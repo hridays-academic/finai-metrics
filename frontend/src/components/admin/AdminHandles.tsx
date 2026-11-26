@@ -1,8 +1,31 @@
 import { useEffect, useState } from "react";
-import { adminHandlesForReview, adminSetHandleStatus, ApiError } from "../../lib/api";
+import { adminHandlesForReview, adminPaperForms, adminSetHandleStatus, ApiError } from "../../lib/api";
+import { formatDay } from "../../lib/leagueFormat";
 
 // Phase 6 (SC9): handles under review or blocked are hidden from leaderboards
 // until an admin approves them. Admin-only wording.
+// Phase 8 (SC4): paper forms a teacher marked received, for an admin to
+// confirm with "Record consent" below. Admin-only wording.
+export function PaperForms() {
+  const [rows, setRows] = useState<{ user_id: number; handle: string | null; class_name: string; received_at: string }[] | null>(null);
+  useEffect(() => {
+    adminPaperForms().then(setRows).catch(() => setRows([]));
+  }, []);
+  if (!rows || rows.length === 0) return null;
+  return (
+    <section className="admin-section" aria-labelledby="paper-title">
+      <h3 id="paper-title">Paper forms to confirm</h3>
+      <ul>
+        {rows.map((r) => (
+          <li key={r.user_id}>
+            {r.handle ?? "(no handle)"}, {r.class_name}: received {formatDay(r.received_at, true)}. Search for them below and press Record consent.
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export default function AdminHandles() {
   const [rows, setRows] = useState<{ user_id: number; handle: string; handle_status: string }[] | null>(null);
   const [error, setError] = useState<string | null>(null);

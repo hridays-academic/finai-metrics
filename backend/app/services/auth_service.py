@@ -255,7 +255,7 @@ def log_out(token: str) -> None:
 
 _USER_COLUMNS = """u.id, u.email, u.name, u.created_at, u.password_hash, u.handle, u.age_band,
     u.guardian_consent_status, u.school_name, u.terms_accepted_at, u.terms_version, u.guide_seen_at,
-    u.leaderboard_opt_out, u.handle_status"""
+    u.leaderboard_opt_out, u.handle_status, u.role"""
 
 
 def _user_dict(row: dict) -> dict:
@@ -275,6 +275,8 @@ def _user_dict(row: dict) -> dict:
         "guide_seen": row["guide_seen_at"] is not None,
         "leaderboard_opt_out": row["leaderboard_opt_out"],
         "handle_status": row["handle_status"],
+        "role": row["role"],
+        "is_teacher": row["role"] in ("teacher", "admin"),
     }
 
 
@@ -347,8 +349,10 @@ def delete_account(user_id: int) -> None:
         for table in (
             "sessions", "activity_log", "password_reset_tokens", "league_members", "practice_attempts",
             "research_workspaces", "card_answers", "xp_awards", "user_badges", "daily_attempts", "quick_round_attempts",
+            "class_members", "classroom_answers",
         ):
             conn.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
+        conn.execute("DELETE FROM consent_requests WHERE student_id = %s", (user_id,))
         conn.execute(
             """
             UPDATE users SET

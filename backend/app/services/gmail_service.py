@@ -70,3 +70,37 @@ def send_password_reset_email(to_email: str, name: str, reset_link: str) -> None
     except smtplib.SMTPException as exc:
         logger.error("Gmail SMTP send failed for %s: %s", to_email, exc)
         raise EmailSendError("Couldn't send the reset email right now.") from exc
+
+
+def email_enabled() -> bool:
+    """The switch for every email (T18): on once Hriday adds GMAIL_ADDRESS and
+    GMAIL_APP_PASSWORD in Vercel."""
+    settings = get_settings()
+    return bool(settings.gmail_address and settings.gmail_app_password)
+
+
+def send_consent_email(to_email: str, handle: str, link: str) -> None:
+    """Phase 8 (SC3): asks a parent or guardian to approve. DRAFT wording."""
+    settings = get_settings()
+    if not email_enabled():
+        raise EmailSendError("Email sending is not configured.")
+    html = f"""
+        <p>Hello,</p>
+        <p>A student using the handle {handle} has asked you to approve their Stackly account.
+        Stackly is a free educational game where students forecast Indian companies' quarterly results.</p>
+        <p>Read what Stackly saves and approve (or not) here:</p>
+        <p><a href="{link}">{link}</a></p>
+        <p>This link works for 14 days. If you don't know this student, you can ignore this email.</p>
+    """
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Please approve your child's Stackly account"
+    message["From"] = settings.gmail_address
+    message["To"] = to_email
+    message.attach(MIMEText(html, "html"))
+    try:
+        with smtplib.SMTP_SSL(_SMTP_HOST, _SMTP_PORT, timeout=10) as server:
+            server.login(settings.gmail_address, settings.gmail_app_password)
+            server.sendmail(settings.gmail_address, [to_email], message.as_string())
+    except smtplib.SMTPException as exc:
+        logger.error("Gmail SMTP send failed for a consent email: %s", exc)
+        raise EmailSendError("Couldn't send the email right now.") from exc

@@ -12,6 +12,7 @@ export default function SiteFooter() {
         <button type="button" className="link-button" onClick={() => setOpen(true)}>
           Something wrong? Tell us
         </button>
+        <a href="#/schools">For schools</a>
         <a href="#/terms">Terms of Use</a>
         <a href="#/privacy">Privacy Policy</a>
       </p>

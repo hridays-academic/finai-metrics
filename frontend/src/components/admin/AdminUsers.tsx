@@ -1,6 +1,6 @@
-import AdminHandles from "./AdminHandles";
+import AdminHandles, { PaperForms } from "./AdminHandles";
 import { FormEvent, Fragment, useEffect, useState } from "react";
-import { adminFindUsers, adminSetConsent, ApiError, type ConsentDetails } from "../../lib/api";
+import { adminFindUsers, adminSetConsent, adminSetRole, ApiError, type ConsentDetails } from "../../lib/api";
 import { formatDay } from "../../lib/leagueFormat";
 import { todayInIndia } from "../../lib/marketHolidays";
 import type { AdminUser } from "../../lib/types";
@@ -69,6 +69,7 @@ export default function AdminUsers() {
 
   return (
     <div>
+      <PaperForms />
       <AdminHandles />
       <p className="section-text">
         Students under 18 can't submit forecasts until a parent or guardian has consented, by signed form or by
@@ -109,7 +110,20 @@ export default function AdminUsers() {
                   </td>
                   <td>{u.school_name ?? "N/A"}</td>
                   <td>{u.age_band === "under_18" ? "Under 18" : u.age_band === "18_plus" ? "18+" : "Not set"}</td>
-                  <td>{consentSummary(u)}</td>
+                  <td>
+                    {consentSummary(u)}
+                    {/* Phase 8: an admin makes an account a teacher (admin-only wording). */}
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() =>
+                        adminSetRole(u.id, u.role === "teacher" ? "student" : "teacher").then(() => search(q))
+                      }
+                    >
+                      {" "}
+                      {u.role === "teacher" ? "Teacher (undo)" : "Make teacher"}
+                    </button>
+                  </td>
                   <td>
                     {u.age_band === "under_18" &&
                       (u.guardian_consent_status === "granted" ? (

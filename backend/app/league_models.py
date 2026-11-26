@@ -443,6 +443,7 @@ class AdminUserOut(BaseModel):
     guardian_consent_by: Optional[str] = None
     guardian_consent_method: Optional[str] = None
     guardian_consent_date: Optional[date] = None
+    role: str = "student"  # phase 8
 
 
 class AuditEntryOut(BaseModel):

@@ -18,6 +18,11 @@ export type Route =
   | { name: "daily" }
   | { name: "me" }
   | { name: "boards" }
+  | { name: "schools" }
+  | { name: "classes"; id?: number }
+  | { name: "live"; id: number }
+  | { name: "consent"; token: string }
+  | { name: "consentform" }
   // T16: an address that isn't a page gets "page not found", never Home.
   | { name: "notfound" }
   | null;
@@ -32,6 +37,15 @@ export function parseHash(hash: string): Route {
   if (path === "/daily") return { name: "daily" };
   if (path === "/me") return { name: "me" };
   if (path === "/boards") return { name: "boards" };
+  if (path === "/schools") return { name: "schools" };
+  if (path === "/classes") return { name: "classes" };
+  if (path === "/consent-form") return { name: "consentform" };
+  const cls = /^\/classes\/(\d+)$/.exec(path);
+  if (cls) return { name: "classes", id: Number(cls[1]) };
+  const live = /^\/live\/(\d+)$/.exec(path);
+  if (live) return { name: "live", id: Number(live[1]) };
+  const consent = /^\/consent\/([A-Za-z0-9_-]{20,80})$/.exec(path);
+  if (consent) return { name: "consent", token: consent[1] };
   if (path === "/league") return { name: "league" };
   if (path === "/admin") return { name: "admin" };
   if (path === "/learn") return { name: "learn" };

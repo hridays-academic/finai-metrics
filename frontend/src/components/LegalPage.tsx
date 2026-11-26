@@ -54,9 +54,9 @@ const PRIVACY: Section[] = [
         list: [
           "Our database: Neon, in the United States.",
           "The website and server: Vercel, in the United States. Vercel keeps short-lived technical logs, such as IP addresses and the pages requested, as part of hosting the site.",
-          "Password-reset emails: sent through Gmail.",
+          "Password-reset and parent-approval emails: sent through Gmail.",
           "Google: only when you open sign-in or use Sign in with Google, your browser loads Google's sign-in button, so Google receives your IP address and browser details and may set its own cookies. Google's privacy policy covers that.",
-          "YouTube (owned by Google): news videos on the Research page show the video's picture, which our server copies from YouTube and shows from Stackly's own site, so nothing loads from YouTube until you press play. When you do, your browser loads YouTube's player in its privacy-enhanced mode (youtube-nocookie.com), so YouTube receives your IP address and browser details and may store information in your browser. YouTube's and Google's privacy policies cover that. To find the videos and their pictures, our server asks YouTube for recent videos from a few news channels; it sends nothing about you.",
+          "YouTube (owned by Google): news and teaching videos on the Research page show the video's picture, which our server copies from YouTube and shows from Stackly's own site, so nothing loads from YouTube until you press play. When you do, your browser loads YouTube's player in its privacy-enhanced mode (youtube-nocookie.com), so YouTube receives your IP address and browser details and may store information in your browser. YouTube's and Google's privacy policies cover that. To find the videos and their pictures, our server asks YouTube for recent videos from a few news channels; it sends nothing about you.",
           "Apart from sign-in and videos you choose to play, pages load nothing from Google or YouTube.",
         ],
       },
@@ -100,6 +100,19 @@ const PRIVACY: Section[] = [
     heading: "Your progress",
     body: [
       "If you're signed in, we save your quick rounds, daily challenges, level and badges so you can see your progress. Leaderboards show your handle only, never your name or school, and you can hide yourself in Settings. Students waiting for parental consent are never on a leaderboard and nothing they play is saved.",
+    ],
+  },
+  {
+    // Master plan phase 8, DRAFT wording (decisions item 8 asked for these lines).
+    heading: "Classes and parent approval",
+    body: [
+      {
+        list: [
+          "If you join a class with your teacher's code, your teacher sees your handle, rounds played, scores and the companies you forecast. Your name is shown only if your school has asked for it.",
+          "If you're under 18 and ask a parent to approve by email, we keep their email address only until they answer or for 14 days, whichever comes first. We then keep their name, how they approved and the date, as with a paper form.",
+          "In a class round, your teacher sees the class's average range, not each student's.",
+        ],
+      },
     ],
   },
   {

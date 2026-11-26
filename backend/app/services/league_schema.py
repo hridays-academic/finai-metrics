@@ -498,4 +498,69 @@ LEAGUE_SCHEMA_STATEMENTS = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_card_answers_answered ON card_answers(answered_at)",
+    # ---------- Schools (schema v21, phase 8) ----------
+    # Vault: Areas/Phase 8 plan. A teacher role given by an admin; classes with
+    # a 6-character code; parent consent by email link (the parent's email is
+    # kept only until the request is answered or expires after 14 days) or a
+    # paper form the teacher marks received and an admin confirms; classroom
+    # mode (one quick round on a projector, students answer on phones).
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'student'",
+    """
+    DO $$ BEGIN
+        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('student', 'teacher', 'admin'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS classes (
+        id SERIAL PRIMARY KEY,
+        code CHAR(6) NOT NULL UNIQUE,
+        teacher_id INTEGER NOT NULL REFERENCES users(id),
+        name TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 60),
+        show_names BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS class_members (
+        class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        paper_form_received_at TIMESTAMPTZ,
+        PRIMARY KEY (class_id, user_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS consent_requests (
+        id SERIAL PRIMARY KEY,
+        student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        parent_email TEXT,
+        token_hash TEXT NOT NULL UNIQUE,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        answered_at TIMESTAMPTZ,
+        approved BOOLEAN
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS classroom_sessions (
+        id SERIAL PRIMARY KEY,
+        class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+        card_ids JSONB NOT NULL,
+        current INTEGER NOT NULL DEFAULT 0,
+        revealed BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ended_at TIMESTAMPTZ
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS classroom_answers (
+        session_id INTEGER NOT NULL REFERENCES classroom_sessions(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        card_index INTEGER NOT NULL,
+        low DOUBLE PRECISION NOT NULL,
+        high DOUBLE PRECISION NOT NULL,
+        PRIMARY KEY (session_id, user_id, card_index)
+    )
+    """,
 ]

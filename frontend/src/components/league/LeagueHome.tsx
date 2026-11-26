@@ -428,6 +428,10 @@ export default function LeagueHome({ user, onOpenAuth, visible }: LeagueHomeProp
             Learn how it works (10 short pages)
           </a>
         </div>
+        {/* H15/SC6 (approved 2.41): teachers find the schools page from Home. */}
+        <p className="hero-note">
+          <a href="#/schools">For schools</a>
+        </p>
         {/* H16/E6 (phase 6): a signed-in student's progress and next forecast. DRAFT wording. */}
         {user && <HomeProgress next={open.find((e) => !e.submitted) ?? null} />}
         </div>

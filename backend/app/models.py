@@ -416,6 +416,8 @@ class UserPublic(BaseModel):
     # has put the handle under review or blocked it (boards hide it).
     leaderboard_opt_out: bool = False
     handle_status: str = "ok"
+    # Phase 8: a teacher (given by an admin) can create classes.
+    is_teacher: bool = False
 
 
 class AuthResponse(BaseModel):

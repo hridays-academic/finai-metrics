@@ -31,6 +31,12 @@ PAGES = frozenset({
     "daily",
     "me",
     "boards",
+    # schools (phase 8)
+    "schools",
+    "classes",
+    "live",
+    "consent",
+    "consentform",
 })
 
 

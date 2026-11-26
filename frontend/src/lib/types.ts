@@ -211,6 +211,8 @@ export interface UserPublic {
   // Phase 6: "Hide me from leaderboards"; a handle under review or blocked is hidden from boards.
   leaderboard_opt_out?: boolean;
   handle_status?: "ok" | "review" | "blocked";
+  // Phase 8: given by an admin; can create classes.
+  is_teacher?: boolean;
 }
 
 export interface AuthResponse {
@@ -485,6 +487,7 @@ export interface AdminUser {
   guardian_consent_by: string | null;
   guardian_consent_method: "signed_form" | "parent_email" | null;
   guardian_consent_date: string | null;
+  role?: "student" | "teacher" | "admin";
 }
 
 export interface AuditEntry {

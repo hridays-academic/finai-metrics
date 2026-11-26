@@ -260,7 +260,7 @@ def find_users(conn: psycopg.Connection, query: Optional[str], limit: int = 50) 
     rows = conn.execute(
         """
         SELECT id, email, name, handle, age_band, guardian_consent_status, school_name,
-               guardian_consent_by, guardian_consent_method, guardian_consent_date FROM users
+               guardian_consent_by, guardian_consent_method, guardian_consent_date, role FROM users
         WHERE deleted_at IS NULL
           AND (lower(email) LIKE %s OR lower(coalesce(handle, '')) LIKE %s OR lower(name) LIKE %s)
         ORDER BY (age_band = 'under_18' AND guardian_consent_status = 'pending') DESC, id DESC

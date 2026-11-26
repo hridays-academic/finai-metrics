@@ -26,6 +26,15 @@ export function titleForRoute(route: Route): string | null | undefined {
       return "Me";
     case "boards":
       return "Leaderboards";
+    case "schools":
+      return "For schools";
+    case "classes":
+      return "Classes";
+    case "live":
+      return "Class round";
+    case "consent":
+    case "consentform":
+      return "Parent approval";
     case "notfound":
       return "Page not found";
     case "privacy":

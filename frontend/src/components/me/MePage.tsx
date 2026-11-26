@@ -197,6 +197,9 @@ export default function MePage({ user, onOpenAuth }: { user: UserPublic | null; 
             <a className="btn btn-secondary" href="#/boards">
               Leaderboards
             </a>
+            <a className="btn btn-secondary" href="#/classes">
+              Classes
+            </a>
           </div>
         </>
       )}

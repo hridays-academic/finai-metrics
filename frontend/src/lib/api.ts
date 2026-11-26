@@ -305,6 +305,11 @@ export type VisitPage =
   | "daily"
   | "me"
   | "boards"
+  | "schools"
+  | "classes"
+  | "live"
+  | "consent"
+  | "consentform"
   | "search"
   | "trading"
   | "reset_password"
@@ -593,3 +598,69 @@ export interface ResearchCompany {
   sector_name: string;
 }
 export const fetchResearchCompanies = () => leagueRequest<ResearchCompany[]>("GET", "/league/companies");
+
+// Phase 8: schools (services/schools.py).
+export interface ClassInfo {
+  id: number;
+  code: string;
+  name: string;
+  teaching: boolean;
+  members: number;
+  show_names: boolean;
+}
+export interface ClassStudent {
+  user_id: number;
+  display: string;
+  started: boolean;
+  rounds: number;
+  cards: number;
+  average: number | null;
+  caught: number | null;
+  forecasts: number;
+  companies: string[];
+  consent: "not_needed" | "granted" | "pending" | "paper_received";
+}
+export interface ClassSession {
+  id: number;
+  class_id: number;
+  index: number;
+  total: number;
+  card: PlayCard | null;
+  revealed: boolean;
+  answered: number;
+  members: number;
+  class_range: [number, number] | null;
+  actual: number | null;
+  class_hit: boolean | null;
+  my_range: [number, number] | null;
+  my_hit: boolean | null;
+  ended: boolean;
+  teaching: boolean;
+}
+export const fetchClasses = () => leagueRequest<ClassInfo[]>("GET", "/classes");
+export const createClass = (name: string) => leagueRequest<ClassInfo>("POST", "/classes", { name });
+export const joinClass = (code: string) => leagueRequest<ClassInfo>("POST", "/classes/join", { code });
+export const leaveClass = (id: number) => leagueRequest<void>("DELETE", `/classes/${id}/membership`);
+export const fetchClassStudents = (id: number) =>
+  leagueRequest<{ class: ClassInfo; students: ClassStudent[] }>("GET", `/classes/${id}/students`);
+export const markPaperForm = (classId: number, studentId: number) =>
+  leagueRequest<void>("PUT", `/classes/${classId}/students/${studentId}/paper-form`);
+export const fetchClassBoard = (classId: number, kind: BoardKind) => leagueRequest<Board>("GET", `/classes/${classId}/boards/${kind}`);
+export const startSession = (classId: number) => leagueRequest<ClassSession>("POST", `/classes/${classId}/sessions`);
+export const fetchCurrentSession = (classId: number) =>
+  leagueRequest<{ session_id: number | null }>("GET", `/classes/${classId}/sessions/current`);
+export const fetchSession = (id: number) => leagueRequest<ClassSession>("GET", `/sessions/${id}`);
+export const answerSession = (id: number, low: number, high: number) =>
+  leagueRequest<ClassSession>("POST", `/sessions/${id}/answer`, { low, high });
+export const stepSession = (id: number, action: "reveal" | "next" | "end") =>
+  leagueRequest<ClassSession>("POST", `/sessions/${id}/step`, { action });
+export const requestConsent = (parentEmail: string) =>
+  leagueRequest<void>("POST", "/me/consent-request", { parent_email: parentEmail });
+export const fetchConsentPage = (token: string) =>
+  leagueRequest<{ handle: string; expires_at: string }>("GET", `/consent/${encodeURIComponent(token)}`);
+export const answerConsent = (token: string, approve: boolean, parentName: string) =>
+  leagueRequest<void>("POST", `/consent/${encodeURIComponent(token)}`, { approve, parent_name: parentName });
+export const adminSetRole = (userId: number, role: "student" | "teacher") =>
+  leagueRequest<void>("PUT", `/admin/users/${userId}/role`, { role });
+export const adminPaperForms = () =>
+  leagueRequest<{ user_id: number; handle: string | null; class_name: string; received_at: string }[]>("GET", "/admin/paper-forms");
