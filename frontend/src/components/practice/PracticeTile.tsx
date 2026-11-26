@@ -29,6 +29,7 @@ export default function PracticeTile({
         className={`sector-tile practice-tile ${colourClass(level)} ${level ? "has-edge" : ""} ${card.locked ? "is-locked" : ""}`}
         href={card.locked ? undefined : `#/practice/${card.code}`}
         aria-disabled={card.locked || undefined}
+        aria-label={`${card.name ?? MYSTERY_NAME}, ${card.sector_name}${level ? `, ${DIFFICULTY_LABEL[level]}` : ""}${card.season_label ? `, ${card.season_label}` : ""}: ${card.locked ? "unlocks at Level 2" : "forecast"}`}
       >
         <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
         {/* H7 (master plan): in Mystery mode the sector is the headline, so

@@ -543,7 +543,7 @@ export default function CompanyStory({
   const heading = (
     <div className="story-title">
       <a className="back-link" href={practice?.backHref ?? "#/league"} data-keep-scroll>
-        {practice?.backLabel ?? "← Companies"}
+        {practice?.backLabel ?? "← Home"}
       </a>
       {/* A2: inside "About this company" the page already has its h1. */}
       {flat ? (

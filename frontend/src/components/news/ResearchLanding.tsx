@@ -37,12 +37,13 @@ export default function ResearchLanding({ onPick }: { onPick?: (symbol: string) 
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [macro, setMacro] = useState<MacroSeries[]>([]);
-  const [companies, setCompanies] = useState<ResearchCompany[]>([]);
+  // null while loading: the tiles' space is held so nothing below jumps.
+  const [companies, setCompanies] = useState<ResearchCompany[] | null>(null);
 
   useEffect(() => {
     fetchWorldEvents().then(setEvents).catch(() => {});
     fetchMacro().then(setMacro).catch(() => {});
-    fetchResearchCompanies().then(setCompanies).catch(() => {});
+    fetchResearchCompanies().then(setCompanies).catch(() => setCompanies([]));
   }, []);
 
   useEffect(() => {
@@ -74,19 +75,19 @@ export default function ResearchLanding({ onPick }: { onPick?: (symbol: string) 
 
   // N6: "Affects: Maruti Suzuki" for headlines in a league company's sector.
   const affects = (item: NewsItem) =>
-    companies.filter((c) => (item.sectors ?? []).includes(c.sector_name)).map((c) => c.name);
+    (companies ?? []).filter((c) => (item.sectors ?? []).includes(c.sector_name)).map((c) => c.name);
   const groups = items ? splitByDay(items) : null;
 
   return (
     <div className="research-landing">
       {/* RW1 (phase 7, approved 2.40): the league's companies first. */}
-      {companies.length > 0 && (
-        <section className="glass panel research-companies" aria-labelledby="research-companies-title">
+      {(companies === null || companies.length > 0) && (
+        <section className="glass panel research-companies" aria-labelledby="research-companies-title" aria-busy={companies === null}>
           <h2 className="panel-title" id="research-companies-title">
             League and practice companies
           </h2>
           <ul className="research-company-grid">
-            {companies.map((c) => (
+            {(companies ?? []).map((c) => (
               <li key={c.symbol}>
                 <button type="button" className="research-company" onClick={() => onPick?.(c.symbol)}>
                   <strong>{c.name}</strong>
@@ -97,8 +98,6 @@ export default function ResearchLanding({ onPick }: { onPick?: (symbol: string) 
           </ul>
         </section>
       )}
-
-      <WorldEvents events={events} />
 
       <section className="glass panel news-panel" aria-labelledby="news-title">
         <h2 className="panel-title" id="news-title">
@@ -143,6 +142,9 @@ export default function ResearchLanding({ onPick }: { onPick?: (symbol: string) 
         <NewsSourceNote updatedAt={updatedAt} />
       </section>
 
+
+      {/* Below the news, so it can't push the headlines down when it arrives. */}
+      <WorldEvents events={events} />
 
       <LearnBasics />
 

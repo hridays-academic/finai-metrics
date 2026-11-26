@@ -177,7 +177,7 @@ export default function WorkspacePage({ eventId, user, onUserChange, onOpenAuth,
   if (error) {
     return (
       <div className="page">
-        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
+        <a className="back-link" href="#/league" data-keep-scroll>← Home</a>
         <ErrorState message={error} />
       </div>
     );

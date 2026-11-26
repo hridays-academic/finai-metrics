@@ -191,7 +191,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
   if (error) {
     return (
       <div className="page">
-        <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
+        <a className="back-link" href="#/league" data-keep-scroll>← Home</a>
         <ErrorState message={error} />
       </div>
     );
@@ -220,7 +220,7 @@ export default function ForecastPage({ eventId, user, onUserChange, onOpenAuth, 
       {/* C1 (master plan): the round comes first; the story is optional below. */}
       <header className="glass panel company-facts">
         <a className="back-link" href="#/league" data-keep-scroll>
-          ← Companies
+          ← Home
         </a>
         <h1 className="hero-title round-title">{event.company.name}</h1>
         <p className="meta">

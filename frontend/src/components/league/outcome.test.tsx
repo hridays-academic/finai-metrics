@@ -97,7 +97,7 @@ describe("results page without a score", () => {
     expect(screen.getByText("+13.0%")).toBeTruthy();
     expect(screen.getByText("+30.7%")).toBeTruthy(); // last year, the lazy guess
     expect(screen.getByText(NOTE)).toBeTruthy();
-    expect(screen.getAllByRole("link", { name: "marico.com" })[0].getAttribute("href")).toBe(SRC);
+    expect(screen.getAllByRole("link", { name: "Filing (marico.com)" })[0].getAttribute("href")).toBe(SRC);
     expect(screen.getByText(LEAGUE_FOOTNOTE)).toBeTruthy();
     expect(screen.getByText(/0 did here/)).toBeTruthy();
     // No personal points; only the lazy-guess benchmark lines mention points.

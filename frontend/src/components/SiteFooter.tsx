@@ -8,6 +8,14 @@ export default function SiteFooter() {
   return (
     <footer className="site-footer">
       <p>Educational forecasting game. Not investment advice. Company data may be delayed or incomplete.</p>
+      {/* H14 (phase 9): the main places, then help and legal. DRAFT grouping. */}
+      <p className="site-footer-links">
+        <a href="#/learn">How to play</a>
+        <a href="#/practice">Practice</a>
+        <a href="#/daily">Daily challenge</a>
+        <a href="#/boards">Leaderboards</a>
+        <a href="#/research">Research</a>
+      </p>
       <p className="site-footer-links">
         <button type="button" className="link-button" onClick={() => setOpen(true)}>
           Something wrong? Tell us

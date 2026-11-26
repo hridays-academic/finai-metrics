@@ -8858,3 +8858,54 @@ a.news-card-headline:hover {
     box-shadow: none !important;
   }
 }
+
+/* A4: shown only when focused from the keyboard. */
+.skip-link {
+  position: fixed;
+  left: var(--space-3);
+  top: var(--space-3);
+  z-index: var(--z-toast, 1000);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--gold);
+  color: #0b0d12;
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+.app-main:focus {
+  outline: none;
+}
+
+/* Phase 9: the three board tabs wrap on phones instead of running off the edge. */
+.boards-page .segmented {
+  flex-wrap: wrap;
+  height: auto;
+}
+
+/* Phase 9: notes inside a table cell (the lazy-guess line, cheat sheets,
+   lesson steps) wrap instead of running past the cell. */
+.data-table .outcome-row-note,
+.schools-page .data-table td {
+  white-space: normal;
+}
+
+/* The same height while loading and loaded (7 companies), so the news
+   below never jumps (CLS). */
+.research-companies {
+  min-height: 260px;
+}
+
+@media (max-width: 640px) {
+  .research-company-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .research-companies {
+    min-height: 405px;
+  }
+}

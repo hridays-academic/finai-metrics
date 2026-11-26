@@ -136,7 +136,8 @@ export function OutcomeList({ metrics, sector = "" }: { metrics: OutcomeMetric[]
                 <td>
                   {m.source_url ? (
                     <a href={m.source_url} target="_blank" rel="noopener noreferrer">
-                      {hostOf(m.source_url)}
+                      {/* R7: the document itself, not the company's homepage. */}
+                      Filing ({hostOf(m.source_url)})
                     </a>
                   ) : (
                     "N/A"

@@ -290,6 +290,18 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/* A4 (phase 9): keyboard users skip the top bar. Not a hash link: the
+          hash is the router's. */}
+      <a
+        className="skip-link"
+        href="#"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById("main-content")?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       <div className="app-shell-content">
         <Header
           onOpenSettings={() => setSettingsOpen(true)}
@@ -324,7 +336,7 @@ export default function App() {
             see CLAUDE.md) additionally gates its own live-quote polling on
             `visible` (this view being the active one) for the same reason --
             see PaperTrading.tsx/useLiveQuotes.ts. */}
-        <main className="app-main">
+        <main className="app-main" id="main-content" tabIndex={-1}>
           <Suspense fallback={<div className="page page-loading" aria-busy="true" />}>
           {/* S3/S8 (master plan): only the page on screen is mounted, so hidden
               pages make no requests and run no effects. Places survive through

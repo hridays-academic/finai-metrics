@@ -235,7 +235,7 @@ export default function ResultsPage({ eventId, user, onOpenAuth }: ResultsPagePr
           <ResultsHero event={event} level={level} meta={null} />
         ) : (
           <header className="page-header glass page-hero">
-            <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
+            <a className="back-link" href="#/league" data-keep-scroll>← Home</a>
           </header>
         )}
         {!user && !signedOutNotScored ? (
@@ -351,7 +351,7 @@ function ResultsHero({ event, level, meta }: { event: EventSummary; level: Diffi
   return (
     <header className="results-hero">
       <DifficultyEdge label={level ? DIFFICULTY_LABEL[level] : null} />
-      <a className="back-link" href="#/league" data-keep-scroll>← Companies</a>
+      <a className="back-link" href="#/league" data-keep-scroll>← Home</a>
       <div className="results-hero-chips">
         <span>{event.season_label}</span>
       </div>
