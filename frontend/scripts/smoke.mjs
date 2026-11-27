@@ -33,6 +33,10 @@ if (!rawUrl || !label) {
 }
 const base = rawUrl.replace(/\/+$/, "");
 const allowReveal = flags.includes("--allow-reveal");
+// The same browser the visual tests use (playwright.config.ts): the cached
+// Chrome for Testing build when it's there, else Playwright's own.
+const cached = `${os.homedir()}/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
+const launchOptions = fs.existsSync(cached) ? { executablePath: cached } : {};
 const STUB_REVEAL = { actual: 10, hit: true, points: 50, beat_lazy: null, missed_by: 0, lazy: null, note: null,
   name: "(stub: reveal blocked)", quarter: "(stub)" };
 
@@ -96,7 +100,7 @@ const PAGES = [
 ];
 
 const blocked = [];
-const browser = await chromium.launch();
+const browser = await chromium.launch(launchOptions);
 try {
   for (const [w, h] of [[1440, 900], [390, 844]]) {
     for (const [name, hash, act] of PAGES) {
