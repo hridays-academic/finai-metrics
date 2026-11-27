@@ -54,6 +54,15 @@ export function buildRound(bank: PlayCard[], seed: number, first: boolean): Roun
   return { cards, goldIndex, first: false };
 }
 
+// A round without one card (phase 11: the card left the pool mid-round). The
+// gold card keeps pointing at the same card, or is lost if it was this one.
+export function withoutCard(round: Round, id: string): { round: Round; at: number } {
+  const at = round.cards.findIndex((c) => c.id === id);
+  if (at < 0) return { round, at };
+  const goldIndex = round.goldIndex === at ? -1 : round.goldIndex > at ? round.goldIndex - 1 : round.goldIndex;
+  return { round: { ...round, cards: round.cards.filter((c) => c.id !== id), goldIndex }, at };
+}
+
 export function comboMultiplier(streak: number): number {
   return streak >= 5 ? 3 : streak >= 3 ? 2 : 1;
 }

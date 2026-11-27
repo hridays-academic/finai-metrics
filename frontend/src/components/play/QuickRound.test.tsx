@@ -11,7 +11,8 @@ vi.mock("../../lib/reports", () => ({ recordUsage: vi.fn() }));
 vi.mock("../SiteFooter", () => ({ default: () => <footer>Site footer</footer> }));
 
 import * as api from "../../lib/api";
-import QuickRound, { cardTitle } from "./QuickRound";
+import { withoutCard } from "../../lib/quickRound";
+import QuickRound, { ALL_RETIRED, cardTitle } from "./QuickRound";
 
 const mocked = vi.mocked(api);
 const store = new Map<string, string>();
@@ -104,5 +105,61 @@ describe("Daily challenge", () => {
     await play();
     expect(mocked.submitRound.mock.calls[0][0]).toMatchObject({ kind: "daily", gold_index: null });
     expect(await screen.findByText("+3 XP. Level 2. New badge: First daily challenge.")).toBeTruthy();
+  });
+});
+
+describe("Retired cards (phase 11)", () => {
+  // The mocked ApiError ignores its arguments, so the status is set on it directly.
+  const notFound = () => Object.assign(new api.ApiError("That card doesn't exist.", 404), { status: 404 });
+
+  it("skips a card that left the pool, quietly, and submits only the cards played", async () => {
+    store.set("stackly_played_quick", "1");
+    mocked.fetchDaily.mockResolvedValue({
+      day: "2026-11-27", played: false, my_score: null, average: null,
+      cards: [card(0, "Revenue growth (YoY)"), card(1, "Operating margin"), card(2, "Sales volume growth (YoY)")],
+    });
+    const scoredOk = mocked.revealPlayCard.getMockImplementation()!;
+    mocked.revealPlayCard.mockImplementation(async (id: string, low: number, high: number) => {
+      if (id === "abc123-1") throw notFound();
+      return scoredOk(id, low, high);
+    });
+    render(<QuickRound mode="daily" />);
+    const answer = async (next: string) => {
+      fireEvent.keyDown(await screen.findByRole("slider", { name: /set a range/ }), { key: "ArrowRight" });
+      fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+      fireEvent.click(await screen.findByRole("button", { name: next }));
+    };
+    await answer("Next card");
+    // Card 2 is retired on Submit: no error, and the third card takes its place, empty.
+    expect(await screen.findByText("Card 2 of 3")).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("slider", { name: /set a range/ }), { key: "ArrowRight" });
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByText("Card 2 of 2")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Sales volume growth");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect((screen.getByRole("button", { name: "Submit" }) as HTMLButtonElement).disabled).toBe(true);
+    await answer("See how you did");
+    await waitFor(() => expect(mocked.submitRound).toHaveBeenCalled());
+    expect(mocked.submitRound.mock.calls[0][0].answers.map((a) => a.card_id)).toEqual(["abc123-0", "abc123-2"]);
+    expect(screen.getAllByRole("button", { name: /^Card \d/ })).toHaveLength(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("says so only when nothing is left to play", async () => {
+    store.set("stackly_played_quick", "1");
+    mocked.fetchPlayCards.mockResolvedValue([card(0, "Operating margin")]);
+    mocked.revealPlayCard.mockRejectedValue(notFound());
+    render(<QuickRound />);
+    fireEvent.keyDown(await screen.findByRole("slider", { name: /set a range/ }), { key: "ArrowRight" });
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(ALL_RETIRED);
+  });
+
+  it("keeps the gold card on the same card", () => {
+    const round = { cards: [card(0, "a"), card(1, "b"), card(2, "c"), card(3, "d")], goldIndex: 2, first: false };
+    expect(withoutCard(round, "abc123-1").round.goldIndex).toBe(1); // still card c
+    expect(withoutCard(round, "abc123-3").round.goldIndex).toBe(2);
+    expect(withoutCard(round, "abc123-2").round.goldIndex).toBe(-1); // the gold card itself left
+    expect(withoutCard(round, "nope").at).toBe(-1);
   });
 });

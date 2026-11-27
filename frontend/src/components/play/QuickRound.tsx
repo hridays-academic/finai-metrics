@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, fetchDaily, fetchPlayCards, type PlayCard, type PlayReveal, revealPlayCard, type RoundResult, submitRound } from "../../lib/api";
 import type { UserPublic } from "../../lib/types";
 import { mysteryOn } from "../../lib/practice";
-import { buildRound, cardPoints, endLine, GOLD_BONUS, type Round } from "../../lib/quickRound";
+import { buildRound, cardPoints, endLine, GOLD_BONUS, type Round, withoutCard } from "../../lib/quickRound";
 import { explainMetric } from "../../lib/glossary";
 import { slabDomain } from "../../lib/leagueFormat";
 import { n } from "../../lib/scoring";
@@ -103,6 +103,9 @@ interface Answer {
   multiplier: number;
 }
 
+// Every card in the round left the pool before any was answered (phase 11). DRAFT wording.
+export const ALL_RETIRED = "These cards have changed since the round started. Try again for a new round.";
+
 // Why a finished round wasn't saved (phase 6). DRAFT wording.
 const NOT_SAVED: Record<string, string> = {
   signed_out: "Sign in to keep this score.",
@@ -181,10 +184,27 @@ export default function QuickRound({ mode = "quick", user = null }: { mode?: "qu
       setAnswers((a) => [...a, { card, range, reveal, points: p.points, multiplier: p.multiplier }]);
       feedback(reveal.hit);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "We couldn't score that card.");
+      if (e instanceof ApiError && e.status === 404) retire(card);
+      else setError(e instanceof ApiError ? e.message : "We couldn't score that card.");
     } finally {
       setBusy(false);
     }
+  }
+
+  // A card the server no longer scores (404): its quarter started showing on a
+  // league page after this round's cached card list was fetched (phase 11,
+  // services/shown_quarters.py). It's dropped quietly and the next card takes
+  // its place; the gold card moves with its card so the server's re-scoring
+  // lines up. Only if nothing is left to play does the round say so.
+  function retire(gone: PlayCard) {
+    if (!round) return;
+    const { round: rest, at } = withoutCard(round, gone.id);
+    if (at < 0) return;
+    setRound(rest);
+    setRange(null);
+    if (at < rest.cards.length) return; // the next card is now at this index
+    if (answers.length > 0) setFinished(true);
+    else setError(ALL_RETIRED);
   }
 
   function next() {
