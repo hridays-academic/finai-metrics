@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
-import { answerConsent, ApiError, fetchConsentPage } from "../../lib/api";
-import { consentParagraphs } from "./ConsentText";
+import { answerConsent, ApiError, fetchConsentOptions, fetchConsentPage } from "../../lib/api";
+import { consentParagraphs, GUIDE_PARAGRAPH, GUIDE_TICK } from "./ConsentText";
 
 // #/consent/<token> (phase 8, SC3): the plain page a parent reaches from the
 // email. Approve needs their name; the record keeps who, how (email) and when.
@@ -11,6 +11,15 @@ export default function ConsentPage({ token }: { token: string }) {
   const [name, setName] = useState("");
   const [done, setDone] = useState<"approved" | "declined" | null>(null);
   const [busy, setBusy] = useState(false);
+  // Phase 12: the separate tick for the AI guide, only while it's offered.
+  const [guideOffered, setGuideOffered] = useState(false);
+  const [guide, setGuide] = useState(false);
+
+  useEffect(() => {
+    fetchConsentOptions()
+      .then((o) => setGuideOffered(Boolean(o.guide)))
+      .catch(() => setGuideOffered(false));
+  }, []);
 
   useEffect(() => {
     fetchConsentPage(token)
@@ -24,7 +33,7 @@ export default function ConsentPage({ token }: { token: string }) {
     setBusy(true);
     setError(null);
     try {
-      await answerConsent(token, approve, name.trim());
+      await answerConsent(token, approve, name.trim(), guideOffered && guide);
       setDone(approve ? "approved" : "declined");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't save. Please try again.");
@@ -46,6 +55,15 @@ export default function ConsentPage({ token }: { token: string }) {
                 {p}
               </p>
             ))}
+            {guideOffered && (
+              <>
+                <p className="section-text">5. {GUIDE_PARAGRAPH}</p>
+                <label className="checkbox-row">
+                  <input type="checkbox" checked={guide} onChange={(e) => setGuide(e.target.checked)} />
+                  <span>{GUIDE_TICK}</span>
+                </label>
+              </>
+            )}
             <label className="field">
               <span className="field-label">Your name</span>
               <input className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={120} />

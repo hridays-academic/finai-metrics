@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { UserPublic } from "../lib/types";
 import AdminCompanies from "./admin/AdminCompanies";
+import AdminGuide from "./admin/AdminGuide";
 import AdminMore from "./admin/AdminMore";
 import AdminOlderResults from "./admin/AdminOlderResults";
 import AdminSeason from "./admin/AdminSeason";
@@ -22,6 +23,7 @@ const TABS = [
   { key: "older", label: "Older results", Component: AdminOlderResults },
   { key: "students", label: "Students", Component: AdminUsers },
   { key: "world", label: "World events", Component: AdminWorldEvents },
+  { key: "guide", label: "AI guide", Component: AdminGuide },
   { key: "more", label: "More", Component: AdminMore },
 ] as const;
 

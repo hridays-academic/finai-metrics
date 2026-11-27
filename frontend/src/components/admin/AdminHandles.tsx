@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminHandlesForReview, adminPaperForms, adminSetHandleStatus, ApiError } from "../../lib/api";
+import { adminHandlesForReview, adminPaperForms, adminSetGuideConsent, adminSetHandleStatus, ApiError } from "../../lib/api";
 import { formatDay } from "../../lib/leagueFormat";
 
 // Phase 6 (SC9): handles under review or blocked are hidden from leaderboards
@@ -7,9 +7,12 @@ import { formatDay } from "../../lib/leagueFormat";
 // Phase 8 (SC4): paper forms a teacher marked received, for an admin to
 // confirm with "Record consent" below. Admin-only wording.
 export function PaperForms() {
-  const [rows, setRows] = useState<{ user_id: number; handle: string | null; class_name: string; received_at: string }[] | null>(null);
+  const [rows, setRows] = useState<
+    { user_id: number; handle: string | null; class_name: string; received_at: string; kind?: "approval" | "guide" }[] | null
+  >(null);
+  const load = () => adminPaperForms().then(setRows).catch(() => setRows([]));
   useEffect(() => {
-    adminPaperForms().then(setRows).catch(() => setRows([]));
+    void load();
   }, []);
   if (!rows || rows.length === 0) return null;
   return (
@@ -17,8 +20,20 @@ export function PaperForms() {
       <h3 id="paper-title">Paper forms to confirm</h3>
       <ul>
         {rows.map((r) => (
-          <li key={r.user_id}>
-            {r.handle ?? "(no handle)"}, {r.class_name}: received {formatDay(r.received_at, true)}. Search for them below and press Record consent.
+          <li key={`${r.kind ?? "approval"}-${r.user_id}`} className="admin-inline-actions">
+            {r.kind === "guide" ? (
+              <>
+                {r.handle ?? "(no handle)"}, {r.class_name}: the AI guide box was ticked on a form received {formatDay(r.received_at, true)}.
+                <button type="button" className="btn btn-secondary" onClick={() => adminSetGuideConsent(r.user_id, true).then(load)}>
+                  Approve the guide
+                </button>
+              </>
+            ) : (
+              <>
+                {r.handle ?? "(no handle)"}, {r.class_name}: received {formatDay(r.received_at, true)}. Search for them below and press Record
+                consent.
+              </>
+            )}
           </li>
         ))}
       </ul>

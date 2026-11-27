@@ -619,6 +619,7 @@ export interface ClassStudent {
   forecasts: number;
   companies: string[];
   consent: "not_needed" | "granted" | "pending" | "paper_received";
+  guide?: "not_needed" | "granted" | "form_received" | "not_yet";
 }
 export interface ClassSession {
   id: number;
@@ -658,10 +659,97 @@ export const requestConsent = (parentEmail: string) =>
   leagueRequest<void>("POST", "/me/consent-request", { parent_email: parentEmail });
 export const fetchConsentPage = (token: string) =>
   leagueRequest<{ handle: string; expires_at: string }>("GET", `/consent/${encodeURIComponent(token)}`);
-export const answerConsent = (token: string, approve: boolean, parentName: string) =>
-  leagueRequest<void>("POST", `/consent/${encodeURIComponent(token)}`, { approve, parent_name: parentName });
+export const answerConsent = (token: string, approve: boolean, parentName: string, guide = false) =>
+  leagueRequest<void>("POST", `/consent/${encodeURIComponent(token)}`, { approve, parent_name: parentName, guide });
 export const adminSetRole = (userId: number, role: "student" | "teacher") =>
   leagueRequest<void>("PUT", `/admin/users/${userId}/role`, { role });
 export const adminPaperForms = () =>
-  leagueRequest<{ user_id: number; handle: string | null; class_name: string; received_at: string }[]>("GET", "/admin/paper-forms");
-export const fetchConsentOptions = () => leagueRequest<{ email: boolean }>("GET", "/consent-options");
+  leagueRequest<{ user_id: number; handle: string | null; class_name: string; received_at: string; kind?: "approval" | "guide" }[]>(
+    "GET",
+    "/admin/paper-forms",
+  );
+export const fetchConsentOptions = () =>
+  leagueRequest<{ email: boolean; guide?: boolean; guide_live?: boolean }>("GET", "/consent-options");
+
+// Phase 12: the AI guide (services/guide.py). Off unless switched on.
+export const markGuideForm = (classId: number, studentId: number) =>
+  leagueRequest<void>("PUT", `/classes/${classId}/students/${studentId}/guide-form`);
+export const adminSetGuideConsent = (userId: number, granted: boolean) =>
+  leagueRequest<void>("PUT", `/admin/users/${userId}/guide-consent`, { granted });
+export type GuideMode = "off" | "staff" | "on";
+export interface AdminGuide {
+  mode: GuideMode;
+  env_enabled: boolean;
+  fake: boolean;
+  model: string;
+  key_set: boolean;
+  today_usd: number;
+  today_calls: number;
+  spend_cap_usd: number;
+}
+export const fetchAdminGuide = () => leagueRequest<AdminGuide>("GET", "/admin/guide");
+export const setAdminGuideMode = (mode: GuideMode) => leagueRequest<AdminGuide>("PUT", "/admin/guide", { mode });
+
+export type GuidePageKind = "home" | "learn" | "practice" | "round" | "practice_case" | "results" | "research";
+export interface GuidePage {
+  kind: GuidePageKind;
+  card_id?: string;
+  code?: string;
+  event_id?: number;
+  symbol?: string;
+  mystery?: boolean;
+}
+export interface GuideStatus {
+  available: boolean;
+  reason: string | null;
+  message: string | null;
+  left: number | null;
+}
+export interface GuideTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+export type GuideEvent =
+  | { type: "text"; text: string }
+  | { type: "replace"; text: string; outcome: string }
+  | { type: "done"; outcome: string; left: number | null };
+
+export const fetchGuideStatus = () => leagueRequest<GuideStatus>("GET", "/guide/status");
+
+// Streams the reply as NDJSON events (services/guide.py `stream`).
+export async function askGuide(
+  page: GuidePage,
+  question: string,
+  history: GuideTurn[],
+  onEvent: (e: GuideEvent) => void,
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/guide/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ page, question, history }),
+  });
+  if (!res.ok) {
+    const { message, code } = await parseErrorDetail(res);
+    throw new ApiError(message, res.status, code);
+  }
+  const reader = res.body?.getReader();
+  if (!reader) {
+    for (const line of (await res.text()).split("\n")) if (line.trim()) onEvent(JSON.parse(line) as GuideEvent);
+    return;
+  }
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (value) buffer += decoder.decode(value, { stream: !done });
+    let at = buffer.indexOf("\n");
+    while (at >= 0) {
+      const line = buffer.slice(0, at).trim();
+      buffer = buffer.slice(at + 1);
+      if (line) onEvent(JSON.parse(line) as GuideEvent);
+      at = buffer.indexOf("\n");
+    }
+    if (done) break;
+  }
+  if (buffer.trim()) onEvent(JSON.parse(buffer.trim()) as GuideEvent);
+}

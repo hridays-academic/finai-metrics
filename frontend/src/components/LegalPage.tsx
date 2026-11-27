@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { fetchConsentOptions } from "../lib/api";
 import SiteFooter from "./SiteFooter";
 
 // The Privacy Policy and Terms of Use (#/privacy, #/terms), approved by
@@ -239,9 +241,41 @@ const TERMS: Section[] = [
   { heading: "11. Contact", body: ["stackly.user.support@gmail.com"] },
 ];
 
+// Phase 12, DRAFT until after the lawyer check (decision 6): shown only while
+// the AI guide is switched on for anyone. When it goes live for students,
+// bump auth_service.TERMS_VERSION. Version without zero data retention.
+const GUIDE_PRIVACY: Section = {
+  heading: "The AI guide",
+  body: [
+    "When you ask the guide a question, your question and the page you are on are sent to Anthropic, in the United States, to write the answer. Stackly keeps only how many questions you asked each day, never what you asked. Anthropic deletes them within 30 days and does not use them to train its AI; it may keep a conversation for up to 2 years if its safety systems flag it. The guide sees only what any visitor can see on Stackly. Under-18s can use it only after a parent or guardian agrees to it.",
+  ],
+};
+const GUIDE_TERMS: Section = {
+  heading: "The AI guide",
+  body: [
+    "The AI guide explains how Stackly works and what figures mean. It can be wrong. It never gives the answer to a round, never suggests a range, and never gives advice on buying or selling shares. Don't tell it personal details.",
+  ],
+};
+
+function withGuide(sections: Section[], extra: Section, after: string): Section[] {
+  const at = sections.findIndex((s) => s.heading === after);
+  return at < 0 ? [...sections, extra] : [...sections.slice(0, at + 1), extra, ...sections.slice(at + 1)];
+}
+
 export default function LegalPage({ kind }: { kind: "privacy" | "terms" }) {
   const title = kind === "privacy" ? "Privacy Policy" : "Terms of Use";
-  const sections = kind === "privacy" ? PRIVACY : TERMS;
+  const [guideLive, setGuideLive] = useState(false);
+  useEffect(() => {
+    fetchConsentOptions()
+      .then((o) => setGuideLive(Boolean(o.guide_live)))
+      .catch(() => setGuideLive(false));
+  }, []);
+  const base = kind === "privacy" ? PRIVACY : TERMS;
+  const sections = !guideLive
+    ? base
+    : kind === "privacy"
+      ? withGuide(base, GUIDE_PRIVACY, "Classes and parent approval")
+      : withGuide(base, GUIDE_TERMS, "4. Data may be delayed, incomplete or wrong");
   return (
     <div className="page">
       <article className="legal-page glass panel">

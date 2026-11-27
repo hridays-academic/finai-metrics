@@ -42,8 +42,25 @@ describe("Parent approval page", () => {
     expect(await screen.findByText("Please type your name to approve.")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "S. Kumar" } });
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    await waitFor(() => expect(m.answerConsent).toHaveBeenCalledWith(token, true, "S. Kumar"));
+    await waitFor(() => expect(m.answerConsent).toHaveBeenCalledWith(token, true, "S. Kumar", false));
     expect(await screen.findByText("Thank you. Your child's account is approved.")).toBeTruthy();
+    expect(screen.queryByText(/AI guide/)).toBeNull(); // not offered: no paragraph 5, no tick
+  });
+
+  it("has a separate tick for the AI guide while it's offered (phase 12)", async () => {
+    m.fetchConsentOptions.mockResolvedValue({ email: false, guide: true });
+    m.fetchConsentPage.mockResolvedValue({ handle: "Ravi_12", expires_at: "2026-12-09T00:00:00Z" });
+    m.answerConsent.mockResolvedValue(undefined);
+    const token = "g".repeat(40);
+    render(<ConsentPage token={token} />);
+    expect(await screen.findByText(/^5\. Stackly has an AI guide/)).toBeTruthy();
+    expect(screen.getByText(/sent to Anthropic, the company that runs the AI, in the United States/)).toBeTruthy();
+    const tick = screen.getByRole("checkbox", { name: "I also agree to the AI guide." }) as HTMLInputElement;
+    expect(tick.checked).toBe(false);
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "S. Kumar" } });
+    fireEvent.click(tick);
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(m.answerConsent).toHaveBeenCalledWith(token, true, "S. Kumar", true));
   });
 });
 

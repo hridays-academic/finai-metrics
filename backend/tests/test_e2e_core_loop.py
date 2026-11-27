@@ -61,7 +61,7 @@ def test_practice_round_end_to_end(conn, client, scored, db_url):  # noqa: F811
         _wait(f"http://127.0.0.1:{api_port}/api/health")
         subprocess.run(["npx", "vite", "build"], cwd=ROOT / "frontend", check=True, capture_output=True)
         procs.append(subprocess.Popen(
-            ["npx", "vite", "preview", "--port", str(site_port), "--strictPort"], cwd=ROOT / "frontend",
+            ["npx", "vite", "preview", "--host", "127.0.0.1", "--port", str(site_port), "--strictPort"], cwd=ROOT / "frontend",
             env={**os.environ, "E2E_API": f"http://127.0.0.1:{api_port}"},
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
         _wait(f"http://127.0.0.1:{site_port}/")

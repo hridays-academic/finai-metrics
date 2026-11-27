@@ -165,4 +165,7 @@ def consent_options() -> dict:
     the email link shows only once email is switched on."""
     with get_conn() as conn:
         offered = guide.offered_to_parents(conn)
-    return {"email": gmail_service.email_enabled(), "guide": offered}
+        live = guide.live_mode(conn) != "off"
+    # guide_live: the Privacy Policy and Terms show the guide's lines while
+    # anyone (even teachers only) can use it.
+    return {"email": gmail_service.email_enabled(), "guide": offered, "guide_live": live}

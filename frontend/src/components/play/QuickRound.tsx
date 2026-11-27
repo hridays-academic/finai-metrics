@@ -10,6 +10,7 @@ import { getSound, getVibration } from "../../lib/prefs";
 import { prefersReducedMotion } from "../../hooks/useOnceVisible";
 import { colourClass } from "../../lib/difficulty";
 import { recordUsage } from "../../lib/reports";
+import { guideCard } from "../../lib/guideCard";
 import RangeSlab, { type Pair } from "../RangeSlab";
 import ErrorState from "../ErrorState";
 import SiteFooter from "../SiteFooter";
@@ -173,6 +174,12 @@ export default function QuickRound({ mode = "quick", user = null }: { mode?: "qu
   const done = round !== null && finished;
   const shown = useCountUp(answered ? answered.reveal.actual : null, card?.last_year ?? 0);
 
+  // Phase 12: the AI guide asks the server about the card on screen, by id only.
+  useEffect(() => {
+    guideCard.set(card && !done ? { cardId: card.id, mystery: card.name === null } : null);
+  }, [card, done]);
+  useEffect(() => () => guideCard.set(null), []);
+
   async function submit() {
     if (!card || !range || busy || answered) return;
     setBusy(true);
@@ -273,7 +280,11 @@ export default function QuickRound({ mode = "quick", user = null }: { mode?: "qu
       {!round && !error && <div className="skeleton skeleton-panel" aria-busy="true" aria-label="Loading cards" />}
 
       {round && !done && card && (
-        <section className={`glass panel quick-card ${colourClass(card.difficulty)} ${round.goldIndex === index ? "is-gold" : ""}`} aria-labelledby="quick-card-title">
+        <section
+          className={`glass panel quick-card ${colourClass(card.difficulty)} ${round.goldIndex === index ? "is-gold" : ""}`}
+          aria-labelledby="quick-card-title"
+          data-guide-keep
+        >
           <div className="quick-card-top">
             <span className="quick-card-count">
               Card {index + 1} of {round.cards.length}

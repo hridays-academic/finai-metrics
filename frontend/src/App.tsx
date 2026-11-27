@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Header from "./components/Header";
 import SettingsPanel from "./components/SettingsPanel";
 import AuthPanel from "./components/AuthPanel";
@@ -10,6 +10,7 @@ import FreeBall from "./components/FreeBall";
 import PageScrollbar from "./components/PageScrollbar";
 import { ballStore } from "./lib/ballStore";
 import SpotlightIntro from "./components/SpotlightIntro";
+const AiGuide = lazy(() => import("./components/aiguide/AiGuide"));
 import { guideFlagStored, guideSeenHere, markGuideSeenHere, spotlightDecision, startedOnHome } from "./lib/guideSeen";
 import TermsPrompt from "./components/TermsPrompt";
 import LeagueHome from "./components/league/LeagueHome";
@@ -21,7 +22,9 @@ import { clearForecastDrafts } from "./lib/forecastDrafts";
 import { useTheme } from "./hooks/useTheme";
 import { markFreshNavigation, scrollPageToTop, useScrollMemory } from "./hooks/useScrollMemory";
 import { SHOW_EXTRA_TOOLS } from "./lib/features";
-import { fetchCompany, fetchMe, markGuideSeen, recordVisit, ApiError } from "./lib/api";
+import { fetchCompany, fetchMe, markGuideSeen, recordVisit, ApiError, type GuidePage } from "./lib/api";
+import { guideCard } from "./lib/guideCard";
+import { mysteryOn } from "./lib/practice";
 import { getAuthToken } from "./lib/auth";
 import type { CompanyFinancialsResponse, UserPublic } from "./lib/types";
 
@@ -121,6 +124,10 @@ export default function App() {
     else if (route === null) setView((v) => (v === "search" || v === "practice" ? "home" : v));
   }, [route]);
   const [company, setCompany] = useState<CompanyFinancialsResponse | null>(null);
+  // Phase 12: which page the AI guide is on (decision 7: Home and the
+  // guide, quick rounds, the daily challenge, Practice and its attempts,
+  // scored results pages and Research; never a league forecast page).
+  const guideRoundCard = useSyncExternalStore(guideCard.subscribe, guideCard.get, guideCard.get);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -147,6 +154,24 @@ export default function App() {
           : route.name
     : view;
   useScrollMemory(pageKey);
+
+  const guidePage: GuidePage | null = showHome
+    ? { kind: "home" }
+    : route?.name === "learn"
+      ? { kind: "learn" }
+      : route?.name === "play" || route?.name === "daily"
+        ? guideRoundCard
+          ? { kind: "round", card_id: guideRoundCard.cardId, mystery: guideRoundCard.mystery }
+          : { kind: "home" }
+        : route?.name === "practice" && route.code
+          ? { kind: "practice_case", code: route.code, mystery: mysteryOn() }
+          : showPractice
+            ? { kind: "practice" }
+            : route?.name === "results"
+              ? { kind: "results", event_id: route.id }
+              : showResearch
+                ? { kind: "research", ...(company ? { symbol: company.info.resolved_symbol } : {}) }
+                : null;
 
   // Unsaved forecast drafts belong to whoever typed them: drop them on
   // sign-out or a switch of account (but keep them through signing in).
@@ -442,6 +467,13 @@ export default function App() {
         {/* The page's floating scrollbar on mouse devices (PageScrollbar.tsx). */}
         <PageScrollbar />
       </div>
+
+      {/* Outside .app-shell-content, which an open sheet makes inert. */}
+      {user && guidePage && (
+        <Suspense fallback={null}>
+          <AiGuide user={user} page={guidePage} />
+        </Suspense>
+      )}
 
       {settingsOpen && (
         <SettingsPanel

@@ -9126,3 +9126,320 @@ a.news-card-headline:hover {
   text-transform: none;
   letter-spacing: normal;
 }
+
+/* =====================================================================
+   The AI guide (phase 12; vault: Areas/AI guide plan, direction A).
+   Home's real ball (.ball-skin) on a small neutral slab, never gold (gold
+   is "yours"). It moves only to answer an action and never when idle; all
+   of it is still under reduced motion.
+   ===================================================================== */
+.ai-guide-launch {
+  position: fixed;
+  right: var(--space-5);
+  bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-float);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 16px 6px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--solid-glass);
+  color: var(--text);
+  box-shadow: var(--shadow-panel);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-guide-launch:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The mark: a slab with the ball resting on it. */
+.ai-guide-mark {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 30px;
+  flex: none;
+}
+
+.ai-guide-slab {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 3px;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--logo-slab);
+}
+
+.ai-guide-ball {
+  position: absolute;
+  left: 11px;
+  bottom: 9px;
+  width: 18px;
+  height: 18px;
+  box-shadow: 1px 3px 5px -2px rgba(0, 0, 0, 0.5);
+}
+
+.ai-guide-launch .ai-guide-mark {
+  width: 34px;
+  height: 26px;
+}
+
+.ai-guide-launch .ai-guide-ball {
+  left: 9px;
+  width: 16px;
+  height: 16px;
+}
+
+.ai-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-backdrop);
+  background: transparent;
+}
+
+.ai-guide-panel {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: var(--z-sheet);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 360px;
+  max-height: min(600px, calc(100vh - var(--topbar-height) - var(--space-8)));
+  padding: var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--solid-glass);
+  color: var(--text);
+  box-shadow: var(--shadow-panel);
+}
+
+.ai-guide-panel:focus {
+  outline: none;
+}
+
+.ai-guide-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ai-guide-title h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.ai-guide-title p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+}
+
+.ai-guide-close {
+  margin-left: auto;
+  font-size: 1.25rem;
+}
+
+.ai-guide-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ai-guide-says,
+.ai-guide-you {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ai-guide-you {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: 14px 14px 4px 14px;
+  background: var(--raised-fill);
+}
+
+.ai-guide-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ai-guide-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--link);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-guide-ask {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.ai-guide-ask .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-guide-error {
+  margin: 0;
+  color: var(--caution);
+  font-size: 0.875rem;
+}
+
+.ai-guide-foot {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.75rem;
+}
+
+/* Poses: each runs once when something happened (thinking runs while a reply
+   is being written). Never on an idle panel. */
+.ai-guide-pose {
+  display: inline-block;
+}
+
+.ai-guide-pose .ai-guide-ball {
+  transition: translate 150ms var(--ease);
+}
+
+.ai-guide-pose.is-listening .ai-guide-ball {
+  translate: 3px 0;
+}
+
+.ai-guide-pose.is-thinking .ball-texture {
+  animation: ai-guide-roll 0.9s linear infinite;
+}
+
+.ai-guide-pose.is-bounce .ai-guide-ball {
+  animation: ai-guide-bounce 360ms cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+.ai-guide-pose.is-wobble .ai-guide-mark {
+  animation: ai-guide-wobble 380ms ease-in-out;
+}
+
+@keyframes ai-guide-roll {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes ai-guide-bounce {
+  40% {
+    translate: 0 -7px;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes ai-guide-wobble {
+  25% {
+    rotate: -7deg;
+  }
+  60% {
+    rotate: 4deg;
+  }
+  100% {
+    rotate: 0deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-guide-pose .ai-guide-ball,
+  .ai-guide-pose .ai-guide-mark,
+  .ai-guide-pose .ball-texture {
+    animation: none !important;
+    transition: none !important;
+    translate: none !important;
+  }
+}
+
+:root[data-motion="reduced"] .ai-guide-pose .ai-guide-ball,
+:root[data-motion="reduced"] .ai-guide-pose .ai-guide-mark,
+:root[data-motion="reduced"] .ai-guide-pose .ball-texture {
+  animation: none !important;
+  transition: none !important;
+  translate: none !important;
+}
+
+@media (max-width: 640px) {
+  .ai-guide-launch {
+    right: var(--space-4);
+    bottom: calc(var(--tabbar-height) + var(--space-3) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* A bottom sheet. */
+  .ai-guide-panel {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 78dvh;
+    padding: var(--space-3) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+  }
+
+  .ai-guide-panel::before {
+    content: "";
+    align-self: center;
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--hairline);
+  }
+
+  /* In a round it opens at half height, so the card and its bar stay in view. */
+  .ai-guide-panel.is-half {
+    height: 44dvh;
+    max-height: 44dvh;
+  }
+
+  /* Room to scroll the card's bar above the half sheet. */
+  :root.ai-guide-half-open .app-main {
+    padding-bottom: calc(46dvh + var(--space-8));
+  }
+}
+
+/* Phase 12: the printable form's tick box for the AI guide. */
+.consent-tick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.consent-box {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  flex: none;
+}
+
+.ai-guide-launch[hidden] {
+  display: none;
+}

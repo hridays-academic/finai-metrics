@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   ApiError, type Board, type ClassInfo, type ClassStudent, createClass, fetchClassBoard, fetchClasses, fetchClassStudents,
-  fetchConsentOptions, fetchCurrentSession, joinClass, markPaperForm, requestConsent, startSession,
+  fetchConsentOptions, fetchCurrentSession, joinClass, markGuideForm, markPaperForm, requestConsent, startSession,
 } from "../../lib/api";
 import { n } from "../../lib/scoring";
 import type { UserPublic } from "../../lib/types";
@@ -17,6 +17,14 @@ const CONSENT: Record<ClassStudent["consent"], string> = {
   granted: "Approved",
   pending: "Waiting for a parent",
   paper_received: "Form received, waiting for Stackly",
+};
+
+// Phase 12: the separate parent tick for the AI guide. DRAFT wording.
+const GUIDE: Record<NonNullable<ClassStudent["guide"]>, string> = {
+  not_needed: "18 or over",
+  granted: "Approved",
+  form_received: "Form received, waiting for Stackly",
+  not_yet: "Not yet",
 };
 
 // A11 (Stop 3): for the January pilot the paper form, collected by the
@@ -73,6 +81,13 @@ function ParentRequest() {
 function TeacherView({ cls }: { cls: ClassInfo }) {
   const [rows, setRows] = useState<ClassStudent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Phase 12: the guide column shows only while the guide is offered to students.
+  const [guideOffered, setGuideOffered] = useState(false);
+  useEffect(() => {
+    fetchConsentOptions()
+      .then((o) => setGuideOffered(Boolean(o.guide)))
+      .catch(() => setGuideOffered(false));
+  }, []);
   const load = () =>
     fetchClassStudents(cls.id)
       .then((v) => setRows(v.students))
@@ -122,6 +137,7 @@ function TeacherView({ cls }: { cls: ClassInfo }) {
                     <th scope="col">Inside their range</th>
                     <th scope="col">Companies forecast</th>
                     <th scope="col">Parent approval</th>
+                    {guideOffered && <th scope="col">AI guide</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -141,6 +157,17 @@ function TeacherView({ cls }: { cls: ClassInfo }) {
                           </button>
                         )}
                       </td>
+                      {guideOffered && (
+                        <td>
+                          {GUIDE[r.guide ?? "not_needed"]}
+                          {r.guide === "not_yet" && (
+                            <button type="button" className="link-button" onClick={() => markGuideForm(cls.id, r.user_id).then(load)}>
+                              {" "}
+                              Mark guide box ticked
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

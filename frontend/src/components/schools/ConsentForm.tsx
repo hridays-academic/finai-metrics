@@ -1,8 +1,17 @@
-import { consentParagraphs } from "./ConsentText";
+import { useEffect, useState } from "react";
+import { fetchConsentOptions } from "../../lib/api";
+import { consentParagraphs, GUIDE_PARAGRAPH } from "./ConsentText";
 
 // #/consent-form (phase 8, SC4): the printable version for schools that
 // prefer paper. The teacher marks it received; an admin confirms it.
 export default function ConsentForm() {
+  // Phase 12: the AI guide's paragraph and tick box, only while it's offered.
+  const [guide, setGuide] = useState(false);
+  useEffect(() => {
+    fetchConsentOptions()
+      .then((o) => setGuide(Boolean(o.guide)))
+      .catch(() => setGuide(false));
+  }, []);
   return (
     <div className="page consent-print">
       <section className="glass panel">
@@ -12,6 +21,14 @@ export default function ConsentForm() {
             {p}
           </p>
         ))}
+        {guide && (
+          <>
+            <p className="section-text">5. {GUIDE_PARAGRAPH}</p>
+            <p className="section-text consent-tick">
+              <span className="consent-box" aria-hidden="true" /> I agree to the AI guide.
+            </p>
+          </>
+        )}
         <dl className="consent-fields">
           <div>
             <dt>Student's handle</dt>
