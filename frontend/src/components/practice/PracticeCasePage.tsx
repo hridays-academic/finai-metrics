@@ -235,7 +235,7 @@ function PracticeForm({
   }
 
   return (
-    <form className="league-form" onSubmit={submit}>
+    <form className="league-form" onSubmit={submit} data-guide-keep>
       <p className="league-eighty">
         Pick a low and a high you're pretty sure the result lands between. Too tight and you might miss. Too wide and
         you lose points for playing it safe.
