@@ -436,3 +436,14 @@ def test_red_team_set_wiring(client, guide_on, rows, scored, older):  # noqa: F8
         if item["category"] == "legit" and events[-1]["outcome"] != "answered":
             wrong.append((item["id"], "answered", events[-1]["outcome"]))
     assert wrong == []
+
+
+def test_ordinary_questions_are_never_blocked_by_the_server():
+    """G3: 100 ordinary student questions (30 in Hinglish); none may trip a fixed reply."""
+    from app.services.guide import classify
+    from app.services.guide_context import Context
+    data = json.loads((Path(__file__).parent / "data" / "guide_ordinary.json").read_text())["items"]
+    assert len(data) == 100 and sum(i["lang"] == "hi" for i in data) == 30
+    blocked = [i["text"] for i in data if classify(i["text"], Context(
+        kind=i["page"], text="", in_round=i["page"] in ("round", "practice_case"), mystery=i["page"] == "round"))]
+    assert blocked == []
