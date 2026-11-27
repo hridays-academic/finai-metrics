@@ -67,6 +67,7 @@ def test_every_user_linked_table_is_cleared_or_kept_on_purpose(conn, client, sco
         "consent_requests": "INSERT INTO consent_requests (student_id, parent_email, token_hash, expires_at) VALUES (%(u)s, 'p@example.com', 'sweep', now() + interval '14 days')",
         "league_members": "INSERT INTO league_members (league_id, user_id) VALUES (%(l)s, %(u)s)",
         "classroom_answers": "INSERT INTO classroom_answers (session_id, user_id, card_index, low, high) VALUES (%(s)s, %(u)s, 0, 1, 2)",
+        "guide_usage": "INSERT INTO guide_usage (user_id, day, questions, redirects) VALUES (%(u)s, current_date, 3, 1)",
     }
     for table, sql in inserts.items():
         conn.execute(sql, {"u": uid, "e": ev, "c": cls, "s": sess, "p": period, "l": lg})

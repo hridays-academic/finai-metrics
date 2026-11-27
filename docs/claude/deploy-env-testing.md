@@ -24,11 +24,14 @@ from Vercel project environment variables in production:
 - `TEST_DATABASE_URL` — local only, the Neon `test` branch. See "Testing".
 - `IP_HASH_KEY` — Production. Secret key for hashing IPs/emails in
   `rate_limit_buckets`. Never print it. Without it each process invents one.
-- `ENABLE_PAPER_TRADING` / `ENABLE_CHAT` — off by default (2026-11); see
-  "30-day share-price lag" and the AI assistant note at the top.
+- `ENABLE_PAPER_TRADING` — off by default (2026-11); see "30-day share-price lag".
+- `ENABLE_GUIDE` (default false), `GUIDE_MODE_DEFAULT` (default off; previews
+  only), `GUIDE_FAKE_MODEL` (never in Production: refused on the production
+  database), `ANTHROPIC_API_KEY` (Sensitive; never print it), `GUIDE_MODEL`
+  (default claude-haiku-5-5), `GUIDE_INFERENCE_GEO` (default us),
+  `GUIDE_DAILY_QUESTIONS` (20), `GUIDE_PER_MINUTE` (6),
+  `GUIDE_DAILY_SPEND_USD` (3). The AI guide; see architecture.md.
 - `PUBLIC_ORIGINS` — origins a password-reset link may use (has a default).
-- `MOONSHOT_API_KEY` — required for the chat assistant to function. Get one
-  at https://platform.kimi.ai
 - `GOOGLE_CLIENT_ID` — required for Google Sign-In to work (see "Google
   Sign-In" below). Must be the exact same value as the frontend's
   `VITE_GOOGLE_CLIENT_ID` (a public OAuth Client ID, safe in frontend
@@ -49,8 +52,6 @@ from Vercel project environment variables in production:
 - **No Tapetide key here** — see "Optional bring-your-own Tapetide key" above.
   Every user supplies their own via the website, sent per-request as the
   `X-Tapetide-Token` header, never a `.env` secret.
-- `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` — optional, only needed if you swap
-  the AI backend to `deepseek_service.py` / `claude_service.py`.
 - `ALPHA_VANTAGE_API_KEY` / `FMP_API_KEY` — optional, only needed if you swap
   the data provider to one of these instead.
 - `DEV_CACHE_DIR` — optional, **dev-only**, shared by both `TapetideProvider`

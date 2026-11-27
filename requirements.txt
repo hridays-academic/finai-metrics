@@ -18,3 +18,4 @@ pandas==3.0.5
 curl_cffi==0.16.3
 Bharat-sm-data==4.0.1
 openpyxl==3.1.5
+anthropic==2.14.0

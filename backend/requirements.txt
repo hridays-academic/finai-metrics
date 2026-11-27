@@ -38,3 +38,7 @@ curl_cffi==0.16.3
 # history/analyst data, see that file's docstring for why.
 Bharat-sm-data==4.0.1
 openpyxl==3.1.5
+
+# The AI guide (phase 12, services/guide_model.py): Anthropic's official
+# SDK. Imported only when a real call is configured (never in fake mode).
+anthropic==2.14.0

@@ -14,18 +14,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # Required for the AI assistant (active default). Get a key at
-    # https://platform.kimi.ai
-    moonshot_api_key: Optional[str] = None
-    moonshot_model: str = "kimi-k2.6"
-
-    # Alternate AI assistant backends (see app/services/deepseek_service.py
-    # and app/services/claude_service.py) -- only used if you swap
-    # moonshot_service.py back out in main.py.
-    deepseek_api_key: Optional[str] = None
-    deepseek_model: str = "deepseek-v4-flash"
+    # The AI guide (phase 12, vault: Areas/AI guide plan). Anthropic's API
+    # through the official SDK; the key is read here only and never reaches
+    # the browser. Off unless ENABLE_GUIDE is true AND the admin toggle (or,
+    # with no toggle saved, GUIDE_MODE_DEFAULT) is "staff" or "on".
     anthropic_api_key: Optional[str] = None
-    claude_model: str = "claude-sonnet-4-5"
+    enable_guide: bool = False
+    guide_model: str = "claude-haiku-5-5"  # Sonnet 5.5 later is one variable: GUIDE_MODEL=claude-sonnet-5-5
+    guide_inference_geo: str = "us"
+    # "off" | "staff" (teachers and admins) | "on". Used only while no admin
+    # toggle has been saved; previews set it, production never does.
+    guide_mode_default: str = "off"
+    # Canned replies, no network call. Refused on the production database.
+    guide_fake_model: bool = False
+    guide_daily_questions: int = 20
+    guide_per_minute: int = 6
+    guide_daily_spend_usd: float = 3.0
 
     # Neon Postgres connection string (see db.py) -- backs user accounts,
     # sessions, activity logs, caches and the Results League. Required
@@ -99,9 +103,6 @@ class Settings(BaseSettings):
     # quotes, so they 404 unless this is true (2026-11, see main.py). Pair it
     # with the frontend's VITE_SHOW_EXTRA_TOOLS.
     enable_paper_trading: bool = False
-    # /api/chat calls a paid LLM API and has no UI caller (see CLAUDE.md's
-    # "AI assistant"), so it 404s unless this is true (2026-11).
-    enable_chat: bool = False
     # News videos (WION, CNBC-TV18 ...) are off the site (audit T8, master
     # plan phase 1): /api/videos and company pages return none unless this is
     # true. Phase 7 brings back a curated teaching set instead.

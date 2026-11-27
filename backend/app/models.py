@@ -346,21 +346,6 @@ class PriceHistoryResponse(BaseModel):
     price_as_of: Optional[str] = None
 
 
-class ChatMessage(BaseModel):
-    role: str  # "user" | "assistant"
-    content: str
-
-
-class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=2000)
-    history: list[ChatMessage] = Field(default_factory=list, max_length=20)
-    ticker: Optional[str] = None  # if set, backend re-attaches company context
-
-
-class ChatResponse(BaseModel):
-    reply: str
-
-
 class SignUpRequest(BaseModel):
     email: str = Field(..., max_length=254)
     name: str = Field(..., max_length=100)

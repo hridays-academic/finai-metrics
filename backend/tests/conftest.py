@@ -51,7 +51,8 @@ os.environ["AUTH_RATE_LIMITS_ENABLED"] = "false"
 # bypasses the row-level lock triggers, which is what lets tests clean up
 # locked forecasts.
 _WIPE_TABLES = (
-    "audit_log", "classroom_answers", "classroom_sessions", "consent_requests", "class_members", "classes",
+    "audit_log", "guide_usage", "guide_spend", "site_switches",
+    "classroom_answers", "classroom_sessions", "consent_requests", "class_members", "classes",
     "card_answers", "xp_awards", "user_badges", "daily_attempts", "daily_challenges",
     "quick_round_attempts", "practice_attempts", "league_members", "leagues",
     "diagnoses", "scores", "baselines", "actuals", "forecast_values", "forecasts",

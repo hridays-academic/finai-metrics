@@ -24,8 +24,6 @@ from app.models import (
     ActivityResponse,
     AnalystConsensus,
     AuthResponse,
-    ChatRequest,
-    ChatResponse,
     CompanyFinancialsResponse,
     CompanyInfo,
     DataSourceName,
@@ -46,7 +44,6 @@ from app.models import (
     TradingSymbolInfo,
     UserPublic,
 )
-from app.services.moonshot_service import get_chat_reply
 from app.services.data_provider import (
     CompanyNotFoundError,
     DataProviderError,
@@ -75,6 +72,7 @@ from app.routes import reports as reports_routes
 from app.routes import play as play_routes
 from app.routes import progress as progress_routes
 from app.routes import schools as schools_routes
+from app.routes import guide as guide_routes
 from app.services import reports as reports_service
 
 logging.basicConfig(level=logging.INFO)
@@ -123,6 +121,7 @@ app.include_router(workspace_routes.router)
 app.include_router(reports_routes.router)
 app.include_router(progress_routes.router)
 app.include_router(schools_routes.router)
+app.include_router(guide_routes.router)
 
 
 @app.exception_handler(LeagueError)
@@ -169,14 +168,6 @@ def _auth_limit(scope: str, value: str) -> None:
 # services/providers.py. Reached through the FinancialDataProvider interface.
 provider: FinancialDataProvider = shared_provider
 
-# Simple in-process cache of the last-fetched company per ticker, so the chat
-# endpoint can attach context without the frontend having to resend the full
-# payload on every message. Keyed by ticker, not by user/session -- fine
-# only because /api/chat isn't reachable from the frontend UI at all right
-# now (see CLAUDE.md's "AI assistant" section); if it's ever re-added, this
-# needs to key by session/user instead, since the app is genuinely
-# multi-user now (see "Accounts & activity tracking"), not the single-owner local tool this comment used to assume.
-_last_company_by_ticker: dict[str, CompanyFinancialsResponse] = {}
 
 
 @app.get("/api/health")
@@ -484,7 +475,6 @@ def get_company(
         profile=profile,
         analysis=analysis,
     )
-    _last_company_by_ticker[info.resolved_symbol] = response
     # No-op if current_user is None (anonymous search) -- see
     # auth_service.log_activity's docstring for why that's a deliberate
     # no-guard-needed call site, not an oversight.
@@ -925,30 +915,3 @@ def get_activity(current_user: Optional[dict] = Depends(_current_user)) -> Activ
         raise HTTPException(
             status_code=401, detail="Sign in to view your activity.")
     return ActivityResponse(entries=auth_service.get_activity(current_user["id"]))
-
-
-def _chat_enabled() -> None:
-    # Off unless ENABLE_CHAT=true: no UI calls it, and each call costs money.
-    if not settings.enable_chat:
-        raise HTTPException(status_code=404, detail="Not found")
-
-
-@app.post("/api/chat", response_model=ChatResponse, dependencies=[Depends(_chat_enabled)])
-def chat(request: ChatRequest) -> ChatResponse:
-    context = None
-    if request.ticker:
-        context = _last_company_by_ticker.get(request.ticker.strip().upper())
-
-    try:
-        reply = get_chat_reply(request.message, request.history, context)
-    except RuntimeError as exc:
-        # Missing/invalid API key configuration -- a server setup issue, not a user error.
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Chat request failed")
-        raise HTTPException(
-            status_code=502,
-            detail="The AI assistant is temporarily unavailable. Please try again shortly.",
-        ) from exc
-
-    return ChatResponse(reply=reply)

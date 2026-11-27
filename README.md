@@ -120,8 +120,7 @@ backend/app/
     db.py                   Postgres connection + idempotent schema
     auth_service.py         Signup/login/sessions/activity, Google Sign-In
     gmail_service.py        Password-reset email via Gmail SMTP
-    ai_prompt.py            Shared system prompt (see "AI assistant" below)
-    moonshot_service.py     Active AI backend; deepseek/claude are alternates
+    guide.py                The AI guide (off by default; see "AI guide" below)
 frontend/src/
   App.tsx                   Root: theme, auth, selected company, active view
   components/               27 components across the four modules
@@ -132,15 +131,13 @@ api/index.py                Vercel entry point — re-exports the ASGI app
 CLAUDE.md                   Detailed design notes and rationale
 ```
 
-### AI assistant — backend only
+### AI guide — off by default
 
-`POST /api/chat` works and is wired to Moonshot (Kimi), with DeepSeek and
-Anthropic implementations kept as swappable alternates. **It is not rendered
-anywhere in the frontend** — the chat UI was removed to keep the site to a
-single full-width metrics view. The metric explanations you see in the app
-are *not* AI-generated; they're computed server-side in `metrics.py`, which
-makes them reproducible, instant, free, and incapable of inventing a number.
-See `CLAUDE.md` to bring the chat UI back.
+An AI guide (Anthropic's API) explains how Stackly works and the terms and
+figures on a page. It is off unless `ENABLE_GUIDE=true` and an admin switches
+it on; see `docs/claude/architecture.md`. The old `/api/chat` endpoint was
+retired. The metric explanations in the app are *not* AI-generated; they're
+computed server-side in `metrics.py`.
 
 ## Running locally
 
@@ -177,7 +174,7 @@ what the pooler exists for. Tables are created idempotently on first start.
 
 Everything else is optional: `GOOGLE_CLIENT_ID` (Google Sign-In),
 `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` (password-reset emails),
-`MOONSHOT_API_KEY` (the unrendered chat endpoint).
+`ANTHROPIC_API_KEY` with `ENABLE_GUIDE` (the AI guide, off by default).
 
 `.env` is git-ignored. Never commit it or hardcode a key in source.
 

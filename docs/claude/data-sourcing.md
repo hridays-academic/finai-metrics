@@ -404,20 +404,11 @@ The league uses company results only and was left alone.
   licensed API — treat a yfinance-served `consensus_source`/`active_source`
   as lower-confidence than a Tapetide-served one, not equivalent, even
   though there's no dropdown surfacing that distinction to the user anymore.
-- The AI assistant must **not** give investment advice (buy/sell/hold
-  recommendations, price targets). If asked, it should decline and redirect to
-  explaining the underlying metric. This is enforced via the shared system
-  prompt in `ai_prompt.py` plus a UI disclaimer — keep both in sync if you
-  touch either.
-- `MOONSHOT_MODEL` defaults to `kimi-k2.6` (general-purpose). `kimi-k2.7-code`
-  is coding-specialized, not a better default for this app's financial-
-  explainer use case, despite being newer.
-- Neither DeepSeek's nor Moonshot's API access is covered by any Claude/
-  claude.ai subscription (Pro, Max, etc.) or by each other's accounts — each
-  is separately metered, pay-as-you-go billing. Don't assume a working key
-  implies a funded account; both return billing-suspension errors that look
-  superficially like rate limits (DeepSeek: HTTP 402; Moonshot: HTTP 429 with
-  `exceeded_current_quota_error`) rather than authentication errors.
+- The AI guide must **not** give investment advice (buy/sell/hold
+  recommendations, price targets) or a share price. This is enforced on the
+  server (services/guide.py: fixed replies before the model, and a check on
+  every sentence before it is sent), not only in the prompt; keep the tests
+  in tests/test_guide.py passing if you touch either.
 - Company name → ticker resolution goes through Tapetide's own `search_stocks`
   tool (fuzzy name/symbol/ISIN matching across ~8,200 NSE/BSE stocks), not a
   hardcoded lookup. Users can always type an explicit symbol (e.g. "RELIANCE")

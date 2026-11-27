@@ -25,7 +25,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
-from app.services import audit, gmail_service, play, progress
+from app.services import audit, gmail_service, guide, play, progress
 from app.services.league_service import LeagueError
 
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O, 1/I/L
@@ -63,6 +63,8 @@ class StudentRowOut(BaseModel):
     forecasts: int
     companies: list[str]
     consent: Literal["not_needed", "granted", "pending", "paper_received"]
+    # Phase 12: the separate parent tick for the AI guide (under-18s only).
+    guide: Literal["not_needed", "granted", "form_received", "not_yet"] = "not_needed"
 
 
 class TeacherViewOut(BaseModel):
@@ -84,6 +86,9 @@ class ConsentPageOut(BaseModel):
 class ConsentAnswerIn(BaseModel):
     approve: bool
     parent_name: str = Field(default="", max_length=120)
+    # Phase 12: the separate tick for the AI guide (honoured only while the
+    # guide is offered to students; see guide.offered_to_parents).
+    guide: bool = False
 
 
 class PaperFormOut(BaseModel):
@@ -91,6 +96,7 @@ class PaperFormOut(BaseModel):
     handle: Optional[str]
     class_name: str
     received_at: str
+    kind: Literal["approval", "guide"] = "approval"
 
 
 class SessionOut(BaseModel):
@@ -209,6 +215,7 @@ def teacher_view(conn: psycopg.Connection, user: dict, class_id: int) -> Teacher
     cls = _class_for(conn, user, class_id, teacher=True)
     rows = conn.execute(
         """SELECT u.id, u.handle, u.name, u.age_band, u.guardian_consent_status, m.paper_form_received_at,
+                  u.guide_consent, m.guide_form_received_at,
                   (SELECT count(*) FROM quick_round_attempts q WHERE q.user_id = u.id) +
                   (SELECT count(*) FROM daily_attempts d WHERE d.user_id = u.id) AS rounds,
                   (SELECT count(*) FROM card_answers c WHERE c.user_id = u.id) AS cards,
@@ -232,12 +239,18 @@ def teacher_view(conn: psycopg.Connection, user: dict, class_id: int) -> Teacher
             consent = "granted"
         else:
             consent = "paper_received" if r["paper_form_received_at"] else "pending"
+        if r["age_band"] != "under_18":
+            guide_state = "not_needed"
+        elif r["guide_consent"]:
+            guide_state = "granted"
+        else:
+            guide_state = "form_received" if r["guide_form_received_at"] else "not_yet"
         display = (r["name"] if cls["show_names"] and r["name"] else None) or r["handle"] or "(no handle yet)"
         out.append(StudentRowOut(
             user_id=r["id"], display=display, started=bool(r["rounds"] or r["forecasts"] or r["practice"]),
             rounds=r["rounds"], cards=r["cards"], average=round(r["average"], 1) if r["average"] is not None else None,
             caught=round(float(r["caught"]), 3) if r["caught"] is not None else None, forecasts=r["forecasts"],
-            companies=companies, consent=consent))
+            companies=companies, consent=consent, guide=guide_state))
     return TeacherViewOut(class_=_class_out(conn, cls, user), students=out)
 
 
@@ -301,13 +314,18 @@ def answer_consent(conn: psycopg.Connection, token: str, body: ConsentAnswerIn) 
         raise LeagueError(422, "parent_name_required", "Please type your name to approve.")
     conn.execute("UPDATE consent_requests SET answered_at = now(), approved = %s, parent_email = NULL WHERE id = %s",
                  (body.approve, row["id"]))
+    guide_yes = bool(body.approve and body.guide and guide.offered_to_parents(conn))
     if body.approve:
         conn.execute(
             """UPDATE users SET guardian_consent_status = 'granted', guardian_consent_by = %s,
                       guardian_consent_method = 'parent_email', guardian_consent_date = %s WHERE id = %s""",
             (body.parent_name.strip(), date.today(), row["student_id"]))
+    if guide_yes:
+        conn.execute("""UPDATE users SET guide_consent = TRUE, guide_consent_method = 'parent_email',
+                               guide_consent_at = now() WHERE id = %s""", (row["student_id"],))
+    conn.execute("UPDATE consent_requests SET guide = %s WHERE id = %s", (guide_yes, row["id"]))
     audit.write(conn, None, "update", "guardian_consent", row["student_id"],
-                {"status": "granted" if body.approve else "declined", "method": "parent_email"})
+                {"status": "granted" if body.approve else "declined", "method": "parent_email", "guide": guide_yes})
 
 
 def mark_paper_form(conn: psycopg.Connection, user: dict, class_id: int, student_id: int) -> None:
@@ -320,8 +338,39 @@ def mark_paper_form(conn: psycopg.Connection, user: dict, class_id: int, student
     audit.write(conn, user["id"], "update", "paper_consent_form", student_id, {"class_id": class_id})
 
 
+def mark_guide_form(conn: psycopg.Connection, user: dict, class_id: int, student_id: int) -> None:
+    """Phase 12: a signed form with the guide box ticked has come back. An
+    admin then approves it (set_guide_consent), as with the main form."""
+    _class_for(conn, user, class_id, teacher=True)
+    if not guide.offered_to_parents(conn):
+        raise LeagueError(409, "guide_not_offered", "The guide isn't offered to students yet.")
+    row = conn.execute(
+        """UPDATE class_members SET guide_form_received_at = now()
+           WHERE class_id = %s AND user_id = %s RETURNING user_id""", (class_id, student_id)).fetchone()
+    if row is None:
+        raise LeagueError(404, "not_in_class", "That student isn't in this class.")
+    audit.write(conn, user["id"], "update", "paper_guide_form", student_id, {"class_id": class_id})
+
+
+def set_guide_consent(conn: psycopg.Connection, actor: dict, user_id: int, granted: bool) -> None:
+    row = conn.execute("""UPDATE users SET guide_consent = %s, guide_consent_method = CASE WHEN %s THEN 'paper' END,
+                                 guide_consent_at = CASE WHEN %s THEN now() END
+                          WHERE id = %s AND deleted_at IS NULL RETURNING id""",
+                       (granted, granted, granted, user_id)).fetchone()
+    if row is None:
+        raise LeagueError(404, "user_not_found", "No such account.")
+    audit.write(conn, actor["id"], "update", "guide_consent", user_id, {"granted": granted, "method": "paper"})
+
+
 def paper_forms(conn: psycopg.Connection) -> list[PaperFormOut]:
-    return [PaperFormOut(user_id=r["user_id"], handle=r["handle"], class_name=r["name"],
+    guide_forms = [PaperFormOut(user_id=r["user_id"], handle=r["handle"], class_name=r["name"],
+                                received_at=r["guide_form_received_at"].isoformat(), kind="guide")
+                   for r in conn.execute(
+        """SELECT m.user_id, u.handle, c.name, m.guide_form_received_at FROM class_members m
+           JOIN users u ON u.id = m.user_id JOIN classes c ON c.id = m.class_id
+           WHERE m.guide_form_received_at IS NOT NULL AND u.age_band = 'under_18' AND NOT u.guide_consent
+             AND u.deleted_at IS NULL ORDER BY m.guide_form_received_at""").fetchall()]
+    return guide_forms + [PaperFormOut(user_id=r["user_id"], handle=r["handle"], class_name=r["name"],
                          received_at=r["paper_form_received_at"].isoformat()) for r in conn.execute(
         """SELECT m.user_id, u.handle, c.name, m.paper_form_received_at FROM class_members m
            JOIN users u ON u.id = m.user_id JOIN classes c ON c.id = m.class_id

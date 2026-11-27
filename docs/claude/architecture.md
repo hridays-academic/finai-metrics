@@ -44,25 +44,18 @@ day of the forecast period's month) alongside the human-readable
 plot the forecast fan's endpoint on the time axis; don't remove it as
 "redundant" with `target_period`.
 
-The backend also has a working AI chat assistant (`/api/chat`) that was
-removed from the frontend UI at the user's request (2026-07) to keep the
-site to a single, full-width metrics view — the endpoint and its three
-swappable LLM backends are still intact, but the endpoint 404s unless
-`ENABLE_CHAT=true` (2026-11: it was an open, unauthenticated endpoint on a
-paid API key), and it's not rendered
-anywhere. To bring it back, re-add a chat component that calls `POST
-/api/chat` (see backend/app/main.py for the request/response shape).
+The old AI chat assistant (`/api/chat`, Moonshot/DeepSeek/Claude backends) was retired in phase 12 (2026-11-27); the AI guide replaces it (below).
 
 ## Architecture
 
 Two independent services, run separately in development:
 
 ```
-backend/    FastAPI (Python) — data fetching, ratio calculations, AI assistant proxy (unused by frontend)
+backend/    FastAPI (Python) — data fetching, ratio calculations, the league, the AI guide (off by default)
 frontend/   React + Vite (TypeScript) — dark-mode-first, full-width metrics dashboard
 ```
 
-The backend is the only thing that talks to external APIs (Tapetide, Moonshot).
+The backend is the only thing that talks to external APIs (Yahoo via yfinance, Anthropic for the guide).
 The frontend never sees API keys — it only calls the local backend.
 
 ### Backend layout
@@ -84,10 +77,7 @@ backend/app/
                             kept as a dormant, fully-implemented provider in case
                             Tickertape's IP block on Vercel ever lifts
     metrics.py              Pure functions: computes ratios from raw financials
-    ai_prompt.py             Shared system prompt + context formatting (provider-agnostic)
-    moonshot_service.py      Active AI backend, wraps the Moonshot (Kimi) API
-    deepseek_service.py      Alternate AI backend using DeepSeek (not wired in)
-    claude_service.py       Alternate AI backend using Anthropic Claude (not wired in)
+    guide.py, guide_context.py, guide_model.py   The AI guide (phase 12, off by default)
     db.py                    Postgres (Neon) connection + schema (users, sessions,
                               activity_log, tapetide_quota)
     auth_service.py          Signup/login/sessions/activity logging -- see
@@ -128,7 +118,7 @@ API rather than a scraper, is unaffected (confirmed reachable from Vercel).
 homepage suggestions), was removed (2026-08, see "Homepage recommendations"
 below) — `bharat_sm_provider.py` is now not wired into `main.py` at all,
 kept only as a dormant, fully-implemented provider (same "kept but not
-currently wired in" pattern as `deepseek_service.py`/`claude_service.py`)
+currently wired in" pattern)
 in case Tickertape's block ever lifts. Don't route `/api/company`/
 `/api/price-history` back through Bharat-SM-Data without first re-verifying
 Tickertape's block is gone (the same discipline this file already asks for
@@ -348,27 +338,28 @@ to know:
 no knowledge of Tapetide/yfinance or any HTTP client — this keeps it
 unit-testable and provider-agnostic.
 
-**The AI assistant is only reachable server-side.** `moonshot_service.py` is
-the active backend (wired in `main.py`), reads `MOONSHOT_API_KEY` from the
-environment, and talks to Moonshot's OpenAI-compatible Chat Completions API
-via plain `requests` (no SDK) — note it uses `max_completion_tokens`, not the
-deprecated `max_tokens`, and its base URL has a `/v1` prefix unlike
-DeepSeek's. `deepseek_service.py` and `claude_service.py` are kept as
-alternate backends — same swap pattern as the data providers; change one
-line in `main.py`'s import to switch. All three share `ai_prompt.py` for the
-system prompt and company-context formatting, so the assistant's scope stays
-identical regardless of which LLM is active: it's scoped to financial
-education about the currently loaded company and forbids investment advice —
-do not relax this scoping without discussing it with the user first, since a
-"personal finance chatbox" that starts giving buy/sell advice is a compliance
-concern, not just a product decision. If you touch the prompt, edit
-`ai_prompt.py` once, not each service file separately.
-
-Moonshot maps billing suspension ("insufficient balance") to **HTTP 429**
-with `error.type == "exceeded_current_quota_error"`, not HTTP 402 like
-DeepSeek — `moonshot_service.py` inspects the error body to distinguish that
-from an actual rate limit before choosing the user-facing message; don't
-collapse that branch back to a generic 429 handler.
+**The AI guide (phase 12, off by default).** `services/guide.py` (rules, caps,
+switches, the stream), `guide_context.py` (what the model may see) and
+`guide_model.py` (Anthropic's official SDK, or the fake), behind
+`POST /api/guide/ask` and `GET /api/guide/status` (`routes/guide.py`). It is
+off unless `ENABLE_GUIDE=true` **and** the admin toggle (Admin, or
+`PUT /api/admin/guide`) says `staff` (teachers and admins) or `on`; with no
+toggle saved, `GUIDE_MODE_DEFAULT` applies (previews only). Signed-in only;
+an under-18 needs the main parent approval and the separate guide tick.
+The browser sends only which page it is on; `guide_context.build` rebuilds
+the context from public data and never includes a figure for a quarter in
+the play pool or an unscored league event's own quarter. Questions the
+server recognises (advice, prices, the answer or a range, the hidden
+company, safety, personal details) get a fixed reply with no model call;
+replies stream sentence by sentence and each sentence is checked before it
+is sent. No chat text is stored: `guide_usage` (per-person daily counts, 31
+days) and `guide_spend` (the day's tokens and dollars) only. Caps: 6 a
+minute, 20 a day per person, `GUIDE_DAILY_SPEND_USD` overall. Fake mode
+(`GUIDE_FAKE_MODEL=true`) is refused on the production database; real
+calls are refused without `ANTHROPIC_API_KEY`. The red-team set is
+`backend/tests/data/guide_redteam.json` (150 prompts; the real run is
+`backend/scripts/guide_redteam.py`). The old `/api/chat` and its Moonshot,
+DeepSeek and Claude services were retired in phase 12 (tested).
 
 ### Frontend layout
 

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.config import get_settings
 from app.routes.deps import require_admin, require_user
-from app.services import boards, gmail_service, schools
+from app.services import boards, gmail_service, guide, schools
 from app.services.db import get_conn
 
 router = APIRouter()
@@ -101,6 +101,22 @@ def request_consent(body: schools.ConsentRequestIn, request: Request, user: dict
         schools.request_consent(conn, user, body, _origin(request))
 
 
+@router.put("/api/classes/{class_id}/students/{student_id}/guide-form", status_code=204)
+def mark_guide_form(class_id: int, student_id: int, user: dict = Depends(require_user)) -> None:
+    with get_conn() as conn:
+        schools.mark_guide_form(conn, user, class_id, student_id)
+
+
+class GuideConsentIn(BaseModel):
+    granted: bool
+
+
+@router.put("/api/admin/users/{user_id}/guide-consent", status_code=204)
+def set_guide_consent(user_id: int, body: GuideConsentIn, admin: dict = Depends(require_admin)) -> None:
+    with get_conn() as conn:
+        schools.set_guide_consent(conn, admin, user_id, body.granted)
+
+
 @router.get("/api/consent/{token}", response_model=schools.ConsentPageOut)
 def consent_page(token: str) -> schools.ConsentPageOut:
     with get_conn() as conn:
@@ -147,4 +163,6 @@ def step(session_id: int, body: StepIn, user: dict = Depends(require_user)) -> s
 def consent_options() -> dict:
     """A11 (Stop 3): the paper form is the main route for the January pilot;
     the email link shows only once email is switched on."""
-    return {"email": gmail_service.email_enabled()}
+    with get_conn() as conn:
+        offered = guide.offered_to_parents(conn)
+    return {"email": gmail_service.email_enabled(), "guide": offered}

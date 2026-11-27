@@ -33,7 +33,7 @@ or deleted by someone who shouldn't have. A **suspected** breach starts the cloc
      `STACKLY_DATABASE_URL` in Vercel, redeploy (`vercel deploy --prod --yes`), check
      `/api/health` says `"database": "production"`.
    - Sign everyone out: `DELETE FROM sessions;` on production.
-   - Leaked secret: rotate it (Google client, Moonshot, Gmail App Password,
+   - Leaked secret: rotate it (Google client, Anthropic API key, Gmail App Password,
      `IP_HASH_KEY`) and remove it from wherever it leaked.
    - Bad code: roll back to the last good deployment in Vercel.
 3. Keep evidence: copy the Vercel runtime logs (`vercel logs <deployment-url> --json`)

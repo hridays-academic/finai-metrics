@@ -349,7 +349,7 @@ def delete_account(user_id: int) -> None:
         for table in (
             "sessions", "activity_log", "password_reset_tokens", "league_members", "practice_attempts",
             "research_workspaces", "card_answers", "xp_awards", "user_badges", "daily_attempts", "quick_round_attempts",
-            "class_members", "classroom_answers",
+            "class_members", "classroom_answers", "guide_usage",
         ):
             conn.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
         conn.execute("DELETE FROM consent_requests WHERE student_id = %s", (user_id,))
@@ -361,7 +361,8 @@ def delete_account(user_id: int) -> None:
                 handle = NULL, school_name = NULL, age_band = NULL,
                 guardian_consent_status = NULL, guardian_consent_by = NULL,
                 guardian_consent_method = NULL, guardian_consent_date = NULL,
-                terms_accepted_at = NULL, terms_version = NULL, guide_seen_at = NULL, deleted_at = NOW()
+                terms_accepted_at = NULL, terms_version = NULL, guide_seen_at = NULL,
+                guide_consent = FALSE, guide_consent_method = NULL, guide_consent_at = NULL, deleted_at = NOW()
             WHERE id = %s
             """,
             (user_id,),

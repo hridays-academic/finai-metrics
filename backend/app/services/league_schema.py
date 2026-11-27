@@ -567,4 +567,43 @@ LEAGUE_SCHEMA_STATEMENTS = [
     # Figures saved only through Older results are for Practice and Mystery:
     # league charts and Research's league figures leave them out.
     "ALTER TABLE actuals ADD COLUMN IF NOT EXISTS archive BOOLEAN NOT NULL DEFAULT FALSE",
+    # ---------- The AI guide (schema v23, phase 12) ----------
+    # Vault: Areas/AI guide plan. A separate parent tick for the guide (an
+    # under-18 needs it on top of the main approval); no chat text is ever
+    # stored, only a count of questions and redirects per person per day
+    # (kept 31 days, deleted with the account) and the day's overall spend.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS guide_consent BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS guide_consent_method TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS guide_consent_at TIMESTAMPTZ",
+    "ALTER TABLE consent_requests ADD COLUMN IF NOT EXISTS guide BOOLEAN",
+    "ALTER TABLE class_members ADD COLUMN IF NOT EXISTS guide_form_received_at TIMESTAMPTZ",
+    """
+    CREATE TABLE IF NOT EXISTS guide_usage (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day DATE NOT NULL,
+        questions INTEGER NOT NULL DEFAULT 0,
+        redirects INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS guide_spend (
+        day DATE PRIMARY KEY,
+        calls INTEGER NOT NULL DEFAULT 0,
+        input_tokens BIGINT NOT NULL DEFAULT 0,
+        cache_read_tokens BIGINT NOT NULL DEFAULT 0,
+        cache_write_tokens BIGINT NOT NULL DEFAULT 0,
+        output_tokens BIGINT NOT NULL DEFAULT 0,
+        usd DOUBLE PRECISION NOT NULL DEFAULT 0
+    )
+    """,
+    # Admin switches that must change without a deploy (who changed one is
+    # in the audit log, not here).
+    """
+    CREATE TABLE IF NOT EXISTS site_switches (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
 ]

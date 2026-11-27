@@ -11,8 +11,7 @@ yfinance_provider.py's docstring warns gets an IP throttled.
 **Postgres, never an in-process dict.** Vercel's serverless functions don't
 share memory between invocations -- consecutive requests routinely land on
 different instances, so an in-memory cache would miss almost always while
-looking like it worked in local dev. (main.py's `_last_company_by_ticker` is
-an existing example of that trap, not a model to copy.)
+looking like it worked in local dev.
 
 Two freshness clocks, deliberately:
 
