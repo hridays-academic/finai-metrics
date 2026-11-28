@@ -55,6 +55,13 @@ class Context:
     # Words a reply must not contain (the hidden company's name in Mystery
     # mode). Checked on the way out, never sent to the model.
     forbidden_names: list[str] = field(default_factory=list)
+    # The same public figures and approved notes, structured, for answers
+    # mode (guide_answers.py): {"label", "metric_key", "unit", "value",
+    # "kind": result|last_year|last_quarter|median|league, "quarter"} and
+    # {"label", "metric_key", "note"}. Built from what `text` says, nothing more.
+    figures: list[dict] = field(default_factory=list)
+    notes: list[dict] = field(default_factory=list)
+    metrics: list[dict] = field(default_factory=list)  # {"label", "metric_key"} being forecast (rounds)
 
 
 # How Stackly works, for the model's context. Facts, not user-facing wording.
@@ -126,17 +133,23 @@ def _round(conn: psycopg.Connection, page: GuidePage, hidden: set[Quarter]) -> C
             "You do not know this quarter's result and must never give it, a range, a midpoint, or say whether it "
             "will be above or below any number.\n\n"
             f"{FACTS}\n\nTerms:\n{_definitions()}")
+    figures = [{"label": card.label, "metric_key": card.metric_key, "unit": card.unit, "value": v, "kind": k, "quarter": None}
+               for k, v in (("last_year", last_year), ("last_quarter", last_quarter)) if v is not None]
     return Context(kind="round", text=text, in_round=True, mystery=page.mystery,
-                   forbidden_names=[row["company_name"], row["ticker"]] if page.mystery else [])
+                   forbidden_names=[row["company_name"], row["ticker"]] if page.mystery else [], figures=figures,
+                   metrics=[{"label": card.label, "metric_key": card.metric_key}])
 
 
 def _practice_case(conn: psycopg.Connection, page: GuidePage, hidden: set[Quarter]) -> Context:
     row = practice._load(conn, page.code or "")
     c, fy, q = row["company_id"], row["fiscal_year_label"], row["fiscal_quarter"]
     year_ago = _actuals(conn, c, _year_ago(fy), q) if (c, _year_ago(fy), q) not in hidden else {}
-    lines = []
+    lines, figures = [], []
     for m in row["metric_definitions"]["metrics"]:
         lines.append(f"- {m['label']} ({m['unit']}): last year {_num(_matching(year_ago, m), m['unit'])}")
+        if _matching(year_ago, m) is not None:
+            figures.append({"label": m["label"], "metric_key": m["key"], "unit": m["unit"], "value": _matching(year_ago, m),
+                            "kind": "last_year", "quarter": None})
     who = (f"A mystery company in {practice._sector_name(row)}: {practice._mystery_line(row)}. The company is hidden; "
            "never guess or hint at its name." if page.mystery
            else f"{row['company_name']}, {practice._sector_name(row)}, {row['season_label']}.")
@@ -146,7 +159,8 @@ def _practice_case(conn: psycopg.Connection, page: GuidePage, hidden: set[Quarte
             "whether one will be above or below any number.\n\n"
             f"{FACTS}\n\nTerms:\n{_definitions()}")
     return Context(kind="practice_case", text=text, in_round=True, mystery=page.mystery,
-                   forbidden_names=[row["company_name"], row["ticker"]] if page.mystery else [])
+                   forbidden_names=[row["company_name"], row["ticker"]] if page.mystery else [], figures=figures,
+                   metrics=[{"label": m["label"], "metric_key": m["key"]} for m in row["metric_definitions"]["metrics"]])
 
 
 def _results(conn: psycopg.Connection, page: GuidePage, hidden: set[Quarter]) -> Context:
@@ -156,8 +170,17 @@ def _results(conn: psycopg.Connection, page: GuidePage, hidden: set[Quarter]) ->
     ev = out.event
     own_shown = (ev.company.id, ev.fiscal_year_label, ev.fiscal_quarter) not in hidden
     ago_shown = (ev.company.id, _year_ago(ev.fiscal_year_label), ev.fiscal_quarter) not in hidden
-    lines = []
+    lines, figures, notes = [], [], []
     for m in out.metrics:
+        base = {"label": m.label, "metric_key": m.metric_key, "unit": m.unit, "quarter": ev.season_label}
+        if own_shown and m.actual is not None:
+            figures.append({**base, "value": m.actual, "kind": "result"})
+        if ago_shown and m.lazy is not None:
+            figures.append({**base, "value": m.lazy, "kind": "last_year"})
+        if own_shown and m.crowd_median is not None:
+            figures.append({**base, "value": m.crowd_median, "kind": "median"})
+        if own_shown and m.note:
+            notes.append({"label": m.label, "metric_key": m.metric_key, "note": m.note})
         parts = [f"- {m.label}:"]
         parts.append(f"result {_num(m.actual, m.unit)}" if own_shown else "result (not available to you)")
         parts.append(f"last year {_num(m.lazy, m.unit)}" if ago_shown else "last year (not available to you)")
@@ -171,7 +194,7 @@ def _results(conn: psycopg.Connection, page: GuidePage, hidden: set[Quarter]) ->
             + "\nExplain why a number came out as it did only from the approved notes above; if there is no note, "
             "say the page has no explanation for that number rather than inventing one.\n\n"
             f"{FACTS}\n\nTerms:\n{_definitions()}")
-    return Context(kind="results", text=text)
+    return Context(kind="results", text=text, figures=figures, notes=notes)
 
 
 def _research(conn: psycopg.Connection, page: GuidePage, hidden: set[Quarter]) -> Context:
@@ -191,14 +214,19 @@ def _research(conn: psycopg.Connection, page: GuidePage, hidden: set[Quarter]) -
     cfg = market_config(company["market_code"])
     labels = {m.key: (m.label, m.unit) for m in cfg.core_metrics}
     quarters: dict[tuple[str, int], list[str]] = {}
+    found: dict[tuple[str, int], list[dict]] = {}
     for a in actuals:
         label, unit = labels.get(a.metric_key, (a.metric_key.replace("_", " "), ""))
         quarters.setdefault((a.fiscal_year_label, a.fiscal_quarter), []).append(f"{label} {_num(a.value, unit)}")
+        found.setdefault((a.fiscal_year_label, a.fiscal_quarter), []).append(
+            {"label": label, "metric_key": a.metric_key, "unit": unit, "value": a.value, "kind": "league",
+             "quarter": f"Q{a.fiscal_quarter} {a.fiscal_year_label}"})
     newest = sorted(quarters, key=lambda k: (k[0], k[1]), reverse=True)[:8]
+    figures = [f for k in newest for f in found[k]]
     lines = [f"- Q{q} {fy}: " + ", ".join(quarters[(fy, q)]) for fy, q in newest]
     text = (f"The student is on the Research page for {company['name']}. The league's own figures (from filings) "
             "that the page shows:\n" + ("\n".join(lines) or "- none yet")
             + "\nThe page also shows Yahoo Finance's figures, which use different definitions; you can't see them.\n\n"
             f"{FACTS}\n\nTerms:\n{_definitions()}")
-    return Context(kind="research", text=text)
+    return Context(kind="research", text=text, figures=figures)
 

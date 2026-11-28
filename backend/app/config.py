@@ -25,8 +25,11 @@ class Settings(BaseSettings):
     # "off" | "staff" (teachers and admins) | "on". Used only while no admin
     # toggle has been saved; previews set it, production never does.
     guide_mode_default: str = "off"
-    # Canned replies, no network call. Refused on the production database.
-    guide_fake_model: bool = False
+    # Where replies come from: "answers" (default, the January version:
+    # approved text matched by simple search, no AI, nothing leaves Stackly),
+    # "fake" (canned replies for tests and previews; refused on the production
+    # database) or "model" (Anthropic; unused until Hriday approves a paid key).
+    guide_engine: str = "answers"
     guide_daily_questions: int = 20
     guide_per_minute: int = 6
     guide_daily_spend_usd: float = 3.0

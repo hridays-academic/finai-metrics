@@ -1,6 +1,6 @@
 """
 The AI guide (phase 12). Every rule in the plan's section c, against the fake
-model (GUIDE_FAKE_MODEL): no test makes a network call.
+model (GUIDE_ENGINE=fake): no test makes a network call. Answers mode: test_guide_answers.py.
 """
 import itertools
 import json
@@ -24,7 +24,7 @@ HOME = {"kind": "home"}
 
 @pytest.fixture
 def guide_on(monkeypatch):
-    for k, v in {"ENABLE_GUIDE": "true", "GUIDE_FAKE_MODEL": "true", "GUIDE_MODE_DEFAULT": "on",
+    for k, v in {"ENABLE_GUIDE": "true", "GUIDE_ENGINE": "fake", "GUIDE_MODE_DEFAULT": "on",
                  "GUIDE_PER_MINUTE": "1000", "GUIDE_DAILY_QUESTIONS": "1000"}.items():
         monkeypatch.setenv(k, v)
     get_settings.cache_clear()
@@ -112,8 +112,8 @@ def test_staff_mode_is_teachers_and_admins_only(client, guide_on, conn):
 
 def test_signed_in_only_and_consent(client, guide_on, conn, calls):
     assert _ask(client, {})[0] == 401
-    assert client.get("/api/guide/status").json() == {"available": False, "reason": "signed_out", "message": None,
-                                                     "left": None}
+    assert client.get("/api/guide/status").json() == {"available": False, "engine": "fake", "reason": "signed_out",
+                                                     "message": None, "left": None}
     no_profile = _person(client, "noprofile@example.com", age_band=None)
     assert _ask(client, no_profile)[1]["code"] == "profile_required"
     kid = _person(client, "kid@example.com", "under_18")
@@ -121,11 +121,15 @@ def test_signed_in_only_and_consent(client, guide_on, conn, calls):
     assert status == 403 and body["code"] == "consent_pending"
     conn.execute("UPDATE users SET guardian_consent_status = 'granted' WHERE email = 'kid@example.com'")
     conn.commit()
+    # The separate guide tick is needed only for the AI model ...
+    guide_on.setenv("GUIDE_ENGINE", "model")
+    get_settings.cache_clear()
     status, body = _ask(client, kid)
     assert status == 403 and body["code"] == "guide_consent_needed"
     assert calls == []  # the model is never called on a refusal
-    conn.execute("UPDATE users SET guide_consent = TRUE WHERE email = 'kid@example.com'")
-    conn.commit()
+    # ... not when nothing leaves Stackly (fake here; answers mode likewise).
+    guide_on.setenv("GUIDE_ENGINE", "fake")
+    get_settings.cache_clear()
     status, events = _ask(client, kid)
     assert status == 200 and events[-1]["type"] == "done" and len(calls) == 1
 
@@ -136,7 +140,7 @@ def test_fake_refused_on_production_and_real_refused_without_key(client, conn, g
     status, body = _ask(client, h)
     assert status == 503 and body["code"] == "fake_refused"
     monkeypatch.setattr(db, "DATABASE_LABEL", "test")
-    monkeypatch.setenv("GUIDE_FAKE_MODEL", "false")
+    monkeypatch.setenv("GUIDE_ENGINE", "model")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     get_settings.cache_clear()
     status, body = _ask(client, h)
@@ -368,6 +372,8 @@ def test_old_chat_is_retired(client, conn):
 
 def test_parent_tick_by_email_and_paper(client, guide_on, conn, monkeypatch):
     from app.services import schools
+    monkeypatch.setenv("GUIDE_ENGINE", "model")  # the tick is for the AI model only
+    get_settings.cache_clear()
     kid = _person(client, "tick@example.com", "under_18")
     uid = conn.execute("SELECT id FROM users WHERE email = 'tick@example.com'").fetchone()[0]
     assert client.get("/api/consent-options").json()["guide"] is True
@@ -379,6 +385,7 @@ def test_parent_tick_by_email_and_paper(client, guide_on, conn, monkeypatch):
     row = conn.execute("SELECT guide_consent, guide_consent_method FROM users WHERE id = %s", (uid,)).fetchone()
     assert row == (True, "parent_email")
     assert client.get("/api/guide/status", headers=kid).json()["available"] is True
+    del kid
 
     # Paper: a teacher marks the guide box received, an admin approves.
     admin = _person(client, "admin@example.com")

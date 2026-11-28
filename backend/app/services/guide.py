@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field
 from app.config import get_settings
 from app.services import audit, db, rate_limit
 from app.services.guide_context import ROUND_KINDS, Context, GuidePage, build
+from app.services.guide_answers import AnswersEngine
 from app.services.guide_model import AnthropicModel, FakeModel, Usage, cost_usd
 from app.services.league_service import LeagueError
 from app.services.progress import today
@@ -110,6 +111,8 @@ ADVICE = re.compile(r"\b(should (?:i|we) (?:buy|sell|hold|invest)|buy or sell|se
                     r"which (?:stock|share)s? (?:to|should)|best (?:stock|share)s? to|"
                     r"kharid(?:u|un|na|ein|e|oon)?|bech(?:u|un|na|ein|e|oon)?|lena chahiye|le lu|le loon|"
                     r"paisa lagau|paise lagau|paisa laga(?:na|un|oon)|nivesh|"
+                    r"put (?:my |your |his |her |our |the )?(?:\w+ )?money (?:in|into)|money in it|"
+                    r"something to own|worth owning|rate this (?:company|stock|share)|"
                     r"will (?:the |this )?(?:share |stock )?price (?:go|rise|fall|crash)|"
                     r"will (?:the |this )?(?:share|stock) (?:go|rise|fall|crash)|go up or down|upar jayega|niche jayega)\b", _I)
 PRICE = re.compile(r"\b(current (?:share |stock )?price|price (?:today|right now|now)|today'?s (?:share )?price|"
@@ -216,14 +219,24 @@ def set_mode(conn: psycopg.Connection, actor: dict, mode: Mode) -> None:
     audit.write(conn, actor["id"], "update", "site_switch", "guide", {"before": before, "after": mode})
 
 
+ENGINES = ("answers", "fake", "model")
+
+
+def engine_name() -> str:
+    e = get_settings().guide_engine
+    return e if e in ENGINES else "answers"
+
+
 def live_mode(conn: psycopg.Connection) -> Mode:
     return effective_mode(conn) if get_settings().enable_guide else "off"
 
 
 def offered_to_parents(conn: psycopg.Connection) -> bool:
     """The parent tick, the printable form's guide paragraph and the teacher's
-    guide column show only while the guide is on for students."""
-    return live_mode(conn) == "on"
+    guide column show only while the AI model is on for students: in answers
+    mode nothing leaves Stackly and nothing is stored, so there is nothing
+    extra for a parent to agree to."""
+    return live_mode(conn) == "on" and engine_name() == "model"
 
 
 # ---------- Who may use it ----------
@@ -246,13 +259,14 @@ def refusal(conn: psycopg.Connection, user: dict, mode: Mode) -> Optional[tuple[
     if row["age_band"] == "under_18":
         if row["guardian_consent_status"] != "granted":
             return (403, "consent_pending")
-        if not row["guide_consent"]:
+        if engine_name() == "model" and not row["guide_consent"]:
             return (403, "guide_consent_needed")
     return None
 
 
 class StatusOut(BaseModel):
     available: bool
+    engine: str = "answers"
     reason: Optional[str] = None
     message: Optional[str] = None
     left: Optional[int] = None  # only when 3 or fewer questions are left today
@@ -271,13 +285,13 @@ def _left(conn: psycopg.Connection, user_id: int) -> Optional[int]:
 
 def status(conn: psycopg.Connection, user: Optional[dict]) -> StatusOut:
     if user is None:
-        return StatusOut(available=False, reason="signed_out")
+        return StatusOut(available=False, engine=engine_name(), reason="signed_out")
     mode = live_mode(conn)
     refused = refusal(conn, user, mode)
     if refused:
         code = refused[1]
-        return StatusOut(available=False, reason=code, message=MESSAGES.get(code))
-    return StatusOut(available=True, left=_left(conn, user["id"]))
+        return StatusOut(available=False, engine=engine_name(), reason=code, message=MESSAGES.get(code))
+    return StatusOut(available=True, engine=engine_name(), left=_left(conn, user["id"]))
 
 
 # ---------- Asking ----------
@@ -303,16 +317,24 @@ class Prepared:
     model: object
     model_name: str
     geo: str
+    stores: bool  # per-person counts and spend (fake and model); answers mode stores nothing
 
 
-def _model_for(kind: str):
-    s = get_settings()
-    if s.guide_fake_model:
-        if db.DATABASE_LABEL == "production":
-            raise LeagueError(503, "fake_refused", MESSAGES["fake_refused"])
-        return FakeModel(kind)
-    if not s.anthropic_api_key:
+def _check_engine() -> None:
+    engine = engine_name()
+    if engine == "fake" and db.DATABASE_LABEL == "production":
+        raise LeagueError(503, "fake_refused", MESSAGES["fake_refused"])
+    if engine == "model" and not get_settings().anthropic_api_key:
         raise LeagueError(503, "no_key", MESSAGES["no_key"])
+
+
+def _engine_for(ctx: Context):
+    s = get_settings()
+    engine = engine_name()
+    if engine == "answers":
+        return AnswersEngine(ctx)
+    if engine == "fake":
+        return FakeModel(ctx.kind)
     return AnthropicModel(s.anthropic_api_key, s.guide_model, s.guide_inference_geo)
 
 
@@ -322,24 +344,27 @@ def prepare(conn: psycopg.Connection, user: dict, body: AskIn) -> Prepared:
     if refused:
         status_code, code = refused
         raise LeagueError(status_code, code, MESSAGES.get(code, "Not found"))
-    model = _model_for(body.page.kind)
+    _check_engine()
+    stores = engine_name() != "answers"
     if not rate_limit.check_key("guide", str(user["id"]), [(60, s.guide_per_minute)]).allowed:
         raise LeagueError(429, "per_minute", MESSAGES["per_minute"])
     day = today(conn)
-    if _questions_today(conn, user["id"]) >= s.guide_daily_questions:
-        raise LeagueError(429, "daily_cap", MESSAGES["daily_cap"].format(n=s.guide_daily_questions))
-    spent = conn.execute("SELECT usd FROM guide_spend WHERE day = %s", (day,)).fetchone()
-    if spent and spent["usd"] >= s.guide_daily_spend_usd:
-        raise LeagueError(429, "resting", MESSAGES["resting"])
+    if stores:
+        if _questions_today(conn, user["id"]) >= s.guide_daily_questions:
+            raise LeagueError(429, "daily_cap", MESSAGES["daily_cap"].format(n=s.guide_daily_questions))
+        spent = conn.execute("SELECT usd FROM guide_spend WHERE day = %s", (day,)).fetchone()
+        if spent and spent["usd"] >= s.guide_daily_spend_usd:
+            raise LeagueError(429, "resting", MESSAGES["resting"])
     ctx = build(conn, body.page)
     fixed = classify(body.question, ctx)
-    conn.execute(
-        """INSERT INTO guide_usage (user_id, day, questions, redirects) VALUES (%s, %s, 1, %s)
-           ON CONFLICT (user_id, day) DO UPDATE SET questions = guide_usage.questions + 1,
-                                                    redirects = guide_usage.redirects + EXCLUDED.redirects""",
-        (user["id"], day, 1 if fixed else 0))
-    return Prepared(user_id=user["id"], ctx=ctx, fixed=fixed, model=model,
-                    model_name=s.guide_model, geo=s.guide_inference_geo)
+    if stores:
+        conn.execute(
+            """INSERT INTO guide_usage (user_id, day, questions, redirects) VALUES (%s, %s, 1, %s)
+               ON CONFLICT (user_id, day) DO UPDATE SET questions = guide_usage.questions + 1,
+                                                        redirects = guide_usage.redirects + EXCLUDED.redirects""",
+            (user["id"], day, 1 if fixed else 0))
+    return Prepared(user_id=user["id"], ctx=ctx, fixed=fixed, model=_engine_for(ctx),
+                    model_name=s.guide_model, geo=s.guide_inference_geo, stores=stores)
 
 
 def _line(obj: dict) -> str:
@@ -370,8 +395,10 @@ def stream(p: Prepared, body: AskIn) -> Iterator[str]:
     (a fixed reply that replaces everything sent so far), then {"type": "done"}."""
     if p.fixed:
         yield _line({"type": "replace", "text": REPLIES[p.fixed], "outcome": p.fixed})
-        with db.get_conn() as conn:
-            left = _left(conn, p.user_id)
+        left = None
+        if p.stores:
+            with db.get_conn() as conn:
+                left = _left(conn, p.user_id)
         yield _line({"type": "done", "outcome": p.fixed, "left": left})
         return
     gate = SentenceGate(p.ctx)
@@ -399,7 +426,9 @@ def stream(p: Prepared, body: AskIn) -> Iterator[str]:
         outcome = "offtopic"
     if gate.tripped or stop == "refusal":
         yield _line({"type": "replace", "text": REPLIES[outcome], "outcome": outcome})
-    left = _record(p.user_id, usage, cost_usd(p.model_name, p.geo, usage), outcome is not None)
+    if isinstance(p.model, AnswersEngine) and p.model.matched == "fallback" and not outcome:
+        outcome = "fallback"
+    left = _record(p.user_id, usage, cost_usd(p.model_name, p.geo, usage), outcome is not None) if p.stores else None
     yield _line({"type": "done", "outcome": outcome or "answered", "left": left})
 
 
@@ -408,7 +437,7 @@ def stream(p: Prepared, body: AskIn) -> Iterator[str]:
 class AdminGuideOut(BaseModel):
     mode: Mode
     env_enabled: bool
-    fake: bool
+    engine: str
     model: str
     key_set: bool
     today_usd: float
@@ -419,7 +448,7 @@ class AdminGuideOut(BaseModel):
 def admin_state(conn: psycopg.Connection) -> AdminGuideOut:
     s = get_settings()
     row = conn.execute("SELECT usd, calls FROM guide_spend WHERE day = %s", (today(conn),)).fetchone()
-    return AdminGuideOut(mode=effective_mode(conn), env_enabled=s.enable_guide, fake=s.guide_fake_model,
+    return AdminGuideOut(mode=effective_mode(conn), env_enabled=s.enable_guide, engine=engine_name(),
                          model=s.guide_model, key_set=bool(s.anthropic_api_key),
                          today_usd=round(row["usd"], 4) if row else 0.0, today_calls=row["calls"] if row else 0,
                          spend_cap_usd=s.guide_daily_spend_usd)

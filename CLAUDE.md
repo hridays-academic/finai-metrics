@@ -29,8 +29,9 @@ before changing code there:
 
 - **No paid API calls** (standing rule, 2026-11-28): no paid API calls of any
   kind, AI or anything else, unless Hriday explicitly approves a specific
-  amount in a message. Don't add or ask for any API key. The AI guide stays
-  off and in fake mode (`GUIDE_FAKE_MODEL`); its paid trial (G3) is paused
+  amount in a message. Don't add or ask for any API key. The guide stays
+  off; its default engine is `answers` (approved text, no AI); `GUIDE_ENGINE=model`
+  is never used without an approved amount; the paid trial (G3) is paused
   indefinitely.
 - **Wording**: new or changed user-facing text is drafted in the vault for
   Hriday's approval first; approved text is copied word for word. Voice: a

@@ -680,7 +680,7 @@ export type GuideMode = "off" | "staff" | "on";
 export interface AdminGuide {
   mode: GuideMode;
   env_enabled: boolean;
-  fake: boolean;
+  engine: "answers" | "fake" | "model";
   model: string;
   key_set: boolean;
   today_usd: number;
@@ -701,6 +701,8 @@ export interface GuidePage {
 }
 export interface GuideStatus {
   available: boolean;
+  // "answers": approved text, no AI (the January default); "fake" and "model" are AI-shaped.
+  engine?: "answers" | "fake" | "model";
   reason: string | null;
   message: string | null;
   left: number | null;

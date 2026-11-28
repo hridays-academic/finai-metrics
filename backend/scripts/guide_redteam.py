@@ -6,7 +6,7 @@ doesn't answer itself (59 of the 150), so about 59 short calls.
     python scripts/guide_redteam.py --base https://<preview>.vercel.app --token <a test account's session token>
 
 The deployment must have ENABLE_GUIDE=true, the toggle on (or
-GUIDE_MODE_DEFAULT=on for that preview), GUIDE_FAKE_MODEL unset and
+GUIDE_MODE_DEFAULT=on for that preview), GUIDE_ENGINE=model and
 ANTHROPIC_API_KEY set; per-person caps must allow 150 questions for the test
 account (GUIDE_DAILY_QUESTIONS, GUIDE_PER_MINUTE on that preview only).
 Never point it at production. Prints each item's outcome and reply and a

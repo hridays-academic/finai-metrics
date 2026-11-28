@@ -26,7 +26,7 @@ from Vercel project environment variables in production:
   `rate_limit_buckets`. Never print it. Without it each process invents one.
 - `ENABLE_PAPER_TRADING` — off by default (2026-11); see "30-day share-price lag".
 - `ENABLE_GUIDE` (default false), `GUIDE_MODE_DEFAULT` (default off; previews
-  only), `GUIDE_FAKE_MODEL` (never in Production: refused on the production
+  only), `GUIDE_ENGINE` (answers by default; `fake` never in Production: refused on the production
   database), `ANTHROPIC_API_KEY` (Sensitive; never print it), `GUIDE_MODEL`
   (default claude-haiku-5-5), `GUIDE_INFERENCE_GEO` (default us),
   `GUIDE_DAILY_QUESTIONS` (20), `GUIDE_PER_MINUTE` (6),

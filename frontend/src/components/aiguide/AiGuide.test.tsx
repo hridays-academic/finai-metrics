@@ -133,3 +133,15 @@ describe("AI guide (phase 12)", () => {
     expect(screen.queryByText("Reply one.")).toBeNull();
   });
 });
+
+describe("AI guide in answers mode (no AI)", () => {
+  it("doesn't call itself an AI", async () => {
+    m.fetchGuideStatus.mockResolvedValue({ available: true, engine: "answers", reason: null, message: null, left: null });
+    render(<AiGuide user={user} page={HOME} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open the guide" }));
+    const dialog = screen.getByRole("dialog", { name: "Guide" });
+    expect(dialog.querySelector(".ai-guide-says")!.textContent).toMatch(/^Hello\. I'm Stackly's guide, not a person\. I answer from Stackly's own pages/);
+    expect(screen.getByText("Answers from Stackly's own pages")).toBeTruthy();
+    expect(dialog.textContent).not.toMatch(/\bAI\b/);
+  });
+});

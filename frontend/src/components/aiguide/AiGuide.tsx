@@ -22,6 +22,9 @@ import { BallSkin } from "../FreeBall";
 // is DRAFT (decisions note).
 
 const INTRO = "Hello. I'm Stackly's AI guide, not a person. I can explain how Stackly works and the terms and figures on this page.";
+// Answers mode (the January default): no AI, approved text only. DRAFT.
+const ANSWERS_INTRO =
+  "Hello. I'm Stackly's guide, not a person. I answer from Stackly's own pages: how it works, the terms and the figures on this page.";
 const ROUND_INTRO = " I won't give the answer or a range; that part is yours.";
 const CHIPS: Record<GuidePage["kind"], string[]> = {
   home: ["How do I play?", "What is a range?", "Why do narrow ranges score more?"],
@@ -32,7 +35,7 @@ const CHIPS: Record<GuidePage["kind"], string[]> = {
   results: ["Why did it come out like this?", "What is the lazy guess?"],
   research: ["What is operating margin?", "Why compare with a year earlier?"],
 };
-const FIXED = new Set(["advice", "price", "answer", "mystery", "safety", "personal", "offtopic", "error"]);
+const FIXED = new Set(["advice", "price", "answer", "mystery", "safety", "personal", "offtopic", "error", "fallback"]);
 const HALF = (kind: GuidePage["kind"]) => kind === "round" || kind === "practice_case";
 
 interface Line {
@@ -131,7 +134,7 @@ export default function AiGuide({ user, page }: { user: UserPublic; page: GuideP
         type="button"
         className="ai-guide-launch"
         onClick={openPanel}
-        aria-label="Open the guide, an AI, not a person"
+        aria-label={status.engine === "answers" ? "Open the guide" : "Open the guide, an AI, not a person"}
         hidden={open}
       >
         <GuideMark markRef={launchBall} />
@@ -140,6 +143,7 @@ export default function AiGuide({ user, page }: { user: UserPublic; page: GuideP
       {open && (
         <GuidePanel
           page={page}
+          answers={status.engine === "answers"}
           half={half}
           from={from}
           lines={lines}
@@ -155,6 +159,7 @@ export default function AiGuide({ user, page }: { user: UserPublic; page: GuideP
 
 function GuidePanel({
   page,
+  answers,
   half,
   from,
   lines,
@@ -164,6 +169,7 @@ function GuidePanel({
   onClose,
 }: {
   page: GuidePage;
+  answers: boolean;
   half: boolean;
   from: DOMRect | null;
   lines: Line[];
@@ -277,7 +283,7 @@ function GuidePanel({
           </span>
           <div className="ai-guide-title">
             <h2 id="ai-guide-title">Guide</h2>
-            <p>An AI guide, not a person</p>
+            <p>{answers ? "Answers from Stackly's own pages" : "An AI guide, not a person"}</p>
           </div>
           <button type="button" className="icon-button ai-guide-close" onClick={onClose} aria-label="Close the guide">
             ×
@@ -285,7 +291,7 @@ function GuidePanel({
         </header>
         <div className="ai-guide-log" ref={log}>
           <p className="ai-guide-says">
-            {INTRO}
+            {answers ? ANSWERS_INTRO : INTRO}
             {HALF(page.kind) ? ROUND_INTRO : ""}
           </p>
           {lines.map((l, i) =>

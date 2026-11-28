@@ -354,9 +354,15 @@ company, safety, personal details) get a fixed reply with no model call;
 replies stream sentence by sentence and each sentence is checked before it
 is sent. No chat text is stored: `guide_usage` (per-person daily counts, 31
 days) and `guide_spend` (the day's tokens and dollars) only. Caps: 6 a
-minute, 20 a day per person, `GUIDE_DAILY_SPEND_USD` overall. Fake mode
-(`GUIDE_FAKE_MODEL=true`) is refused on the production database; real
-calls are refused without `ANTHROPIC_API_KEY`. The red-team set is
+minute, 20 a day per person, `GUIDE_DAILY_SPEND_USD` overall.
+`GUIDE_ENGINE` picks where replies come from: `answers` (default, the
+January version, `services/guide_answers.py`: approved text, the glossary,
+the page's public figures and approved notes, matched by simple search with
+a small English and Hinglish synonym list; no AI call, nothing leaves
+Stackly, and nothing per person is stored, so neither the daily count nor
+the parent tick applies), `fake` (canned replies; refused on the production
+database) or `model` (Anthropic; refused without `ANTHROPIC_API_KEY`, and
+never used without Hriday approving an amount). The red-team set is
 `backend/tests/data/guide_redteam.json` (150 prompts; the real run is
 `backend/scripts/guide_redteam.py`). The old `/api/chat` and its Moonshot,
 DeepSeek and Claude services were retired in phase 12 (tested).

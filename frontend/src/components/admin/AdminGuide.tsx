@@ -45,7 +45,13 @@ export default function AdminGuide() {
           </div>
           <p className="section-text">
             {state.env_enabled ? "Switched on for this deployment (ENABLE_GUIDE)." : "Off for this deployment: ENABLE_GUIDE isn't set, so this switch has no effect."}{" "}
-            {state.fake ? "Fake mode: canned replies, no AI calls." : state.key_set ? `Model: ${state.model}.` : "No API key is set, so real replies are refused."}
+            {state.engine === "answers"
+              ? "Answers mode: approved text only, no AI calls, nothing stored."
+              : state.engine === "fake"
+                ? "Fake mode: canned replies, no AI calls."
+                : state.key_set
+                  ? `AI model: ${state.model} (paid; only with an approved amount).`
+                  : "AI model chosen but no API key is set, so replies are refused."}
           </p>
           <p className="section-text">
             Today: {state.today_calls} replies, ${state.today_usd.toFixed(2)} of ${state.spend_cap_usd.toFixed(2)}.
