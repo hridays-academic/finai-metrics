@@ -70,6 +70,9 @@ H3 = "Narrow ranges score more, but only when the result lands inside."
 FAQ: list[Entry] = [
     Entry("play", f"{G5} {G6}", [{"play", "start_game", "work_game"}], {"how", "game", "stackly"}, source="guide p5-6"),
     Entry("range", G5, [{"range"}], {"what", "meaning", "low", "high"}, source="guide p5"),
+    # The guide's friendly explanations come before the glossary's exact league definitions.
+    Entry("op_margin", G3, [{"operating"}, {"margin"}], {"what", "meaning"}, source="guide p3"),
+    Entry("rev_growth", G2, [{"revenue"}, {"grow"}], {"what", "meaning"}, source="guide p2"),
     Entry("range_width", f"{H3} {H2}", [{"wide", "narrow", "width", "safe", "precise"}],
           {"range", "bad", "score", "how", "should", "better"}, source="hints, Stop 2"),
     Entry("eighty", H2, [{"eight", "80", "confident", "confidence", "times"}], {"ten", "10", "why", "range"}, source="hints, Stop 2"),
