@@ -27,6 +27,11 @@ before changing code there:
 
 ## Rules that apply to every change
 
+- **No paid API calls** (standing rule, 2026-11-28): no paid API calls of any
+  kind, AI or anything else, unless Hriday explicitly approves a specific
+  amount in a message. Don't add or ask for any API key. The AI guide stays
+  off and in fake mode (`GUIDE_FAKE_MODEL`); its paid trial (G3) is paused
+  indefinitely.
 - **Wording**: new or changed user-facing text is drafted in the vault for
   Hriday's approval first; approved text is copied word for word. Voice: a
   curious 14-year-old, formal not cute; no em dashes, exclamation marks,
